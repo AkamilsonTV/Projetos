@@ -1,0 +1,824 @@
+<title>Diário de Treinador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EDE9DA; --surface:#F7F4EA; --surface-2:#E4DFC9; --surface-3:#DCD6BC;
+    --ink:#232922; --ink-dim:#5B6156; --line:#C9C2A6;
+    --accent:#B9791F; --accent-ink:#4A3110; --accent-soft:#E9D2A4;
+    --teal:#1F6E64; --teal-soft:#CFE3DC;
+    --danger:#A23B2E; --danger-soft:#EBD3CC;
+    --good:#3C7A4E;
+    --shadow: 0 1px 0 rgba(35,41,34,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10161A; --surface:#182027; --surface-2:#1F2930; --surface-3:#26323A;
+      --ink:#E7E4D6; --ink-dim:#9AA39C; --line:#2B363C;
+      --accent:#E3A83B; --accent-ink:#241705; --accent-soft:#4A3510;
+      --teal:#4FB7AC; --teal-soft:#173430;
+      --danger:#E06A57; --danger-soft:#3A1E18;
+      --good:#57B87A;
+      --shadow: 0 1px 0 rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10161A; --surface:#182027; --surface-2:#1F2930; --surface-3:#26323A;
+    --ink:#E7E4D6; --ink-dim:#9AA39C; --line:#2B363C;
+    --accent:#E3A83B; --accent-ink:#241705; --accent-soft:#4A3510;
+    --teal:#4FB7AC; --teal-soft:#173430;
+    --danger:#E06A57; --danger-soft:#3A1E18;
+    --good:#57B87A;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.mono,.num,button,.pip,.badge,.tag,input[type=number],.stat-table td.num{
+    font-family:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  h1,h2,h3{ text-wrap:balance; margin:0; letter-spacing:.01em; }
+  .num, .stat-table td, .stat-table th, input[type=number], input[type=range]+.rangeval{
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+  #app{ min-height:100vh; }
+  .shell{ max-width:920px; margin:0 auto; padding:20px 18px 80px; }
+
+  .topbar{
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    padding:14px 2px 18px; border-bottom:2px solid var(--ink); margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .topbar .wordmark{ display:flex; align-items:baseline; gap:10px; }
+  .topbar h1{ font-size:1.05rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  .topbar .sub{ font-size:.78rem; color:var(--ink-dim); }
+  .topbar .who{ font-size:.78rem; color:var(--ink-dim); display:flex; align-items:center; gap:10px; }
+  .topbar .who b{ color:var(--ink); font-weight:600; }
+
+  .banner{
+    padding:10px 14px; border-radius:3px; margin-bottom:16px; font-size:.85rem;
+    border:1px solid var(--line);
+  }
+  .banner.error{ background:var(--danger-soft); border-color:var(--danger); color:var(--ink); }
+  .banner.notice{ background:var(--teal-soft); border-color:var(--teal); color:var(--ink); }
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:4px;
+    margin-bottom:18px; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 16px; border-bottom:1px solid var(--line); background:var(--surface-2);
+  }
+  .card-head .index{ font-size:.7rem; letter-spacing:.12em; color:var(--accent); text-transform:uppercase; font-weight:700; }
+  .card-head h2{ font-size:.95rem; font-weight:700; }
+  .card-body{ padding:16px; }
+  .card-body.tight{ padding:10px 16px; }
+
+  .center-stage{ display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; gap:22px; padding:20px; }
+  .center-stage h1{ font-size:1.5rem; }
+  .center-stage .lede{ color:var(--ink-dim); max-width:42ch; font-size:.92rem; line-height:1.5; }
+  .choice-row{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .choice-card{
+    width:220px; padding:20px 16px; border:1px solid var(--line); border-radius:4px;
+    background:var(--surface); cursor:pointer; text-align:left;
+  }
+  .choice-card:hover{ border-color:var(--accent); }
+  .choice-card .glyph{ font-size:1.4rem; }
+  .choice-card h3{ font-size:.95rem; margin-top:8px; }
+  .choice-card p{ font-size:.78rem; color:var(--ink-dim); margin:6px 0 0; line-height:1.4; }
+
+  form.stack{ display:flex; flex-direction:column; gap:12px; max-width:340px; margin:0 auto; }
+  .field{ display:flex; flex-direction:column; gap:5px; text-align:left; }
+  .field label{ font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); font-weight:600; }
+  input[type=text], input[type=password], input[type=number], select, textarea{
+    background:var(--surface); border:1px solid var(--line); color:var(--ink);
+    padding:8px 10px; border-radius:3px; font-size:.88rem; font-family:inherit; width:100%;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, .pip:focus-visible{
+    outline:2px solid var(--accent); outline-offset:1px;
+  }
+  textarea{ resize:vertical; min-height:52px; }
+
+  button{ font-family:"IBM Plex Sans"; cursor:pointer; border-radius:3px; border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:8px 14px; font-size:.82rem; font-weight:600; }
+  button:hover{ border-color:var(--accent); }
+  .btn-primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .btn-primary:hover{ filter:brightness(1.05); }
+  .btn-ghost{ background:transparent; border-color:transparent; color:var(--ink-dim); }
+  .btn-ghost:hover{ color:var(--ink); border-color:var(--line); }
+  .btn-danger{ color:var(--danger); border-color:var(--danger-soft); }
+  .btn-danger:hover{ border-color:var(--danger); }
+  .btn-sm{ padding:5px 10px; font-size:.74rem; }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  .muted{ color:var(--ink-dim); font-size:.8rem; }
+  .link-btn{ background:none; border:none; color:var(--teal); text-decoration:underline; padding:0; font-size:.8rem; font-weight:600; }
+
+  .attr-grid{ display:flex; flex-direction:column; gap:10px; }
+  .attr-row{ display:grid; grid-template-columns: 108px 1fr 28px; align-items:center; gap:10px; }
+  .attr-row .label{ font-size:.78rem; font-weight:600; }
+  .attr-row .pips{ display:flex; gap:5px; }
+  .pip{ width:22px; height:22px; border-radius:3px; border:1px solid var(--line); background:var(--surface); padding:0; font-size:.65rem; color:transparent; }
+  .pip.filled{ background:var(--accent); border-color:var(--accent); }
+  .attr-row .val{ text-align:right; font-size:.85rem; font-weight:700; color:var(--accent); }
+  .budget{ font-size:.76rem; color:var(--ink-dim); margin-top:2px; }
+  .budget.over{ color:var(--danger); font-weight:700; }
+
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  @media (max-width:560px){ .grid-2, .grid-3{ grid-template-columns:1fr; } }
+
+  .badge{ display:inline-flex; align-items:center; gap:5px; font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:3px 8px; border-radius:20px; border:1px solid var(--line); }
+  .badge.on{ background:var(--teal-soft); border-color:var(--teal); color:var(--teal); }
+  .badge.off{ color:var(--ink-dim); }
+  .badge.gm{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); }
+  .badge.status-bad{ background:var(--danger-soft); border-color:var(--danger); color:var(--danger); }
+
+  .tag{ display:inline-block; font-size:.68rem; font-weight:600; padding:2px 7px; border-radius:3px; background:var(--teal-soft); color:var(--teal); border:1px solid var(--teal); }
+
+  .trainer-summary{ display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; padding:12px 16px; }
+  .trainer-summary .name{ font-weight:700; font-size:.92rem; }
+  .trainer-summary .meta{ font-size:.75rem; color:var(--ink-dim); }
+  .trainer-summary .left{ display:flex; flex-direction:column; gap:2px; }
+  .trainer-summary .right{ display:flex; align-items:center; gap:8px; }
+
+  .poke-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:640px){ .poke-grid{ grid-template-columns:1fr; } }
+  .poke-card{ border:1px solid var(--line); border-radius:4px; background:var(--surface-2); }
+  .poke-head{ display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .poke-head .nick{ font-weight:700; font-size:.88rem; }
+  .poke-head .species{ font-size:.72rem; color:var(--ink-dim); }
+  .poke-body{ padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .poke-empty{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:26px 12px; border:1px dashed var(--line); border-radius:4px; color:var(--ink-dim); font-size:.8rem; }
+
+  table.stat-table{ width:100%; border-collapse:collapse; font-size:.78rem; }
+  table.stat-table th{ text-align:right; font-weight:600; color:var(--ink-dim); padding:3px 6px; font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; }
+  table.stat-table th:first-child{ text-align:left; }
+  table.stat-table td{ text-align:right; padding:3px 6px; border-top:1px solid var(--line); }
+  table.stat-table td:first-child{ text-align:left; font-weight:600; }
+  table.stat-table td.eff{ color:var(--accent); font-weight:700; }
+  .table-scroll{ overflow-x:auto; }
+
+  .hp-row{ display:flex; align-items:center; gap:10px; }
+  .hp-row input[type=number]{ width:70px; }
+  .hp-bar{ flex:1; height:8px; background:var(--surface-3); border-radius:5px; overflow:hidden; border:1px solid var(--line); }
+  .hp-bar > i{ display:block; height:100%; background:var(--good); }
+  .hp-bar.low > i{ background:var(--danger); }
+
+  .moves-list{ display:flex; flex-direction:column; gap:6px; }
+  .move-row{ display:grid; grid-template-columns: 1.3fr .8fr .8fr .5fr .5fr; gap:6px; align-items:center; font-size:.76rem; margin-bottom:4px; }
+  .move-row.move-row2{ grid-template-columns: 1fr 1.6fr; margin-bottom:10px; }
+  .move-row input, .move-row select{ padding:5px 6px; font-size:.76rem; }
+  .move-labels{ display:grid; grid-template-columns: 1.3fr .8fr .8fr .5fr .5fr; gap:6px; font-size:.65rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; padding:0 1px; }
+  @media (max-width:640px){ .move-row, .move-labels{ grid-template-columns:1fr 1fr; } .move-row.move-row2{ grid-template-columns:1fr; } }
+
+  .stage-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+  @media (max-width:640px){ .stage-grid{ grid-template-columns:repeat(3,1fr); } }
+  .stage-field label{ font-size:.62rem; }
+  .stage-field input{ padding:5px 6px; text-align:center; }
+
+  hr.rule{ border:none; border-top:1px dashed var(--line); margin:4px 0; }
+
+  .readonly-note{ font-size:.72rem; color:var(--ink-dim); font-style:italic; }
+
+  footer.legal{ text-align:center; color:var(--ink-dim); font-size:.7rem; margin-top:30px; line-height:1.6; }
+</style>
+
+<div id="app"></div>
+<script>
+(function(){
+"use strict";
+
+/* =================== ESTADO PERSISTIDO =================== */
+let STATE = /*STATE_START*/{"gmPin":null,"trainers":[]}/*STATE_END*/;
+
+/* =================== CONSTANTES DE REGRA =================== */
+var TYPES = ["Normal","Fogo","Água","Grama","Elétrico","Gelo","Lutador","Venenoso","Terra","Voador","Psíquico","Inseto","Pedra","Fantasma","Dragão","Sombrio","Aço","Fada"];
+var ATTR_LABELS = {vigor:"Vigor",vontade:"Vontade",resistencia:"Resistência",mental:"Mental",foco:"Foco",agilidade:"Agilidade"};
+var ATTR_ORDER = ["vigor","vontade","resistencia","mental","foco","agilidade"];
+var ATTR_TO_STAT = {vigor:"hp",vontade:"atk",resistencia:"def",mental:"spa",foco:"spd",agilidade:"spe"};
+var STAT_ORDER = ["hp","atk","def","spa","spd","spe"];
+var STAT_LABELS = {hp:"HP",atk:"Ataque",def:"Defesa",spa:"Atq.Esp.",spd:"Def.Esp.",spe:"Velocidade"};
+var STAGE_STATS = ["atk","def","spa","spd","spe"];
+var STATUS_OPTS = [["","Nenhuma"],["queimadura","Queimadura"],["veneno","Veneno"],["veneno_grave","Veneno Grave"],["paralisia","Paralisia"],["sono","Sono"],["congelamento","Congelamento"]];
+var STATUS_LABELS = {"":"—","queimadura":"Queimadura","veneno":"Veneno","veneno_grave":"Veneno Grave","paralisia":"Paralisia","sono":"Sono","congelamento":"Congelamento"};
+var CATEGORY_OPTS = ["Físico","Especial","Status"];
+
+/* =================== SESSÃO LOCAL (não sincroniza) =================== */
+var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', expanded:{}, confirmRemovePoke:null, confirmRemoveTrainer:null };
+try{
+  var savedSession = JSON.parse(localStorage.getItem('dt_session')||'null');
+  if(savedSession && savedSession.role==='gm'){ SESSION.role='gm'; SESSION.screen='gm-dashboard'; }
+  else if(savedSession && savedSession.role==='player' && savedSession.trainerId){ SESSION.role='player'; SESSION.trainerId=savedSession.trainerId; SESSION.screen='player-sheet'; }
+}catch(e){}
+
+function persistSession(){ try{ localStorage.setItem('dt_session', JSON.stringify({role:SESSION.role, trainerId:SESSION.trainerId})); }catch(e){} }
+function clearSession(){ SESSION.role=null; SESSION.trainerId=null; SESSION.screen='home'; try{ localStorage.removeItem('dt_session'); }catch(e){} }
+
+/* =================== HELPERS =================== */
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function clampInt(n,min,max){ n=parseInt(n,10); if(isNaN(n)) n=min; return Math.max(min,Math.min(max,n)); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function findTrainer(id){ for(var i=0;i<STATE.trainers.length;i++){ if(STATE.trainers[i].id===id) return STATE.trainers[i]; } return null; }
+function byNameCI(name){ name=(name||"").trim().toLowerCase(); for(var i=0;i<STATE.trainers.length;i++){ if(STATE.trainers[i].name.trim().toLowerCase()===name) return STATE.trainers[i]; } return null; }
+
+function newTrainer(name, pin){
+  return {
+    id: uid(), name: name.trim(), pin: String(pin), shareEnabled:false, level:1,
+    attrPoints:{vigor:0,vontade:0,resistencia:0,mental:0,foco:0,agilidade:0},
+    pokemons:[]
+  };
+}
+function newPokemon(){
+  return {
+    id: uid(), apelido:"", especie:"", tipo1:"", tipo2:"",
+    natural:{hp:1,atk:1,def:1,spa:1,spd:1,spe:1},
+    vinculo:0, maturidade:0, currentHP:null,
+    status:"", statusTurns:0, confuso:false,
+    estagios:{atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0},
+    moves:[{nome:"",tipo:"",categoria:"Físico",poder:0,precisao:"",prioridade:0,efeito:""},
+           {nome:"",tipo:"",categoria:"Físico",poder:0,precisao:"",prioridade:0,efeito:""},
+           {nome:"",tipo:"",categoria:"Físico",poder:0,precisao:"",prioridade:0,efeito:""},
+           {nome:"",tipo:"",categoria:"Físico",poder:0,precisao:"",prioridade:0,efeito:""}]
+  };
+}
+
+/* ---- regras: Vínculo, Efetivos, PV ---- */
+function liberatedTier(vinculo){
+  vinculo = clampInt(vinculo,0,25);
+  if(vinculo>=25) return 5;
+  if(vinculo>=20) return 4;
+  if(vinculo>=15) return 3;
+  if(vinculo>=10) return 2;
+  if(vinculo>=5) return 1;
+  return 0;
+}
+function attrKeyForStat(stat){ for(var k in ATTR_TO_STAT){ if(ATTR_TO_STAT[k]===stat) return k; } return null; }
+function liberatedForStat(trainer, poke, stat){
+  var attrKey = attrKeyForStat(stat);
+  var trainerAttr = (trainer.attrPoints[attrKey])||0;
+  return Math.min(liberatedTier(poke.vinculo), trainerAttr);
+}
+function effectiveHPStat(trainer, poke){ return (poke.natural.hp||0) + liberatedForStat(trainer, poke, 'hp'); }
+function hpMax(trainer, poke){ return 10 + effectiveHPStat(trainer, poke)*3; }
+function effectiveStat(trainer, poke, stat){
+  var base = (poke.natural[stat]||0) + liberatedForStat(trainer, poke, stat);
+  if(stat==='hp') return base;
+  var stage = (poke.estagios && poke.estagios[stat]) || 0;
+  return base + stage;
+}
+function attrBudget(level){ return clampInt(level,1,16); }
+function attrSpent(trainer){ var s=0; ATTR_ORDER.forEach(function(k){ s += trainer.attrPoints[k]||0; }); return s; }
+
+/* =================== PERSISTÊNCIA / PUBLICAÇÃO =================== */
+var SELF_SRC = document.currentScript.textContent;
+var artifactApi = null;
+var saveTimer = null;
+
+function buildFullDocument(state){
+  var headHTML = document.head.innerHTML;
+  /* Evita que um "*/" digitado por um jogador feche o comentário-marcador antes da hora. */
+  var safeJson = JSON.stringify(state).replace(/\*\//g, '*\\/');
+  var newSrc = SELF_SRC.replace(/\/\*STATE_START\*\/[\s\S]*?\/\*STATE_END\*\//, '/*STATE_START*/'+safeJson+'/*STATE_END*/');
+  return '<!doctype html>\n<html lang="pt-BR">\n<head>\n'+headHTML+'\n</head>\n<body>\n<div id="app"></div>\n<script>\n'+newSrc+'\n<\/script>\n</body>\n</html>';
+}
+
+function queueSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(doSave, 550);
+}
+
+function doSave(){
+  if(!artifactApi){ SESSION.notice=''; return; }
+  artifactApi.publish(buildFullDocument(STATE)).then(function(){
+    /* ok */
+  }).catch(function(e){
+    if(e && e.code==='conflict'){
+      location.reload();
+    } else if(e && (e.code==='not_granted' || e.code==='not_writer')){
+      SESSION.error = 'Este link está em modo somente leitura para você — suas alterações não foram salvas para o grupo. Peça ao dono do Diário para te adicionar como editor no compartilhamento do link.';
+      render();
+    }
+  });
+}
+
+function mutate(){ render(); queueSave(); }
+
+/* =================== AÇÕES (expostas em DT.*) =================== */
+var DT = {};
+
+DT.goHome = function(){ SESSION.screen='home'; SESSION.error=''; render(); };
+
+DT.chooseGM = function(){ SESSION.screen = STATE.gmPin ? 'gm-login' : 'gm-setup'; SESSION.error=''; render(); };
+DT.setGmPin = function(){
+  var pin = document.getElementById('gmPinInput').value.trim();
+  if(pin.length<4){ SESSION.error='O PIN do Mestre precisa ter pelo menos 4 caracteres.'; render(); return; }
+  STATE.gmPin = pin;
+  SESSION.role='gm'; SESSION.screen='gm-dashboard'; SESSION.error='';
+  persistSession(); mutate();
+};
+DT.gmLogin = function(){
+  var pin = document.getElementById('gmPinInput').value.trim();
+  if(pin !== STATE.gmPin){ SESSION.error='PIN incorreto.'; render(); return; }
+  SESSION.role='gm'; SESSION.screen='gm-dashboard'; SESSION.error='';
+  persistSession(); render();
+};
+DT.gmLogout = function(){ clearSession(); render(); };
+
+DT.choosePlayer = function(){ SESSION.screen='player-entry'; SESSION.error=''; render(); };
+DT.goPlayerLogin = function(){ SESSION.screen='player-login'; SESSION.error=''; render(); };
+DT.goPlayerCreate = function(){ SESSION.screen='player-create'; SESSION.error=''; render(); };
+
+DT.playerLogin = function(){
+  var name = document.getElementById('loginName').value;
+  var pin = document.getElementById('loginPin').value.trim();
+  var t = byNameCI(name);
+  if(!t){ SESSION.error='Não encontrei um Treinador com esse nome.'; render(); return; }
+  if(t.pin !== pin){ SESSION.error='PIN incorreto.'; render(); return; }
+  SESSION.role='player'; SESSION.trainerId=t.id; SESSION.screen='player-sheet'; SESSION.error='';
+  persistSession(); render();
+};
+
+DT.playerCreate = function(){
+  var name = document.getElementById('createName').value.trim();
+  var pin = document.getElementById('createPin').value.trim();
+  var pin2 = document.getElementById('createPin2').value.trim();
+  if(!name){ SESSION.error='Digite um nome de Treinador.'; render(); return; }
+  if(byNameCI(name)){ SESSION.error='Já existe um Treinador com esse nome. Escolha outro ou entre com o PIN dele.'; render(); return; }
+  if(pin.length<4){ SESSION.error='O PIN precisa ter pelo menos 4 caracteres.'; render(); return; }
+  if(pin!==pin2){ SESSION.error='Os PINs não coincidem.'; render(); return; }
+  var t = newTrainer(name, pin);
+  STATE.trainers.push(t);
+  SESSION.role='player'; SESSION.trainerId=t.id; SESSION.screen='player-sheet'; SESSION.error='';
+  persistSession(); mutate();
+};
+
+DT.playerLogout = function(){ clearSession(); render(); };
+
+DT.toggleShare = function(id){
+  var t = findTrainer(id); if(!t) return;
+  t.shareEnabled = !t.shareEnabled;
+  mutate();
+};
+
+DT.setLevel = function(id, el){
+  var t = findTrainer(id); if(!t) return;
+  t.level = clampInt(el.value,1,16);
+  mutate();
+};
+
+DT.setPip = function(id, attrKey, value){
+  var t = findTrainer(id); if(!t) return;
+  var current = t.attrPoints[attrKey]||0;
+  t.attrPoints[attrKey] = (current===value) ? value-1 : value;
+  if(t.attrPoints[attrKey]<0) t.attrPoints[attrKey]=0;
+  if(t.attrPoints[attrKey]>5) t.attrPoints[attrKey]=5;
+  mutate();
+};
+
+DT.rollAttrDie = function(id){
+  var t = findTrainer(id); if(!t) return;
+  var roll = Math.floor(Math.random()*6)+1;
+  var attrKey = ATTR_ORDER[roll-1];
+  SESSION.notice = 'Nível par — 1d6 resultou em ' + roll + ': ' + ATTR_LABELS[attrKey] + '. Aplique manualmente o ponto no atributo (role de novo se ele já estiver em 5).';
+  render();
+};
+
+DT.addPokemon = function(id){
+  var t = findTrainer(id); if(!t) return;
+  if(t.pokemons.length>=6){ return; }
+  t.pokemons.push(newPokemon());
+  mutate();
+};
+DT.askRemovePokemon = function(pid){ SESSION.confirmRemovePoke = pid; render(); };
+DT.cancelRemovePokemon = function(){ SESSION.confirmRemovePoke = null; render(); };
+DT.removePokemon = function(tid, pid){
+  var t = findTrainer(tid); if(!t) return;
+  t.pokemons = t.pokemons.filter(function(p){ return p.id!==pid; });
+  SESSION.confirmRemovePoke = null;
+  mutate();
+};
+DT.toggleExpand = function(pid){
+  SESSION.expanded[pid] = !SESSION.expanded[pid];
+  render();
+};
+
+function getPoke(tid,pid){ var t=findTrainer(tid); if(!t) return null; for(var i=0;i<t.pokemons.length;i++){ if(t.pokemons[i].id===pid) return t.pokemons[i]; } return null; }
+
+DT.setPokeField = function(tid,pid,field,el){
+  var p = getPoke(tid,pid); if(!p) return;
+  p[field] = el.value;
+  mutate();
+};
+DT.setPokeNatural = function(tid,pid,stat,el){
+  var p = getPoke(tid,pid); if(!p) return;
+  p.natural[stat] = clampInt(el.value,0,20);
+  mutate();
+};
+DT.setVinculo = function(tid,pid,el){
+  var p = getPoke(tid,pid); if(!p) return;
+  p.vinculo = clampInt(el.value,0,25);
+  mutate();
+};
+DT.setMaturidade = function(tid,pid,el){
+  var p = getPoke(tid,pid); if(!p) return;
+  p.maturidade = clampInt(el.value,0,999);
+  mutate();
+};
+DT.setCurrentHP = function(tid,pid,el){
+  var t=findTrainer(tid); var p = getPoke(tid,pid); if(!p||!t) return;
+  var max = hpMax(t,p);
+  p.currentHP = clampInt(el.value,0,max);
+  mutate();
+};
+DT.healFull = function(tid,pid){
+  var t=findTrainer(tid); var p=getPoke(tid,pid); if(!p||!t) return;
+  p.currentHP = hpMax(t,p);
+  mutate();
+};
+DT.setStatus = function(tid,pid,el){
+  var p = getPoke(tid,pid); if(!p) return;
+  p.status = el.value;
+  if(p.status!=='sono' && p.status!=='veneno_grave') p.statusTurns=0;
+  mutate();
+};
+DT.setStatusTurns = function(tid,pid,el){
+  var p = getPoke(tid,pid); if(!p) return;
+  p.statusTurns = clampInt(el.value,0,20);
+  mutate();
+};
+DT.toggleConfuso = function(tid,pid){
+  var p = getPoke(tid,pid); if(!p) return;
+  p.confuso = !p.confuso;
+  mutate();
+};
+DT.setStage = function(tid,pid,stat,el){
+  var p = getPoke(tid,pid); if(!p) return;
+  p.estagios[stat] = clampInt(el.value,-6,6);
+  mutate();
+};
+DT.setMove = function(tid,pid,idx,field,el){
+  var p = getPoke(tid,pid); if(!p) return;
+  var val = el.value;
+  if(field==='poder') val = clampInt(val,0,10);
+  if(field==='prioridade') val = clampInt(val,-7,7);
+  p.moves[idx][field] = val;
+  mutate();
+};
+
+DT.askRemoveTrainer = function(id){ SESSION.confirmRemoveTrainer = id; render(); };
+DT.cancelRemoveTrainer = function(){ SESSION.confirmRemoveTrainer = null; render(); };
+DT.removeTrainerGM = function(id){
+  var t = findTrainer(id); if(!t) return;
+  STATE.trainers = STATE.trainers.filter(function(x){ return x.id!==id; });
+  SESSION.confirmRemoveTrainer = null;
+  mutate();
+};
+
+DT.dismiss = function(){ SESSION.error=''; SESSION.notice=''; render(); };
+
+window.DT = DT;
+
+/* =================== RENDER =================== */
+function render(){
+  document.getElementById('app').innerHTML = screenHTML();
+}
+
+function topbar(rightHTML){
+  return '<div class="topbar">'+
+    '<div class="wordmark"><h1>Diário de Treinador</h1><span class="sub">Pokémon RPG · v0.2</span></div>'+
+    '<div class="who">'+(rightHTML||'')+'</div>'+
+  '</div>';
+}
+
+function banners(){
+  var out = '';
+  if(SESSION.error) out += '<div class="banner error">'+esc(SESSION.error)+' <button class="btn-ghost btn-sm" onclick="DT.dismiss()">fechar</button></div>';
+  if(SESSION.notice) out += '<div class="banner notice">🎲 '+esc(SESSION.notice)+' <button class="btn-ghost btn-sm" onclick="DT.dismiss()">fechar</button></div>';
+  return out;
+}
+
+function screenHTML(){
+  switch(SESSION.screen){
+    case 'gm-setup': return wrap(gmSetupScreen(), '');
+    case 'gm-login': return wrap(gmLoginScreen(), '');
+    case 'gm-dashboard': return wrap(gmDashboardScreen(), gmTopRight());
+    case 'player-entry': return wrap(playerEntryScreen(), '');
+    case 'player-login': return wrap(playerLoginScreen(), '');
+    case 'player-create': return wrap(playerCreateScreen(), '');
+    case 'player-sheet': return wrap(playerSheetScreen(), playerTopRight());
+    default: return wrap(homeScreen(), '');
+  }
+}
+function wrap(bodyHTML, rightHTML){
+  return '<div class="shell">'+topbar(rightHTML)+banners()+bodyHTML+legalFooter()+'</div>'+typeDatalist('typeList');
+}
+function legalFooter(){
+  return '<footer class="legal">Ficha compartilhada apenas com quem tem o link. Não é um cofre: qualquer pessoa com acesso técnico ao link pode inspecionar os dados salvos na página.</footer>';
+}
+function gmTopRight(){ return '<b>Mestre</b><button class="btn-ghost btn-sm" onclick="DT.gmLogout()">Sair</button>'; }
+function playerTopRight(){
+  var t = findTrainer(SESSION.trainerId);
+  return '<b>'+esc(t?t.name:'')+'</b><button class="btn-ghost btn-sm" onclick="DT.playerLogout()">Sair</button>';
+}
+
+/* ---- Home ---- */
+function homeScreen(){
+  return '<div class="center-stage">'+
+    '<div><h1>Bem-vindo ao Diário</h1><p class="lede">O registro de campo dos Treinadores da mesa: atributos, Vínculo e a equipe de cada um, num só lugar.</p></div>'+
+    '<div class="choice-row">'+
+      '<button class="choice-card" onclick="DT.chooseGM()"><div class="glyph">🗺️</div><h3>Sou o Mestre</h3><p>Veja e ajuste a ficha de qualquer Treinador da mesa.</p></button>'+
+      '<button class="choice-card" onclick="DT.choosePlayer()"><div class="glyph">🎒</div><h3>Sou Treinador</h3><p>Acesse sua ficha, sua equipe e veja quem compartilhou a dele.</p></button>'+
+    '</div>'+
+  '</div>';
+}
+
+/* ---- GM ---- */
+function gmSetupScreen(){
+  return '<div class="center-stage"><div><h1>Definir PIN do Mestre</h1><p class="lede">Ninguém configurou o acesso do Mestre ainda. Escolha um PIN — quem souber ele entra como Mestre.</p></div>'+
+    '<form class="stack" onsubmit="event.preventDefault(); DT.setGmPin();">'+
+      '<div class="field"><label for="gmPinInput">PIN do Mestre (mín. 4 caracteres)</label><input type="password" id="gmPinInput" autofocus></div>'+
+      '<div class="btn-row"><button type="submit" class="btn-primary">Definir e entrar</button><button type="button" class="btn-ghost" onclick="DT.goHome()">Voltar</button></div>'+
+    '</form></div>';
+}
+function gmLoginScreen(){
+  return '<div class="center-stage"><div><h1>Área do Mestre</h1><p class="lede">Digite o PIN do Mestre.</p></div>'+
+    '<form class="stack" onsubmit="event.preventDefault(); DT.gmLogin();">'+
+      '<div class="field"><label for="gmPinInput">PIN</label><input type="password" id="gmPinInput" autofocus></div>'+
+      '<div class="btn-row"><button type="submit" class="btn-primary">Entrar</button><button type="button" class="btn-ghost" onclick="DT.goHome()">Voltar</button></div>'+
+    '</form></div>';
+}
+function gmDashboardScreen(){
+  var trainers = STATE.trainers;
+  var head = '<div class="card"><div class="card-head"><span class="index">Mesa</span><h2>Treinadores ('+trainers.length+')</h2></div></div>';
+  if(trainers.length===0){
+    return head+'<div class="card"><div class="card-body"><p class="muted">Nenhum Treinador criou a ficha ainda. Compartilhe o link do Diário com o grupo — cada um cria a própria ficha em "Sou Treinador".</p></div></div>';
+  }
+  var cards = trainers.map(function(t){
+    var expanded = !!SESSION.expanded[t.id];
+    var summary = '<div class="trainer-summary" onclick="DT.toggleExpand(\''+t.id+'\')">'+
+      '<div class="left"><span class="name">'+esc(t.name)+'</span><span class="meta">Nível '+t.level+' · '+t.pokemons.length+'/6 Pokémon</span></div>'+
+      '<div class="right">'+shareBadge(t)+'<span class="muted">'+(expanded?'▲':'▼')+'</span></div>'+
+    '</div>';
+    var removeControl = SESSION.confirmRemoveTrainer===t.id
+      ? '<span class="muted">Remover "'+esc(t.name)+'" e toda a ficha dele?</span> <button class="btn-danger btn-sm" onclick="DT.removeTrainerGM(\''+t.id+'\')">Confirmar remoção</button> <button class="btn-ghost btn-sm" onclick="DT.cancelRemoveTrainer()">Cancelar</button>'
+      : '<button class="btn-danger btn-sm" onclick="DT.askRemoveTrainer(\''+t.id+'\')">Remover Treinador da mesa</button>';
+    var body = expanded ? '<div class="card-body">'+trainerSheetHTML(t,'gm')+'<hr class="rule">'+removeControl+'</div>' : '';
+    return '<div class="card">'+summary+body+'</div>';
+  }).join('');
+  return head+cards;
+}
+function shareBadge(t){
+  return t.shareEnabled ? '<span class="badge on">Compartilhada</span>' : '<span class="badge off">Privada</span>';
+}
+
+/* ---- Player entry / login / create ---- */
+function playerEntryScreen(){
+  return '<div class="center-stage"><div><h1>Área do Treinador</h1><p class="lede">Já tem uma ficha nesta mesa ou está começando agora?</p></div>'+
+    '<div class="choice-row">'+
+      '<button class="choice-card" onclick="DT.goPlayerLogin()"><div class="glyph">🔑</div><h3>Já tenho ficha</h3><p>Entrar com nome e PIN.</p></button>'+
+      '<button class="choice-card" onclick="DT.goPlayerCreate()"><div class="glyph">✏️</div><h3>Criar personagem</h3><p>Primeira vez nesta mesa.</p></button>'+
+    '</div><button class="btn-ghost btn-sm" onclick="DT.goHome()">Voltar</button></div>';
+}
+function playerLoginScreen(){
+  var options = STATE.trainers.map(function(t){ return '<option value="'+esc(t.name)+'">'; }).join('');
+  return '<div class="center-stage"><div><h1>Entrar</h1></div>'+
+    '<form class="stack" onsubmit="event.preventDefault(); DT.playerLogin();">'+
+      '<div class="field"><label for="loginName">Nome do Treinador</label><input type="text" id="loginName" list="trainerNames" autofocus></div>'+
+      '<datalist id="trainerNames">'+options+'</datalist>'+
+      '<div class="field"><label for="loginPin">PIN</label><input type="password" id="loginPin"></div>'+
+      '<div class="btn-row"><button type="submit" class="btn-primary">Entrar</button><button type="button" class="btn-ghost" onclick="DT.choosePlayer()">Voltar</button></div>'+
+    '</form></div>';
+}
+function playerCreateScreen(){
+  return '<div class="center-stage"><div><h1>Criar personagem</h1><p class="lede">Nível 1, seis Atributos zerados — do jeito que a regra manda.</p></div>'+
+    '<form class="stack" onsubmit="event.preventDefault(); DT.playerCreate();">'+
+      '<div class="field"><label for="createName">Nome do Treinador</label><input type="text" id="createName" autofocus></div>'+
+      '<div class="field"><label for="createPin">Criar um PIN (mín. 4 caracteres)</label><input type="password" id="createPin"></div>'+
+      '<div class="field"><label for="createPin2">Confirmar PIN</label><input type="password" id="createPin2"></div>'+
+      '<div class="btn-row"><button type="submit" class="btn-primary">Criar ficha</button><button type="button" class="btn-ghost" onclick="DT.choosePlayer()">Voltar</button></div>'+
+    '</form></div>';
+}
+
+/* ---- Player sheet (own) ---- */
+function playerSheetScreen(){
+  var t = findTrainer(SESSION.trainerId);
+  if(!t){ clearSession(); return homeScreen(); }
+  var shared = STATE.trainers.filter(function(o){ return o.id!==t.id && o.shareEnabled; });
+  var out = '<div class="card"><div class="card-head"><span class="index">Sua ficha</span><h2>'+esc(t.name)+'</h2></div>'+
+    '<div class="card-body">'+trainerSheetHTML(t,'own')+'</div></div>';
+
+  out += '<div class="card"><div class="card-head"><span class="index">Mesa</span><h2>Fichas compartilhadas ('+shared.length+')</h2></div>';
+  if(shared.length===0){
+    out += '<div class="card-body"><p class="muted">Ninguém mais compartilhou a ficha ainda. Quando um colega ativar "Compartilhar com a mesa", a ficha dele aparece aqui.</p></div>';
+  } else {
+    out += shared.map(function(o){
+      var expanded = !!SESSION.expanded[o.id];
+      var summary = '<div class="trainer-summary" onclick="DT.toggleExpand(\''+o.id+'\')"><div class="left"><span class="name">'+esc(o.name)+'</span><span class="meta">Nível '+o.level+' · '+o.pokemons.length+'/6 Pokémon</span></div><span class="muted">'+(expanded?'▲':'▼')+'</span></div>';
+      var body = expanded ? '<div class="card-body">'+trainerSheetHTML(o,'readonly')+'</div>' : '';
+      return summary+body;
+    }).join('<hr class="rule" style="margin:0 16px;">');
+  }
+  out += '</div>';
+  return out;
+}
+
+/* ---- Trainer sheet renderer: mode = 'own' | 'gm' | 'readonly' ---- */
+function trainerSheetHTML(t, mode){
+  var editable = mode==='own' || mode==='gm';
+  var out = '';
+
+  /* header row: level + share toggle */
+  out += '<div class="grid-2" style="margin-bottom:14px;">';
+  out += '<div class="field"><label>Nível do Treinador</label>'+
+    (editable ? '<input type="number" min="1" max="16" value="'+t.level+'" onchange="DT.setLevel(\''+t.id+'\', this)">' : '<div class="num" style="font-weight:700;">'+t.level+' / 16</div>')+
+    '</div>';
+  out += '<div class="field"><label>Compartilhamento</label>'+
+    (mode==='own'
+      ? '<button class="btn-sm '+(t.shareEnabled?'btn-primary':'')+'" onclick="DT.toggleShare(\''+t.id+'\')">'+(t.shareEnabled?'✓ Visível para a mesa':'Compartilhar com a mesa')+'</button>'
+      : shareBadge(t))+
+    '</div>';
+  out += '</div>';
+
+  /* attributes */
+  var spent = attrSpent(t), budget = attrBudget(t.level);
+  out += '<h3 style="font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); margin-bottom:8px;">Atributos</h3>';
+  out += '<div class="attr-grid">';
+  ATTR_ORDER.forEach(function(k){
+    var val = t.attrPoints[k]||0;
+    var pips = '';
+    for(var i=1;i<=5;i++){
+      pips += editable
+        ? '<button type="button" class="pip'+(i<=val?' filled':'')+'" onclick="DT.setPip(\''+t.id+'\',\''+k+'\','+i+')">'+i+'</button>'
+        : '<span class="pip'+(i<=val?' filled':'')+'"></span>';
+    }
+    out += '<div class="attr-row"><span class="label">'+ATTR_LABELS[k]+'</span><span class="pips">'+pips+'</span><span class="val">'+val+'</span></div>';
+  });
+  out += '</div>';
+  out += '<div class="budget'+(spent>budget?' over':'')+'">Pontos usados: '+spent+' / '+budget+(spent>budget?' — acima do esperado para o nível':'')+'</div>';
+  if(editable) out += '<div style="margin-top:8px;"><button class="btn-sm" onclick="DT.rollAttrDie(\''+t.id+'\')">🎲 Sortear atributo (nível par)</button></div>';
+
+  /* pokemon roster */
+  out += '<hr class="rule" style="margin:18px 0;">';
+  out += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">'+
+    '<h3 style="font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim);">Equipe ('+t.pokemons.length+'/6)</h3>'+
+    (editable && t.pokemons.length<6 ? '<button class="btn-sm" onclick="DT.addPokemon(\''+t.id+'\')">+ Adicionar Pokémon</button>' : '')+
+  '</div>';
+
+  out += '<div class="poke-grid">';
+  out += t.pokemons.map(function(p){ return pokeCardHTML(t,p,editable); }).join('');
+  out += '</div>';
+
+  return out;
+}
+
+function typeTags(p){
+  var out='';
+  if(p.tipo1) out += '<span class="tag">'+esc(p.tipo1)+'</span> ';
+  if(p.tipo2) out += '<span class="tag">'+esc(p.tipo2)+'</span>';
+  return out;
+}
+function typeDatalist(id){
+  return '<datalist id="'+id+'">'+TYPES.map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>';
+}
+
+function pokeCardHTML(t,p,editable){
+  var expanded = !!SESSION.expanded[p.id];
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null || p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
+  var pct = max>0 ? Math.round(cur/max*100) : 0;
+  var fainted = cur<=0;
+
+  var removeBtn = SESSION.confirmRemovePoke===p.id
+    ? '<button class="btn-danger btn-sm" onclick="DT.removePokemon(\''+t.id+'\',\''+p.id+'\')">Confirmar</button><button class="btn-ghost btn-sm" onclick="DT.cancelRemovePokemon()">Cancelar</button>'
+    : '<button class="btn-ghost btn-sm" onclick="DT.askRemovePokemon(\''+p.id+'\')">✕</button>';
+  var head = '<div class="poke-head">'+
+    '<div onclick="DT.toggleExpand(\''+p.id+'\')" style="cursor:pointer; flex:1;">'+
+      '<div class="nick">'+(p.apelido?esc(p.apelido):(p.especie?esc(p.especie):'Pokémon sem nome'))+' '+(fainted?'<span class="badge status-bad">Desmaiado</span>':'')+(p.status?'<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>':'')+(p.confuso?'<span class="badge status-bad">Confuso</span>':'')+'</div>'+
+      '<div class="species">'+(p.especie?esc(p.especie)+' · ':'')+typeTags(p)+'</div>'+
+    '</div>'+
+    (editable ? removeBtn : '')+
+  '</div>';
+
+  var hpBar = '<div class="hp-row">'+
+    (editable ? '<input type="number" min="0" max="'+max+'" value="'+cur+'" onchange="DT.setCurrentHP(\''+t.id+'\',\''+p.id+'\', this)">' : '<span class="num">'+cur+'</span>')+
+    '<span class="muted">/ '+max+' PV</span>'+
+    '<div class="hp-bar'+(pct<=25?' low':'')+'"><i style="width:'+pct+'%"></i></div>'+
+    (editable ? '<button class="btn-ghost btn-sm" onclick="DT.healFull(\''+t.id+'\',\''+p.id+'\')">curar</button>' : '')+
+  '</div>';
+
+  if(!expanded){
+    return '<div class="poke-card">'+head+'<div class="poke-body">'+hpBar+'</div></div>';
+  }
+
+  var did = p.id;
+  var natField = function(stat){
+    return editable
+      ? '<input type="number" min="0" max="20" value="'+p.natural[stat]+'" onchange="DT.setPokeNatural(\''+t.id+'\',\''+did+'\',\''+stat+'\', this)" style="width:52px;">'
+      : p.natural[stat];
+  };
+
+  var statRows = STAT_ORDER.map(function(stat){
+    var eff = effectiveStat(t,p,stat);
+    return '<tr><td>'+STAT_LABELS[stat]+'</td><td class="num">'+natField(stat)+'</td><td class="num eff">'+eff+'</td></tr>';
+  }).join('');
+
+  var statTable = '<div class="table-scroll"><table class="stat-table"><thead><tr><th>Stat</th><th>Natural</th><th>Efetivo</th></tr></thead><tbody>'+statRows+'</tbody></table></div>';
+
+  var identity = editable ? (
+    '<div class="grid-2">'+
+      '<div class="field"><label>Apelido</label><input type="text" value="'+esc(p.apelido)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'apelido\', this)"></div>'+
+      '<div class="field"><label>Espécie</label><input type="text" value="'+esc(p.especie)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'especie\', this)"></div>'+
+    '</div>'+
+    '<div class="grid-2">'+
+      '<div class="field"><label>Tipo 1</label><input type="text" list="typeList" value="'+esc(p.tipo1)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'tipo1\', this)"></div>'+
+      '<div class="field"><label>Tipo 2</label><input type="text" list="typeList" value="'+esc(p.tipo2)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'tipo2\', this)"></div>'+
+    '</div>'
+  ) : '';
+
+  var vinculoRow = '<div class="grid-2">'+
+    '<div class="field"><label>Vínculo (0–25) — libera '+liberatedTier(p.vinculo)+' pt(s)</label>'+
+      (editable ? '<input type="range" min="0" max="25" value="'+p.vinculo+'" onchange="DT.setVinculo(\''+t.id+'\',\''+did+'\', this)">' : '')+
+      '<span class="rangeval num">'+p.vinculo+' / 25</span>'+
+    '</div>'+
+    '<div class="field"><label>Maturidade (regra em aberto)</label>'+
+      (editable ? '<input type="number" min="0" value="'+p.maturidade+'" onchange="DT.setMaturidade(\''+t.id+'\',\''+did+'\', this)">' : '<span class="num">'+p.maturidade+'</span>')+
+    '</div>'+
+  '</div>';
+
+  var statusRow = '<div class="grid-3">'+
+    '<div class="field"><label>Condição</label>'+
+      (editable
+        ? '<select onchange="DT.setStatus(\''+t.id+'\',\''+did+'\', this)">'+STATUS_OPTS.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===p.status?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select>'
+        : '<span>'+STATUS_LABELS[p.status]+'</span>')+
+    '</div>'+
+    ((p.status==='sono'||p.status==='veneno_grave') ? '<div class="field"><label>'+(p.status==='sono'?'Turnos dormindo':'Turno do dano')+'</label>'+
+      (editable ? '<input type="number" min="0" max="10" value="'+p.statusTurns+'" onchange="DT.setStatusTurns(\''+t.id+'\',\''+did+'\', this)">' : p.statusTurns)+
+    '</div>' : '<div></div>')+
+    '<div class="field"><label>Confuso</label>'+
+      (editable ? '<button class="btn-sm '+(p.confuso?'btn-primary':'')+'" onclick="DT.toggleConfuso(\''+t.id+'\',\''+did+'\')">'+(p.confuso?'✓ Confuso':'Marcar confuso')+'</button>' : (p.confuso?'Sim':'Não'))+
+    '</div>'+
+  '</div>';
+
+  var stageFields = STAGE_STATS.concat(['precisao','evasao']);
+  var stageLbl = {atk:'Atq',def:'Def',spa:'AEsp',spd:'DEsp',spe:'Vel',precisao:'Prec',evasao:'Evas'};
+  var stages = '<div class="field"><label>Estágios (±6)</label><div class="stage-grid">'+
+    stageFields.map(function(s){
+      return '<div class="stage-field"><label>'+stageLbl[s]+'</label>'+
+        (editable ? '<input type="number" min="-6" max="6" value="'+(p.estagios[s]||0)+'" onchange="DT.setStage(\''+t.id+'\',\''+did+'\',\''+s+'\', this)">' : '<div class="num" style="text-align:center;">'+(p.estagios[s]||0)+'</div>')+
+      '</div>';
+    }).join('')+
+  '</div></div>';
+
+  var movesHeader = '<div class="move-labels"><span>Nome</span><span>Tipo</span><span>Categoria</span><span>Poder</span><span>Prior.</span></div>';
+  var moves = p.moves.map(function(m, idx){
+    if(!editable){
+      if(!m.nome) return '';
+      var detail = [];
+      if(m.precisao) detail.push('precisão '+esc(m.precisao));
+      if(m.efeito) detail.push(esc(m.efeito));
+      return '<div class="move-row"><span>'+esc(m.nome)+'</span><span class="tag">'+esc(m.tipo)+'</span><span>'+esc(m.categoria)+'</span><span class="num">'+(m.poder||0)+'</span><span class="num">'+(m.prioridade||0)+'</span></div>'+
+        (detail.length ? '<div class="readonly-note">'+detail.join(' · ')+'</div>' : '');
+    }
+    return '<div class="move-row">'+
+      '<input type="text" placeholder="nome" value="'+esc(m.nome)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'nome\', this)">'+
+      '<input type="text" placeholder="tipo" list="typeList" value="'+esc(m.tipo)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'tipo\', this)">'+
+      '<select onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'categoria\', this)">'+CATEGORY_OPTS.map(function(c){ return '<option'+(c===m.categoria?' selected':'')+'>'+c+'</option>'; }).join('')+'</select>'+
+      '<input type="number" min="0" max="10" value="'+(m.poder||0)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'poder\', this)">'+
+      '<input type="number" min="-7" max="7" value="'+(m.prioridade||0)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'prioridade\', this)">'+
+    '</div>'+
+    '<div class="move-row move-row2">'+
+      '<input type="text" placeholder="precisão (ex: 90%)" value="'+esc(m.precisao)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'precisao\', this)">'+
+      '<input type="text" placeholder="efeito (ex: 30% de queimar)" value="'+esc(m.efeito)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'efeito\', this)">'+
+    '</div>';
+  }).join('');
+
+  var movesBlock = '<div><label style="font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); display:block; margin-bottom:4px;">Movimentos</label>'+
+    (editable ? movesHeader : '')+'<div class="moves-list">'+moves+'</div></div>';
+
+  return '<div class="poke-card">'+head+'<div class="poke-body">'+
+    hpBar+
+    (editable ? identity : '')+
+    statTable+
+    vinculoRow+
+    statusRow+
+    stages+
+    movesBlock+
+  '</div></div>';
+}
+
+/* =================== BOOT =================== */
+render(); /* pinta a tela imediatamente com o estado salvo, sem esperar a capability */
+async function boot(){
+  try{ artifactApi = (window.claude && typeof window.claude.use==='function') ? await claude.use('artifact') : null; }catch(e){ artifactApi = null; }
+}
+boot();
+
+})();
+</script>
