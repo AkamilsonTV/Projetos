@@ -8,7 +8,11 @@ name: Sync to OneDrive
 #      salvar como Secret do repositório: Settings > Secrets and variables >
 #      Actions > New repository secret > RCLONE_CONF_B64
 #   3. (Opcional) Criar a variable ONEDRIVE_DEST_PATH com o caminho de
-#      destino dentro do OneDrive. Padrão: Backup/GitHub/Projetos
+#      destino dentro do OneDrive. Padrão: Projetos
+#
+# Cada pasta do repositório vira uma subpasta dentro do destino no OneDrive
+# (ex: repo/projeto-a -> OneDrive/Projetos/projeto-a), então nada fica solto
+# na raiz do OneDrive.
 
 on:
   push:
@@ -40,7 +44,7 @@ jobs:
 
       - name: Sincronizar com o OneDrive
         env:
-          DEST: ${{ vars.ONEDRIVE_DEST_PATH || 'Backup/GitHub/Projetos' }}
+          DEST: ${{ vars.ONEDRIVE_DEST_PATH || 'Projetos' }}
         run: |
           echo "Sincronizando para onedrive:${DEST}"
           rclone sync . "onedrive:${DEST}" \

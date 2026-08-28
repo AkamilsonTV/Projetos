@@ -61,12 +61,30 @@ Se listar as pastas do seu OneDrive, está pronto.
 
 ## Passo 4 (opcional) — Escolher a pasta de destino
 
-Por padrão, os arquivos vão para `Backup/GitHub/Projetos` dentro do seu
-OneDrive. Para mudar, crie uma **Repository variable** (mesma tela de
-Secrets, aba "Variables"):
+Por padrão, tudo vai para uma pasta única `Projetos` na raiz do seu
+OneDrive — nada fica solto na raiz. Cada pasta deste repositório vira uma
+subpasta dentro dela automaticamente, por exemplo:
+
+```
+repo/
+├── projeto-a/
+└── projeto-b/
+```
+
+vira, no OneDrive:
+
+```
+OneDrive/
+└── Projetos/
+    ├── projeto-a/
+    └── projeto-b/
+```
+
+Se quiser usar outro nome de pasta raiz, crie uma **Repository variable**
+(mesma tela de Secrets, aba "Variables"):
 
 - Nome: `ONEDRIVE_DEST_PATH`
-- Valor: ex. `Meus Projetos/Projetos`
+- Valor: ex. `Meus Projetos`
 
 ## Pronto
 
@@ -76,7 +94,16 @@ Run workflow**.
 
 ## Adicionando outros repositórios no futuro
 
-Para sincronizar outro repositório, basta copiar o arquivo
-`.github/workflows/onedrive-sync.yml` para ele e repetir os Passos 3 e 4
-(pode reaproveitar o mesmo `RCLONE_CONF_B64`, só mude o `ONEDRIVE_DEST_PATH`
-para não sobrescrever a pasta de um repositório com a de outro).
+Se preferir manter tudo dentro deste repositório `Projetos`, basta criar
+uma pasta nova aqui para cada projeto — nada a configurar, o sync já
+manda tudo pra dentro de `OneDrive/Projetos/`.
+
+Se em vez disso você criar **outros repositórios** no GitHub, copie o
+arquivo `.github/workflows/onedrive-sync.yml` para eles e repita os
+Passos 3 e 4 — pode reaproveitar o mesmo `RCLONE_CONF_B64`, mas defina um
+`ONEDRIVE_DEST_PATH` diferente para cada um, sempre começando com
+`Projetos/`, para que todos caiam dentro da mesma pasta raiz em vez de se
+sobrescreverem ou espalharem pela raiz do OneDrive. Exemplo:
+
+- Repositório `projetos` → `ONEDRIVE_DEST_PATH` = `Projetos` (padrão)
+- Repositório `site-cliente-x` → `ONEDRIVE_DEST_PATH` = `Projetos/site-cliente-x`
