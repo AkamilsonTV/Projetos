@@ -1,0 +1,51 @@
+name: Sync to OneDrive
+
+# Espelha o conteúdo deste repositório em uma pasta do OneDrive usando rclone.
+# Configuração necessária (uma única vez, feita pelo dono do repositório):
+#   1. Rodar `rclone config` localmente e criar um remote chamado "onedrive".
+#      Veja o passo a passo em docs/ONEDRIVE_SYNC.md
+#   2. Codificar o arquivo gerado (~/.config/rclone/rclone.conf) em base64 e
+#      salvar como Secret do repositório: Settings > Secrets and variables >
+#      Actions > New repository secret > RCLONE_CONF_B64
+#   3. (Opcional) Criar a variable ONEDRIVE_DEST_PATH com o caminho de
+#      destino dentro do OneDrive. Padrão: Backup/GitHub/Projetos
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verificar configuração
+        run: |
+          if [ -z "${{ secrets.RCLONE_CONF_B64 }}" ]; then
+            echo "::error::Secret RCLONE_CONF_B64 não configurado. Veja docs/ONEDRIVE_SYNC.md."
+            exit 1
+          fi
+
+      - name: Instalar rclone
+        run: curl https://rclone.org/install.sh | sudo bash
+
+      - name: Configurar rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONF_B64 }}" | base64 -d > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      - name: Sincronizar com o OneDrive
+        env:
+          DEST: ${{ vars.ONEDRIVE_DEST_PATH || 'Backup/GitHub/Projetos' }}
+        run: |
+          echo "Sincronizando para onedrive:${DEST}"
+          rclone sync . "onedrive:${DEST}" \
+            --exclude ".git/**" \
+            --exclude ".github/**" \
+            --create-empty-src-dirs \
+            --checksum \
+            --verbose
