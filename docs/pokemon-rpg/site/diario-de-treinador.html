@@ -191,12 +191,210 @@
 </style>
 
 <div id="app"></div>
+
+<!-- Copia inerte (não executada) do <head> real desta página, lida por HEAD_HTML no
+     script abaixo. Existe porque document.head ao vivo é mutado pela plataforma
+     (código de sandbox) e não pode ser usado para reconstruir a página ao salvar. -->
+<script type="text/plain" id="dt-head-source">
+<title>Diário de Treinador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EDE9DA; --surface:#F7F4EA; --surface-2:#E4DFC9; --surface-3:#DCD6BC;
+    --ink:#232922; --ink-dim:#5B6156; --line:#C9C2A6;
+    --accent:#B9791F; --accent-ink:#4A3110; --accent-soft:#E9D2A4;
+    --teal:#1F6E64; --teal-soft:#CFE3DC;
+    --danger:#A23B2E; --danger-soft:#EBD3CC;
+    --good:#3C7A4E;
+    --shadow: 0 1px 0 rgba(35,41,34,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10161A; --surface:#182027; --surface-2:#1F2930; --surface-3:#26323A;
+      --ink:#E7E4D6; --ink-dim:#9AA39C; --line:#2B363C;
+      --accent:#E3A83B; --accent-ink:#241705; --accent-soft:#4A3510;
+      --teal:#4FB7AC; --teal-soft:#173430;
+      --danger:#E06A57; --danger-soft:#3A1E18;
+      --good:#57B87A;
+      --shadow: 0 1px 0 rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10161A; --surface:#182027; --surface-2:#1F2930; --surface-3:#26323A;
+    --ink:#E7E4D6; --ink-dim:#9AA39C; --line:#2B363C;
+    --accent:#E3A83B; --accent-ink:#241705; --accent-soft:#4A3510;
+    --teal:#4FB7AC; --teal-soft:#173430;
+    --danger:#E06A57; --danger-soft:#3A1E18;
+    --good:#57B87A;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.mono,.num,button,.pip,.badge,.tag,input[type=number],.stat-table td.num{
+    font-family:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  h1,h2,h3{ text-wrap:balance; margin:0; letter-spacing:.01em; }
+  .num, .stat-table td, .stat-table th, input[type=number], input[type=range]+.rangeval{
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+  #app{ min-height:100vh; }
+  .shell{ max-width:920px; margin:0 auto; padding:20px 18px 80px; }
+
+  .topbar{
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    padding:14px 2px 18px; border-bottom:2px solid var(--ink); margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .topbar .wordmark{ display:flex; align-items:baseline; gap:10px; }
+  .topbar h1{ font-size:1.05rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  .topbar .sub{ font-size:.78rem; color:var(--ink-dim); }
+  .topbar .who{ font-size:.78rem; color:var(--ink-dim); display:flex; align-items:center; gap:10px; }
+  .topbar .who b{ color:var(--ink); font-weight:600; }
+
+  .banner{
+    padding:10px 14px; border-radius:3px; margin-bottom:16px; font-size:.85rem;
+    border:1px solid var(--line);
+  }
+  .banner.error{ background:var(--danger-soft); border-color:var(--danger); color:var(--ink); }
+  .banner.notice{ background:var(--teal-soft); border-color:var(--teal); color:var(--ink); }
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:4px;
+    margin-bottom:18px; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 16px; border-bottom:1px solid var(--line); background:var(--surface-2);
+  }
+  .card-head .index{ font-size:.7rem; letter-spacing:.12em; color:var(--accent); text-transform:uppercase; font-weight:700; }
+  .card-head h2{ font-size:.95rem; font-weight:700; }
+  .card-body{ padding:16px; }
+  .card-body.tight{ padding:10px 16px; }
+
+  .center-stage{ display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; gap:22px; padding:20px; }
+  .center-stage h1{ font-size:1.5rem; }
+  .center-stage .lede{ color:var(--ink-dim); max-width:42ch; font-size:.92rem; line-height:1.5; }
+  .choice-row{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .choice-card{
+    width:220px; padding:20px 16px; border:1px solid var(--line); border-radius:4px;
+    background:var(--surface); cursor:pointer; text-align:left;
+  }
+  .choice-card:hover{ border-color:var(--accent); }
+  .choice-card .glyph{ font-size:1.4rem; }
+  .choice-card h3{ font-size:.95rem; margin-top:8px; }
+  .choice-card p{ font-size:.78rem; color:var(--ink-dim); margin:6px 0 0; line-height:1.4; }
+
+  form.stack{ display:flex; flex-direction:column; gap:12px; max-width:340px; margin:0 auto; }
+  .field{ display:flex; flex-direction:column; gap:5px; text-align:left; }
+  .field label{ font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); font-weight:600; }
+  input[type=text], input[type=password], input[type=number], select, textarea{
+    background:var(--surface); border:1px solid var(--line); color:var(--ink);
+    padding:8px 10px; border-radius:3px; font-size:.88rem; font-family:inherit; width:100%;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, .pip:focus-visible{
+    outline:2px solid var(--accent); outline-offset:1px;
+  }
+  textarea{ resize:vertical; min-height:52px; }
+
+  button{ font-family:"IBM Plex Sans"; cursor:pointer; border-radius:3px; border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:8px 14px; font-size:.82rem; font-weight:600; }
+  button:hover{ border-color:var(--accent); }
+  .btn-primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .btn-primary:hover{ filter:brightness(1.05); }
+  .btn-ghost{ background:transparent; border-color:transparent; color:var(--ink-dim); }
+  .btn-ghost:hover{ color:var(--ink); border-color:var(--line); }
+  .btn-danger{ color:var(--danger); border-color:var(--danger-soft); }
+  .btn-danger:hover{ border-color:var(--danger); }
+  .btn-sm{ padding:5px 10px; font-size:.74rem; }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  .muted{ color:var(--ink-dim); font-size:.8rem; }
+  .link-btn{ background:none; border:none; color:var(--teal); text-decoration:underline; padding:0; font-size:.8rem; font-weight:600; }
+
+  .attr-grid{ display:flex; flex-direction:column; gap:10px; }
+  .attr-row{ display:grid; grid-template-columns: 108px 1fr 28px; align-items:center; gap:10px; }
+  .attr-row .label{ font-size:.78rem; font-weight:600; }
+  .attr-row .pips{ display:flex; gap:5px; }
+  .pip{ width:22px; height:22px; border-radius:3px; border:1px solid var(--line); background:var(--surface); padding:0; font-size:.65rem; color:transparent; }
+  .pip.filled{ background:var(--accent); border-color:var(--accent); }
+  .attr-row .val{ text-align:right; font-size:.85rem; font-weight:700; color:var(--accent); }
+  .budget{ font-size:.76rem; color:var(--ink-dim); margin-top:2px; }
+  .budget.over{ color:var(--danger); font-weight:700; }
+
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  @media (max-width:560px){ .grid-2, .grid-3{ grid-template-columns:1fr; } }
+
+  .badge{ display:inline-flex; align-items:center; gap:5px; font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:3px 8px; border-radius:20px; border:1px solid var(--line); }
+  .badge.on{ background:var(--teal-soft); border-color:var(--teal); color:var(--teal); }
+  .badge.off{ color:var(--ink-dim); }
+  .badge.gm{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); }
+  .badge.status-bad{ background:var(--danger-soft); border-color:var(--danger); color:var(--danger); }
+
+  .tag{ display:inline-block; font-size:.68rem; font-weight:600; padding:2px 7px; border-radius:3px; background:var(--teal-soft); color:var(--teal); border:1px solid var(--teal); }
+
+  .trainer-summary{ display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; padding:12px 16px; }
+  .trainer-summary .name{ font-weight:700; font-size:.92rem; }
+  .trainer-summary .meta{ font-size:.75rem; color:var(--ink-dim); }
+  .trainer-summary .left{ display:flex; flex-direction:column; gap:2px; }
+  .trainer-summary .right{ display:flex; align-items:center; gap:8px; }
+
+  .poke-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:640px){ .poke-grid{ grid-template-columns:1fr; } }
+  .poke-card{ border:1px solid var(--line); border-radius:4px; background:var(--surface-2); }
+  .poke-head{ display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .poke-head .nick{ font-weight:700; font-size:.88rem; }
+  .poke-head .species{ font-size:.72rem; color:var(--ink-dim); }
+  .poke-body{ padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .poke-empty{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:26px 12px; border:1px dashed var(--line); border-radius:4px; color:var(--ink-dim); font-size:.8rem; }
+
+  table.stat-table{ width:100%; border-collapse:collapse; font-size:.78rem; }
+  table.stat-table th{ text-align:right; font-weight:600; color:var(--ink-dim); padding:3px 6px; font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; }
+  table.stat-table th:first-child{ text-align:left; }
+  table.stat-table td{ text-align:right; padding:3px 6px; border-top:1px solid var(--line); }
+  table.stat-table td:first-child{ text-align:left; font-weight:600; }
+  table.stat-table td.eff{ color:var(--accent); font-weight:700; }
+  .table-scroll{ overflow-x:auto; }
+
+  .hp-row{ display:flex; align-items:center; gap:10px; }
+  .hp-row input[type=number]{ width:70px; }
+  .hp-bar{ flex:1; height:8px; background:var(--surface-3); border-radius:5px; overflow:hidden; border:1px solid var(--line); }
+  .hp-bar > i{ display:block; height:100%; background:var(--good); }
+  .hp-bar.low > i{ background:var(--danger); }
+
+  .moves-list{ display:flex; flex-direction:column; gap:6px; }
+  .move-row{ display:grid; grid-template-columns: 1.3fr .8fr .8fr .5fr .5fr; gap:6px; align-items:center; font-size:.76rem; margin-bottom:4px; }
+  .move-row.move-row2{ grid-template-columns: 1fr 1.6fr; margin-bottom:10px; }
+  .move-row input, .move-row select{ padding:5px 6px; font-size:.76rem; }
+  .move-labels{ display:grid; grid-template-columns: 1.3fr .8fr .8fr .5fr .5fr; gap:6px; font-size:.65rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; padding:0 1px; }
+  @media (max-width:640px){ .move-row, .move-labels{ grid-template-columns:1fr 1fr; } .move-row.move-row2{ grid-template-columns:1fr; } }
+
+  .stage-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+  @media (max-width:640px){ .stage-grid{ grid-template-columns:repeat(3,1fr); } }
+  .stage-field label{ font-size:.62rem; }
+  .stage-field input{ padding:5px 6px; text-align:center; }
+
+  hr.rule{ border:none; border-top:1px dashed var(--line); margin:4px 0; }
+
+  .readonly-note{ font-size:.72rem; color:var(--ink-dim); font-style:italic; }
+
+  footer.legal{ text-align:center; color:var(--ink-dim); font-size:.7rem; margin-top:30px; line-height:1.6; }
+</style>
+</script>
+
 <script>
 (function(){
 "use strict";
 
 /* =================== ESTADO PERSISTIDO =================== */
-let STATE = /*STATE_START*/{"gmPin":null,"trainers":[]}/*STATE_END*/;
+let STATE = /*STATE_START*/{"gmPin":"180591","trainers":[]}/*STATE_END*/;
 
 /* =================== CONSTANTES DE REGRA =================== */
 var TYPES = ["Normal","Fogo","Água","Grama","Elétrico","Gelo","Lutador","Venenoso","Terra","Voador","Psíquico","Inseto","Pedra","Fantasma","Dragão","Sombrio","Aço","Fada"];
@@ -281,15 +479,23 @@ var SELF_SRC = document.currentScript.textContent;
 var artifactApi = null;
 var saveTimer = null;
 
+/*
+ * O <head> ao vivo do documento (document.head) inclui código de sandbox
+ * injetado pela plataforma, não só o que eu escrevi — por isso NUNCA lemos
+ * document.head.innerHTML para reconstruir a página (isso já causou uma
+ * publicação corrompida, sem o CSS). O <head> que republicamos é sempre
+ * este texto fixo, idêntico ao topo deste arquivo.
+ */
+var HEAD_HTML = document.getElementById('dt-head-source').textContent;
+
 function buildFullDocument(state){
-  var headHTML = document.head.innerHTML;
   /* Evita que texto digitado por um jogador feche o comentario-marcador (asterisco+barra) */
   /* ou a propria tag de script (barra+script) mais cedo do que deveria. */
   var safeJson = JSON.stringify(state)
     .replace(/\*\//g, '*\\/')
     .replace(/<\/script/gi, '<\\/script');
   var newSrc = SELF_SRC.replace(/\/\*STATE_START\*\/[\s\S]*?\/\*STATE_END\*\//, '/*STATE_START*/'+safeJson+'/*STATE_END*/');
-  return '<!doctype html>\n<html lang="pt-BR">\n<head>\n'+headHTML+'\n</head>\n<body>\n<div id="app"></div>\n<script>\n'+newSrc+'\n<\/script>\n</body>\n</html>';
+  return '<!doctype html>\n<html lang="pt-BR">\n<head>\n'+HEAD_HTML+'\n</head>\n<body>\n<div id="app"></div>\n<script type="text/plain" id="dt-head-source">'+HEAD_HTML.replace(/<\/script/gi,'<\\/script')+'<\/script>\n<script>\n'+newSrc+'\n<\/script>\n</body>\n</html>';
 }
 
 function queueSave(){
