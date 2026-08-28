@@ -283,8 +283,11 @@ var saveTimer = null;
 
 function buildFullDocument(state){
   var headHTML = document.head.innerHTML;
-  /* Evita que um "*/" digitado por um jogador feche o comentário-marcador antes da hora. */
-  var safeJson = JSON.stringify(state).replace(/\*\//g, '*\\/');
+  /* Evita que texto digitado por um jogador feche o comentario-marcador (asterisco+barra) */
+  /* ou a propria tag de script (barra+script) mais cedo do que deveria. */
+  var safeJson = JSON.stringify(state)
+    .replace(/\*\//g, '*\\/')
+    .replace(/<\/script/gi, '<\\/script');
   var newSrc = SELF_SRC.replace(/\/\*STATE_START\*\/[\s\S]*?\/\*STATE_END\*\//, '/*STATE_START*/'+safeJson+'/*STATE_END*/');
   return '<!doctype html>\n<html lang="pt-BR">\n<head>\n'+headHTML+'\n</head>\n<body>\n<div id="app"></div>\n<script>\n'+newSrc+'\n<\/script>\n</body>\n</html>';
 }
