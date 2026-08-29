@@ -66,25 +66,30 @@ Sim: os dados do jogo (fichas, PINs, Vínculo, Nível, batalhas etc.) ficam salv
 
 Os PINs ficam guardados em texto simples no banco de dados. É uma trava social para o grupo, não um cofre: alguém com acesso técnico ao banco (ou ao link, se as regras de segurança não estiverem configuradas como acima) consegue ver os dados de todo mundo. Não reutilize senhas importantes como PIN aqui.
 
+## Quem edita o quê
+
+- **Mestre**: quem "coloca o Pokémon na ficha" — Espécie, Tipo 1/2, Atributos Naturais e os 4 Movimentos de qualquer Treinador da mesa, além de adicionar/remover Pokémon do time de alguém.
+- **Treinador**: cuida do dia a dia da própria ficha — Apelido, PV atual, Condição/Confuso, Estágios de batalha, e **reorganizar os próprios Pokémon** entre Equipe e Banco (ver abaixo). Não escolhe qual Pokémon entra na ficha — isso é só do Mestre.
+
 ## Pokédex completa (Gen 1–9) e banco de Movimentos
 
 O site já vem com **todos os 1025 Pokémon** (espécie base de cada um, sem formas regionais/Mega/Gigantamax) e **847 Movimentos oficiais** embutidos — tipos, categoria e Base Stats/Poder/Precisão/Prioridade reais, convertidos pelas tabelas das regras (Cap. 6.1 para Atributos, Cap. 9 para Poder de Movimento). Fonte dos dados: [PokeAPI](https://pokeapi.co/).
 
-- **Espécie**: no campo "Espécie" da ficha, digite o nome (em inglês, como no jogo — autocompleta) e clique em **"Dados oficiais"**: preenche Tipo 1/2 e os seis Atributos Naturais.
-- **Movimentos**: no campo "nome" de cada Movimento, digite o nome oficial (autocompleta) e clique em **"Dados oficiais"**: preenche Tipo, Categoria, Poder, Precisão, Prioridade e um resumo do Efeito. Movimentos de poder fixo/variável (Seismic Toss, Dragon Rage, Counter, etc.) ficam com Poder em branco — é regra em aberto (Cap. 25), o Mestre adjudica na hora.
-- Depois de preenchido, tudo continua editável na mão, tanto pelo Mestre quanto pelo próprio Treinador (dono da ficha) — útil pra ajustar algo fora do padrão oficial ou pro Mestre configurar a ficha de um jogador direto.
+- **Espécie** (só o Mestre vê o campo): digite o nome em inglês, como no jogo — assim que bater com um da base, Tipo 1/2 e os seis Atributos Naturais são preenchidos sozinhos, sem precisar clicar em nada.
+- **Movimentos** (só o Mestre vê os campos): digite o nome oficial no campo "nome" de cada Movimento — Tipo, Categoria, Poder, Precisão, Prioridade e um resumo do Efeito são preenchidos automaticamente. Movimentos de poder fixo/variável (Seismic Toss, Dragon Rage, Counter, etc.) ficam com Poder em branco — é regra em aberto (Cap. 25), o Mestre adjudica na hora.
+- Depois de preenchido, tudo continua editável na mão pelo Mestre — útil pra ajustar algo fora do padrão oficial.
 - Z-Moves e Movimentos Dynamax/Gigantamax **não** estão na base — são mecânicas de spin-off sem regra equivalente neste sistema.
 
 ## Equipe e Banco (arrastar Pokémon)
 
-Cada Treinador tem 6 posições de **Equipe** (os Pokémon ativos) e um **Banco** sem limite (menu deslizante — botão "🗃️ Banco (N)" abre/fecha). Pra reorganizar, arraste pela alcinha **⠿** no canto do card:
+Cada Treinador tem 6 posições de **Equipe** (os Pokémon ativos) e um **Banco** sem limite (menu deslizante — botão "🗃️ Banco (N)" abre/fecha). O próprio Treinador (ou o Mestre) reorganiza arrastando pela alcinha **⠿** no canto do card — só isso: quem decide qual Pokémon existe e o que ele é continua sendo o Mestre.
 
 - Arraste um Pokémon do Banco pra um slot vazio da Equipe → ele entra no time.
 - Arraste um Pokémon do Banco pra cima de um Pokémon já ativo → eles trocam de lugar (o ativo vai pro Banco).
 - Arraste dentro da própria Equipe (ou dentro do próprio Banco) → troca as posições dos dois.
 - Arraste um Pokémon ativo pra dentro do Banco (área vazia do menu) → ele sai da Equipe e vai pro Banco.
 
-Funciona com mouse e com toque (celular). Só quem pode editar a ficha (o próprio Treinador ou o Mestre) vê a alça de arrastar.
+Funciona com mouse e com toque (celular).
 
 ## O que já está no sistema de regras
 

@@ -2446,19 +2446,9 @@ function getPoke(tid,pid){
   return null;
 }
 
-DT.setPokeField = function(tid,pid,field,el){
-  var p = getPoke(tid,pid); if(!p) return;
-  p[field] = el.value;
-  mutate();
-};
-DT.applySpecies = function(tid,pid){
-  var p = getPoke(tid,pid); if(!p) return;
-  var sp = findSpeciesByName(p.especie);
-  if(!sp){
-    SESSION.error = 'Não encontrei "'+p.especie+'" na Pokédex carregada. Confira a grafia (nome em inglês, como no jogo) ou preencha Tipo/Atributos manualmente.';
-    render();
-    return;
-  }
+/* Aplica os dados oficiais de uma espécie/movimento assim que o nome digitado
+   bate com um da base (sem precisar de um botão separado). */
+function applySpeciesData(p, sp){
   p.especie = sp.name;
   p.tipo1 = sp.tipo1;
   p.tipo2 = sp.tipo2 || '';
@@ -2470,25 +2460,20 @@ DT.applySpecies = function(tid,pid){
     spd: baseStatToRPG(sp.base.spd),
     spe: baseStatToRPG(sp.base.spe)
   };
-  SESSION.notice = 'Preenchido com os dados oficiais de '+sp.name+' (#'+sp.num+'): Tipo e Atributos Naturais.';
-  mutate();
-};
-DT.applyMove = function(tid,pid,idx){
+}
+function applyMoveData(mv, found){
+  mv.nome = found.name; mv.tipo = found.tipo; mv.categoria = found.categoria;
+  mv.poder = found.poder===null ? 0 : found.poder;
+  mv.precisao = found.precisao; mv.prioridade = found.prioridade;
+  mv.efeito = found.efeito + (found.poder===null && found.categoria!=='Status' ? ' (poder/dano variável — veja Cap. 25 das regras)' : '');
+}
+DT.setPokeField = function(tid,pid,field,el){
   var p = getPoke(tid,pid); if(!p) return;
-  var mv = p.moves[idx];
-  var found = findMoveByName(mv.nome);
-  if(!found){
-    SESSION.error = 'Não encontrei o movimento "'+mv.nome+'" na base carregada. Confira a grafia (nome em inglês, como no jogo) ou preencha os campos manualmente.';
-    render();
-    return;
+  p[field] = el.value;
+  if(field==='especie'){
+    var sp = findSpeciesByName(el.value);
+    if(sp){ applySpeciesData(p, sp); SESSION.notice = 'Preenchido com os dados oficiais de '+sp.name+' (#'+sp.num+'): Tipo e Atributos Naturais.'; }
   }
-  p.moves[idx] = {
-    nome: found.name, tipo: found.tipo, categoria: found.categoria,
-    poder: found.poder===null ? 0 : found.poder,
-    precisao: found.precisao, prioridade: found.prioridade,
-    efeito: found.efeito + (found.poder===null && found.categoria!=='Status' ? ' (poder/dano variável — veja Cap. 25 das regras)' : '')
-  };
-  SESSION.notice = 'Preenchido com os dados oficiais de '+found.name+'.';
   mutate();
 };
 DT.setPokeNatural = function(tid,pid,stat,el){
@@ -2544,6 +2529,10 @@ DT.setMove = function(tid,pid,idx,field,el){
   if(field==='poder') val = clampInt(val,0,10);
   if(field==='prioridade') val = clampInt(val,-7,7);
   p.moves[idx][field] = val;
+  if(field==='nome'){
+    var found = findMoveByName(val);
+    if(found){ applyMoveData(p.moves[idx], found); SESSION.notice = 'Preenchido com os dados oficiais de '+found.name+'.'; }
+  }
   mutate();
 };
 
@@ -2815,6 +2804,7 @@ function playerSheetScreen(){
 /* ---- Trainer sheet renderer: mode = 'own' | 'gm' | 'readonly' ---- */
 function trainerSheetHTML(t, mode){
   var editable = mode==='own' || mode==='gm';
+  var canGM = mode==='gm';
   var out = '';
 
   /* header row: level + share toggle */
@@ -2864,9 +2854,9 @@ function trainerSheetHTML(t, mode){
   out += '<hr class="rule" style="margin:18px 0;">';
   out += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">'+
     '<h3 style="font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim);">Equipe ('+t.pokemons.length+'/6)</h3>'+
-    (editable ? '<button class="btn-sm" onclick="DT.addPokemon(\''+t.id+'\')">+ Adicionar Pokémon</button>' : '')+
+    (canGM ? '<button class="btn-sm" onclick="DT.addPokemon(\''+t.id+'\')">+ Adicionar Pokémon</button>' : '')+
   '</div>';
-  if(editable) out += '<p class="muted" style="margin:-4px 0 10px;">Arraste pelo ⠿ pra reorganizar a Equipe ou trocar com o Banco.</p>';
+  if(editable) out += '<p class="muted" style="margin:-4px 0 10px;">'+(canGM ? 'Arraste pelo ⠿ pra reorganizar a Equipe ou trocar com o Banco.' : 'Arraste pelo ⠿ pra reorganizar a Equipe ou trocar com o Banco. Só o Mestre escolhe qual Pokémon entra na ficha.')+'</p>';
 
   out += '<div class="poke-grid">';
   for(var slotIdx=0; slotIdx<6; slotIdx++){
@@ -2957,7 +2947,7 @@ function pokeCardHTML(t,p,editable,mode){
       '<div class="nick">'+(p.apelido?esc(p.apelido):(p.especie?esc(p.especie):'Pokémon sem nome'))+' '+(fainted?'<span class="badge status-bad">Desmaiado</span>':'')+(p.status?'<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>':'')+(p.confuso?'<span class="badge status-bad">Confuso</span>':'')+'</div>'+
       '<div class="species">'+(p.especie?esc(p.especie)+' · ':'')+typeTags(p)+'</div>'+
     '</div>'+
-    (editable ? removeBtn : '')+
+    (canGM ? removeBtn : '')+
   '</div>';
 
   var hpBar = '<div class="hp-row">'+
@@ -2973,7 +2963,7 @@ function pokeCardHTML(t,p,editable,mode){
 
   var did = p.id;
   var natField = function(stat){
-    return editable
+    return canGM
       ? '<input type="number" min="0" max="20" value="'+p.natural[stat]+'" onchange="DT.setPokeNatural(\''+t.id+'\',\''+did+'\',\''+stat+'\', this)" style="width:52px;">'
       : p.natural[stat];
   };
@@ -2988,21 +2978,23 @@ function pokeCardHTML(t,p,editable,mode){
 
   var statTable = '<div class="table-scroll"><table class="stat-table"><thead><tr><th>Stat</th><th>Natural</th><th>Efetivo</th><th></th></tr></thead><tbody>'+statRows+'</tbody></table></div>';
 
-  var identity = editable ? (
+  /* Apelido é personalização do Treinador; Espécie/Tipo são "quem coloca o
+     Pokémon na ficha" — só o Mestre. Digitar um nome oficial já preenche
+     tudo sozinho (DT.setPokeField / DT.setMove chamam applySpeciesData). */
+  var apelidoField = editable
+    ? '<div class="field" style="margin-bottom:10px;"><label>Apelido</label><input type="text" value="'+esc(p.apelido)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'apelido\', this)"></div>'
+    : '';
+  var speciesFields = canGM ? (
     '<div class="grid-2">'+
-      '<div class="field"><label>Apelido</label><input type="text" value="'+esc(p.apelido)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'apelido\', this)"></div>'+
-      '<div class="field"><label>Espécie</label>'+
-        '<div class="btn-row">'+
-          '<input type="text" list="speciesDexList" placeholder="ex: Charmander" value="'+esc(p.especie)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'especie\', this)" style="flex:1;">'+
-          '<button type="button" class="btn-sm" title="Preenche Tipo e Atributos Naturais com os dados oficiais" onclick="DT.applySpecies(\''+t.id+'\',\''+did+'\')">Dados oficiais</button>'+
-        '</div>'+
-      '</div>'+
+      '<div class="field"><label>Espécie</label><input type="text" list="speciesDexList" placeholder="ex: Charmander" value="'+esc(p.especie)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'especie\', this)"></div>'+
+      '<div class="field"><label>Tipo 1</label><input type="text" list="typeList" value="'+esc(p.tipo1)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'tipo1\', this)"></div>'+
     '</div>'+
     '<div class="grid-2">'+
-      '<div class="field"><label>Tipo 1</label><input type="text" list="typeList" value="'+esc(p.tipo1)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'tipo1\', this)"></div>'+
       '<div class="field"><label>Tipo 2</label><input type="text" list="typeList" value="'+esc(p.tipo2)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'tipo2\', this)"></div>'+
+      '<div></div>'+
     '</div>'
   ) : '';
+  var identity = apelidoField + speciesFields;
 
   var vinculoRow = '<div class="grid-2">'+
     '<div class="field"><label>Vínculo (0–25) — libera '+liberatedTier(p.vinculo)+' pt(s)</label>'+
@@ -3040,7 +3032,7 @@ function pokeCardHTML(t,p,editable,mode){
 
   var movesHeader = '<div class="move-labels"><span>Nome</span><span>Tipo</span><span>Categoria</span><span>Poder</span><span>Prior.</span></div>';
   var moves = p.moves.map(function(m, idx){
-    if(!editable){
+    if(!canGM){
       if(!m.nome) return '';
       var detail = [];
       if(m.precisao) detail.push('precisão '+esc(m.precisao));
@@ -3049,7 +3041,7 @@ function pokeCardHTML(t,p,editable,mode){
         (detail.length ? '<div class="readonly-note">'+detail.join(' · ')+'</div>' : '');
     }
     return '<div class="move-row">'+
-      '<input type="text" placeholder="nome" list="movesDexList" value="'+esc(m.nome)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'nome\', this)">'+
+      '<input type="text" placeholder="nome (ex: Thunderbolt)" list="movesDexList" value="'+esc(m.nome)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'nome\', this)">'+
       '<input type="text" placeholder="tipo" list="typeList" value="'+esc(m.tipo)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'tipo\', this)">'+
       '<select onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'categoria\', this)">'+CATEGORY_OPTS.map(function(c){ return '<option'+(c===m.categoria?' selected':'')+'>'+c+'</option>'; }).join('')+'</select>'+
       '<input type="number" min="0" max="10" value="'+(m.poder||0)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'poder\', this)">'+
@@ -3058,16 +3050,15 @@ function pokeCardHTML(t,p,editable,mode){
     '<div class="move-row move-row2">'+
       '<input type="text" placeholder="precisão (ex: 90%)" value="'+esc(m.precisao)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'precisao\', this)">'+
       '<input type="text" placeholder="efeito (ex: 30% de queimar)" value="'+esc(m.efeito)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'efeito\', this)">'+
-    '</div>'+
-    '<div style="text-align:right; margin-bottom:10px;"><button type="button" class="btn-sm" title="Preenche Tipo, Categoria, Poder, Precisão, Prioridade e Efeito com os dados oficiais" onclick="DT.applyMove(\''+t.id+'\',\''+did+'\','+idx+')">Dados oficiais</button></div>';
+    '</div>';
   }).join('');
 
   var movesBlock = '<div><label style="font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); display:block; margin-bottom:4px;">Movimentos</label>'+
-    (editable ? movesHeader : '')+'<div class="moves-list">'+moves+'</div></div>';
+    (canGM ? movesHeader : '')+'<div class="moves-list">'+moves+'</div></div>';
 
   return '<div class="poke-card">'+head+'<div class="poke-body">'+
     hpBar+
-    (editable ? identity : '')+
+    identity+
     statTable+
     vinculoRow+
     statusRow+
