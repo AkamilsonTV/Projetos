@@ -239,6 +239,196 @@ var STAT_LABELS = {hp:"HP",atk:"Ataque",def:"Defesa",spa:"Atq.Esp.",spd:"Def.Esp
 var STAGE_STATS = ["atk","def","spa","spd","spe"];
 var STATUS_OPTS = [["","Nenhuma"],["queimadura","Queimadura"],["veneno","Veneno"],["veneno_grave","Veneno Grave"],["paralisia","Paralisia"],["sono","Sono"],["congelamento","Congelamento"]];
 var STATUS_LABELS = {"":"—","queimadura":"Queimadura","veneno":"Veneno","veneno_grave":"Veneno Grave","paralisia":"Paralisia","sono":"Sono","congelamento":"Congelamento"};
+
+/* =================== POKÉDEX GERAÇÃO 1 (KANTO) =================== */
+/* Tipos e Base Stats oficiais atuais (fonte: pokemondb.net), usados como referência
+   pra conversão da Tabela 6.1 das regras (Base Stat -> Atributo Natural RPG). */
+var SPECIES_GEN1 = [
+  {num:1,name:'Bulbasaur',tipo1:'Grama',tipo2:'Venenoso',base:{hp:45,atk:49,def:49,spa:65,spd:65,spe:45}},
+  {num:2,name:'Ivysaur',tipo1:'Grama',tipo2:'Venenoso',base:{hp:60,atk:62,def:63,spa:80,spd:80,spe:60}},
+  {num:3,name:'Venusaur',tipo1:'Grama',tipo2:'Venenoso',base:{hp:80,atk:82,def:83,spa:100,spd:100,spe:80}},
+  {num:4,name:'Charmander',tipo1:'Fogo',tipo2:'',base:{hp:39,atk:52,def:43,spa:60,spd:50,spe:65}},
+  {num:5,name:'Charmeleon',tipo1:'Fogo',tipo2:'',base:{hp:58,atk:64,def:58,spa:80,spd:65,spe:80}},
+  {num:6,name:'Charizard',tipo1:'Fogo',tipo2:'Voador',base:{hp:78,atk:84,def:78,spa:109,spd:85,spe:100}},
+  {num:7,name:'Squirtle',tipo1:'Água',tipo2:'',base:{hp:44,atk:48,def:65,spa:50,spd:64,spe:43}},
+  {num:8,name:'Wartortle',tipo1:'Água',tipo2:'',base:{hp:59,atk:63,def:80,spa:65,spd:80,spe:58}},
+  {num:9,name:'Blastoise',tipo1:'Água',tipo2:'',base:{hp:79,atk:83,def:100,spa:85,spd:105,spe:78}},
+  {num:10,name:'Caterpie',tipo1:'Inseto',tipo2:'',base:{hp:45,atk:30,def:35,spa:20,spd:20,spe:45}},
+  {num:11,name:'Metapod',tipo1:'Inseto',tipo2:'',base:{hp:50,atk:20,def:55,spa:25,spd:25,spe:30}},
+  {num:12,name:'Butterfree',tipo1:'Inseto',tipo2:'Voador',base:{hp:60,atk:45,def:50,spa:90,spd:80,spe:70}},
+  {num:13,name:'Weedle',tipo1:'Inseto',tipo2:'Venenoso',base:{hp:40,atk:35,def:30,spa:20,spd:20,spe:50}},
+  {num:14,name:'Kakuna',tipo1:'Inseto',tipo2:'Venenoso',base:{hp:45,atk:25,def:50,spa:25,spd:25,spe:35}},
+  {num:15,name:'Beedrill',tipo1:'Inseto',tipo2:'Venenoso',base:{hp:65,atk:90,def:40,spa:45,spd:80,spe:75}},
+  {num:16,name:'Pidgey',tipo1:'Normal',tipo2:'Voador',base:{hp:40,atk:45,def:40,spa:35,spd:35,spe:56}},
+  {num:17,name:'Pidgeotto',tipo1:'Normal',tipo2:'Voador',base:{hp:63,atk:60,def:55,spa:50,spd:50,spe:71}},
+  {num:18,name:'Pidgeot',tipo1:'Normal',tipo2:'Voador',base:{hp:83,atk:80,def:75,spa:70,spd:70,spe:101}},
+  {num:19,name:'Rattata',tipo1:'Normal',tipo2:'',base:{hp:30,atk:56,def:35,spa:25,spd:35,spe:72}},
+  {num:20,name:'Raticate',tipo1:'Normal',tipo2:'',base:{hp:55,atk:81,def:60,spa:50,spd:70,spe:97}},
+  {num:21,name:'Spearow',tipo1:'Normal',tipo2:'Voador',base:{hp:40,atk:60,def:30,spa:31,spd:31,spe:70}},
+  {num:22,name:'Fearow',tipo1:'Normal',tipo2:'Voador',base:{hp:65,atk:90,def:65,spa:61,spd:61,spe:100}},
+  {num:23,name:'Ekans',tipo1:'Venenoso',tipo2:'',base:{hp:35,atk:60,def:44,spa:40,spd:54,spe:55}},
+  {num:24,name:'Arbok',tipo1:'Venenoso',tipo2:'',base:{hp:60,atk:95,def:69,spa:65,spd:79,spe:80}},
+  {num:25,name:'Pikachu',tipo1:'Elétrico',tipo2:'',base:{hp:35,atk:55,def:40,spa:50,spd:50,spe:90}},
+  {num:26,name:'Raichu',tipo1:'Elétrico',tipo2:'',base:{hp:60,atk:90,def:55,spa:90,spd:80,spe:110}},
+  {num:27,name:'Sandshrew',tipo1:'Terra',tipo2:'',base:{hp:50,atk:75,def:85,spa:20,spd:30,spe:40}},
+  {num:28,name:'Sandslash',tipo1:'Terra',tipo2:'',base:{hp:75,atk:100,def:110,spa:45,spd:55,spe:65}},
+  {num:29,name:'Nidoran♀',tipo1:'Venenoso',tipo2:'',base:{hp:55,atk:47,def:52,spa:40,spd:40,spe:41}},
+  {num:30,name:'Nidorina',tipo1:'Venenoso',tipo2:'',base:{hp:70,atk:62,def:67,spa:55,spd:55,spe:56}},
+  {num:31,name:'Nidoqueen',tipo1:'Venenoso',tipo2:'Terra',base:{hp:90,atk:92,def:87,spa:75,spd:85,spe:76}},
+  {num:32,name:'Nidoran♂',tipo1:'Venenoso',tipo2:'',base:{hp:46,atk:57,def:40,spa:40,spd:40,spe:50}},
+  {num:33,name:'Nidorino',tipo1:'Venenoso',tipo2:'',base:{hp:61,atk:72,def:57,spa:55,spd:55,spe:65}},
+  {num:34,name:'Nidoking',tipo1:'Venenoso',tipo2:'Terra',base:{hp:81,atk:102,def:77,spa:85,spd:75,spe:85}},
+  {num:35,name:'Clefairy',tipo1:'Fada',tipo2:'',base:{hp:70,atk:45,def:48,spa:60,spd:65,spe:35}},
+  {num:36,name:'Clefable',tipo1:'Fada',tipo2:'',base:{hp:95,atk:70,def:73,spa:95,spd:90,spe:60}},
+  {num:37,name:'Vulpix',tipo1:'Fogo',tipo2:'',base:{hp:38,atk:41,def:40,spa:50,spd:65,spe:65}},
+  {num:38,name:'Ninetales',tipo1:'Fogo',tipo2:'',base:{hp:73,atk:76,def:75,spa:81,spd:100,spe:100}},
+  {num:39,name:'Jigglypuff',tipo1:'Normal',tipo2:'Fada',base:{hp:115,atk:45,def:20,spa:45,spd:25,spe:20}},
+  {num:40,name:'Wigglytuff',tipo1:'Normal',tipo2:'Fada',base:{hp:140,atk:70,def:45,spa:85,spd:50,spe:45}},
+  {num:41,name:'Zubat',tipo1:'Venenoso',tipo2:'Voador',base:{hp:40,atk:45,def:35,spa:30,spd:40,spe:55}},
+  {num:42,name:'Golbat',tipo1:'Venenoso',tipo2:'Voador',base:{hp:75,atk:80,def:70,spa:65,spd:75,spe:90}},
+  {num:43,name:'Oddish',tipo1:'Grama',tipo2:'Venenoso',base:{hp:45,atk:50,def:55,spa:75,spd:65,spe:30}},
+  {num:44,name:'Gloom',tipo1:'Grama',tipo2:'Venenoso',base:{hp:60,atk:65,def:70,spa:85,spd:75,spe:40}},
+  {num:45,name:'Vileplume',tipo1:'Grama',tipo2:'Venenoso',base:{hp:75,atk:80,def:85,spa:110,spd:90,spe:50}},
+  {num:46,name:'Paras',tipo1:'Inseto',tipo2:'Grama',base:{hp:35,atk:70,def:55,spa:45,spd:55,spe:25}},
+  {num:47,name:'Parasect',tipo1:'Inseto',tipo2:'Grama',base:{hp:60,atk:95,def:80,spa:60,spd:80,spe:30}},
+  {num:48,name:'Venonat',tipo1:'Inseto',tipo2:'Venenoso',base:{hp:60,atk:55,def:50,spa:40,spd:55,spe:45}},
+  {num:49,name:'Venomoth',tipo1:'Inseto',tipo2:'Venenoso',base:{hp:70,atk:65,def:60,spa:90,spd:75,spe:90}},
+  {num:50,name:'Diglett',tipo1:'Terra',tipo2:'',base:{hp:10,atk:55,def:25,spa:35,spd:45,spe:95}},
+  {num:51,name:'Dugtrio',tipo1:'Terra',tipo2:'',base:{hp:35,atk:100,def:50,spa:50,spd:70,spe:120}},
+  {num:52,name:'Meowth',tipo1:'Normal',tipo2:'',base:{hp:40,atk:45,def:35,spa:40,spd:40,spe:90}},
+  {num:53,name:'Persian',tipo1:'Normal',tipo2:'',base:{hp:65,atk:70,def:60,spa:65,spd:65,spe:115}},
+  {num:54,name:'Psyduck',tipo1:'Água',tipo2:'',base:{hp:50,atk:52,def:48,spa:65,spd:50,spe:55}},
+  {num:55,name:'Golduck',tipo1:'Água',tipo2:'',base:{hp:80,atk:82,def:78,spa:95,spd:80,spe:85}},
+  {num:56,name:'Mankey',tipo1:'Lutador',tipo2:'',base:{hp:40,atk:80,def:35,spa:35,spd:45,spe:70}},
+  {num:57,name:'Primeape',tipo1:'Lutador',tipo2:'',base:{hp:65,atk:105,def:60,spa:60,spd:70,spe:95}},
+  {num:58,name:'Growlithe',tipo1:'Fogo',tipo2:'',base:{hp:55,atk:70,def:45,spa:70,spd:50,spe:60}},
+  {num:59,name:'Arcanine',tipo1:'Fogo',tipo2:'',base:{hp:90,atk:110,def:80,spa:100,spd:80,spe:95}},
+  {num:60,name:'Poliwag',tipo1:'Água',tipo2:'',base:{hp:40,atk:50,def:40,spa:40,spd:40,spe:90}},
+  {num:61,name:'Poliwhirl',tipo1:'Água',tipo2:'',base:{hp:65,atk:65,def:65,spa:50,spd:50,spe:90}},
+  {num:62,name:'Poliwrath',tipo1:'Água',tipo2:'Lutador',base:{hp:90,atk:95,def:95,spa:70,spd:90,spe:70}},
+  {num:63,name:'Abra',tipo1:'Psíquico',tipo2:'',base:{hp:25,atk:20,def:15,spa:105,spd:55,spe:90}},
+  {num:64,name:'Kadabra',tipo1:'Psíquico',tipo2:'',base:{hp:40,atk:35,def:30,spa:120,spd:70,spe:105}},
+  {num:65,name:'Alakazam',tipo1:'Psíquico',tipo2:'',base:{hp:55,atk:50,def:45,spa:135,spd:95,spe:120}},
+  {num:66,name:'Machop',tipo1:'Lutador',tipo2:'',base:{hp:70,atk:80,def:50,spa:35,spd:35,spe:35}},
+  {num:67,name:'Machoke',tipo1:'Lutador',tipo2:'',base:{hp:80,atk:100,def:70,spa:50,spd:60,spe:45}},
+  {num:68,name:'Machamp',tipo1:'Lutador',tipo2:'',base:{hp:90,atk:130,def:80,spa:65,spd:85,spe:55}},
+  {num:69,name:'Bellsprout',tipo1:'Grama',tipo2:'Venenoso',base:{hp:50,atk:75,def:35,spa:70,spd:30,spe:40}},
+  {num:70,name:'Weepinbell',tipo1:'Grama',tipo2:'Venenoso',base:{hp:65,atk:90,def:50,spa:85,spd:45,spe:55}},
+  {num:71,name:'Victreebel',tipo1:'Grama',tipo2:'Venenoso',base:{hp:80,atk:105,def:65,spa:100,spd:70,spe:70}},
+  {num:72,name:'Tentacool',tipo1:'Água',tipo2:'Venenoso',base:{hp:40,atk:40,def:35,spa:50,spd:100,spe:70}},
+  {num:73,name:'Tentacruel',tipo1:'Água',tipo2:'Venenoso',base:{hp:80,atk:70,def:65,spa:80,spd:120,spe:100}},
+  {num:74,name:'Geodude',tipo1:'Pedra',tipo2:'Terra',base:{hp:40,atk:80,def:100,spa:30,spd:30,spe:20}},
+  {num:75,name:'Graveler',tipo1:'Pedra',tipo2:'Terra',base:{hp:55,atk:95,def:115,spa:45,spd:45,spe:35}},
+  {num:76,name:'Golem',tipo1:'Pedra',tipo2:'Terra',base:{hp:80,atk:120,def:130,spa:55,spd:65,spe:45}},
+  {num:77,name:'Ponyta',tipo1:'Fogo',tipo2:'',base:{hp:50,atk:85,def:55,spa:65,spd:65,spe:90}},
+  {num:78,name:'Rapidash',tipo1:'Fogo',tipo2:'',base:{hp:65,atk:100,def:70,spa:80,spd:80,spe:105}},
+  {num:79,name:'Slowpoke',tipo1:'Água',tipo2:'Psíquico',base:{hp:90,atk:65,def:65,spa:40,spd:40,spe:15}},
+  {num:80,name:'Slowbro',tipo1:'Água',tipo2:'Psíquico',base:{hp:95,atk:75,def:110,spa:100,spd:80,spe:30}},
+  {num:81,name:'Magnemite',tipo1:'Elétrico',tipo2:'Aço',base:{hp:25,atk:35,def:70,spa:95,spd:55,spe:45}},
+  {num:82,name:'Magneton',tipo1:'Elétrico',tipo2:'Aço',base:{hp:50,atk:60,def:95,spa:120,spd:70,spe:70}},
+  {num:83,name:'Farfetch\'d',tipo1:'Normal',tipo2:'Voador',base:{hp:52,atk:90,def:55,spa:58,spd:62,spe:60}},
+  {num:84,name:'Doduo',tipo1:'Normal',tipo2:'Voador',base:{hp:35,atk:85,def:45,spa:35,spd:35,spe:75}},
+  {num:85,name:'Dodrio',tipo1:'Normal',tipo2:'Voador',base:{hp:60,atk:110,def:70,spa:60,spd:60,spe:110}},
+  {num:86,name:'Seel',tipo1:'Água',tipo2:'',base:{hp:65,atk:45,def:55,spa:45,spd:70,spe:45}},
+  {num:87,name:'Dewgong',tipo1:'Água',tipo2:'Gelo',base:{hp:90,atk:70,def:80,spa:70,spd:95,spe:70}},
+  {num:88,name:'Grimer',tipo1:'Venenoso',tipo2:'',base:{hp:80,atk:80,def:50,spa:40,spd:50,spe:25}},
+  {num:89,name:'Muk',tipo1:'Venenoso',tipo2:'',base:{hp:105,atk:105,def:75,spa:65,spd:100,spe:50}},
+  {num:90,name:'Shellder',tipo1:'Água',tipo2:'',base:{hp:30,atk:65,def:100,spa:45,spd:25,spe:40}},
+  {num:91,name:'Cloyster',tipo1:'Água',tipo2:'Gelo',base:{hp:50,atk:95,def:180,spa:85,spd:45,spe:70}},
+  {num:92,name:'Gastly',tipo1:'Fantasma',tipo2:'Venenoso',base:{hp:30,atk:35,def:30,spa:100,spd:35,spe:80}},
+  {num:93,name:'Haunter',tipo1:'Fantasma',tipo2:'Venenoso',base:{hp:45,atk:50,def:45,spa:115,spd:55,spe:95}},
+  {num:94,name:'Gengar',tipo1:'Fantasma',tipo2:'Venenoso',base:{hp:60,atk:65,def:60,spa:130,spd:75,spe:110}},
+  {num:95,name:'Onix',tipo1:'Pedra',tipo2:'Terra',base:{hp:35,atk:45,def:160,spa:30,spd:45,spe:70}},
+  {num:96,name:'Drowzee',tipo1:'Psíquico',tipo2:'',base:{hp:60,atk:48,def:45,spa:43,spd:90,spe:42}},
+  {num:97,name:'Hypno',tipo1:'Psíquico',tipo2:'',base:{hp:85,atk:73,def:70,spa:73,spd:115,spe:67}},
+  {num:98,name:'Krabby',tipo1:'Água',tipo2:'',base:{hp:30,atk:105,def:90,spa:25,spd:25,spe:50}},
+  {num:99,name:'Kingler',tipo1:'Água',tipo2:'',base:{hp:55,atk:130,def:115,spa:50,spd:50,spe:75}},
+  {num:100,name:'Voltorb',tipo1:'Elétrico',tipo2:'',base:{hp:40,atk:30,def:50,spa:55,spd:55,spe:100}},
+  {num:101,name:'Electrode',tipo1:'Elétrico',tipo2:'',base:{hp:60,atk:50,def:70,spa:80,spd:80,spe:150}},
+  {num:102,name:'Exeggcute',tipo1:'Grama',tipo2:'Psíquico',base:{hp:60,atk:40,def:80,spa:60,spd:45,spe:40}},
+  {num:103,name:'Exeggutor',tipo1:'Grama',tipo2:'Psíquico',base:{hp:95,atk:95,def:85,spa:125,spd:75,spe:55}},
+  {num:104,name:'Cubone',tipo1:'Terra',tipo2:'',base:{hp:50,atk:50,def:95,spa:40,spd:50,spe:35}},
+  {num:105,name:'Marowak',tipo1:'Terra',tipo2:'',base:{hp:60,atk:80,def:110,spa:50,spd:80,spe:45}},
+  {num:106,name:'Hitmonlee',tipo1:'Lutador',tipo2:'',base:{hp:50,atk:120,def:53,spa:35,spd:110,spe:87}},
+  {num:107,name:'Hitmonchan',tipo1:'Lutador',tipo2:'',base:{hp:50,atk:105,def:79,spa:35,spd:110,spe:76}},
+  {num:108,name:'Lickitung',tipo1:'Normal',tipo2:'',base:{hp:90,atk:55,def:75,spa:60,spd:75,spe:30}},
+  {num:109,name:'Koffing',tipo1:'Venenoso',tipo2:'',base:{hp:40,atk:65,def:95,spa:60,spd:45,spe:35}},
+  {num:110,name:'Weezing',tipo1:'Venenoso',tipo2:'',base:{hp:65,atk:90,def:120,spa:85,spd:70,spe:60}},
+  {num:111,name:'Rhyhorn',tipo1:'Terra',tipo2:'Pedra',base:{hp:80,atk:85,def:95,spa:30,spd:30,spe:25}},
+  {num:112,name:'Rhydon',tipo1:'Terra',tipo2:'Pedra',base:{hp:105,atk:130,def:120,spa:45,spd:45,spe:40}},
+  {num:113,name:'Chansey',tipo1:'Normal',tipo2:'',base:{hp:250,atk:5,def:5,spa:35,spd:105,spe:50}},
+  {num:114,name:'Tangela',tipo1:'Grama',tipo2:'',base:{hp:65,atk:55,def:115,spa:100,spd:40,spe:60}},
+  {num:115,name:'Kangaskhan',tipo1:'Normal',tipo2:'',base:{hp:105,atk:95,def:80,spa:40,spd:80,spe:90}},
+  {num:116,name:'Horsea',tipo1:'Água',tipo2:'',base:{hp:30,atk:40,def:70,spa:70,spd:25,spe:60}},
+  {num:117,name:'Seadra',tipo1:'Água',tipo2:'',base:{hp:55,atk:65,def:95,spa:95,spd:45,spe:85}},
+  {num:118,name:'Goldeen',tipo1:'Água',tipo2:'',base:{hp:45,atk:67,def:60,spa:35,spd:50,spe:63}},
+  {num:119,name:'Seaking',tipo1:'Água',tipo2:'',base:{hp:80,atk:92,def:65,spa:65,spd:80,spe:68}},
+  {num:120,name:'Staryu',tipo1:'Água',tipo2:'',base:{hp:30,atk:45,def:55,spa:70,spd:55,spe:85}},
+  {num:121,name:'Starmie',tipo1:'Água',tipo2:'Psíquico',base:{hp:60,atk:75,def:85,spa:100,spd:85,spe:115}},
+  {num:122,name:'Mr. Mime',tipo1:'Psíquico',tipo2:'Fada',base:{hp:40,atk:45,def:65,spa:100,spd:120,spe:90}},
+  {num:123,name:'Scyther',tipo1:'Inseto',tipo2:'Voador',base:{hp:70,atk:110,def:80,spa:55,spd:80,spe:105}},
+  {num:124,name:'Jynx',tipo1:'Gelo',tipo2:'Psíquico',base:{hp:65,atk:50,def:35,spa:115,spd:95,spe:95}},
+  {num:125,name:'Electabuzz',tipo1:'Elétrico',tipo2:'',base:{hp:65,atk:83,def:57,spa:95,spd:85,spe:105}},
+  {num:126,name:'Magmar',tipo1:'Fogo',tipo2:'',base:{hp:65,atk:95,def:57,spa:100,spd:85,spe:93}},
+  {num:127,name:'Pinsir',tipo1:'Inseto',tipo2:'',base:{hp:65,atk:125,def:100,spa:55,spd:70,spe:85}},
+  {num:128,name:'Tauros',tipo1:'Normal',tipo2:'',base:{hp:75,atk:100,def:95,spa:40,spd:70,spe:110}},
+  {num:129,name:'Magikarp',tipo1:'Água',tipo2:'',base:{hp:20,atk:10,def:55,spa:15,spd:20,spe:80}},
+  {num:130,name:'Gyarados',tipo1:'Água',tipo2:'Voador',base:{hp:95,atk:125,def:79,spa:60,spd:100,spe:81}},
+  {num:131,name:'Lapras',tipo1:'Água',tipo2:'Gelo',base:{hp:130,atk:85,def:80,spa:85,spd:95,spe:60}},
+  {num:132,name:'Ditto',tipo1:'Normal',tipo2:'',base:{hp:48,atk:48,def:48,spa:48,spd:48,spe:48}},
+  {num:133,name:'Eevee',tipo1:'Normal',tipo2:'',base:{hp:55,atk:55,def:50,spa:45,spd:65,spe:55}},
+  {num:134,name:'Vaporeon',tipo1:'Água',tipo2:'',base:{hp:130,atk:65,def:60,spa:110,spd:95,spe:65}},
+  {num:135,name:'Jolteon',tipo1:'Elétrico',tipo2:'',base:{hp:65,atk:65,def:60,spa:110,spd:95,spe:130}},
+  {num:136,name:'Flareon',tipo1:'Fogo',tipo2:'',base:{hp:65,atk:130,def:60,spa:95,spd:110,spe:65}},
+  {num:137,name:'Porygon',tipo1:'Normal',tipo2:'',base:{hp:65,atk:60,def:70,spa:85,spd:75,spe:40}},
+  {num:138,name:'Omanyte',tipo1:'Pedra',tipo2:'Água',base:{hp:35,atk:40,def:100,spa:90,spd:55,spe:35}},
+  {num:139,name:'Omastar',tipo1:'Pedra',tipo2:'Água',base:{hp:70,atk:60,def:125,spa:115,spd:70,spe:55}},
+  {num:140,name:'Kabuto',tipo1:'Pedra',tipo2:'Água',base:{hp:30,atk:80,def:90,spa:55,spd:45,spe:55}},
+  {num:141,name:'Kabutops',tipo1:'Pedra',tipo2:'Água',base:{hp:60,atk:115,def:105,spa:65,spd:70,spe:80}},
+  {num:142,name:'Aerodactyl',tipo1:'Pedra',tipo2:'Voador',base:{hp:80,atk:105,def:65,spa:60,spd:75,spe:130}},
+  {num:143,name:'Snorlax',tipo1:'Normal',tipo2:'',base:{hp:160,atk:110,def:65,spa:65,spd:110,spe:30}},
+  {num:144,name:'Articuno',tipo1:'Gelo',tipo2:'Voador',base:{hp:90,atk:85,def:100,spa:95,spd:125,spe:85}},
+  {num:145,name:'Zapdos',tipo1:'Elétrico',tipo2:'Voador',base:{hp:90,atk:90,def:85,spa:125,spd:90,spe:100}},
+  {num:146,name:'Moltres',tipo1:'Fogo',tipo2:'Voador',base:{hp:90,atk:100,def:90,spa:125,spd:85,spe:90}},
+  {num:147,name:'Dratini',tipo1:'Dragão',tipo2:'',base:{hp:41,atk:64,def:45,spa:50,spd:50,spe:50}},
+  {num:148,name:'Dragonair',tipo1:'Dragão',tipo2:'',base:{hp:61,atk:84,def:65,spa:70,spd:70,spe:70}},
+  {num:149,name:'Dragonite',tipo1:'Dragão',tipo2:'Voador',base:{hp:91,atk:134,def:95,spa:100,spd:100,spe:80}},
+  {num:150,name:'Mewtwo',tipo1:'Psíquico',tipo2:'',base:{hp:106,atk:110,def:90,spa:154,spd:90,spe:130}},
+  {num:151,name:'Mew',tipo1:'Psíquico',tipo2:'',base:{hp:100,atk:100,def:100,spa:100,spd:100,spe:100}}
+];
+
+/* Tabela 6.1: Base Stat oficial -> Atributo Natural RPG (1-20) */
+function baseStatToRPG(n){
+  n = Number(n)||0;
+  if(n>=240) return 20;
+  if(n>=220) return 19;
+  if(n>=200) return 18;
+  if(n>=180) return 17;
+  if(n>=165) return 16;
+  if(n>=150) return 15;
+  if(n>=140) return 14;
+  if(n>=130) return 13;
+  if(n>=120) return 12;
+  if(n>=110) return 11;
+  if(n>=100) return 10;
+  if(n>=90) return 9;
+  if(n>=80) return 8;
+  if(n>=70) return 7;
+  if(n>=60) return 6;
+  if(n>=50) return 5;
+  if(n>=40) return 4;
+  if(n>=30) return 3;
+  if(n>=20) return 2;
+  return 1;
+}
+function findSpeciesByName(name){
+  name = (name||"").trim().toLowerCase();
+  if(!name) return null;
+  for(var i=0;i<SPECIES_GEN1.length;i++){
+    if(SPECIES_GEN1[i].name.toLowerCase()===name) return SPECIES_GEN1[i];
+  }
+  return null;
+}
 var CATEGORY_OPTS = ["Físico","Especial","Status"];
 var BATTLES_PER_LEVEL = 4;
 
@@ -490,6 +680,28 @@ DT.setPokeField = function(tid,pid,field,el){
   p[field] = el.value;
   mutate();
 };
+DT.applySpecies = function(tid,pid){
+  var p = getPoke(tid,pid); if(!p) return;
+  var sp = findSpeciesByName(p.especie);
+  if(!sp){
+    SESSION.error = 'Não encontrei "'+p.especie+'" na Pokédex de Gen 1 (Kanto) carregada. Confira a grafia (nome em inglês, como no jogo) ou preencha Tipo/Atributos manualmente.';
+    render();
+    return;
+  }
+  p.especie = sp.name;
+  p.tipo1 = sp.tipo1;
+  p.tipo2 = sp.tipo2 || '';
+  p.natural = {
+    hp: baseStatToRPG(sp.base.hp),
+    atk: baseStatToRPG(sp.base.atk),
+    def: baseStatToRPG(sp.base.def),
+    spa: baseStatToRPG(sp.base.spa),
+    spd: baseStatToRPG(sp.base.spd),
+    spe: baseStatToRPG(sp.base.spe)
+  };
+  SESSION.notice = 'Preenchido com os dados oficiais de '+sp.name+' (#'+sp.num+'): Tipo e Atributos Naturais.';
+  mutate();
+};
 DT.setPokeNatural = function(tid,pid,stat,el){
   var p = getPoke(tid,pid); if(!p) return;
   p.natural[stat] = clampInt(el.value,0,20);
@@ -593,7 +805,7 @@ function screenHTML(){
   }
 }
 function wrap(bodyHTML, rightHTML){
-  return '<div class="shell">'+topbar(rightHTML)+banners()+bodyHTML+legalFooter()+'</div>'+typeDatalist('typeList');
+  return '<div class="shell">'+topbar(rightHTML)+banners()+bodyHTML+legalFooter()+'</div>'+typeDatalist('typeList')+speciesDatalist('speciesGen1List');
 }
 function legalFooter(){
   return '<footer class="legal">Ficha compartilhada apenas com quem tem o link e conhece os PINs. Não é um cofre: qualquer pessoa com acesso técnico ao link pode inspecionar os dados salvos no banco.</footer>';
@@ -812,6 +1024,9 @@ function typeTags(p){
 function typeDatalist(id){
   return '<datalist id="'+id+'">'+TYPES.map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>';
 }
+function speciesDatalist(id){
+  return '<datalist id="'+id+'">'+SPECIES_GEN1.map(function(s){ return '<option value="'+esc(s.name)+'">'; }).join('')+'</datalist>';
+}
 
 function pokeCardHTML(t,p,editable,mode){
   var canGM = mode==='gm';
@@ -863,7 +1078,12 @@ function pokeCardHTML(t,p,editable,mode){
   var identity = editable ? (
     '<div class="grid-2">'+
       '<div class="field"><label>Apelido</label><input type="text" value="'+esc(p.apelido)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'apelido\', this)"></div>'+
-      '<div class="field"><label>Espécie</label><input type="text" value="'+esc(p.especie)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'especie\', this)"></div>'+
+      '<div class="field"><label>Espécie</label>'+
+        '<div class="btn-row">'+
+          '<input type="text" list="speciesGen1List" placeholder="ex: Charmander" value="'+esc(p.especie)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'especie\', this)" style="flex:1;">'+
+          '<button type="button" class="btn-sm" title="Preenche Tipo e Atributos Naturais com os dados oficiais de Gen 1" onclick="DT.applySpecies(\''+t.id+'\',\''+did+'\')">Dados oficiais</button>'+
+        '</div>'+
+      '</div>'+
     '</div>'+
     '<div class="grid-2">'+
       '<div class="field"><label>Tipo 1</label><input type="text" list="typeList" value="'+esc(p.tipo1)+'" onchange="DT.setPokeField(\''+t.id+'\',\''+did+'\',\'tipo1\', this)"></div>'+

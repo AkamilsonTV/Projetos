@@ -66,6 +66,10 @@ Sim: os dados do jogo (fichas, PINs, Vínculo, Nível, batalhas etc.) ficam salv
 
 Os PINs ficam guardados em texto simples no banco de dados. É uma trava social para o grupo, não um cofre: alguém com acesso técnico ao banco (ou ao link, se as regras de segurança não estiverem configuradas como acima) consegue ver os dados de todo mundo. Não reutilize senhas importantes como PIN aqui.
 
+## Pokédex de Geração 1 (Kanto)
+
+O site já vem com os 151 Pokémon de Kanto embutidos (tipos e Base Stats oficiais). Ao criar/editar um Pokémon na ficha, digite o nome da espécie (em inglês, como no jogo — o campo autocompleta) e clique em **"Dados oficiais"**: o Tipo 1/2 e os seis Atributos Naturais são preenchidos automaticamente, já convertidos pela Tabela 6.1 das regras (Base Stat → escala 1–20). Depois disso os campos continuam editáveis normalmente, então dá pra ajustar à mão se quiser fugir do oficial.
+
 ## O que já está no sistema de regras
 
-Todo o núcleo de combate (atributos, Vínculo, PV, Movimentos, dano, tipos, iniciativa, Prioridade, condições de status) e a progressão de Nível por batalhas vencidas. Ainda em aberto: Maturidade/Evolução definitiva, Captura, Cura/Recuperação, PP, Itens e Habilidades.
+Todo o núcleo de combate (atributos, Vínculo, PV, Movimentos, dano, tipos, iniciativa, Prioridade, condições de status), a progressão de Nível por batalhas vencidas e a Pokédex de Gen 1 (tipos + Atributos Naturais oficiais). Ainda em aberto: Maturidade/Evolução definitiva, Captura, Cura/Recuperação, PP, Itens e Habilidades — e a Pokédex ainda cobre só Kanto (Gen 2 em diante fica pra próxima etapa).
