@@ -404,7 +404,7 @@
 "use strict";
 
 /* =================== ESTADO PERSISTIDO =================== */
-let STATE = /*STATE_START*/{"gmPin":"180591","trainers":[{"id":"rtcx73g7","name":"Akamilson","pin":"1805","shareEnabled":false,"level":16,"battlesWon":0,"attrPoints":{"vigor":0,"vontade":0,"resistencia":3,"mental":0,"foco":0,"agilidade":0},"pokemons":[{"id":"kp0eg589","apelido":"","especie":"","tipo1":"","tipo2":"","natural":{"hp":1,"atk":1,"def":1,"spa":1,"spd":1,"spe":1},"vinculo":0,"maturidade":9,"currentHP":null,"status":"","statusTurns":0,"confuso":false,"estagios":{"atk":0,"def":0,"spa":0,"spd":0,"spe":0,"precisao":0,"evasao":0},"moves":[{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""}]}]}]}/*STATE_END*/;
+let STATE = /*STATE_START*/{"gmPin":"180591","trainers":[{"id":"rtcx73g7","name":"Akamilson","pin":"1805","shareEnabled":false,"level":16,"battlesWon":0,"attrPoints":{"vigor":5,"vontade":0,"resistencia":3,"mental":0,"foco":0,"agilidade":0},"pokemons":[{"id":"kp0eg589","apelido":"","especie":"","tipo1":"","tipo2":"","natural":{"hp":20,"atk":1,"def":1,"spa":1,"spd":1,"spe":1},"vinculo":25,"maturidade":9,"currentHP":null,"status":"","statusTurns":0,"confuso":false,"estagios":{"atk":3,"def":0,"spa":0,"spd":0,"spe":0,"precisao":0,"evasao":0},"moves":[{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""}]}]}]}/*STATE_END*/;
 
 /* =================== CONSTANTES DE REGRA =================== */
 var TYPES = ["Normal","Fogo","Água","Grama","Elétrico","Gelo","Lutador","Venenoso","Terra","Voador","Psíquico","Inseto","Pedra","Fantasma","Dragão","Sombrio","Aço","Fada"];
@@ -425,8 +425,17 @@ try{
   if(savedSession && savedSession.role==='gm'){ SESSION.role='gm'; SESSION.screen='gm-dashboard'; }
   else if(savedSession && savedSession.role==='player' && savedSession.trainerId){ SESSION.role='player'; SESSION.trainerId=savedSession.trainerId; SESSION.screen='player-sheet'; }
 }catch(e){}
+/* Toda publicação recarrega a própria página que a fez (comportamento da
+   plataforma, não dá pra evitar) — por isso guardamos quais fichas estavam
+   abertas e devolvemos isso assim que a página volta a carregar, pra a
+   recarga ficar praticamente invisível em vez de "fechar tudo". */
+try{
+  var savedExpanded = JSON.parse(localStorage.getItem('dt_expanded')||'null');
+  if(savedExpanded && typeof savedExpanded === 'object') SESSION.expanded = savedExpanded;
+}catch(e){}
 
 function persistSession(){ try{ localStorage.setItem('dt_session', JSON.stringify({role:SESSION.role, trainerId:SESSION.trainerId})); }catch(e){} }
+function persistExpanded(){ try{ localStorage.setItem('dt_expanded', JSON.stringify(SESSION.expanded)); }catch(e){} }
 function clearSession(){ SESSION.role=null; SESSION.trainerId=null; SESSION.screen='home'; try{ localStorage.removeItem('dt_session'); }catch(e){} }
 
 /* =================== HELPERS =================== */
@@ -666,6 +675,7 @@ DT.removePokemon = function(tid, pid){
 };
 DT.toggleExpand = function(pid){
   SESSION.expanded[pid] = !SESSION.expanded[pid];
+  persistExpanded();
   render();
 };
 
