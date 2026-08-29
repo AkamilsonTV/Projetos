@@ -66,10 +66,26 @@ Sim: os dados do jogo (fichas, PINs, Vínculo, Nível, batalhas etc.) ficam salv
 
 Os PINs ficam guardados em texto simples no banco de dados. É uma trava social para o grupo, não um cofre: alguém com acesso técnico ao banco (ou ao link, se as regras de segurança não estiverem configuradas como acima) consegue ver os dados de todo mundo. Não reutilize senhas importantes como PIN aqui.
 
-## Pokédex de Geração 1 (Kanto)
+## Pokédex completa (Gen 1–9) e banco de Movimentos
 
-O site já vem com os 151 Pokémon de Kanto embutidos (tipos e Base Stats oficiais). Ao criar/editar um Pokémon na ficha, digite o nome da espécie (em inglês, como no jogo — o campo autocompleta) e clique em **"Dados oficiais"**: o Tipo 1/2 e os seis Atributos Naturais são preenchidos automaticamente, já convertidos pela Tabela 6.1 das regras (Base Stat → escala 1–20). Depois disso os campos continuam editáveis normalmente, então dá pra ajustar à mão se quiser fugir do oficial.
+O site já vem com **todos os 1025 Pokémon** (espécie base de cada um, sem formas regionais/Mega/Gigantamax) e **847 Movimentos oficiais** embutidos — tipos, categoria e Base Stats/Poder/Precisão/Prioridade reais, convertidos pelas tabelas das regras (Cap. 6.1 para Atributos, Cap. 9 para Poder de Movimento). Fonte dos dados: [PokeAPI](https://pokeapi.co/).
+
+- **Espécie**: no campo "Espécie" da ficha, digite o nome (em inglês, como no jogo — autocompleta) e clique em **"Dados oficiais"**: preenche Tipo 1/2 e os seis Atributos Naturais.
+- **Movimentos**: no campo "nome" de cada Movimento, digite o nome oficial (autocompleta) e clique em **"Dados oficiais"**: preenche Tipo, Categoria, Poder, Precisão, Prioridade e um resumo do Efeito. Movimentos de poder fixo/variável (Seismic Toss, Dragon Rage, Counter, etc.) ficam com Poder em branco — é regra em aberto (Cap. 25), o Mestre adjudica na hora.
+- Depois de preenchido, tudo continua editável na mão, tanto pelo Mestre quanto pelo próprio Treinador (dono da ficha) — útil pra ajustar algo fora do padrão oficial ou pro Mestre configurar a ficha de um jogador direto.
+- Z-Moves e Movimentos Dynamax/Gigantamax **não** estão na base — são mecânicas de spin-off sem regra equivalente neste sistema.
+
+## Equipe e Banco (arrastar Pokémon)
+
+Cada Treinador tem 6 posições de **Equipe** (os Pokémon ativos) e um **Banco** sem limite (menu deslizante — botão "🗃️ Banco (N)" abre/fecha). Pra reorganizar, arraste pela alcinha **⠿** no canto do card:
+
+- Arraste um Pokémon do Banco pra um slot vazio da Equipe → ele entra no time.
+- Arraste um Pokémon do Banco pra cima de um Pokémon já ativo → eles trocam de lugar (o ativo vai pro Banco).
+- Arraste dentro da própria Equipe (ou dentro do próprio Banco) → troca as posições dos dois.
+- Arraste um Pokémon ativo pra dentro do Banco (área vazia do menu) → ele sai da Equipe e vai pro Banco.
+
+Funciona com mouse e com toque (celular). Só quem pode editar a ficha (o próprio Treinador ou o Mestre) vê a alça de arrastar.
 
 ## O que já está no sistema de regras
 
-Todo o núcleo de combate (atributos, Vínculo, PV, Movimentos, dano, tipos, iniciativa, Prioridade, condições de status), a progressão de Nível por batalhas vencidas e a Pokédex de Gen 1 (tipos + Atributos Naturais oficiais). Ainda em aberto: Maturidade/Evolução definitiva, Captura, Cura/Recuperação, PP, Itens e Habilidades — e a Pokédex ainda cobre só Kanto (Gen 2 em diante fica pra próxima etapa).
+Todo o núcleo de combate (atributos, Vínculo, PV, Movimentos, dano, tipos, iniciativa, Prioridade, condições de status), a progressão de Nível por batalhas vencidas, a Pokédex completa (Gen 1–9) e o banco de Movimentos oficiais, e a organização de Equipe/Banco por arrastar. Ainda em aberto: Maturidade/Evolução definitiva, Captura, Cura/Recuperação, PP, Itens e Habilidades.
