@@ -394,7 +394,7 @@
 "use strict";
 
 /* =================== ESTADO PERSISTIDO =================== */
-let STATE = /*STATE_START*/{"gmPin":"180591","trainers":[]}/*STATE_END*/;
+let STATE = /*STATE_START*/{"gmPin":"180591","trainers":[{"id":"rtcx73g7","name":"Akamilson","pin":"1805","shareEnabled":false,"level":16,"attrPoints":{"vigor":0,"vontade":0,"resistencia":0,"mental":0,"foco":0,"agilidade":0},"pokemons":[{"id":"kp0eg589","apelido":"","especie":"","tipo1":"","tipo2":"","natural":{"hp":1,"atk":1,"def":1,"spa":1,"spd":1,"spe":1},"vinculo":0,"maturidade":0,"currentHP":null,"status":"","statusTurns":0,"confuso":false,"estagios":{"atk":0,"def":0,"spa":0,"spd":0,"spe":0,"precisao":0,"evasao":0},"moves":[{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""}]}]}]}/*STATE_END*/;
 
 /* =================== CONSTANTES DE REGRA =================== */
 var TYPES = ["Normal","Fogo","Água","Grama","Elétrico","Gelo","Lutador","Venenoso","Terra","Voador","Psíquico","Inseto","Pedra","Fantasma","Dragão","Sombrio","Aço","Fada"];
@@ -846,7 +846,9 @@ function trainerSheetHTML(t, mode){
   /* header row: level + share toggle */
   out += '<div class="grid-2" style="margin-bottom:14px;">';
   out += '<div class="field"><label>Nível do Treinador</label>'+
-    (editable ? '<input type="number" min="1" max="16" value="'+t.level+'" onchange="DT.setLevel(\''+t.id+'\', this)">' : '<div class="num" style="font-weight:700;">'+t.level+' / 16</div>')+
+    (mode==='gm'
+      ? '<input type="number" min="1" max="16" value="'+t.level+'" onchange="DT.setLevel(\''+t.id+'\', this)">'
+      : '<div class="num" style="font-weight:700;">'+t.level+' / 16'+(mode==='own' ? ' <span class="muted" style="font-weight:400; font-family:\'IBM Plex Sans\';">(controlado pelo Mestre)</span>' : '')+'</div>')+
     '</div>';
   out += '<div class="field"><label>Compartilhamento</label>'+
     (mode==='own'
@@ -881,7 +883,7 @@ function trainerSheetHTML(t, mode){
   '</div>';
 
   out += '<div class="poke-grid">';
-  out += t.pokemons.map(function(p){ return pokeCardHTML(t,p,editable); }).join('');
+  out += t.pokemons.map(function(p){ return pokeCardHTML(t,p,editable,mode); }).join('');
   out += '</div>';
 
   return out;
@@ -897,7 +899,8 @@ function typeDatalist(id){
   return '<datalist id="'+id+'">'+TYPES.map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>';
 }
 
-function pokeCardHTML(t,p,editable){
+function pokeCardHTML(t,p,editable,mode){
+  var canGM = mode==='gm';
   var expanded = !!SESSION.expanded[p.id];
   var max = hpMax(t,p);
   var cur = (p.currentHP===null || p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
@@ -953,8 +956,8 @@ function pokeCardHTML(t,p,editable){
 
   var vinculoRow = '<div class="grid-2">'+
     '<div class="field"><label>Vínculo (0–25) — libera '+liberatedTier(p.vinculo)+' pt(s)</label>'+
-      (editable ? '<input type="range" min="0" max="25" value="'+p.vinculo+'" onchange="DT.setVinculo(\''+t.id+'\',\''+did+'\', this)">' : '')+
-      '<span class="rangeval num">'+p.vinculo+' / 25</span>'+
+      (canGM ? '<input type="range" min="0" max="25" value="'+p.vinculo+'" onchange="DT.setVinculo(\''+t.id+'\',\''+did+'\', this)">' : '')+
+      '<span class="rangeval num">'+p.vinculo+' / 25'+(mode==='own' ? ' <span class="muted" style="font-size:.68rem;">(controlado pelo Mestre)</span>' : '')+'</span>'+
     '</div>'+
     '<div class="field"><label>Maturidade (regra em aberto)</label>'+
       (editable ? '<input type="number" min="0" value="'+p.maturidade+'" onchange="DT.setMaturidade(\''+t.id+'\',\''+did+'\', this)">' : '<span class="num">'+p.maturidade+'</span>')+
