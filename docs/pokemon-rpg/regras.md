@@ -46,6 +46,14 @@ Cada Atributo do Treinador vai de **0 a 5** (cinco é o máximo pela progressão
 
 No Nível 16 o Treinador terá recebido 16 pontos (oito escolhidos, oito por dado).
 
+### 2.4 Progressão de Nível
+
+A cada **4 batalhas completas vencidas**, o Treinador sobe 1 Nível automaticamente.
+
+Usa a mesma definição de "batalha completa vencida" do Vínculo (3.2): basta o Treinador ter vencido a batalha — não precisa dar o golpe final. O contador de vitórias é acompanhado pelo Mestre e não aparece na ficha do Treinador; quando chega a 4, o novo Nível aparece na ficha do Treinador e o contador volta a 0, recomeçando a contagem até a próxima subida.
+
+O Mestre também pode conceder um Nível fora dessa contagem por motivo narrativo, assim como já pode fazer com Vínculo (3.2).
+
 ## Capítulo 3 — Vínculo
 
 Vínculo representa confiança, convivência e sintonia entre Pokémon e Treinador. Cada Pokémon possui seu próprio Vínculo, escala **0–25**.
@@ -315,7 +323,7 @@ Coexiste com qualquer Condição Principal. No início do turno, antes de testar
 
 **Dados**: 1d6 (ataques, crítico, iniciativa, diversos efeitos) · 1d10 (porcentagens)
 
-**Treinador**: Nível máximo 16 · Atributos 0–5
+**Treinador**: Nível máximo 16 · Atributos 0–5 · sobe 1 Nível a cada 4 batalhas vencidas (contador só do Mestre)
 
 **Vínculo** (máx. 25): 5=+1 · 10=+2 · 15=+3 · 20=+4 · 25=+5
 
