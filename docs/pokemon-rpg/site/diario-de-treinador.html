@@ -200,6 +200,8 @@
   .stat-bar-track{ height:8px; background:var(--surface-3); border-radius:1px; overflow:hidden; }
   .stat-bar-fill{ display:block; height:100%; }
   .table-scroll{ overflow-x:auto; }
+  .moves-table th:nth-child(-n+3), .moves-table td:nth-child(-n+3){ text-align:left; }
+  .moves-table .move-desc-row td{ background:var(--surface-2); color:var(--ink-dim); font-size:.76rem; font-style:italic; }
 
   .hp-row{ display:flex; align-items:center; gap:10px; }
   .hp-row input[type=number]{ width:70px; }
@@ -220,8 +222,6 @@
   .stage-field input{ padding:5px 6px; text-align:center; }
 
   hr.rule{ border:none; border-top:1px solid var(--line); margin:4px 0; }
-
-  .readonly-note{ font-size:.72rem; color:var(--ink-dim); font-style:italic; }
 
   footer.legal{ text-align:center; color:var(--ink-dim); font-size:.7rem; margin-top:30px; line-height:1.6; }
 
@@ -3001,22 +3001,24 @@ function pokeCardHTML(t,p,editable,mode){
       (canGM ? '<input type="range" min="0" max="25" value="'+p.vinculo+'" onchange="DT.setVinculo(\''+t.id+'\',\''+did+'\', this)">' : '')+
       '<span class="rangeval num">'+p.vinculo+' / 25'+(mode==='own' ? ' <span class="muted" style="font-size:.68rem;">(controlado pelo Mestre)</span>' : '')+'</span>'+
     '</div>'+
-    '<div class="field"><label>Maturidade (regra em aberto)</label>'+
-      (editable ? '<input type="number" min="0" value="'+p.maturidade+'" onchange="DT.setMaturidade(\''+t.id+'\',\''+did+'\', this)">' : '<span class="num">'+p.maturidade+'</span>')+
+    '<div class="field"><label>Maturidade (regra em aberto)'+(mode==='own' ? ' <span class="muted" style="font-weight:400;">(controlado pelo Mestre)</span>' : '')+'</label>'+
+      (canGM ? '<input type="number" min="0" value="'+p.maturidade+'" onchange="DT.setMaturidade(\''+t.id+'\',\''+did+'\', this)">' : '<span class="num">'+p.maturidade+'</span>')+
     '</div>'+
   '</div>';
 
+  /* Condição/Confuso são aplicados pelo Mestre durante a batalha, mas
+     precisam ficar bem visíveis pro Treinador na própria ficha. */
   var statusRow = '<div class="grid-3">'+
-    '<div class="field"><label>Condição</label>'+
-      (editable
+    '<div class="field"><label>Condição'+(mode==='own' ? ' <span class="muted" style="font-weight:400;">(controlado pelo Mestre)</span>' : '')+'</label>'+
+      (canGM
         ? '<select onchange="DT.setStatus(\''+t.id+'\',\''+did+'\', this)">'+STATUS_OPTS.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===p.status?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select>'
-        : '<span>'+STATUS_LABELS[p.status]+'</span>')+
+        : (p.status ? '<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>' : '<span class="muted">Nenhuma</span>'))+
     '</div>'+
     ((p.status==='sono'||p.status==='veneno_grave') ? '<div class="field"><label>'+(p.status==='sono'?'Turnos dormindo':'Turno do dano')+'</label>'+
-      (editable ? '<input type="number" min="0" max="10" value="'+p.statusTurns+'" onchange="DT.setStatusTurns(\''+t.id+'\',\''+did+'\', this)">' : p.statusTurns)+
+      (canGM ? '<input type="number" min="0" max="10" value="'+p.statusTurns+'" onchange="DT.setStatusTurns(\''+t.id+'\',\''+did+'\', this)">' : '<span class="num">'+p.statusTurns+'</span>')+
     '</div>' : '<div></div>')+
-    '<div class="field"><label>Confuso</label>'+
-      (editable ? '<button class="btn-sm '+(p.confuso?'btn-primary':'')+'" onclick="DT.toggleConfuso(\''+t.id+'\',\''+did+'\')">'+(p.confuso?'✓ Confuso':'Marcar confuso')+'</button>' : (p.confuso?'Sim':'Não'))+
+    '<div class="field"><label>Confuso'+(mode==='own' ? ' <span class="muted" style="font-weight:400;">(controlado pelo Mestre)</span>' : '')+'</label>'+
+      (canGM ? '<button class="btn-sm '+(p.confuso?'btn-primary':'')+'" onclick="DT.toggleConfuso(\''+t.id+'\',\''+did+'\')">'+(p.confuso?'✓ Confuso':'Marcar confuso')+'</button>' : (p.confuso ? '<span class="badge status-bad">Confuso</span>' : '<span class="muted">Não</span>'))+
     '</div>'+
   '</div>';
 
@@ -3031,30 +3033,41 @@ function pokeCardHTML(t,p,editable,mode){
   '</div></div>';
 
   var movesHeader = '<div class="move-labels"><span>Nome</span><span>Tipo</span><span>Categoria</span><span>Poder</span><span>Prior.</span></div>';
-  var moves = p.moves.map(function(m, idx){
-    if(!canGM){
-      if(!m.nome) return '';
-      var detail = [];
-      if(m.precisao) detail.push('precisão '+esc(m.precisao));
-      if(m.efeito) detail.push(esc(m.efeito));
-      return '<div class="move-row"><span>'+esc(m.nome)+'</span>'+typeBadge(m.tipo)+'<span>'+esc(m.categoria)+'</span><span class="num">'+(m.poder||0)+'</span><span class="num">'+(m.prioridade||0)+'</span></div>'+
-        (detail.length ? '<div class="readonly-note">'+detail.join(' · ')+'</div>' : '');
-    }
-    return '<div class="move-row">'+
-      '<input type="text" placeholder="nome (ex: Thunderbolt)" list="movesDexList" value="'+esc(m.nome)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'nome\', this)">'+
-      '<input type="text" placeholder="tipo" list="typeList" value="'+esc(m.tipo)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'tipo\', this)">'+
-      '<select onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'categoria\', this)">'+CATEGORY_OPTS.map(function(c){ return '<option'+(c===m.categoria?' selected':'')+'>'+c+'</option>'; }).join('')+'</select>'+
-      '<input type="number" min="0" max="10" value="'+(m.poder||0)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'poder\', this)">'+
-      '<input type="number" min="-7" max="7" value="'+(m.prioridade||0)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'prioridade\', this)">'+
-    '</div>'+
-    '<div class="move-row move-row2">'+
-      '<input type="text" placeholder="precisão (ex: 90%)" value="'+esc(m.precisao)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'precisao\', this)">'+
-      '<input type="text" placeholder="efeito (ex: 30% de queimar)" value="'+esc(m.efeito)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'efeito\', this)">'+
+  var movesLabel = '<label style="font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); display:block; margin-bottom:4px;">Movimentos</label>';
+  var movesBlock;
+  if(canGM){
+    var editRows = p.moves.map(function(m, idx){
+      return '<div class="move-row">'+
+        '<input type="text" placeholder="nome (ex: Thunderbolt)" list="movesDexList" value="'+esc(m.nome)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'nome\', this)">'+
+        '<input type="text" placeholder="tipo" list="typeList" value="'+esc(m.tipo)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'tipo\', this)">'+
+        '<select onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'categoria\', this)">'+CATEGORY_OPTS.map(function(c){ return '<option'+(c===m.categoria?' selected':'')+'>'+c+'</option>'; }).join('')+'</select>'+
+        '<input type="number" min="0" max="10" value="'+(m.poder||0)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'poder\', this)">'+
+        '<input type="number" min="-7" max="7" value="'+(m.prioridade||0)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'prioridade\', this)">'+
+      '</div>'+
+      '<div class="move-row move-row2">'+
+        '<input type="text" placeholder="precisão (ex: 90%)" value="'+esc(m.precisao)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'precisao\', this)">'+
+        '<input type="text" placeholder="efeito (ex: 30% de queimar)" value="'+esc(m.efeito)+'" onchange="DT.setMove(\''+t.id+'\',\''+did+'\','+idx+',\'efeito\', this)">'+
+      '</div>';
+    }).join('');
+    movesBlock = '<div>'+movesLabel+movesHeader+'<div class="moves-list">'+editRows+'</div></div>';
+  } else {
+    var knownMoves = p.moves.filter(function(m){ return m.nome; });
+    var rows = knownMoves.map(function(m){
+      return '<tr>'+
+        '<td>'+esc(m.nome)+'</td>'+
+        '<td>'+typeBadge(m.tipo)+'</td>'+
+        '<td>'+esc(m.categoria)+'</td>'+
+        '<td class="num">'+(m.poder||0)+'</td>'+
+        '<td class="num">'+(m.prioridade||0)+'</td>'+
+        '<td class="num">'+(m.precisao?esc(m.precisao):'—')+'</td>'+
+      '</tr>'+
+      (m.efeito ? '<tr class="move-desc-row"><td colspan="6">'+esc(m.efeito)+'</td></tr>' : '');
+    }).join('');
+    movesBlock = '<div>'+movesLabel+(rows
+      ? '<div class="table-scroll"><table class="stat-table moves-table"><thead><tr><th>Movimento</th><th>Tipo</th><th>Categoria</th><th>Poder</th><th>Prioridade</th><th>Precisão</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+      : '<p class="muted" style="font-size:.8rem;">O Mestre ainda não definiu os Movimentos.</p>')+
     '</div>';
-  }).join('');
-
-  var movesBlock = '<div><label style="font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); display:block; margin-bottom:4px;">Movimentos</label>'+
-    (canGM ? movesHeader : '')+'<div class="moves-list">'+moves+'</div></div>';
+  }
 
   return '<div class="poke-card">'+head+'<div class="poke-body">'+
     hpBar+
