@@ -394,7 +394,7 @@
 "use strict";
 
 /* =================== ESTADO PERSISTIDO =================== */
-let STATE = /*STATE_START*/{"gmPin":"180591","trainers":[{"id":"rtcx73g7","name":"Akamilson","pin":"1805","shareEnabled":false,"level":16,"battlesWon":0,"attrPoints":{"vigor":0,"vontade":0,"resistencia":0,"mental":0,"foco":0,"agilidade":0},"pokemons":[{"id":"kp0eg589","apelido":"","especie":"","tipo1":"","tipo2":"","natural":{"hp":1,"atk":1,"def":1,"spa":1,"spd":1,"spe":1},"vinculo":0,"maturidade":9,"currentHP":null,"status":"","statusTurns":0,"confuso":false,"estagios":{"atk":0,"def":0,"spa":0,"spd":0,"spe":0,"precisao":0,"evasao":0},"moves":[{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""}]}]}]}/*STATE_END*/;
+let STATE = /*STATE_START*/{"gmPin":"180591","trainers":[{"id":"rtcx73g7","name":"Akamilson","pin":"1805","shareEnabled":false,"level":16,"battlesWon":0,"attrPoints":{"vigor":0,"vontade":0,"resistencia":3,"mental":0,"foco":0,"agilidade":0},"pokemons":[{"id":"kp0eg589","apelido":"","especie":"","tipo1":"","tipo2":"","natural":{"hp":1,"atk":1,"def":1,"spa":1,"spd":1,"spe":1},"vinculo":0,"maturidade":9,"currentHP":null,"status":"","statusTurns":0,"confuso":false,"estagios":{"atk":0,"def":0,"spa":0,"spd":0,"spe":0,"precisao":0,"evasao":0},"moves":[{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""},{"nome":"","tipo":"","categoria":"Físico","poder":0,"precisao":"","prioridade":0,"efeito":""}]}]}]}/*STATE_END*/;
 
 /* =================== CONSTANTES DE REGRA =================== */
 var TYPES = ["Normal","Fogo","Água","Grama","Elétrico","Gelo","Lutador","Venenoso","Terra","Voador","Psíquico","Inseto","Pedra","Fantasma","Dragão","Sombrio","Aço","Fada"];
@@ -501,6 +501,9 @@ function buildFullDocument(state){
   return '<!doctype html>\n<html lang="pt-BR">\n<head>\n'+HEAD_HTML+'\n</head>\n<body>\n<div id="app"></div>\n<script type="text/plain" id="dt-head-source">'+HEAD_HTML.replace(/<\/script/gi,'<\\/script')+'<\/script>\n<script>\n'+newSrc+'\n<\/script>\n</body>\n</html>';
 }
 
+var saveInFlight = false;
+var saveQueuedAfter = false;
+
 function queueSave(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(doSave, 550);
@@ -508,15 +511,28 @@ function queueSave(){
 
 function doSave(){
   if(!artifactApi){ SESSION.notice=''; return; }
+  /* Nunca deixa duas publicações em voo ao mesmo tempo — isso é o que causava
+     conflitos falsos (e a página recarregando sozinha) em cliques rápidos
+     seguidos, tipo "+1 vitória" duas vezes seguidas. Se já tem uma gravação
+     em andamento, só marca que precisa gravar de novo assim que ela terminar
+     — usando o STATE mais atual, então nada se perde. */
+  if(saveInFlight){ saveQueuedAfter = true; return; }
+  saveInFlight = true;
   artifactApi.publish(buildFullDocument(STATE)).then(function(){
     /* ok */
   }).catch(function(e){
     if(e && e.code==='conflict'){
-      location.reload();
+      /* Rotina: alguém (ou uma gravação anterior nossa) publicou primeiro.
+         Não recarrega a página — isso fecharia tudo que você tinha aberto.
+         A próxima gravação (com o STATE atual) resolve sozinha. */
+      SESSION.notice = 'Detectamos outra gravação ao mesmo tempo — sua última alteração pode não ter salvo. Confira e repita se precisar.';
     } else if(e && (e.code==='not_granted' || e.code==='not_writer')){
       SESSION.error = 'Este link está em modo somente leitura para você — suas alterações não foram salvas para o grupo. Peça ao dono do Diário para te adicionar como editor no compartilhamento do link.';
-      render();
     }
+  }).finally(function(){
+    saveInFlight = false;
+    if(saveQueuedAfter){ saveQueuedAfter = false; doSave(); }
+    else { render(); }
   });
 }
 
