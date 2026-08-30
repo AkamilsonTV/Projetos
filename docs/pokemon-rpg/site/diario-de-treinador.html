@@ -2812,7 +2812,7 @@ function trainerSheetHTML(t, mode){
   out += '<div class="field"><label>Nível do Treinador</label>'+
     (mode==='gm'
       ? '<input type="number" min="1" max="16" value="'+t.level+'" onchange="DT.setLevel(\''+t.id+'\', this)">'
-      : '<div class="num" style="font-weight:700;">'+t.level+' / 16'+(mode==='own' ? ' <span class="muted" style="font-weight:400; font-family:\'Roboto\';">(controlado pelo Mestre)</span>' : '')+'</div>')+
+      : '<div class="num" style="font-weight:700;">'+t.level+' / 16</div>')+
     '</div>';
   out += '<div class="field"><label>Compartilhamento</label>'+
     (mode==='own'
@@ -2999,9 +2999,9 @@ function pokeCardHTML(t,p,editable,mode){
   var vinculoRow = '<div class="grid-2">'+
     '<div class="field"><label>Vínculo (0–25) — libera '+liberatedTier(p.vinculo)+' pt(s)</label>'+
       (canGM ? '<input type="range" min="0" max="25" value="'+p.vinculo+'" onchange="DT.setVinculo(\''+t.id+'\',\''+did+'\', this)">' : '')+
-      '<span class="rangeval num">'+p.vinculo+' / 25'+(mode==='own' ? ' <span class="muted" style="font-size:.68rem;">(controlado pelo Mestre)</span>' : '')+'</span>'+
+      '<span class="rangeval num">'+p.vinculo+' / 25</span>'+
     '</div>'+
-    '<div class="field"><label>Maturidade (regra em aberto)'+(mode==='own' ? ' <span class="muted" style="font-weight:400;">(controlado pelo Mestre)</span>' : '')+'</label>'+
+    '<div class="field"><label>Maturidade (regra em aberto)</label>'+
       (canGM ? '<input type="number" min="0" value="'+p.maturidade+'" onchange="DT.setMaturidade(\''+t.id+'\',\''+did+'\', this)">' : '<span class="num">'+p.maturidade+'</span>')+
     '</div>'+
   '</div>';
@@ -3009,7 +3009,7 @@ function pokeCardHTML(t,p,editable,mode){
   /* Condição/Confuso são aplicados pelo Mestre durante a batalha, mas
      precisam ficar bem visíveis pro Treinador na própria ficha. */
   var statusRow = '<div class="grid-3">'+
-    '<div class="field"><label>Condição'+(mode==='own' ? ' <span class="muted" style="font-weight:400;">(controlado pelo Mestre)</span>' : '')+'</label>'+
+    '<div class="field"><label>Condição</label>'+
       (canGM
         ? '<select onchange="DT.setStatus(\''+t.id+'\',\''+did+'\', this)">'+STATUS_OPTS.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===p.status?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select>'
         : (p.status ? '<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>' : '<span class="muted">Nenhuma</span>'))+
@@ -3017,7 +3017,7 @@ function pokeCardHTML(t,p,editable,mode){
     ((p.status==='sono'||p.status==='veneno_grave') ? '<div class="field"><label>'+(p.status==='sono'?'Turnos dormindo':'Turno do dano')+'</label>'+
       (canGM ? '<input type="number" min="0" max="10" value="'+p.statusTurns+'" onchange="DT.setStatusTurns(\''+t.id+'\',\''+did+'\', this)">' : '<span class="num">'+p.statusTurns+'</span>')+
     '</div>' : '<div></div>')+
-    '<div class="field"><label>Confuso'+(mode==='own' ? ' <span class="muted" style="font-weight:400;">(controlado pelo Mestre)</span>' : '')+'</label>'+
+    '<div class="field"><label>Confuso</label>'+
       (canGM ? '<button class="btn-sm '+(p.confuso?'btn-primary':'')+'" onclick="DT.toggleConfuso(\''+t.id+'\',\''+did+'\')">'+(p.confuso?'✓ Confuso':'Marcar confuso')+'</button>' : (p.confuso ? '<span class="badge status-bad">Confuso</span>' : '<span class="muted">Não</span>'))+
     '</div>'+
   '</div>';
