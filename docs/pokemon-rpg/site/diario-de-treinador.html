@@ -132,7 +132,7 @@
   .attr-row{ display:grid; grid-template-columns: 108px 1fr 28px; align-items:center; gap:10px; }
   .attr-row .label{ font-size:.78rem; font-weight:600; }
   .attr-row .pips{ display:flex; gap:5px; }
-  .pip{ width:22px; height:22px; border-radius:2px; border:1px solid var(--line); background:var(--surface); padding:0; font-size:.65rem; color:transparent; }
+  .pip{ display:inline-block; width:22px; height:22px; border-radius:2px; border:1px solid var(--line); background:var(--surface); padding:0; font-size:.65rem; color:transparent; }
   .pip.filled{ background:var(--accent); border-color:var(--accent); }
   .attr-row .val{ text-align:right; font-size:.85rem; font-weight:700; color:var(--accent); }
   .budget{ font-size:.76rem; color:var(--ink-dim); margin-top:2px; }
@@ -2218,14 +2218,22 @@ function newTrainer(name, pin){
     id: uid(), name: name.trim(), pin: String(pin), shareEnabled:false, level:1,
     battlesWon:0,
     attrPoints:{vigor:0,vontade:0,resistencia:0,mental:0,foco:0,agilidade:0},
+    attrPointsAllocated:0, attrChoicePicks:[],
     pokemons:[], banco:[]
   };
 }
-/* Garante que fichas salvas antes do Banco existir ganhem o campo (sem apagar nada). */
+/* Garante que fichas salvas antes de um campo existir ganhem o valor padrão dele (sem apagar nada). */
 function migrateState(){
   (STATE.trainers||[]).forEach(function(t){
     if(!Array.isArray(t.pokemons)) t.pokemons = [];
     if(!Array.isArray(t.banco)) t.banco = [];
+    /* Preserva o progresso já feito: conta como "já alocados" os pontos que a
+       ficha já tinha antes dessa trava existir, pra continuar a cadência dali
+       em diante em vez de pedir pra refazer tudo. Não dá pra saber quais desses
+       pontos antigos vieram de nível ímpar/par, então a Correção do Mestre só
+       alcança picks feitos depois desta atualização. */
+    if(typeof t.attrPointsAllocated !== 'number') t.attrPointsAllocated = attrSpent(t);
+    if(!Array.isArray(t.attrChoicePicks)) t.attrChoicePicks = [];
   });
 }
 function newPokemon(){
@@ -2402,21 +2410,60 @@ DT.setBattles = function(id, el){
   mutate();
 };
 
-DT.setPip = function(id, attrKey, value){
-  var t = findTrainer(id); if(!t) return;
-  var current = t.attrPoints[attrKey]||0;
-  t.attrPoints[attrKey] = (current===value) ? value-1 : value;
-  if(t.attrPoints[attrKey]<0) t.attrPoints[attrKey]=0;
-  if(t.attrPoints[attrKey]>5) t.attrPoints[attrKey]=5;
+/* Ponto de Atributo por Nível (Cap. 2.3 das regras): um ponto é liberado a
+   cada Nível, em ordem — ímpar o jogador escolhe, par é sorteado no 1d6.
+   attrPointsAllocated marca até que Nível a cadência já foi resolvida. */
+function nextAttrLevel(t){ return (t.attrPointsAllocated||0) + 1; }
+function attrLevelIsOdd(n){ return n % 2 === 1; }
+
+DT.chooseAttr = function(tid, attrKey){
+  var t = findTrainer(tid); if(!t) return;
+  var lvl = nextAttrLevel(t);
+  if(lvl > t.level || !attrLevelIsOdd(lvl)) return; /* botão não devia nem estar visível nesse caso */
+  if((t.attrPoints[attrKey]||0) >= 5){ SESSION.error = 'Esse Atributo já está no máximo (5).'; render(); return; }
+  t.attrPoints[attrKey] = (t.attrPoints[attrKey]||0) + 1;
+  t.attrChoicePicks.push(attrKey);
+  t.attrPointsAllocated = lvl;
+  SESSION.notice = 'Nível '+lvl+' (ímpar): ponto livre aplicado em '+ATTR_LABELS[attrKey]+'.';
   mutate();
 };
 
-DT.rollAttrDie = function(id){
-  var t = findTrainer(id); if(!t) return;
-  var roll = Math.floor(Math.random()*6)+1;
-  var attrKey = ATTR_ORDER[roll-1];
-  SESSION.notice = 'Nível par — 1d6 resultou em ' + roll + ': ' + ATTR_LABELS[attrKey] + '. Aplique manualmente o ponto no atributo (role de novo se ele já estiver em 5).';
-  render();
+DT.rollAttrDie = function(tid){
+  var t = findTrainer(tid); if(!t) return;
+  var lvl = nextAttrLevel(t);
+  if(lvl > t.level || attrLevelIsOdd(lvl)) return; /* botão não devia nem estar visível nesse caso */
+  var roll, attrKey, rerolls = 0;
+  do{
+    roll = Math.floor(Math.random()*6)+1;
+    attrKey = ATTR_ORDER[roll-1];
+    if((t.attrPoints[attrKey]||0) < 5) break;
+    rerolls++;
+  } while(rerolls < 50); /* trava de segurança — na prática nunca esgota, o orçamento de pontos não permite os 6 cheios ao mesmo tempo */
+  if((t.attrPoints[attrKey]||0) >= 5){
+    var fallback = ATTR_ORDER.filter(function(k){ return (t.attrPoints[k]||0) < 5; })[0];
+    if(!fallback){ SESSION.error = 'Todos os Atributos já estão no máximo — não há onde aplicar o ponto sorteado.'; render(); return; }
+    attrKey = fallback;
+  }
+  t.attrPoints[attrKey] = (t.attrPoints[attrKey]||0) + 1;
+  t.attrPointsAllocated = lvl;
+  SESSION.notice = 'Nível '+lvl+' (par) — 1d6 resultou em '+roll+': '+ATTR_LABELS[attrKey]+'.'+(rerolls>0 ? ' (rolou de novo '+rerolls+'x porque caiu em atributo(s) já no máximo)' : '');
+  mutate();
+};
+
+/* Correção (só Mestre): reatribui um pick de Nível ímpar já feito, caso o
+   Treinador tenha clicado errado. Níveis pares (sorteio) não são corrigíveis
+   por aqui — o dado decidiu. */
+DT.correctAttrPick = function(tid, pickIndex, el){
+  var t = findTrainer(tid); if(!t) return;
+  var newKey = el.value;
+  if(!Array.isArray(t.attrChoicePicks) || pickIndex<0 || pickIndex>=t.attrChoicePicks.length) return;
+  var oldKey = t.attrChoicePicks[pickIndex];
+  if(oldKey===newKey) return;
+  if((t.attrPoints[newKey]||0) >= 5){ SESSION.error = 'Esse Atributo já está no máximo (5).'; render(); return; }
+  t.attrPoints[oldKey] = Math.max(0, (t.attrPoints[oldKey]||0) - 1);
+  t.attrPoints[newKey] = (t.attrPoints[newKey]||0) + 1;
+  t.attrChoicePicks[pickIndex] = newKey;
+  mutate();
 };
 
 DT.addPokemon = function(id){
@@ -2840,15 +2887,48 @@ function trainerSheetHTML(t, mode){
     var val = t.attrPoints[k]||0;
     var pips = '';
     for(var i=1;i<=5;i++){
-      pips += editable
-        ? '<button type="button" class="pip'+(i<=val?' filled':'')+'" onclick="DT.setPip(\''+t.id+'\',\''+k+'\','+i+')">'+i+'</button>'
-        : '<span class="pip'+(i<=val?' filled':'')+'"></span>';
+      pips += '<span class="pip'+(i<=val?' filled':'')+'"></span>';
     }
     out += '<div class="attr-row"><span class="label">'+ATTR_LABELS[k]+'</span><span class="pips">'+pips+'</span><span class="val">'+val+'</span></div>';
   });
   out += '</div>';
   out += '<div class="budget'+(spent>budget?' over':'')+'">Pontos usados: '+spent+' / '+budget+(spent>budget?' — acima do esperado para o nível':'')+'</div>';
-  if(editable) out += '<div style="margin-top:8px;"><button class="btn-sm" onclick="DT.rollAttrDie(\''+t.id+'\')">🎲 Sortear atributo (nível par)</button></div>';
+
+  /* Ponto de Atributo por Nível: ímpar = escolhe, par = sorteia. Só um
+     pendente por vez, na ordem dos Níveis (Cap. 2.3 das regras). */
+  var pendingLvl = nextAttrLevel(t);
+  if(editable && pendingLvl<=t.level){
+    if(attrLevelIsOdd(pendingLvl)){
+      out += '<div style="margin-top:10px;">'+
+        '<div class="muted" style="font-size:.76rem; margin-bottom:6px;">Nível '+pendingLvl+' (ímpar) — escolha onde aplicar o ponto livre:</div>'+
+        '<div class="btn-row">'+ATTR_ORDER.map(function(k){
+          var maxed = (t.attrPoints[k]||0)>=5;
+          return '<button type="button" class="btn-sm"'+(maxed?' disabled':'')+' onclick="DT.chooseAttr(\''+t.id+'\',\''+k+'\')">'+ATTR_LABELS[k]+'</button>';
+        }).join('')+'</div>'+
+      '</div>';
+    } else {
+      out += '<div style="margin-top:10px;"><button class="btn-sm" onclick="DT.rollAttrDie(\''+t.id+'\')">🎲 Sortear atributo (Nível '+pendingLvl+', par)</button></div>';
+    }
+  } else if(editable && t.level<16){
+    out += '<div class="muted" style="font-size:.76rem; margin-top:10px;">Sem ponto de Atributo pendente — o próximo libera no Nível '+pendingLvl+'.</div>';
+  }
+
+  /* Correção (só Mestre): só alcança picks de Nível ímpar (escolha) */
+  if(canGM && t.attrChoicePicks && t.attrChoicePicks.length){
+    var corrKey = 'attrcorr:'+t.id;
+    var corrOpen = !!SESSION.expanded[corrKey];
+    out += '<div style="margin-top:10px;"><button class="btn-sm btn-ghost" onclick="DT.toggleExpand(\''+corrKey+'\')">'+(corrOpen?'▲':'▼')+' Correção</button>';
+    if(corrOpen){
+      out += '<div style="margin-top:6px; display:flex; flex-direction:column; gap:6px;">'+
+        t.attrChoicePicks.map(function(k, i){
+          var lvlNum = 2*i+1;
+          return '<div class="field" style="flex-direction:row; align-items:center; gap:8px;"><label style="min-width:70px;">Nível '+lvlNum+'</label>'+
+            '<select onchange="DT.correctAttrPick(\''+t.id+'\','+i+', this)">'+ATTR_ORDER.map(function(a){ return '<option value="'+a+'"'+(a===k?' selected':'')+'>'+ATTR_LABELS[a]+'</option>'; }).join('')+'</select></div>';
+        }).join('')+
+      '</div>';
+    }
+    out += '</div>';
+  }
 
   /* pokemon roster: 6 slots ativos + Banco (menu deslizante) */
   out += '<hr class="rule" style="margin:18px 0;">';
