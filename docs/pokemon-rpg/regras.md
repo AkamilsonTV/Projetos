@@ -327,6 +327,8 @@ Não pode agir normalmente. No início do turno: 1d6 — 1–4 continua Congelad
 
 Coexiste com qualquer Condição Principal. No início do turno, antes de testar seu efeito, tenta eliminar a Confusão: 1d6, 5–6 termina (pode agir normalmente, respeitando outras condições). Se continuar (1–4), testa o efeito: 1d6, 1–2 perde a ação e sofre 1 PV; 3–6 age normalmente.
 
+Na Arena do site, esses dois testes já rolam sozinhos: assim que alguém clica num Pokémon Confuso pra selecioná-lo, o site já rola o 1d6 pra eliminar a Confusão e, se continuar, o 1d6 do efeito — mostra o resultado num aviso e no Registro antes de liberar (ou não) o menu de ação.
+
 ## Capítulo 24 — Ordem de Resolução de um Ataque
 
 1. Determine se o Movimento tem Prioridade; resolva a janela de Prioridade se necessário.
@@ -340,7 +342,7 @@ Coexiste com qualquer Condição Principal. No início do turno, antes de testar
 9. Resolva efeitos percentuais (1d10; crítico dá segunda tentativa).
 10. Resolva efeitos de final de turno (Queimadura, Veneno, Veneno Grave, etc.).
 
-Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano Final e Efeito Percentual) já são resolvidos automaticamente pelo botão de Ataque — ver o Guia do Treinador/Guia do Mestre. Os passos 1 a 3 (Prioridade, quem age primeiro, condições que impedem agir) e o 10 (efeitos de final de turno) continuam por conta do Mestre na mesa.
+Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano Final e Efeito Percentual) já são resolvidos automaticamente ao escolher o Movimento — ver o Guia do Treinador/Guia do Mestre. Do passo 3, a Confusão já é testada sozinha (Cap. 23) assim que o Pokémon confuso é selecionado; Paralisia, Sono e Congelamento continuam por conta do Mestre. O passo 10 também já é automático para Queimadura, Veneno e Veneno Grave (Cap. 20): o dano é aplicado sozinho logo depois que o próprio Pokémon afetado termina de agir, sem precisar esperar o fim da rodada inteira. Os passos 1 e 2 (Prioridade e quem age primeiro) continuam por conta do Mestre na mesa.
 
 ## Capítulo 25 — Mecânicas ainda em desenvolvimento
 
@@ -349,7 +351,8 @@ Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano F
 - **PP**: ainda será decidido se existirá e como será simplificado.
 - **Regras específicas de Movimentos**: múltiplos acertos, recoil, drenagem, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5) já segue o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano nem uma Condição de status simples (Helping Hand, Aromatherapy, buffs de estágio, etc.) e qualquer Movimento de campo (Stealth Rock, clima — Cap. 8.5).
 - **Captura**: sistema definitivo de Poké Balls ainda precisa ser desenvolvido.
-- **Itens e Habilidades**: reservados para desenvolvimento posterior.
+- **Habilidades**: reservadas para desenvolvimento posterior.
+- **Efeito de Itens em batalha**: a Mochila (nome + quantidade) já existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo). Usar um item na Arena já consome 1 unidade e fica registrado no Log, mas o efeito mecânico de cada item (curar PV, curar status, etc.) ainda será definido.
 
 ## Referência Rápida
 

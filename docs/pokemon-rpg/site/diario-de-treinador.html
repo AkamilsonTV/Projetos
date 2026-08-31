@@ -152,6 +152,9 @@
   .badge.status-bad{ background:var(--danger-soft); border-color:var(--danger); color:var(--danger); }
 
   .tag{ display:inline-block; font-size:.68rem; font-weight:600; padding:2px 8px; border-radius:var(--radius-pill); background:var(--surface-3); color:var(--ink-dim); border:1px solid var(--line); }
+  .inventory-list{ display:flex; flex-direction:column; gap:6px; }
+  .inventory-row{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:var(--radius-sm); background:var(--surface-2); border:1px solid var(--line); }
+  .inventory-name{ flex:1; font-size:.84rem; font-weight:600; }
   .type-badge{ display:inline-block; font-size:.66rem; font-weight:700; letter-spacing:.02em; padding:2px 9px; border-radius:var(--radius-pill); text-transform:uppercase; }
 
   .trainer-summary{ display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; padding:12px 14px; }
@@ -231,6 +234,8 @@
 
   /* ---- Ataque na Arena: alvo clicável, quem está atacando/foi escolhido ---- */
   .arena-slot-targetable{ cursor:pointer; border-radius:var(--radius-sm); outline:2px dashed var(--accent); outline-offset:3px; animation:arena-target-pulse 1.1s ease-in-out infinite; }
+  .arena-slot-selectable{ cursor:pointer; border-radius:var(--radius-sm); transition:outline-color .15s ease; }
+  .arena-slot-selectable:hover{ outline:2px solid var(--accent); outline-offset:3px; }
   .arena-slot-attacking{ border-radius:var(--radius-sm); outline:2px solid var(--accent); outline-offset:3px; }
   .arena-slot-target-picked{ border-radius:var(--radius-sm); outline:2px solid var(--danger); outline-offset:3px; }
   .arena-slot-turn{ position:relative; }
@@ -4365,7 +4370,9 @@ var db = null;
 var stateDocRef = null;
 
 /* =================== SESSÃO LOCAL (só deste navegador) =================== */
-var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', expanded:{}, confirmRemovePoke:null, confirmRemoveTrainer:null, arenaAttacker:null, arenaMoveIdx:null, arenaAttackTarget:null, showRollOverlay:false };
+var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', expanded:{}, confirmRemovePoke:null, confirmRemoveTrainer:null,
+  arenaAttacker:null, arenaAction:null, arenaMoveIdx:null, arenaAttackTarget:null, arenaItemIdx:null, arenaConfusionCheck:null,
+  showRollOverlay:false };
 try{
   var savedSession = JSON.parse(localStorage.getItem('dt_session')||'null');
   if(savedSession && savedSession.role==='gm'){ SESSION.role='gm'; SESSION.screen='gm-dashboard'; }
@@ -4401,8 +4408,11 @@ function newTrainer(name, pin){
     battlesWon:0,
     attrPoints:{vigor:0,vontade:0,resistencia:0,mental:0,foco:0,agilidade:0},
     attrPointsAllocated:0, attrChoicePicks:[],
-    pokemons:[], banco:[]
+    pokemons:[], banco:[], itens:[]
   };
+}
+function newItem(nome, quantidade){
+  return { id: uid(), nome: (nome||'').trim(), quantidade: clampInt(quantidade,0,999) };
 }
 /* Garante que fichas salvas antes de um campo existir ganhem o valor padrão dele (sem apagar nada). */
 function migrateState(){
@@ -4416,6 +4426,7 @@ function migrateState(){
        alcança picks feitos depois desta atualização. */
     if(typeof t.attrPointsAllocated !== 'number') t.attrPointsAllocated = attrSpent(t);
     if(!Array.isArray(t.attrChoicePicks)) t.attrChoicePicks = [];
+    if(!Array.isArray(t.itens)) t.itens = [];
     (t.pokemons||[]).concat(t.banco||[]).forEach(migratePokemonMoves);
   });
   if(!STATE.arena || typeof STATE.arena!=='object') STATE.arena = {teams:[], entries:[]};
@@ -4428,7 +4439,22 @@ function migrateState(){
 /* Fichas salvas antes do método Normal/TM/HM existir ganham 'normal' por
    padrão (sem mudar o Movimento que já estava escolhido). */
 function migratePokemonMoves(p){
-  (p.moves||[]).forEach(function(m){ if(!m.metodo) m.metodo = 'normal'; });
+  (p.moves||[]).forEach(function(m){
+    if(!m.metodo) m.metodo = 'normal';
+    /* Fichas salvas com um Movimento cujo nome bate com a base mas ficou
+       sem Precisão preenchida (ficha antiga de antes do motor de ataque
+       existir, ou nome digitado que só passou a bater depois de alguma
+       correção na base) — preenche de novo a partir da MOVES_DEX. Só
+       mexe na Precisão em branco especificamente; não sobrescreve um
+       valor que o Mestre já tenha editado na mão. Sem isso, esse
+       Movimento ficaria sem Precisão pra sempre — o motor já trata
+       "sem Precisão" como sempre acerta (Cap. 10.1), mas é melhor a
+       ficha mostrar o valor de verdade. */
+    if(m.nome && !m.precisao){
+      var found = findMoveByName(m.nome);
+      if(found) m.precisao = found.precisao;
+    }
+  });
 }
 function newPokemon(){
   return {
@@ -4775,6 +4801,76 @@ function currentRoundEntryId(){
 function isOwnArenaEntry(entryId){
   var e = (STATE.arena.entries||[]).find(function(x){ return x.id===entryId; });
   return !!(e && SESSION.role==='player' && SESSION.trainerId===e.trainerId);
+}
+
+/* =================== FIM DE TURNO: STATUS + CONFUSÃO (Cap. 20/23) ===================
+   "Sempre depois que o Pokémon atingido agir": o dano de Queimadura/Veneno/
+   Veneno Grave é aplicado automaticamente assim que ELE MESMO termina de
+   agir — não é um tique global de fim de rodada, é ligado à própria ação
+   do Pokémon afetado (ataque, item, troca...). Chamado de dentro de
+   arenaAdvanceTurn, que também cuida de avançar a fila de Iniciativa
+   quando fizer sentido. */
+function applyEndOfTurnStatusAndLog(entry){
+  var t = findTrainer(entry.trainerId);
+  var p = t && getPoke(entry.trainerId, entry.pokemonId);
+  if(!t || !p) return;
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+  if(cur<=0) return; /* já desmaiado, sem dano de status */
+  var dano = 0;
+  if(p.status==='queimadura') dano = 1; /* Cap. 20.1 */
+  else if(p.status==='veneno') dano = 2; /* Cap. 20.2 */
+  else if(p.status==='veneno_grave'){ p.statusTurns = (p.statusTurns||0)+1; dano = p.statusTurns; } /* Cap. 20.3: 1,2,3,4,5... */
+  if(dano<=0) return;
+  var novoHP = clampInt(cur-dano, 0, max);
+  p.currentHP = novoHP;
+  var fainted = novoHP<=0;
+  var nome = p.apelido||p.especie||'Pokémon';
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  STATE.arena.log.push({ ts: Date.now(), text: esc(nome)+' ('+esc(t.name)+') sofreu <strong>'+dano+'</strong> de dano por '+esc(ailmentLabel(p.status))+(fainted?' — 😵 Desmaiou!':'') });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+}
+/* Chamado sempre que um Pokémon termina de agir na Arena (ataque, item,
+   troca, fuga, ação perdida por Confusão...). Aplica o dano de status dele
+   mesmo e, se ele for quem estava com a vez na fila de Iniciativa, passa
+   a vez sozinho (pulando quem já desmaiou). */
+function arenaAdvanceTurn(entryId){
+  var e = findArenaEntry(entryId);
+  if(e) applyEndOfTurnStatusAndLog(e);
+  if(STATE.arena.round && currentRoundEntryId()===entryId){
+    STATE.arena.round.currentIdx++;
+    advanceRoundPastFainted(STATE.arena.round);
+  }
+}
+/* Cap. 23 — testado toda vez que um Pokémon Confuso é selecionado pra agir,
+   ANTES do menu de ação aparecer: 1d6 pra tentar eliminar a Confusão (5-6
+   termina); se continuar, 1d6 pra ver se perde a ação (1-2, sofre 1 PV) ou
+   age normalmente (3-6). Devolve um relatório pra mostrar na tela; quem
+   chama decide se libera o menu de ação ou já encerra o turno. */
+function arenaConfusionPreCheck(entry){
+  var t = findTrainer(entry.trainerId);
+  var p = t && getPoke(entry.trainerId, entry.pokemonId);
+  if(!t || !p || !p.confuso) return null;
+  var d6end = rollDie(6);
+  var ended = d6end>=5;
+  var result = { nome: p.apelido||p.especie||'Pokémon', trainerNome: t.name, d6end: d6end, ended: ended, tested:false, d6act:null, lostAction:false, dano:0, fainted:false };
+  if(ended){
+    p.confuso = false;
+    return result;
+  }
+  result.tested = true;
+  var d6act = rollDie(6);
+  result.d6act = d6act;
+  if(d6act<=2){
+    result.lostAction = true;
+    var max = hpMax(t,p);
+    var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+    var novoHP = clampInt(cur-1, 0, max);
+    p.currentHP = novoHP;
+    result.dano = 1;
+    result.fainted = novoHP<=0;
+  }
+  return result;
 }
 
 /* =================== PERSISTÊNCIA (Firestore, em tempo real) =================== */
@@ -5271,30 +5367,75 @@ DT.arenaRemoveEntry = function(entryId){
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.id!==entryId; });
   mutate();
 };
-DT.arenaToggleReveal = function(entryId){
-  var e = (STATE.arena.entries||[]).find(function(x){ return x.id===entryId; });
+/* ---- Fluxo de ação: clica no seu Pokémon já em campo pra selecionar ele
+   (revela sozinho se ainda não tiver revelado) -> escolhe Atacar/Item/
+   Trocar/Fugir -> se for Atacar, escolhe o Movimento -> se a lógica dele
+   pedir um alvo manual (aliado/inimigo/qualquer um), clica em quem já está
+   em campo; se for em si mesmo, de área ou de campo, resolve na hora, sem
+   precisar clicar em ninguém. Resolve de verdade (motor acima) e guarda o
+   resultado em STATE.arena.lastRoll pra todo mundo ver o dado rolando. ---- */
+function arenaResetActionState(){
+  SESSION.arenaAttacker = null;
+  SESSION.arenaAction = null;
+  SESSION.arenaMoveIdx = null;
+  SESSION.arenaAttackTarget = null;
+  SESSION.arenaItemIdx = null;
+}
+/* Selecionar um Pokémon pra agir: revela sozinho se preciso, testa
+   Confusão (Cap. 23) antes de mais nada — se perder a ação, o turno já
+   acaba aqui, sem abrir o menu. */
+DT.arenaSelectActor = function(entryId){
+  var e = findArenaEntry(entryId);
   if(!e) return;
-  e.revelado = !e.revelado;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var t = findTrainer(e.trainerId);
+  var p = t && getPoke(e.trainerId, e.pokemonId);
+  if(!t || !p) return;
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+  if(cur<=0) return; /* desmaiado, não pode agir */
+
+  if(!e.revelado) e.revelado = true;
+
+  var confCheck = arenaConfusionPreCheck(e);
+  if(confCheck){
+    var plainLines = [];
+    plainLines.push('1d6 pra eliminar a Confusão: '+confCheck.d6end+(confCheck.ended?' — termina!':' — continua confuso'));
+    if(confCheck.tested){
+      plainLines.push('1d6 pra agir: '+confCheck.d6act+(confCheck.lostAction ? (' — perde a ação, sofre 1 PV'+(confCheck.fainted?' (desmaiou!)':'')) : ' — age normalmente'));
+    }
+    var quem = confCheck.nome+' ('+confCheck.trainerNome+')';
+    SESSION.notice = quem+' está Confuso — '+plainLines.join(' · ');
+    if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+    STATE.arena.log.push({ ts: Date.now(), text: esc(quem)+' está Confuso — '+esc(plainLines.join(' · ')) });
+    if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+
+    if(confCheck.lostAction){
+      arenaAdvanceTurn(e.id); /* perdeu a ação -- o turno dele já encerra aqui */
+      arenaResetActionState();
+      mutate();
+      return;
+    }
+  }
+
+  SESSION.arenaAttacker = entryId;
+  SESSION.arenaAction = 'menu';
+  SESSION.arenaMoveIdx = null;
+  SESSION.arenaItemIdx = null;
+  SESSION.arenaAttackTarget = null;
   mutate();
 };
-
-/* ---- Fluxo de ação: "⚔️ Agir" no seu Pokémon já em campo -> escolhe o
-   Movimento -> se a lógica dele pedir um alvo manual (aliado/inimigo/
-   qualquer um), clica em quem já está em campo; se for em si mesmo ou de
-   área, resolve na hora, sem precisar clicar em ninguém. Resolve de
-   verdade (motor acima) e guarda o resultado em STATE.arena.lastRoll pra
-   todo mundo ver o dado rolando. ---- */
-DT.arenaStartAttack = function(entryId){
-  SESSION.arenaAttacker = entryId;
-  SESSION.arenaMoveIdx = null;
-  SESSION.arenaAttackTarget = null;
+DT.arenaCancelAction = function(){
+  arenaResetActionState();
   render();
 };
-DT.arenaCancelAttack = function(){
-  SESSION.arenaAttacker = null;
-  SESSION.arenaMoveIdx = null;
-  SESSION.arenaAttackTarget = null;
-  render();
+DT.arenaChooseAction = function(kind){
+  if(!SESSION.arenaAttacker) return;
+  if(kind==='atacar'){ SESSION.arenaAction = 'move'; SESSION.arenaMoveIdx = null; render(); return; }
+  if(kind==='item'){ SESSION.arenaAction = 'item'; SESSION.arenaItemIdx = null; render(); return; }
+  if(kind==='trocar'){ SESSION.arenaAction = 'trocar'; render(); return; }
+  if(kind==='fugir'){ DT.arenaFlee(); return; }
 };
 DT.arenaPickMove = function(moveIdx){
   var atkEntry = findArenaEntry(SESSION.arenaAttacker);
@@ -5311,10 +5452,11 @@ DT.arenaPickMove = function(moveIdx){
   if(moveNeedsManualTarget(category)){
     if(eligibleMoveTargets(atkEntry, category).length===0){
       SESSION.error = 'Não há alvo válido pra "'+move.nome+'" agora ('+MOVE_TARGET_LABELS[category]+').';
-      SESSION.arenaAttacker = null; SESSION.arenaMoveIdx = null; SESSION.arenaAttackTarget = null;
+      arenaResetActionState();
       render();
       return;
     }
+    SESSION.arenaAction = 'move';
     SESSION.arenaMoveIdx = moveIdx;
     SESSION.arenaAttackTarget = null;
     render();
@@ -5324,18 +5466,123 @@ DT.arenaPickMove = function(moveIdx){
   /* self, ou Movimento de área: resolve sozinho, sem clique de alvo */
   DT.resolveArenaMove(atkEntry, move, category, null);
 };
-DT.arenaSelectTarget = function(entryId){
-  if(SESSION.arenaMoveIdx===null || SESSION.arenaMoveIdx===undefined) return;
+DT.arenaPickItem = function(itemIdx){
   var atkEntry = findArenaEntry(SESSION.arenaAttacker);
   if(!atkEntry) return;
   var attTrainer = findTrainer(atkEntry.trainerId);
-  var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
-  var move = attPoke && (attPoke.moves||[])[SESSION.arenaMoveIdx];
-  if(!move) return;
-  var category = moveTargetCategory(move.nome);
-  var eligibleIds = eligibleMoveTargets(atkEntry, category).map(function(e){ return e.id; });
-  if(eligibleIds.indexOf(entryId)===-1) return; /* não é um alvo válido pra esse Movimento -- ignora o clique */
-  DT.resolveArenaMove(atkEntry, move, category, [entryId]);
+  if(!attTrainer) return;
+  var item = (attTrainer.itens||[])[itemIdx];
+  if(!item || item.quantidade<=0) return;
+  if(eligibleMoveTargets(atkEntry, 'ally-or-self').length===0){
+    SESSION.error = 'Não há em quem usar esse item agora.';
+    arenaResetActionState();
+    render();
+    return;
+  }
+  SESSION.arenaAction = 'item';
+  SESSION.arenaItemIdx = itemIdx;
+  SESSION.arenaAttackTarget = null;
+  render();
+};
+DT.arenaSelectTarget = function(entryId){
+  if(!SESSION.arenaAttacker) return;
+  var atkEntry = findArenaEntry(SESSION.arenaAttacker);
+  if(!atkEntry) return;
+
+  if(SESSION.arenaAction==='move'){
+    if(SESSION.arenaMoveIdx===null || SESSION.arenaMoveIdx===undefined) return;
+    var attTrainer = findTrainer(atkEntry.trainerId);
+    var attPoke = attTrainer && getPoke(atkEntry.trainerId, atkEntry.pokemonId);
+    var move = attPoke && (attPoke.moves||[])[SESSION.arenaMoveIdx];
+    if(!move) return;
+    var category = moveTargetCategory(move.nome);
+    var eligibleIds = eligibleMoveTargets(atkEntry, category).map(function(e){ return e.id; });
+    if(eligibleIds.indexOf(entryId)===-1) return; /* não é um alvo válido pra esse Movimento -- ignora o clique */
+    DT.resolveArenaMove(atkEntry, move, category, [entryId]);
+    return;
+  }
+
+  if(SESSION.arenaAction==='item'){
+    if(SESSION.arenaItemIdx===null || SESSION.arenaItemIdx===undefined) return;
+    var eligibleIds2 = eligibleMoveTargets(atkEntry, 'ally-or-self').map(function(e){ return e.id; });
+    if(eligibleIds2.indexOf(entryId)===-1) return;
+    DT.resolveItemUse(atkEntry, SESSION.arenaItemIdx, entryId);
+    return;
+  }
+};
+/* Item ainda não tem efeito mecânico real (quais itens existem em batalha
+   e o que cada um faz é regra em aberto, Cap. 25) -- só consome 1 unidade
+   e registra o uso; não mexe em PV/status. */
+DT.resolveItemUse = function(atkEntry, itemIdx, targetEntryId){
+  var attTrainer = findTrainer(atkEntry.trainerId);
+  if(!attTrainer) return;
+  var item = (attTrainer.itens||[])[itemIdx];
+  if(!item || item.quantidade<=0) return;
+  var targetEntry = findArenaEntry(targetEntryId);
+  var targetTrainer = targetEntry && findTrainer(targetEntry.trainerId);
+  var targetPoke = targetTrainer && getPoke(targetEntry.trainerId, targetEntry.pokemonId);
+  if(!targetEntry || !targetTrainer || !targetPoke) return;
+
+  item.quantidade = Math.max(0, item.quantidade-1);
+  var alvoNome = targetPoke.apelido || targetPoke.especie || 'Pokémon';
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  var prefix = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
+  STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(attTrainer.name)+' usou '+esc(item.nome)+' em '+esc(alvoNome)+' — efeito ainda não definido (Cap. 25).' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+
+  arenaAdvanceTurn(atkEntry.id);
+  arenaResetActionState();
+  mutate();
+};
+/* Troca (Cap. 18): consome a ação inteira -- o Pokémon que entra não age
+   nesse turno, só a partir do próximo. */
+DT.arenaSwapIn = function(newEntryId){
+  var oldEntry = findArenaEntry(SESSION.arenaAttacker);
+  var newEntry = findArenaEntry(newEntryId);
+  if(!oldEntry || !newEntry || oldEntry.trainerId!==newEntry.trainerId || newEntry.revelado) return;
+  var oldT = findTrainer(oldEntry.trainerId);
+  var oldP = oldT && getPoke(oldEntry.trainerId, oldEntry.pokemonId);
+  var newT = findTrainer(newEntry.trainerId);
+  var newP = newT && getPoke(newEntry.trainerId, newEntry.pokemonId);
+  if(!oldT || !oldP || !newT || !newP) return;
+  var newMax = hpMax(newT, newP);
+  var newCur = (newP.currentHP===null||newP.currentHP===undefined) ? newMax : newP.currentHP;
+  if(newCur<=0) return; /* não dá pra trocar por um Pokémon desmaiado */
+
+  oldEntry.revelado = false;
+  newEntry.revelado = true;
+
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  var prefix = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
+  STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(oldT.name)+' trocou '+esc(oldP.apelido||oldP.especie||'Pokémon')+' por '+esc(newP.apelido||newP.especie||'Pokémon')+'.' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+
+  arenaAdvanceTurn(oldEntry.id);
+  arenaResetActionState();
+  mutate();
+};
+/* Fuga: sem regra de sucesso/falha definida ainda -- sempre funciona,
+   tira o Pokémon da Arena e encerra o turno dele. */
+DT.arenaFlee = function(){
+  var e = findArenaEntry(SESSION.arenaAttacker);
+  if(!e) return;
+  var t = findTrainer(e.trainerId);
+  var p = t && getPoke(e.trainerId, e.pokemonId);
+  var nome = p ? (p.apelido||p.especie||'Pokémon') : '?';
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  var prefix = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
+  STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(t?t.name:'?')+') fugiu da batalha.' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+
+  var round = STATE.arena.round;
+  var wasCurrent = round && currentRoundEntryId()===e.id;
+  STATE.arena.entries = STATE.arena.entries.filter(function(x){ return x.id!==e.id; });
+  if(wasCurrent && round){
+    round.currentIdx++;
+    advanceRoundPastFainted(round);
+  }
+  arenaResetActionState();
+  mutate();
 };
 /* Movimento de campo (Stealth Rock, clima, etc.) — não tira Pokémon como
    alvo, e o motor de dano ainda não simula esse efeito (Cap. 25). Só
@@ -5349,11 +5596,8 @@ DT.resolveFieldMove = function(atkEntry, move){
   var prefix = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
   STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(attTrainer.name)+') usou '+esc(move.nome)+' — efeito de campo, ainda não simulado (Cap. 25).' });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
-  if(STATE.arena.round && currentRoundEntryId()===atkEntry.id){
-    STATE.arena.round.currentIdx++;
-    advanceRoundPastFainted(STATE.arena.round);
-  }
-  SESSION.arenaAttacker = null; SESSION.arenaMoveIdx = null; SESSION.arenaAttackTarget = null;
+  arenaAdvanceTurn(atkEntry.id);
+  arenaResetActionState();
   mutate();
 };
 /* Resolve de verdade um Movimento contra 1+ alvos (manualTargetIds, ou os
@@ -5375,7 +5619,7 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds){
 
   if(resolved.length===0){
     SESSION.error = 'Não há alvo válido pra "'+move.nome+'" agora.';
-    SESSION.arenaAttacker = null; SESSION.arenaMoveIdx = null; SESSION.arenaAttackTarget = null;
+    arenaResetActionState();
     render();
     return;
   }
@@ -5405,18 +5649,15 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds){
   STATE.arena.log.push({ ts: STATE.arena.lastRoll.ts, text: rollLogLine(STATE.arena.lastRoll) });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
 
-  /* Se é a vez desse atacante na fila de iniciativa, agir já passa a vez
-     sozinho pro próximo (pulando quem já desmaiou). Se não é a vez dele
-     (Prioridade, NPC do Mestre fora de ordem etc.), a fila não muda — só o
-     Mestre/quem estiver na vez mexe nela pelo botão "Próximo". */
-  if(STATE.arena.round && currentRoundEntryId()===atkEntry.id){
-    STATE.arena.round.currentIdx++;
-    advanceRoundPastFainted(STATE.arena.round);
-  }
+  /* arenaAdvanceTurn já aplica o dano de status do PRÓPRIO atacante (Cap.
+     20, "sempre depois que o Pokémon atingido agir") e, se é a vez dele na
+     fila de Iniciativa, passa a vez sozinho pro próximo (pulando quem já
+     desmaiou). Se não é a vez dele (Prioridade, NPC fora de ordem etc.), a
+     fila não muda — só o Mestre/quem estiver na vez mexe nela pelo
+     "Próximo" — mas o status ainda é aplicado, porque ele agiu de verdade. */
+  arenaAdvanceTurn(atkEntry.id);
 
-  SESSION.arenaAttacker = null;
-  SESSION.arenaMoveIdx = null;
-  SESSION.arenaAttackTarget = null;
+  arenaResetActionState();
   mutate();
 };
 
@@ -5441,9 +5682,8 @@ DT.arenaNextTurn = function(){
   var r = STATE.arena.round; if(!r) return;
   var cur = currentRoundEntryId();
   var canAdvance = SESSION.role==='gm' || (cur && isOwnArenaEntry(cur));
-  if(!canAdvance) return;
-  r.currentIdx++;
-  advanceRoundPastFainted(r);
+  if(!canAdvance || !cur) return;
+  arenaAdvanceTurn(cur); /* já aplica o status por turno do Pokémon que estava com a vez e passa adiante */
   mutate();
 };
 DT.arenaEndRound = function(){
@@ -5463,6 +5703,38 @@ DT.removeTrainerGM = function(id){
   var t = findTrainer(id); if(!t) return;
   STATE.trainers = STATE.trainers.filter(function(x){ return x.id!==id; });
   SESSION.confirmRemoveTrainer = null;
+  mutate();
+};
+
+/* ---- Mochila (Cap. 25: quais itens existem e o que fazem em batalha
+   ainda é regra em aberto) — só o Mestre define o que cada Treinador tem;
+   o Treinador vê e, na Arena, pode usar (Cap. 25: sem efeito mecânico
+   ainda, só consome e registra). ---- */
+DT.addItem = function(tid, nomeEl, qtyEl){
+  if(SESSION.role!=='gm') return;
+  var t = findTrainer(tid); if(!t) return;
+  var nome = (nomeEl.value||'').trim();
+  if(!nome) return;
+  var qtd = clampInt(qtyEl.value, 1, 999);
+  if(!Array.isArray(t.itens)) t.itens = [];
+  var existing = t.itens.find(function(i){ return i.nome.toLowerCase()===nome.toLowerCase(); });
+  if(existing){ existing.quantidade = clampInt(existing.quantidade+qtd, 0, 999); }
+  else { t.itens.push(newItem(nome, qtd)); }
+  nomeEl.value = ''; qtyEl.value = '1';
+  mutate();
+};
+DT.removeItem = function(tid, itemId){
+  if(SESSION.role!=='gm') return;
+  var t = findTrainer(tid); if(!t) return;
+  t.itens = (t.itens||[]).filter(function(i){ return i.id!==itemId; });
+  mutate();
+};
+DT.setItemQty = function(tid, itemId, el){
+  if(SESSION.role!=='gm') return;
+  var t = findTrainer(tid); if(!t) return;
+  var it = (t.itens||[]).find(function(i){ return i.id===itemId; });
+  if(!it) return;
+  it.quantidade = clampInt(el.value, 0, 999);
   mutate();
 };
 
@@ -5864,7 +6136,7 @@ function arenaScreen(){
   '</div></div>';
   out += arenaInitiativeHTML();
   out += arenaTeamsHTML(isGM);
-  out += arenaAttackPanelHTML();
+  out += arenaActionPanelHTML();
   out += arenaSourceHTML(isGM);
   out += arenaLogHTML();
   return out;
@@ -5943,37 +6215,90 @@ function arenaLogHTML(){
    manual, o clique passa a ser direto no slot lá em cima (só os elegíveis
    pra esse Movimento ficam clicáveis); um self/campo/área resolve na hora,
    sem esse segundo passo. */
-function arenaAttackPanelHTML(){
+function arenaActionPanelHTML(){
   if(!SESSION.arenaAttacker) return '';
   var atkEntry = findArenaEntry(SESSION.arenaAttacker);
-  if(!atkEntry){ SESSION.arenaAttacker=null; return ''; }
+  if(!atkEntry){ arenaResetActionState(); return ''; }
   var attTrainer = findTrainer(atkEntry.trainerId);
   var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
   if(!attPoke) return '';
   var name = attPoke.apelido || attPoke.especie || 'Pokémon';
-  var cancelBtn = '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelAttack()">Cancelar</button>';
+  var cancelBtn = '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelAction()">Cancelar</button>';
 
-  if(SESSION.arenaMoveIdx===null || SESSION.arenaMoveIdx===undefined){
-    var moveBtns = (attPoke.moves||[]).map(function(m, i){
-      if(!m.nome) return '';
-      var cat = moveTargetCategory(m.nome);
-      var detail = [m.tipo||'?', m.categoria||'', m.poder?('Poder '+m.poder):'', m.prioridade ? ('Prioridade '+(m.prioridade>0?'+':'')+m.prioridade) : '', 'Alvo: '+(MOVE_TARGET_LABELS[cat]||cat)].filter(Boolean).join(' · ');
-      return '<button class="btn-sm" onclick="DT.arenaPickMove('+i+')">'+esc(m.nome)+'<br><span class="muted" style="font-size:.66rem;">'+esc(detail)+'</span></button>';
-    }).join('');
+  if(SESSION.arenaAction==='menu' || !SESSION.arenaAction){
     return '<div class="card arena-attack-panel"><div class="card-body">'+
-      '<p><strong>⚔️ '+esc(name)+'</strong> vai agir — escolha o Movimento:</p>'+
-      '<div class="btn-row" style="flex-wrap:wrap;">'+(moveBtns || '<span class="muted">Esse Pokémon não tem Movimentos definidos.</span>')+'</div>'+
+      '<p>O que <strong>'+esc(name)+'</strong> vai fazer?</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap;">'+
+        '<button class="btn-sm" onclick="DT.arenaChooseAction(\'atacar\')">⚔️ Atacar</button>'+
+        '<button class="btn-sm" onclick="DT.arenaChooseAction(\'item\')">🎒 Usar Item</button>'+
+        '<button class="btn-sm" onclick="DT.arenaChooseAction(\'trocar\')">🔁 Trocar</button>'+
+        '<button class="btn-sm" onclick="DT.arenaChooseAction(\'fugir\')">🏃 Fugir</button>'+
+      '</div>'+
       cancelBtn+
     '</div></div>';
   }
 
-  var move = (attPoke.moves||[])[SESSION.arenaMoveIdx];
-  if(!move){ SESSION.arenaMoveIdx=null; return arenaAttackPanelHTML(); }
-  var category = moveTargetCategory(move.nome);
-  return '<div class="card arena-attack-panel"><div class="card-body">'+
-    '<p><strong>⚔️ '+esc(name)+'</strong> vai usar <strong>'+esc(move.nome)+'</strong> — clique no alvo ('+esc(MOVE_TARGET_LABELS[category]||'alvo')+') ali em cima.</p>'+
-    cancelBtn+
-  '</div></div>';
+  if(SESSION.arenaAction==='move'){
+    if(SESSION.arenaMoveIdx===null || SESSION.arenaMoveIdx===undefined){
+      var moveBtns = (attPoke.moves||[]).map(function(m, i){
+        if(!m.nome) return '';
+        var cat = moveTargetCategory(m.nome);
+        var detail = [m.tipo||'?', m.categoria||'', m.poder?('Poder '+m.poder):'', m.prioridade ? ('Prioridade '+(m.prioridade>0?'+':'')+m.prioridade) : '', 'Alvo: '+(MOVE_TARGET_LABELS[cat]||cat)].filter(Boolean).join(' · ');
+        return '<button class="btn-sm" onclick="DT.arenaPickMove('+i+')">'+esc(m.nome)+'<br><span class="muted" style="font-size:.66rem;">'+esc(detail)+'</span></button>';
+      }).join('');
+      return '<div class="card arena-attack-panel"><div class="card-body">'+
+        '<p><strong>⚔️ '+esc(name)+'</strong> vai atacar — escolha o Movimento:</p>'+
+        '<div class="btn-row" style="flex-wrap:wrap;">'+(moveBtns || '<span class="muted">Esse Pokémon não tem Movimentos definidos.</span>')+'</div>'+
+        cancelBtn+
+      '</div></div>';
+    }
+    var move = (attPoke.moves||[])[SESSION.arenaMoveIdx];
+    if(!move){ SESSION.arenaMoveIdx=null; return arenaActionPanelHTML(); }
+    var category = moveTargetCategory(move.nome);
+    return '<div class="card arena-attack-panel"><div class="card-body">'+
+      '<p><strong>⚔️ '+esc(name)+'</strong> vai usar <strong>'+esc(move.nome)+'</strong> — clique no alvo ('+esc(MOVE_TARGET_LABELS[category]||'alvo')+') ali em cima.</p>'+
+      cancelBtn+
+    '</div></div>';
+  }
+
+  if(SESSION.arenaAction==='item'){
+    if(SESSION.arenaItemIdx===null || SESSION.arenaItemIdx===undefined){
+      var itemBtns = (attTrainer.itens||[]).map(function(it, i){
+        if(it.quantidade<=0) return '';
+        return '<button class="btn-sm" onclick="DT.arenaPickItem('+i+')">'+esc(it.nome)+'<br><span class="muted" style="font-size:.66rem;">x'+it.quantidade+'</span></button>';
+      }).join('');
+      return '<div class="card arena-attack-panel"><div class="card-body">'+
+        '<p><strong>🎒 '+esc(name)+'</strong> vai usar um item — escolha na mochila de '+esc(attTrainer.name)+':</p>'+
+        '<div class="btn-row" style="flex-wrap:wrap;">'+(itemBtns || '<span class="muted">A mochila está vazia.</span>')+'</div>'+
+        cancelBtn+
+      '</div></div>';
+    }
+    var item = (attTrainer.itens||[])[SESSION.arenaItemIdx];
+    if(!item){ SESSION.arenaItemIdx=null; return arenaActionPanelHTML(); }
+    return '<div class="card arena-attack-panel"><div class="card-body">'+
+      '<p><strong>🎒 '+esc(name)+'</strong> vai usar <strong>'+esc(item.nome)+'</strong> — clique em quem vai receber (você mesmo ou um aliado) ali em cima.</p>'+
+      cancelBtn+
+    '</div></div>';
+  }
+
+  if(SESSION.arenaAction==='trocar'){
+    var bench = (STATE.arena.entries||[]).filter(function(x){ return x.trainerId===atkEntry.trainerId && x.id!==atkEntry.id && !x.revelado; });
+    var swapBtns = bench.map(function(x){
+      var p = getPoke(x.trainerId, x.pokemonId);
+      if(!p) return '';
+      var max = hpMax(attTrainer,p);
+      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+      if(cur<=0) return ''; /* não dá pra trocar por um Pokémon desmaiado */
+      return '<button class="btn-sm" onclick="DT.arenaSwapIn(\''+x.id+'\')">'+esc(p.apelido||p.especie||'?')+'</button>';
+    }).join('');
+    return '<div class="card arena-attack-panel"><div class="card-body">'+
+      '<p>🔁 Trocar <strong>'+esc(name)+'</strong> por qual Pokémon?</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap;">'+(swapBtns || '<span class="muted">Nenhum outro Pokémon disponível pra entrar no lugar.</span>')+'</div>'+
+      cancelBtn+
+    '</div></div>';
+  }
+
+  return '';
 }
 function arenaTeamsHTML(isGM){
   var teams = (STATE.arena && STATE.arena.teams) || [];
@@ -6028,39 +6353,59 @@ function arenaEntryHTML(e){
   var fainted = cur<=0;
   var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'');
 
-  /* Fluxo de ação: enquanto escolhe alvo (Movimento já escolhido, alvo
-     ainda não), só quem for realmente elegível pra esse Movimento fica
-     clicável — respeita a lógica dele (self/aliado/inimigo/qualquer um). */
+  /* Fluxo de ação, tudo por clique direto no card (sem botão "Usar" nem
+     "Agir" separados):
+     - Ninguém agindo ainda: clicar no seu próprio Pokémon (ou o Mestre no
+       de qualquer um) já seleciona ele pra agir — revela sozinho se
+       preciso e abre o menu Atacar/Item/Trocar/Fugir.
+     - Alguém já selecionado e esperando um alvo (Movimento ou Item
+       escolhido): só quem for realmente elegível pra aquela ação fica
+       clicável — respeita a lógica dela (self/aliado/inimigo/qualquer um),
+       incluindo o próprio ator quando ele mesmo é um alvo válido
+       (ex.: "você ou aliado"). */
   var slotClass = 'arena-slot';
   var slotClick = '';
   var targetable = false;
-  if(e.id===SESSION.arenaAttacker) slotClass += ' arena-slot-attacking';
-  else if(e.id===SESSION.arenaAttackTarget) slotClass += ' arena-slot-target-picked';
-  else if(SESSION.arenaAttacker && SESSION.arenaMoveIdx!=null && !SESSION.arenaAttackTarget){
-    var atkEntryForTarget = findArenaEntry(SESSION.arenaAttacker);
-    var attTForTarget = atkEntryForTarget && findTrainer(atkEntryForTarget.trainerId);
-    var attPForTarget = attTForTarget && getPoke(atkEntryForTarget.trainerId, atkEntryForTarget.pokemonId);
-    var mvForTarget = attPForTarget && (attPForTarget.moves||[])[SESSION.arenaMoveIdx];
-    if(atkEntryForTarget && mvForTarget){
-      var catForTarget = moveTargetCategory(mvForTarget.nome);
-      var eligibleForTarget = eligibleMoveTargets(atkEntryForTarget, catForTarget).map(function(x){ return x.id; });
-      if(eligibleForTarget.indexOf(e.id)!==-1){
-        slotClass += ' arena-slot-targetable';
-        slotClick = ' onclick="DT.arenaSelectTarget(\''+e.id+'\')"';
-        targetable = true;
+  var actingNow = SESSION.arenaAttacker;
+  var pickingTarget = actingNow && (SESSION.arenaAction==='move' || SESSION.arenaAction==='item') && !SESSION.arenaAttackTarget;
+  if(pickingTarget){
+    var atkEntryForTarget = findArenaEntry(actingNow);
+    if(atkEntryForTarget){
+      var catForTarget = null;
+      if(SESSION.arenaAction==='move'){
+        var attTForTarget = findTrainer(atkEntryForTarget.trainerId);
+        var attPForTarget = attTForTarget && getPoke(atkEntryForTarget.trainerId, atkEntryForTarget.pokemonId);
+        var mvForTarget = attPForTarget && (attPForTarget.moves||[])[SESSION.arenaMoveIdx];
+        if(mvForTarget) catForTarget = moveTargetCategory(mvForTarget.nome);
+      } else {
+        catForTarget = 'ally-or-self';
+      }
+      if(catForTarget){
+        var eligibleForTarget = eligibleMoveTargets(atkEntryForTarget, catForTarget).map(function(x){ return x.id; });
+        if(eligibleForTarget.indexOf(e.id)!==-1) targetable = true;
       }
     }
+  }
+
+  if(e.id===SESSION.arenaAttackTarget){
+    slotClass += ' arena-slot-target-picked';
+  } else if(targetable){
+    slotClass += ' arena-slot-targetable';
+    slotClick = ' onclick="DT.arenaSelectTarget(\''+e.id+'\')"';
+  } else if(e.id===actingNow){
+    slotClass += ' arena-slot-attacking';
+  } else if(!actingNow && canControl && !fainted){
+    slotClass += ' arena-slot-selectable';
+    slotClick = ' onclick="DT.arenaSelectActor(\''+e.id+'\')"';
   }
   var isTurnNow = e.id===currentRoundEntryId();
   if(isTurnNow) slotClass += ' arena-slot-turn';
 
-  /* Enquanto o card inteiro é o alvo do clique (escolhendo quem vai levar a
-     ação), some com os botões — senão o clique pode acabar caindo em cima
-     de "Usar"/"Agir" (que bloqueiam a propagação) em vez de escolher o alvo. */
-  var controls = (canControl && !targetable)
+  /* Enquanto o card inteiro é o alvo do clique (agir ou escolher alvo),
+     some com o ✕ — senão o clique podia acabar caindo nele (que bloqueia a
+     propagação) em vez de disparar a ação do card. */
+  var controls = (canControl && !targetable && actingNow!==e.id)
     ? '<div class="btn-row" style="gap:4px; margin-top:4px; justify-content:center; flex-wrap:wrap;">'+
-        '<button class="btn-sm'+(e.revelado?' btn-primary':'')+'" onclick="event.stopPropagation();DT.arenaToggleReveal(\''+e.id+'\')">'+(e.revelado?'Usado':'Usar')+'</button>'+
-        (e.revelado && !fainted ? '<button class="btn-sm" onclick="event.stopPropagation();DT.arenaStartAttack(\''+e.id+'\')">⚔️ Agir</button>' : '')+
         '<button class="btn-ghost btn-sm" onclick="event.stopPropagation();DT.arenaRemoveEntry(\''+e.id+'\')">✕</button>'+
       '</div>'
     : '';
@@ -6096,7 +6441,13 @@ function arenaTrainerSourceHTML(t){
           '<div style="font-size:.66rem; text-align:center;">'+(p.apelido?esc(p.apelido):esc(p.especie))+'</div>'+
         '</div>';
       }).join('')+'</div>';
-  return '<div class="card"><div class="card-head"><span class="index">Equipe ativa</span><h2>'+esc(t.name)+'</h2></div><div class="card-body">'+tiles+'</div></div>';
+  var itens = (t.itens||[]).filter(function(it){ return it.quantidade>0; });
+  var mochila = itens.length
+    ? '<div style="margin-top:10px;"><span class="muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.06em;">🎒 Mochila</span><div class="btn-row" style="margin-top:4px; flex-wrap:wrap;">'+
+        itens.map(function(it){ return '<span class="tag">'+esc(it.nome)+' x'+it.quantidade+'</span>'; }).join('')+
+      '</div></div>'
+    : '';
+  return '<div class="card"><div class="card-head"><span class="index">Equipe ativa</span><h2>'+esc(t.name)+'</h2></div><div class="card-body">'+tiles+mochila+'</div></div>';
 }
 
 function setupScreen(){
@@ -6292,6 +6643,11 @@ function trainerSheetHTML(t, mode){
     out += '</div>';
   }
 
+  /* Mochila (itens) — só o Mestre define o que existe; efeito de batalha
+     ainda é regra em aberto (Cap. 25), por enquanto é só um inventário. */
+  out += '<hr class="rule" style="margin:18px 0;">';
+  out += inventoryHTML(t, canGM);
+
   /* pokemon roster: 6 slots ativos + Banco (menu deslizante) */
   out += '<hr class="rule" style="margin:18px 0;">';
   out += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">'+
@@ -6324,6 +6680,34 @@ function trainerSheetHTML(t, mode){
   return out;
 }
 
+/* Mochila do Treinador: o Mestre adiciona/remove/ajusta quantidade; o
+   Treinador só vê. Quais itens existem e o que fazem em batalha ainda é
+   regra em aberto (Cap. 25) — por enquanto é só o inventário em si. */
+function inventoryHTML(t, canGM){
+  var itens = t.itens||[];
+  var out = '<h3 style="font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); margin-bottom:8px;">🎒 Mochila</h3>';
+  if(itens.length===0){
+    out += '<p class="muted" style="font-size:.82rem;">'+(canGM ? 'Nenhum item ainda — adicione abaixo.' : 'Nenhum item ainda.')+'</p>';
+  } else {
+    out += '<div class="inventory-list">'+itens.map(function(it){
+      return '<div class="inventory-row">'+
+        '<span class="inventory-name">'+esc(it.nome)+'</span>'+
+        (canGM
+          ? '<input type="number" min="0" max="999" value="'+it.quantidade+'" onchange="DT.setItemQty(\''+t.id+'\',\''+it.id+'\', this)" style="width:64px;">'+
+            '<button class="btn-ghost btn-sm" onclick="DT.removeItem(\''+t.id+'\',\''+it.id+'\')">✕</button>'
+          : '<span class="tag">x'+it.quantidade+'</span>')+
+      '</div>';
+    }).join('')+'</div>';
+  }
+  if(canGM){
+    out += '<div class="btn-row" style="margin-top:8px;">'+
+      '<input type="text" placeholder="Nome do item" id="newItemName_'+t.id+'" style="flex:1; min-width:120px;">'+
+      '<input type="number" min="1" max="999" value="1" id="newItemQty_'+t.id+'" style="width:64px;">'+
+      '<button class="btn-sm" onclick="DT.addItem(\''+t.id+'\', document.getElementById(\'newItemName_'+t.id+'\'), document.getElementById(\'newItemQty_'+t.id+'\'))">+ Adicionar</button>'+
+    '</div>';
+  }
+  return out;
+}
 /* Slot arrastável/soltável: envolve o card (ou um placeholder vazio) com a
    alça de arrastar e os atributos data-drop-* que identificam o alvo. */
 function pokeSlotHTML(t, p, idx, area, editable, mode){

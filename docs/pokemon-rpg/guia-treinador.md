@@ -64,14 +64,18 @@ Clique no método (Nível/Evo/TM/Egg) e depois escolha o Movimento no menu que a
 
 Cada Pokémon mostra automaticamente o sprite (a imagem pixelada) da espécie assim que o Mestre define ela. Sem espécie definida ainda, aparece um "❔" no lugar — e enquanto isso, o seletor de Movimentos fica bloqueado (precisa da Espécie pra saber o que ele pode aprender).
 
+## Mochila (itens)
+
+Na sua ficha, logo acima da Equipe/Banco, tem a seção **"🎒 Mochila"** — a lista de itens que você carrega (nome + quantidade). **Só o Mestre adiciona, remove ou muda a quantidade de um item** — você só vê o que tem. O efeito mecânico de cada item em batalha ainda está em aberto (Cap. 25); por enquanto usar um item na Arena só consome 1 unidade e fica registrado no Log.
+
 ## Arena (esboço — ainda em construção)
 
 O botão **"🏟️ Arena"** no topo abre um espaço à parte pra montar uma batalha. É a primeira versão, feita pra testarmos e ajustarmos — pode mudar.
 
-- Aparece **"Equipe ativa"** com os Pokémon da sua Equipe (só sprite pixelado + nome — arraste pelo **⠿**).
+- Aparece **"Equipe ativa"** com os Pokémon da sua Equipe (só sprite pixelado + nome — arraste pelo **⠿**), e logo abaixo, se você tiver algum item, sua **🎒 Mochila** (ver seção própria abaixo).
 - Arraste um deles pra dentro de um **Time** (o Mestre cria os Times). Ele continua normalmente na sua ficha — a Arena só mostra que ele está nessa batalha.
-- Enquanto ninguém apertar **"Usar"** naquele Pokémon, os outros Treinadores da mesa (menos o Mestre) veem só uma **Pokébola** no lugar dele — não sabem qual é. Só você (o dono) e o Mestre veem de verdade.
-- Assim que alguém (você ou o Mestre) clica em **"Usar"**, ele fica visível pra mesa inteira — sprite, uma **barra de PV** (verde acima de 50%, amarela entre 20% e 50%, vermelha em 20% ou menos, igual ao jogo oficial) e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito.
+- Enquanto seu Pokémon ainda não entrou em ação, os outros Treinadores da mesa (menos o Mestre) veem só uma **Pokébola** no lugar dele — não sabem qual é. Só você (o dono) e o Mestre veem de verdade.
+- Assim que você clica nele pra agir pela primeira vez (ver "Agindo" abaixo), ele **revela sozinho** — não existe mais um botão separado só pra revelar. A partir daí fica visível pra mesa inteira — sprite, uma **barra de PV** (verde acima de 50%, amarela entre 20% e 50%, vermelha em 20% ou menos, igual ao jogo oficial) e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito.
 - Não tem limite de Treinadores nem de Times — pode ser 1×1, vários contra vários, o que a mesa precisar.
 
 ### Iniciativa (quem age primeiro)
@@ -82,19 +86,25 @@ A fila é só um guia — **atacar nunca é bloqueado** por não ser sua vez (Pr
 
 ### Agindo
 
-Depois que seu Pokémon já está "Usado" (visível em campo) e não está Desmaiado, aparece um botão **"⚔️ Agir"** nele. O fluxo é:
+Não existe mais botão de "Usar" nem de "Atacar" separado — é tudo clicando **direto no card do seu Pokémon** em campo (contanto que ele não esteja Desmaiado e não seja a vez de outra ação já em andamento). O fluxo é:
 
-1. Clique em **"⚔️ Agir"** no seu Pokémon.
-2. Escolha um dos Movimentos do seu Pokémon no painel que aparece embaixo dos Times — cada um já mostra **quem pode ser alvo** dele ("Alvo: em você mesmo", "só aliado", "aliado ou inimigo" etc.), e a Prioridade, se tiver.
-3. **A lógica de cada Movimento é respeitada de verdade** — o site não deixa escolher qualquer coisa:
-   - Um Movimento **em você mesmo** (ex.: Swords Dance) resolve na hora, sem precisar clicar em ninguém.
-   - Um Movimento **de área** (ex.: Earthquake) também resolve sozinho, acertando todo mundo daquela categoria de uma vez — pode incluir seus próprios aliados junto com os inimigos, dependendo do Movimento (igual nas batalhas em dupla dos jogos oficiais).
-   - Um Movimento **de campo** (ex.: Stealth Rock) também resolve na hora, mas sem calcular dano nenhum — é uma mecânica ainda em aberto (Cap. 25), só fica registrado que foi usado.
-   - Pra qualquer outro caso (**só aliado**, **você ou aliado**, **só inimigo**, ou **aliado ou inimigo**), o site pede um clique: só quem realmente pode ser alvo daquele Movimento fica destacado e clicável na Arena — clicar em alguém fora da lista não faz nada.
-4. Quando o alvo (ou os alvos) já está definido, o sistema rola os dados sozinho e mostra tudo num **quadro de dado no centro da tela**. Primeiro o **d6** do ataque gira e assenta; se o Movimento tiver um Efeito Percentual, **depois** disso o **1d10** gira e assenta também (um de cada vez, nunca os dois juntos) — e se o ataque foi Crítico e esse primeiro 1d10 falhou, ainda rola uma **segunda tentativa** de 1d10 (Cap. 14), também na sua vez. Só depois que os dois já rolaram é que aparece o resultado completo: se foi Crítico, quanto de dano saiu, e se alguma Condição de status foi aplicada — num Movimento de área, o quadro mostra o resultado de cada alvo atingido. O quadro some sozinho depois de alguns segundos, ou clique em **"Fechar"**/fora dele pra tirar na hora.
+1. **Clique no seu Pokémon.** Se ele ainda não tinha sido revelado pra mesa, revela sozinho nesse clique (não precisa de nada separado pra isso).
+   - Se ele estiver **Confuso**, o site já rola os dois 1d6 da Confusão (Cap. 23) nessa hora, antes de qualquer outra coisa: primeiro o 1d6 pra ver se a Confusão termina (5–6 termina); se continuar, um segundo 1d6 pra ver se ele perde a ação (1–2 perde e sofre 1 PV; 3–6 age normalmente). Um aviso na tela mostra os dois resultados. Se ele perder a ação, o turno já passa sozinho e o menu nem abre.
+2. Se a ação seguir, abre um menu com quatro opções: **Atacar**, **Usar Item**, **Trocar de Pokémon**, **Fugir**.
+   - **Atacar** → escolha um dos Movimentos do seu Pokémon — cada um já mostra **quem pode ser alvo** dele ("Alvo: em você mesmo", "só aliado", "aliado ou inimigo" etc.) e a Prioridade, se tiver. A lógica de cada Movimento é respeitada de verdade — o site não deixa escolher qualquer coisa:
+     - Um Movimento **em você mesmo** (ex.: Swords Dance) resolve na hora, sem precisar clicar em ninguém.
+     - Um Movimento **de área** (ex.: Earthquake) também resolve sozinho, acertando todo mundo daquela categoria de uma vez — pode incluir seus próprios aliados junto com os inimigos, dependendo do Movimento (igual nas batalhas em dupla dos jogos oficiais).
+     - Um Movimento **de campo** (ex.: Stealth Rock) também resolve na hora, mas sem calcular dano nenhum — é uma mecânica ainda em aberto (Cap. 25), só fica registrado que foi usado.
+     - Pra qualquer outro caso (**só aliado**, **você ou aliado**, **só inimigo**, ou **aliado ou inimigo**), o site pede um clique: só quem realmente pode ser alvo daquele Movimento fica destacado e clicável na Arena — clicar em alguém fora da lista não faz nada.
+   - **Usar Item** → escolha um item da sua Mochila (só aparecem os que você ainda tem pelo menos 1) e depois em quem usar (você mesmo ou um aliado em campo). O efeito mecânico de cada item ainda está em aberto (Cap. 25) — por enquanto usar um item só consome 1 unidade dele e fica registrado no Log, sem curar PV nem mudar Condição ainda.
+   - **Trocar de Pokémon** → escolha outro Pokémon seu que já esteja nesse Time da Arena, ainda não tenha sido revelado e não esteja Desmaiado, pra entrar no lugar do atual. Consome a ação inteira (Cap. 18) — o Pokémon que entrou só age a partir do turno seguinte dele.
+   - **Fugir** → tira seu Pokémon da Arena; fica registrado no Log que ele fugiu.
+   - Cancele a qualquer momento clicando em **"Cancelar"** no menu.
+3. Quando a ação envolve dado (só no caso de **Atacar**), o sistema rola sozinho e mostra tudo num **quadro de dado no centro da tela**. Primeiro o **d6** do ataque gira e assenta; se o Movimento tiver um Efeito Percentual, **depois** disso o **1d10** gira e assenta também (um de cada vez, nunca os dois juntos) — e se o ataque foi Crítico e esse primeiro 1d10 falhou, ainda rola uma **segunda tentativa** de 1d10 (Cap. 14), também na sua vez. Só depois que os dois já rolaram é que aparece o resultado completo: se foi Crítico, quanto de dano saiu, e se alguma Condição de status foi aplicada — num Movimento de área, o quadro mostra o resultado de cada alvo atingido. O quadro some sozinho depois de alguns segundos, ou clique em **"Fechar"**/fora dele pra tirar na hora.
 
-Tudo isso segue as Regras à risca — Precisão (Cap. 10), Crítico (Cap. 11), Dano (Cap. 12), Tipos (Cap. 13), Efeito Percentual (Cap. 14) e Alvo do Movimento (Cap. 8.5) — sem precisar rolar dado físico nem fazer conta na mão. Se o efeito aplicar uma Condição de status, ela já entra na ficha do Pokémon atingido e aparece com o selo/ícone de sempre; se ele já estiver com outra Condição, o quadro avisa que o efeito bateu mas não mudou nada (regra de nunca ter duas Condições ao mesmo tempo, Cap. 20). O que a Arena **não** faz sozinha: os testes de início de turno das Condições (Paralisia travar a ação, Sono acordar, etc.) ou o dano de fim de turno de Queimadura/Veneno — isso continua sendo o Mestre quem conduz na mesa, como sempre foi.
-- Cancele a qualquer momento clicando em **"Cancelar"** no painel.
+Tudo isso segue as Regras à risca — Precisão (Cap. 10, incluindo os Movimentos 100% automáticos, que nunca erram), Crítico (Cap. 11), Dano (Cap. 12), Tipos (Cap. 13), Efeito Percentual (Cap. 14) e Alvo do Movimento (Cap. 8.5) — sem precisar rolar dado físico nem fazer conta na mão. Se o efeito aplicar uma Condição de status, ela já entra na ficha do Pokémon atingido e aparece com o selo/ícone de sempre; se ele já estiver com outra Condição, o quadro avisa que o efeito bateu mas não mudou nada (regra de nunca ter duas Condições ao mesmo tempo, Cap. 20).
+
+**Dano de fim de turno já é automático.** Assim que um Pokémon com Queimadura, Veneno ou Veneno Grave termina de agir (ataca, usa item, troca ou foge), o dano daquela Condição (Cap. 20: −1 PV Queimadura, −2 PV Veneno, crescente 1→2→3... no Veneno Grave) já é aplicado sozinho e aparece no Log — não precisa esperar o fim da rodada inteira nem o Mestre aplicar na mão. O que a Arena **não** faz sozinha: os testes de início de turno de Paralisia, Sono e Congelamento (Confusão já é automática, como descrito acima) — isso continua sendo o Mestre quem conduz na mesa, como sempre foi.
 
 ### Registro (histórico de rolagens)
 
