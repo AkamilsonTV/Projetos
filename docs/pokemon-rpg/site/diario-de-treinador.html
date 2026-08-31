@@ -20,18 +20,8 @@
     --radius-sm: 8px; --radius: 14px; --radius-lg: 18px; --radius-pill: 999px;
     --font-display: "Press Start 2P", "Roboto", "Segoe UI", system-ui, sans-serif;
   }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#181310; --surface:#221B16; --surface-2:#28201A; --surface-3:#332921;
-      --ink:#F3E9DC; --ink-dim:#B8A48C; --line:#3D3128;
-      --accent:#FF9152; --accent-ink:#241005; --accent-soft:#3C2313;
-      --accent-2:#7FA6FF; --accent-2-soft:#1C2A4A;
-      --teal:#4CC38A; --teal-soft:#123425;
-      --danger:#FF6B6B; --danger-soft:#3A1414;
-      --good:#4CC38A;
-      --shadow: 0 2px 0 rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.4);
-    }
-  }
+  /* Tema é escolha do jogador (botão ☀️/🌙 no topo), nunca segue o
+     sistema operacional — por padrão o site sempre abre claro. */
   :root[data-theme="dark"]{
     --bg:#181310; --surface:#221B16; --surface-2:#28201A; --surface-3:#332921;
     --ink:#F3E9DC; --ink-dim:#B8A48C; --line:#3D3128;
@@ -40,6 +30,7 @@
     --teal:#4CC38A; --teal-soft:#123425;
     --danger:#FF6B6B; --danger-soft:#3A1414;
     --good:#4CC38A;
+    --shadow: 0 2px 0 rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.4);
   }
 
   *{box-sizing:border-box;}
@@ -2251,6 +2242,19 @@ try{
 function persistSession(){ try{ localStorage.setItem('dt_session', JSON.stringify({role:SESSION.role, trainerId:SESSION.trainerId})); }catch(e){} }
 function clearSession(){ SESSION.role=null; SESSION.trainerId=null; SESSION.screen='home'; try{ localStorage.removeItem('dt_session'); }catch(e){} }
 
+/* =================== TEMA (escolha do jogador, não segue o sistema) ===================
+   Aplicado logo no carregamento, antes do primeiro render, pra não "piscar"
+   claro->escuro. Padrão é sempre claro até a pessoa escolher escuro. */
+function applyTheme(theme){
+  try{ document.documentElement.setAttribute('data-theme', theme); }catch(e){}
+}
+var CURRENT_THEME = 'light';
+try{
+  var savedTheme = localStorage.getItem('dt_theme');
+  if(savedTheme==='dark') CURRENT_THEME = 'dark';
+}catch(e){}
+applyTheme(CURRENT_THEME);
+
 /* =================== HELPERS =================== */
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function clampInt(n,min,max){ n=parseInt(n,10); if(isNaN(n)) n=min; return Math.max(min,Math.min(max,n)); }
@@ -2372,6 +2376,13 @@ function bootFirebase(){
 
 /* =================== AÇÕES (expostas em DT.*) =================== */
 var DT = {};
+
+DT.toggleTheme = function(){
+  CURRENT_THEME = (CURRENT_THEME==='dark') ? 'light' : 'dark';
+  applyTheme(CURRENT_THEME);
+  try{ localStorage.setItem('dt_theme', CURRENT_THEME); }catch(e){}
+  render();
+};
 
 DT.goHome = function(){ SESSION.screen='home'; SESSION.error=''; render(); };
 
@@ -2753,6 +2764,7 @@ function topbar(rightHTML){
   return '<div class="topbar">'+
     '<div class="wordmark">'+POKEBALL_SVG+'<div><h1>Diário de Treinador</h1><span class="sub">Pokémon RPG · v0.2</span></div></div>'+
     '<div class="who">'+(rightHTML||'')+
+      '<button class="btn-ghost btn-sm" onclick="DT.toggleTheme()" title="Trocar tema">'+(CURRENT_THEME==='dark' ? '☀️' : '🌙')+'</button>'+
       '<button class="btn-ghost btn-sm" onclick="DT.toggleRules()">📖 Regras</button>'+
     '</div>'+
   '</div>';
