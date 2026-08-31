@@ -255,6 +255,8 @@ Cada estágio = **+1 ou −1** no atributo (sem multiplicadores/divisões). Modi
 
 Age primeiro quem tem maior **Velocidade Efetiva**; empate → compara **Velocidade Natural**; empate de novo → cada jogador rola 1d6, maior vence (novo empate = nova rolagem, turno a turno se necessário).
 
+Na Arena do site, esse cálculo é automático: o Mestre clica "Iniciar Rodada" e o site já monta a fila (recalculando a Velocidade Efetiva de quem está em campo, incluindo o −10 de Paralisia do Cap. 20.4) e rola os empates sozinho. A fila fica visível pra mesa inteira; ela não trava quem pode atacar — é só o guia visual de quem age quando.
+
 ## Capítulo 17 — Prioridade
 
 Movimentos preservam seus valores oficiais de Prioridade (+1, +2, negativos quando aplicável).
@@ -270,6 +272,8 @@ O adversário executa seu Movimento prioritário primeiro; depois, se ainda pude
 ### 17.3 Disputa de Prioridade
 
 Compare os valores — Prioridade maior age primeiro. Em **igualdade ou quando a do jogador da vez for maior ou igual**, ele permanece agindo primeiro.
+
+A Arena do site não automatiza essa janela — é uma negociação ao vivo entre Mestre e jogadores, não uma fila fixa dá pra calcular antes de alguém escolher o Movimento. O que o site faz é mostrar a Prioridade de cada Movimento no painel de ataque, pro Mestre aplicar essa regra na hora; atacar nunca é bloqueado por "não ser a vez" de alguém — a fila de Iniciativa (Cap. 16) é só o guia visual, e avança sozinha quando quem estava na vez ataca (senão fica parada até o Mestre ou o dono do Pokémon da vez clicarem "Próximo").
 
 ## Capítulo 18 — Troca de Pokémon
 

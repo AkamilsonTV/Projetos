@@ -74,17 +74,27 @@ O botão **"🏟️ Arena"** no topo abre um espaço à parte pra montar uma bat
 - Assim que alguém (você ou o Mestre) clica em **"Usar"**, ele fica visível pra mesa inteira — sprite, uma **barra de PV** (verde acima de 50%, amarela entre 20% e 50%, vermelha em 20% ou menos, igual ao jogo oficial) e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito.
 - Não tem limite de Treinadores nem de Times — pode ser 1×1, vários contra vários, o que a mesa precisar.
 
+### Iniciativa (quem age primeiro)
+
+Um card **"🎯 Iniciativa"** aparece no topo da Arena. O Mestre calcula a fila (Cap. 16: Velocidade Efetiva, depois Natural, depois 1d6 em caso de empate) clicando em "Iniciar Rodada" — ela mostra todo mundo que já está em campo, em ordem, com quem está com a vez destacado (**▶ Turno**, também aparece como uma etiqueta no card do Pokémon lá embaixo). Um Pokémon Paralisado entra na fila com −10 de Velocidade, igual à regra.
+
+A fila é só um guia — **atacar nunca é bloqueado** por não ser sua vez (Prioridade e outras exceções continuam sendo o Mestre quem decide na mesa, Cap. 17). Mas quando o dono do Pokémon que está com a vez ataca, a fila passa pro próximo sozinha; fora isso, quem estiver com a vez (ou o Mestre) clica em **"⏭️ Próximo"** pra passar adiante manualmente.
+
 ### Atacando
 
 Depois que seu Pokémon já está "Usado" (visível em campo) e não está Desmaiado, aparece um botão **"⚔️ Atacar"** nele. O fluxo é:
 
 1. Clique em **"⚔️ Atacar"** no seu Pokémon.
 2. Clique no alvo — pode ser um adversário ou um aliado, desde que também já esteja "Usado" e vivo. É só clicar em cima do card dele ali na Arena (ele fica destacado, piscando).
-3. Escolha um dos Movimentos do seu Pokémon no painel que aparece embaixo dos Times.
-4. Pronto — o sistema rola os dados sozinho e mostra tudo num **quadro de dado no centro da tela**: o dado gira de verdade por um instante (com o 1d10 junto, quando o Movimento tiver um Efeito Percentual) antes de parar na face sorteada — depois disso aparece o resultado: se foi Crítico, quanto de dano saiu e se alguma Condição de status foi aplicada. O quadro some sozinho depois de alguns segundos, ou clique em **"Fechar"**/fora dele pra tirar na hora.
+3. Escolha um dos Movimentos do seu Pokémon no painel que aparece embaixo dos Times (a Prioridade do Movimento aparece ali também, se ele tiver uma).
+4. Pronto — o sistema rola os dados sozinho e mostra tudo num **quadro de dado no centro da tela**. Primeiro o **d6** do ataque gira e assenta; se o Movimento tiver um Efeito Percentual, **depois** disso o **1d10** gira e assenta também (um de cada vez, nunca os dois juntos) — e se o ataque foi Crítico e esse primeiro 1d10 falhou, ainda rola uma **segunda tentativa** de 1d10 (Cap. 14), também na sua vez. Só depois que os dois já rolaram é que aparece o resultado completo: se foi Crítico, quanto de dano saiu, e se alguma Condição de status foi aplicada. O quadro some sozinho depois de alguns segundos, ou clique em **"Fechar"**/fora dele pra tirar na hora.
 
-Tudo isso segue as Regras à risca — Precisão (Cap. 10), Crítico (Cap. 11), Dano (Cap. 12), Tipos (Cap. 13) e Efeito Percentual (Cap. 14) — sem precisar rolar dado físico nem fazer conta na mão. Se o efeito aplicar uma Condição de status, ela já entra na ficha do Pokémon atingido e aparece com o selo/ícone de sempre. O que a Arena **não** faz sozinha: decidir quem age primeiro (iniciativa/Prioridade), aplicar testes de início de turno (Paralisia travar a ação, Sono acordar, etc.) ou cobrar o dano de fim de turno de Queimadura/Veneno — isso continua sendo o Mestre quem conduz na mesa, como sempre foi.
+Tudo isso segue as Regras à risca — Precisão (Cap. 10), Crítico (Cap. 11), Dano (Cap. 12), Tipos (Cap. 13) e Efeito Percentual (Cap. 14) — sem precisar rolar dado físico nem fazer conta na mão. Se o efeito aplicar uma Condição de status, ela já entra na ficha do Pokémon atingido e aparece com o selo/ícone de sempre. O que a Arena **não** faz sozinha: os testes de início de turno das Condições (Paralisia travar a ação, Sono acordar, etc.) ou o dano de fim de turno de Queimadura/Veneno — isso continua sendo o Mestre quem conduz na mesa, como sempre foi.
 - Cancele a qualquer momento clicando em **"Cancelar"** no painel do ataque.
+
+### Registro (histórico de rolagens)
+
+Um card **"📜 Rolagens da Arena"** guarda uma linha por ataque já resolvido (as últimas 40), com o Movimento usado, os dados que saíram e o resultado — dá pra rolar a lista pra cima e ver o que já aconteceu na batalha. A rolagem mais nova só aparece ali depois que o dado dela termina de girar no quadro central (não estraga a surpresa).
 
 ## Tema claro/escuro
 

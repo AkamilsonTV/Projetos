@@ -233,6 +233,8 @@
   .arena-slot-targetable{ cursor:pointer; border-radius:var(--radius-sm); outline:2px dashed var(--accent); outline-offset:3px; animation:arena-target-pulse 1.1s ease-in-out infinite; }
   .arena-slot-attacking{ border-radius:var(--radius-sm); outline:2px solid var(--accent); outline-offset:3px; }
   .arena-slot-target-picked{ border-radius:var(--radius-sm); outline:2px solid var(--danger); outline-offset:3px; }
+  .arena-slot-turn{ position:relative; }
+  .arena-turn-badge{ position:absolute; top:-8px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--accent-ink); font-size:.6rem; font-weight:700; padding:1px 6px; border-radius:var(--radius-pill); white-space:nowrap; }
   @keyframes arena-target-pulse{ 0%,100%{ outline-color:var(--accent); } 50%{ outline-color:transparent; } }
   .arena-attack-panel{ margin-top:14px; }
   .arena-attack-panel .btn-row{ margin-top:8px; margin-bottom:10px; }
@@ -244,14 +246,25 @@
   .dice-d6{ font-size:4.4rem; line-height:1; margin-bottom:6px; }
   .dice-d6.dice-rolling{ display:inline-block; animation:dice-spin .32s linear infinite; }
   .dice-d10{ font-size:1.3rem; font-weight:700; margin-bottom:10px; color:var(--accent); }
-  .dice-d10.dice-rolling{ animation:dice-flicker .14s linear infinite; }
+  .dice-d10-val.dice-rolling{ display:inline-block; animation:dice-flicker .14s linear infinite; }
   .dice-d10-label{ font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); vertical-align:middle; margin-right:4px; }
+  .dice-d10-retry{ display:block; font-size:.66rem; font-weight:600; color:var(--ink-dim); text-transform:none; letter-spacing:0; margin-top:2px; }
   .dice-summary{ font-size:.86rem; line-height:1.5; margin-bottom:14px; }
   .dice-summary-rolling{ font-style:italic; color:var(--ink-dim); }
   @keyframes dice-fade-in{ from{ opacity:0; } to{ opacity:1; } }
   @keyframes dice-pop-in{ 0%{ transform:scale(.5) rotate(-8deg); opacity:0; } 70%{ transform:scale(1.08) rotate(3deg); opacity:1; } 100%{ transform:scale(1) rotate(0); } }
   @keyframes dice-spin{ 0%{ transform:rotate(0deg) scale(1); } 50%{ transform:rotate(180deg) scale(1.18); } 100%{ transform:rotate(360deg) scale(1); } }
   @keyframes dice-flicker{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+
+  /* ---- Iniciativa/Turno (Cap. 16) ---- */
+  .arena-initiative-list{ margin:0; padding-left:0; list-style:none; display:flex; flex-direction:column; gap:4px; }
+  .arena-initiative-list li{ padding:6px 10px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface-2); font-size:.82rem; }
+  .arena-initiative-current{ border-color:var(--accent) !important; background:var(--accent-soft) !important; font-weight:700; }
+  .arena-initiative-fainted{ opacity:.55; text-decoration:line-through; }
+
+  /* ---- Registro/log de rolagens da Arena ---- */
+  .arena-log{ max-height:260px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+  .arena-log-line{ font-size:.76rem; line-height:1.4; padding:6px 8px; border-radius:var(--radius-sm); background:var(--surface-2); border:1px solid var(--line); }
 
   .hp-row{ display:flex; align-items:center; gap:10px; }
   .hp-row input[type=number]{ width:70px; }
@@ -3503,6 +3516,8 @@ function migrateState(){
   if(!Array.isArray(STATE.arena.teams)) STATE.arena.teams = [];
   if(!Array.isArray(STATE.arena.entries)) STATE.arena.entries = [];
   if(STATE.arena.lastRoll===undefined) STATE.arena.lastRoll = null;
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  if(STATE.arena.round===undefined) STATE.arena.round = null;
 }
 /* Fichas salvas antes do método Normal/TM/HM existir ganham 'normal' por
    padrão (sem mudar o Movimento que já estava escolhido). */
@@ -3661,6 +3676,98 @@ function applyAttackResult(defTrainer, defPoke, result){
     }
   }
   return info;
+}
+
+/* =================== INICIATIVA / TURNO (Cap. 16) ===================
+   Ordem de quem age primeiro numa rodada: Velocidade Efetiva (maior primeiro)
+   -> empate compara Velocidade Natural -> empate de novo, cada um rola 1d6 e
+   quem tirar mais vence (empate no dado = rola de novo só quem empatou).
+   Paralisia aplica -10 na Velocidade só pra esse cálculo (Cap. 20.4) — não
+   mexe no atributo salvo na ficha, só no efetivo usado aqui. Pokémon
+   desmaiado ou ainda não revelado nem entra na lista. A Prioridade dos
+   Movimentos (Cap. 17) fica de fora dessa fila pré-calculada de propósito:
+   a regra descreve uma negociação ao vivo entre Mestre e jogadores ("o
+   jogador fora da vez declara..."), não uma ordem fixa dá pra prever antes
+   de alguém escolher o Movimento — por isso a Prioridade de cada Movimento
+   aparece no painel de ataque, pro Mestre aplicar a regra na hora, e o
+   ataque nunca é bloqueado por não ser "a vez" de alguém (mesma filosofia
+   de confiança do resto do site: o Mestre supervisiona, o site não trava).
+   */
+function velocidadeEfetivaParaIniciativa(trainer, poke){
+  var v = effectiveStat(trainer, poke, 'spe');
+  if(poke.status==='paralisia') v = Math.max(0, v-10);
+  return v;
+}
+/* Resolve empates de um grupo rolando 1d6 pra cada um; quem continuar
+   empatado dentro do grupo rola de novo, só esses (recursivo). */
+function resolveInitiativeTies(group){
+  if(group.length<=1) return group;
+  group.forEach(function(r){ r.tiebreak = rollDie(6); });
+  group.sort(function(a,b){ return b.tiebreak - a.tiebreak; });
+  var out = [];
+  var i = 0;
+  while(i<group.length){
+    var j = i+1;
+    while(j<group.length && group[j].tiebreak===group[i].tiebreak) j++;
+    var sub = group.slice(i,j);
+    out = out.concat(sub.length>1 ? resolveInitiativeTies(sub) : sub);
+    i = j;
+  }
+  return out;
+}
+/* Devolve a fila de iniciativa (array de {entryId, velEfetiva, velNatural,
+   tiebreak}) com todos os Pokémon revelados e vivos da Arena, já ordenada. */
+function computeInitiativeOrder(){
+  var rows = (STATE.arena.entries||[]).filter(function(e){
+    if(!e.revelado) return false;
+    var t = findTrainer(e.trainerId);
+    var p = t && getPoke(e.trainerId, e.pokemonId);
+    if(!t || !p) return false;
+    var max = hpMax(t,p);
+    var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+    return cur>0;
+  }).map(function(e){
+    var t = findTrainer(e.trainerId), p = getPoke(e.trainerId, e.pokemonId);
+    return { entryId: e.id, velEfetiva: velocidadeEfetivaParaIniciativa(t,p), velNatural: (p.natural.spe||0), tiebreak: 0 };
+  });
+  rows.sort(function(a,b){
+    if(b.velEfetiva!==a.velEfetiva) return b.velEfetiva-a.velEfetiva;
+    return b.velNatural-a.velNatural;
+  });
+  var i = 0;
+  while(i<rows.length){
+    var j = i+1;
+    while(j<rows.length && rows[j].velEfetiva===rows[i].velEfetiva && rows[j].velNatural===rows[i].velNatural) j++;
+    if(j-i>1){
+      var resolved = resolveInitiativeTies(rows.slice(i,j));
+      for(var k=0;k<resolved.length;k++) rows[i+k] = resolved[k];
+    }
+    i = j;
+  }
+  return rows;
+}
+/* Pula entradas que já saíram da rodada (desmaiaram, ou o Mestre removeu da
+   Arena) enquanto esperavam a vez, sem travar o avanço do turno nelas. */
+function advanceRoundPastFainted(r){
+  while(r.currentIdx < r.order.length){
+    var e = (STATE.arena.entries||[]).find(function(x){ return x.id===r.order[r.currentIdx]; });
+    if(!e){ r.currentIdx++; continue; }
+    var t = findTrainer(e.trainerId), p = t && getPoke(e.trainerId, e.pokemonId);
+    if(!t || !p){ r.currentIdx++; continue; }
+    var max = hpMax(t,p);
+    var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+    if(cur<=0){ r.currentIdx++; continue; }
+    break;
+  }
+}
+function currentRoundEntryId(){
+  var r = STATE.arena.round;
+  if(!r || r.currentIdx>=r.order.length) return null;
+  return r.order[r.currentIdx];
+}
+function isOwnArenaEntry(entryId){
+  var e = (STATE.arena.entries||[]).find(function(x){ return x.id===entryId; });
+  return !!(e && SESSION.role==='player' && SESSION.trainerId===e.trainerId);
 }
 
 /* =================== PERSISTÊNCIA (Firestore, em tempo real) =================== */
@@ -4201,6 +4308,7 @@ DT.arenaAttack = function(moveIdx){
 
   STATE.arena.lastRoll = {
     ts: Date.now(),
+    round: STATE.arena.round ? STATE.arena.round.number : null,
     atacante: attPoke.apelido || attPoke.especie || 'Pokémon',
     atacanteTrainer: attTrainer.name,
     alvo: defPoke.apelido || defPoke.especie || 'Pokémon',
@@ -4211,8 +4319,59 @@ DT.arenaAttack = function(moveIdx){
     efeito: result.efeito || null,
     fainted: info.fainted, statusApplied: info.statusApplied
   };
+
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  STATE.arena.log.push({ ts: STATE.arena.lastRoll.ts, text: rollLogLine(STATE.arena.lastRoll) });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+
+  /* Se é a vez desse atacante na fila de iniciativa, o ataque já passa a
+     vez sozinho pro próximo (pulando quem já desmaiou). Se não é a vez dele
+     (Prioridade, NPC do Mestre fora de ordem etc.), a fila não muda — só o
+     Mestre/quem estiver na vez mexe nela pelo botão "Próximo". */
+  if(STATE.arena.round && currentRoundEntryId()===atkEntry.id){
+    STATE.arena.round.currentIdx++;
+    advanceRoundPastFainted(STATE.arena.round);
+  }
+
   SESSION.arenaAttacker = null;
   SESSION.arenaAttackTarget = null;
+  mutate();
+};
+
+/* ---- Turno/Iniciativa (Cap. 16): só o Mestre inicia ou recalcula a fila
+   (mesmo padrão de "quem administra a Arena" que os Times já seguem) —
+   "Próximo" já pode ser clicado por quem está com a vez (Mestre ou o dono
+   do Pokémon atual), sem precisar do Mestre a cada turno. ---- */
+DT.arenaStartRound = function(){
+  if(SESSION.role!=='gm') return;
+  var order = computeInitiativeOrder();
+  var round = {
+    number: (STATE.arena.round ? STATE.arena.round.number+1 : 1),
+    order: order.map(function(r){ return r.entryId; }),
+    meta: order,
+    currentIdx: 0
+  };
+  advanceRoundPastFainted(round);
+  STATE.arena.round = round;
+  mutate();
+};
+DT.arenaNextTurn = function(){
+  var r = STATE.arena.round; if(!r) return;
+  var cur = currentRoundEntryId();
+  var canAdvance = SESSION.role==='gm' || (cur && isOwnArenaEntry(cur));
+  if(!canAdvance) return;
+  r.currentIdx++;
+  advanceRoundPastFainted(r);
+  mutate();
+};
+DT.arenaEndRound = function(){
+  if(SESSION.role!=='gm') return;
+  STATE.arena.round = null;
+  mutate();
+};
+DT.arenaClearLog = function(){
+  if(SESSION.role!=='gm') return;
+  STATE.arena.log = [];
   mutate();
 };
 
@@ -4235,33 +4394,65 @@ window.DT = DT;
    abrir o overlay pra ESSE aparelho, com um timer local pra fechar sozinho. */
 var LAST_SHOWN_ROLL_TS = 0;
 var rollHideTimer = null;
+/* Só mostra/anima uma rolagem se ela aconteceu "agora" — sem isso, toda vez
+   que a página é recarregada (ou reaberta depois de um tempo), o primeiro
+   snapshot do Firebase traz o STATE.arena.lastRoll de QUALQUER ataque
+   antigo já salvo, e como LAST_SHOWN_ROLL_TS começa zerado, o overlay
+   disparava de novo mostrando um dado "rolando" pra um ataque que já
+   aconteceu há muito tempo. Uma rolagem só é considerada nova/fresca se
+   tiver acontecido há menos de DICE_FRESH_MS. */
+var DICE_FRESH_MS = 8000;
 /* ---- Animação do dado "rolando" antes de mostrar o resultado ----
    O overlay mora na SUA PRÓPRIA div (#diceOverlay, fora de #app) só por
    isso: girar o dado precisa re-desenhar bem rápido (a cada ~90ms), e se
    isso passasse pelo render() normal, a ficha inteira (sprites e tudo mais
    dentro de #app) seria reconstruída junto a cada quadro — pisca a tela
    toda por nada. Assim só a divzinha do dado se repinta.
-   A animação em si é dirigida pelo tempo: enquanto
-   Date.now()-DICE_ROLL_ANIM.start < duration, cada repintura sorteia uma
-   face nova pro dado — dá o efeito de "rolando" e continua correta mesmo
-   se um snapshot do Firebase (que troca o objeto STATE inteiro) chegar no
-   meio do caminho, porque compara pelo "ts" da rolagem, não pela referência
-   do objeto. */
-var DICE_ANIM_MS = 650;
-var DICE_ROLL_ANIM = null; /* {ts, start, duration} */
+   Quando o ataque tem Efeito Percentual, o dado do ataque (1d6) e o(s) do
+   efeito (1d10, e um segundo 1d10 se veio Crítico e o primeiro falhou) não
+   giram juntos — cada um roda a vez dele, um de cada vez, e só no fim mostra
+   o resultado dos dois. DICE_ROLL_ANIM guarda a fila de estágios ('d6',
+   'd10a', opcionalmente 'd10b') e o índice do estágio atual; dentro de cada
+   estágio, cada repintura (a cada ~90ms) sorteia uma face nova só pra dar o
+   efeito visual de "girando" — o valor de verdade já foi decidido lá no
+   resolveAttack(), aqui é só a encenação. Comparado pelo "ts" da rolagem
+   (não pela referência do objeto), então continua correto mesmo se um
+   snapshot do Firebase trocar STATE.arena.lastRoll por um objeto novo no
+   meio da animação. */
+var DICE_STAGE_MS = 500;
+var DICE_ROLL_ANIM = null; /* {ts, stages:[...], stageIdx, stageStart} */
 var diceAnimTimer = null;
 function renderDiceOverlay(){
   var el = document.getElementById('diceOverlay');
   if(el) el.innerHTML = diceOverlayHTML();
 }
+function diceStagesFor(lr){
+  var stages = ['d6'];
+  if(lr.efeito){
+    stages.push('d10a');
+    if(lr.efeito.d10b!==null && lr.efeito.d10b!==undefined) stages.push('d10b');
+  }
+  return stages;
+}
 function startDiceRollAnimation(lr){
-  DICE_ROLL_ANIM = { ts: lr.ts, start: Date.now(), duration: DICE_ANIM_MS };
+  var stages = diceStagesFor(lr);
+  DICE_ROLL_ANIM = { ts: lr.ts, stages: stages, stageIdx: 0, stageStart: Date.now() };
   if(diceAnimTimer) clearInterval(diceAnimTimer);
   diceAnimTimer = setInterval(function(){
-    if(!DICE_ROLL_ANIM || Date.now()-DICE_ROLL_ANIM.start >= DICE_ROLL_ANIM.duration){
-      clearInterval(diceAnimTimer); diceAnimTimer = null; DICE_ROLL_ANIM = null;
-      renderDiceOverlay();
-      return;
+    if(!DICE_ROLL_ANIM){ clearInterval(diceAnimTimer); diceAnimTimer = null; return; }
+    if(Date.now()-DICE_ROLL_ANIM.stageStart >= DICE_STAGE_MS){
+      DICE_ROLL_ANIM.stageIdx++;
+      if(DICE_ROLL_ANIM.stageIdx>=DICE_ROLL_ANIM.stages.length){
+        clearInterval(diceAnimTimer); diceAnimTimer = null;
+        DICE_ROLL_ANIM = null;
+        /* render() completo (não só o overlay) só nesse instante final — é o
+           que revela a rolagem no Registro (arenaLogHTML esconde a entrada
+           mais nova enquanto a animação dela ainda roda, senão o resultado
+           "vazava" no Registro antes do dado terminar de rolar na tela). */
+        render();
+        return;
+      }
+      DICE_ROLL_ANIM.stageStart = Date.now();
     }
     renderDiceOverlay();
   }, 90);
@@ -4270,10 +4461,13 @@ function checkArenaRoll(){
   var lr = STATE.arena && STATE.arena.lastRoll;
   if(lr && lr.ts && lr.ts !== LAST_SHOWN_ROLL_TS){
     LAST_SHOWN_ROLL_TS = lr.ts;
+    var isFresh = (Date.now()-lr.ts) < DICE_FRESH_MS;
+    if(!isFresh) return; /* rolagem antiga (ex.: acabou de carregar a página) -- não reabre o overlay */
     SESSION.showRollOverlay = true;
     startDiceRollAnimation(lr);
+    var totalAnimMs = diceStagesFor(lr).length * DICE_STAGE_MS;
     if(rollHideTimer) clearTimeout(rollHideTimer);
-    rollHideTimer = setTimeout(function(){ SESSION.showRollOverlay = false; rollHideTimer = null; renderDiceOverlay(); }, 3600);
+    rollHideTimer = setTimeout(function(){ SESSION.showRollOverlay = false; rollHideTimer = null; renderDiceOverlay(); }, totalAnimMs+3200);
   }
 }
 function render(){
@@ -4336,41 +4530,95 @@ function wrap(bodyHTML, rightHTML){
    quando um ataque é resolvido na Arena (STATE.arena.lastRoll), não só pra
    quem está com a aba Arena aberta — é o "dado rolando" da mesa toda. ---- */
 var DIE_FACES = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
+function ailmentLabel(ailment){
+  return ailment==='confuso' ? 'Confuso' : (STATUS_LABELS[ailment]||ailment);
+}
+/* Linhas do resultado final, compartilhadas entre o overlay (assentado) e
+   qualquer outro lugar que precise descrever uma rolagem em texto. */
+function rollSummaryLines(lr){
+  var lines = [];
+  lines.push('<strong>'+esc(lr.atacante)+'</strong> ('+esc(lr.atacanteTrainer)+') usou <strong>'+esc(lr.move)+'</strong> em <strong>'+esc(lr.alvo)+'</strong> ('+esc(lr.alvoTrainer)+')');
+  if(lr.immune){
+    lines.push('Sem efeito — imune a esse Tipo.');
+  } else if(!lr.hit){
+    lines.push('Errou'+(lr.falhaNatural?' — Falha Natural!':'')+'.');
+  } else {
+    lines.push(lr.dano ? ('Dano: <strong>'+lr.dano+'</strong>'+(lr.crit?' · Crítico!':'')) : (lr.crit?'Crítico!':'Acertou.'));
+    if(lr.fainted) lines.push('😵 Desmaiou!');
+  }
+  if(lr.efeito){
+    lines.push(lr.efeito.sucesso
+      ? ('Efeito aplicado: '+(STATUS_ICONS[lr.efeito.ailment]||'💫')+' '+esc(ailmentLabel(lr.efeito.ailment)))
+      : 'Efeito não aplicado.');
+  }
+  return lines;
+}
+/* Uma linha só, densa, pro registro/log da Arena (não precisa ser bonita,
+   só clara e curta o bastante pra caber várias na tela). */
+function rollLogLine(lr){
+  var parts = [];
+  if(lr.round) parts.push('Rodada '+lr.round);
+  parts.push(esc(lr.atacante)+' ('+esc(lr.atacanteTrainer)+') usou '+esc(lr.move)+' em '+esc(lr.alvo)+' ('+esc(lr.alvoTrainer)+')');
+  parts.push('d6: '+lr.d6+(lr.crit?' · Crítico':'')+(lr.falhaNatural?' · Falha Natural':''));
+  if(lr.immune) parts.push('imune');
+  else if(!lr.hit) parts.push('errou');
+  else if(lr.dano) parts.push('dano '+lr.dano);
+  if(lr.efeito){
+    parts.push('1d10: '+lr.efeito.d10a+(lr.efeito.d10b?(' → '+lr.efeito.d10b):'')+
+      (lr.efeito.sucesso ? (' — aplicou '+esc(ailmentLabel(lr.efeito.ailment))) : ' — sem efeito'));
+  }
+  if(lr.fainted) parts.push('😵 desmaiou');
+  return parts.join(' · ');
+}
 function diceOverlayHTML(){
   if(!SESSION.showRollOverlay) return '';
   var lr = STATE.arena && STATE.arena.lastRoll;
   if(!lr) return '';
-  var rolling = !!(DICE_ROLL_ANIM && DICE_ROLL_ANIM.ts===lr.ts && (Date.now()-DICE_ROLL_ANIM.start) < DICE_ROLL_ANIM.duration);
+  var anim = (DICE_ROLL_ANIM && DICE_ROLL_ANIM.ts===lr.ts) ? DICE_ROLL_ANIM : null;
+  var curStage = anim ? anim.stages[anim.stageIdx] : null; /* 'd6' | 'd10a' | 'd10b' | null (já assentou) */
+  /* Quais estágios EXISTEM pra essa rolagem (independe de estar animando ou
+     não — vem só de lr.efeito). Usar anim.stages aqui seria um bug: quando
+     a animação já terminou (anim===null), "sempre 'done'" faria o código
+     tentar mostrar um 2º d10 que nunca existiu (lr.efeito.d10b null) quando
+     não houve Crítico com segunda tentativa. */
+  var realStages = diceStagesFor(lr);
+  function stageStatus(name){
+    var idx = realStages.indexOf(name);
+    if(idx===-1) return 'n/a';
+    if(!anim) return 'done';
+    if(idx<anim.stageIdx) return 'done';
+    if(idx===anim.stageIdx) return 'rolling';
+    return 'pending';
+  }
 
-  var d6Face = rolling ? rollDie(6) : lr.d6;
-  var d6HTML = '<div class="dice-d6'+(rolling?' dice-rolling':'')+'">'+(DIE_FACES[d6Face]||d6Face)+'</div>';
+  var d6Status = stageStatus('d6');
+  var d6Face = d6Status==='rolling' ? rollDie(6) : lr.d6;
+  var d6HTML = '<div class="dice-d6'+(d6Status==='rolling'?' dice-rolling':'')+'">'+(DIE_FACES[d6Face]||d6Face)+'</div>';
 
   var d10Line = '';
   if(lr.efeito){
-    var d10Show = rolling ? rollDie(10) : lr.efeito.d10a;
-    d10Line = '<div class="dice-d10'+(rolling?' dice-rolling':'')+'"><span class="dice-d10-label">1d10</span> '+d10Show+(!rolling && lr.efeito.d10b ? (' → '+lr.efeito.d10b) : '')+'</div>';
+    var st1 = stageStatus('d10a');
+    var st2 = stageStatus('d10b');
+    var d10Parts = [];
+    if(st1==='rolling') d10Parts.push('<span class="dice-d10-val dice-rolling">'+rollDie(10)+'</span>');
+    else if(st1==='done') d10Parts.push('<span class="dice-d10-val">'+lr.efeito.d10a+'</span>');
+    if(st2==='rolling') d10Parts.push('<span class="dice-d10-val dice-rolling">'+rollDie(10)+'</span>');
+    else if(st2==='done') d10Parts.push('<span class="dice-d10-val">'+lr.efeito.d10b+'</span>');
+    if(d10Parts.length){
+      d10Line = '<div class="dice-d10"><span class="dice-d10-label">1d10</span> '+d10Parts.join(' → ')+
+        (st2==='rolling' ? ' <span class="dice-d10-retry">(2ª tentativa — Crítico)</span>' : '')+'</div>';
+    }
   }
 
   var summaryHTML;
-  if(rolling){
-    summaryHTML = '<div class="dice-summary dice-summary-rolling">🎲 Rolando os dados…</div>';
+  if(anim){
+    var stageMsg = curStage==='d6' ? '🎲 Rolando o d6…'
+      : curStage==='d10a' ? '🎲 Rolando o 1d10 (efeito)…'
+      : curStage==='d10b' ? '🎲 O ataque foi Crítico — rolando a 2ª tentativa do 1d10…'
+      : '🎲 Rolando os dados…';
+    summaryHTML = '<div class="dice-summary dice-summary-rolling">'+stageMsg+'</div>';
   } else {
-    var lines = [];
-    lines.push('<strong>'+esc(lr.atacante)+'</strong> ('+esc(lr.atacanteTrainer)+') usou <strong>'+esc(lr.move)+'</strong> em <strong>'+esc(lr.alvo)+'</strong> ('+esc(lr.alvoTrainer)+')');
-    if(lr.immune){
-      lines.push('Sem efeito — imune a esse Tipo.');
-    } else if(!lr.hit){
-      lines.push('Errou'+(lr.falhaNatural?' — Falha Natural!':'')+'.');
-    } else {
-      lines.push(lr.dano ? ('Dano: <strong>'+lr.dano+'</strong>'+(lr.crit?' · Crítico!':'')) : (lr.crit?'Crítico!':'Acertou.'));
-      if(lr.fainted) lines.push('😵 Desmaiou!');
-    }
-    if(lr.efeito){
-      lines.push(lr.efeito.sucesso
-        ? ('Efeito aplicado: '+(STATUS_ICONS[lr.efeito.ailment]||'💫')+' '+esc(lr.efeito.ailment==='confuso' ? 'Confuso' : (STATUS_LABELS[lr.efeito.ailment]||lr.efeito.ailment)))
-        : 'Efeito não aplicado.');
-    }
-    summaryHTML = '<div class="dice-summary">'+lines.join('<br>')+'</div>';
+    summaryHTML = '<div class="dice-summary">'+rollSummaryLines(lr).join('<br>')+'</div>';
   }
 
   return '<div class="dice-overlay" onclick="DT.dismissRoll()">'+
@@ -4378,7 +4626,7 @@ function diceOverlayHTML(){
       d6HTML+
       d10Line+
       summaryHTML+
-      (!rolling ? '<button class="btn-sm" onclick="DT.dismissRoll()">Fechar</button>' : '')+
+      (!anim ? '<button class="btn-sm" onclick="DT.dismissRoll()">Fechar</button>' : '')+
     '</div>'+
   '</div>';
 }
@@ -4479,9 +4727,79 @@ function arenaScreen(){
   out += '<div class="card"><div class="card-head"><span class="index">Esboço · v1</span><h2>🏟️ Arena</h2></div><div class="card-body">'+
     '<p class="muted" style="font-size:.82rem;">Arraste um Pokémon (pelo ⠿) da Equipe ativa pra dentro de um Time. Só o dono do Pokémon e o Mestre veem quem é, antes de "Usar" — os outros veem uma Pokébola no lugar até ele entrar em ação. Isso é um primeiro rascunho — me conta o que ajustar.</p>'+
   '</div></div>';
+  out += arenaInitiativeHTML();
   out += arenaTeamsHTML(isGM);
   out += arenaAttackPanelHTML();
   out += arenaSourceHTML(isGM);
+  out += arenaLogHTML();
+  return out;
+}
+/* Fila de iniciativa (Cap. 16): quem age primeiro numa rodada, por
+   Velocidade Efetiva -> Natural -> 1d6 em caso de empate. Só o Mestre
+   inicia/recalcula; "Próximo" já pode ser clicado por quem estiver com a
+   vez (Mestre ou o dono do Pokémon atual), sem depender do Mestre a cada
+   turno. */
+function arenaInitiativeHTML(){
+  var isGM = SESSION.role==='gm';
+  var r = STATE.arena.round;
+  var out = '<div class="card"><div class="card-head"><span class="index">Cap. 16</span><h2>🎯 Iniciativa</h2>'+
+    (isGM ? '<button class="btn-sm" onclick="DT.arenaStartRound()">'+(r?'🔁 Recalcular':'▶️ Iniciar Rodada')+'</button>' : '')+
+  '</div><div class="card-body">';
+  if(!r){
+    out += '<p class="muted">Nenhuma rodada em andamento. '+(isGM
+      ? 'Clique em "Iniciar Rodada" pra calcular quem age primeiro (Velocidade Efetiva, depois Natural, depois 1d6 em caso de empate) entre quem já está em campo.'
+      : 'Aguarde o Mestre iniciar a rodada.')+'</p>';
+  } else if(r.order.length===0){
+    out += '<p class="muted">Ninguém em campo pra calcular iniciativa ainda — use "Usar" nos Pokémon primeiro.</p>';
+  } else {
+    out += '<p class="muted" style="font-size:.78rem; margin-bottom:8px;">Rodada '+r.number+'</p>';
+    out += '<ol class="arena-initiative-list">'+r.order.map(function(entryId, idx){
+      var e = (STATE.arena.entries||[]).find(function(x){ return x.id===entryId; });
+      if(!e) return '';
+      var t = findTrainer(e.trainerId);
+      var p = t && getPoke(e.trainerId, e.pokemonId);
+      if(!t || !p) return '';
+      var meta = r.meta[idx];
+      var max = hpMax(t,p);
+      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+      var fainted = cur<=0;
+      var isCurrent = idx===r.currentIdx;
+      var name = p.apelido||p.especie||'?';
+      return '<li class="'+(isCurrent?'arena-initiative-current ':'')+(fainted?'arena-initiative-fainted':'')+'">'+
+        (isCurrent?'▶️ ':'')+esc(name)+' <span class="muted">('+esc(t.name)+')</span> — Vel. '+(meta?meta.velEfetiva:'?')+
+        (fainted?' <span class="badge status-bad">Desmaiado</span>':'')+
+      '</li>';
+    }).join('')+'</ol>';
+    var curId = currentRoundEntryId();
+    if(!curId){
+      out += '<p class="muted" style="margin-top:8px;">Todo mundo já agiu nessa rodada. '+(isGM?'Clique em "Recalcular" pra abrir a próxima.':'Aguarde o Mestre abrir a próxima rodada.')+'</p>';
+    } else if(isGM || isOwnArenaEntry(curId)){
+      out += '<div class="btn-row" style="margin-top:8px;"><button class="btn-sm" onclick="DT.arenaNextTurn()">⏭️ Próximo</button>'+
+        (isGM ? ' <button class="btn-ghost btn-sm" onclick="DT.arenaEndRound()">Encerrar</button>' : '')+'</div>';
+    }
+  }
+  out += '</div></div>';
+  return out;
+}
+/* Registro corrido das rolagens já feitas na Arena — fica visível pra todo
+   mundo (só entra ali um ataque entre dois Pokémon já revelados, então não
+   vaza nada que já não estivesse público no overlay). */
+function arenaLogHTML(){
+  var log = STATE.arena.log || [];
+  /* Enquanto o dado daquela rolagem ainda está "rolando" no overlay, some
+     com a entrada mais nova do Registro — senão o resultado aparecia ali
+     antes de terminar a encenação (o cálculo de verdade já aconteceu no
+     clique, só a animação é que é progressiva). */
+  if(DICE_ROLL_ANIM && log.length>0 && log[log.length-1].ts===DICE_ROLL_ANIM.ts) log = log.slice(0,-1);
+  if(log.length===0) return '';
+  var isGM = SESSION.role==='gm';
+  var out = '<div class="card"><div class="card-head"><span class="index">Histórico</span><h2>📜 Rolagens da Arena</h2>'+
+    (isGM ? '<button class="btn-ghost btn-sm" onclick="DT.arenaClearLog()">Limpar</button>' : '')+
+  '</div><div class="card-body">';
+  out += '<div class="arena-log">'+log.slice().reverse().map(function(entry){
+    return '<div class="arena-log-line">'+entry.text+'</div>';
+  }).join('')+'</div>';
+  out += '</div></div>';
   return out;
 }
 /* Painel do ataque em andamento: some se ninguém estiver atacando; enquanto
@@ -4512,7 +4830,7 @@ function arenaAttackPanelHTML(){
   var defName = defPoke.apelido || defPoke.especie || 'Pokémon';
   var moveBtns = (attPoke.moves||[]).map(function(m, i){
     if(!m.nome) return '';
-    var detail = [m.tipo||'?', m.categoria||'', m.poder?('Poder '+m.poder):''].filter(Boolean).join(' · ');
+    var detail = [m.tipo||'?', m.categoria||'', m.poder?('Poder '+m.poder):'', m.prioridade ? ('Prioridade '+(m.prioridade>0?'+':'')+m.prioridade) : ''].filter(Boolean).join(' · ');
     return '<button class="btn-sm" onclick="DT.arenaAttack('+i+')">'+esc(m.nome)+'<br><span class="muted" style="font-size:.66rem;">'+esc(detail)+'</span></button>';
   }).join('');
 
@@ -4588,6 +4906,8 @@ function arenaEntryHTML(e){
     slotClick = ' onclick="DT.arenaSelectTarget(\''+e.id+'\')"';
     targetable = true;
   }
+  var isTurnNow = e.id===currentRoundEntryId();
+  if(isTurnNow) slotClass += ' arena-slot-turn';
 
   /* Enquanto o card inteiro é o alvo do clique (escolhendo quem vai levar o
      ataque), some com os botões — senão o clique pode acabar caindo em cima
@@ -4601,6 +4921,7 @@ function arenaEntryHTML(e){
     : '';
 
   return '<div class="'+slotClass+'"'+slotClick+'>'+sprite+
+    (isTurnNow ? '<div class="arena-turn-badge">▶ Turno</div>' : '')+
     '<div class="arena-slot-name">'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</div>'+
     '<span class="muted" style="font-size:.62rem;">'+esc(t.name)+'</span>'+
     '<div class="hp-bar'+hpBarTier(pct)+'" style="margin-top:3px; width:100%;"><i style="width:'+pct+'%"></i></div>'+

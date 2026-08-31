@@ -63,18 +63,28 @@ Botão **"🏟️ Arena"** no topo. Primeira versão do espaço de batalha — f
 - **Você vê todo mundo sempre**, revelado ou não — é o único papel com visão total da Arena. Os Treinadores só veem os próprios Pokémon e os que já foram "Usados"; o resto aparece como Pokébola pra eles. Um Pokémon "Usado" mostra uma **barra de PV** com três cores (verde/amarela/vermelha, conforme o PV atual) visível pra mesa inteira.
 - Você também pode clicar **"Usar"**/✕ nos Pokémon de qualquer Treinador, se precisar ajustar por eles.
 
+### Iniciativa (fila de turnos)
+
+O card **"🎯 Iniciativa"** é todo seu: só o Mestre clica em **"▶️ Iniciar Rodada"** (calcula a fila pelo Cap. 16 — Velocidade Efetiva, depois Natural, depois 1d6 em empate, já descontando os −10 de quem estiver Paralisado) ou **"🔁 Recalcular"** (mesma coisa, mas abre a Rodada seguinte — útil se alguém mudou de Estágio, curou a Paralisia, etc.). **"Encerrar"** fecha a rodada sem abrir outra.
+
+A fila é só um guia visual pra mesa — **nenhum ataque é bloqueado** por não ser a vez de alguém (a negociação de Prioridade do Cap. 17 continua sendo você quem media ao vivo, olhando a Prioridade que aparece no painel de ataque de cada Movimento). Quando quem está com a vez ataca, a fila passa pro próximo sozinha; fora isso, **"⏭️ Próximo"** também pode ser clicado pelo dono do Pokémon da vez, não só por você — não precisa ficar de babá clicando a cada turno.
+
 ### Resolvendo um ataque de verdade
 
 Qualquer Pokémon já "Usado" e vivo ganha um botão **"⚔️ Atacar"**. Como Mestre, você pode clicar esse botão em qualquer Pokémon da mesa (não só nos seus) — útil pra rodar o ataque de um NPC/Pokémon selvagem que você mesmo colocar na Arena, ou pra ajudar um jogador.
 
 1. Clique **"⚔️ Atacar"** no Pokémon que vai agir.
 2. Clique no alvo (outro Pokémon já "Usado" e vivo — aliado ou adversário, o sistema não distingue times pra isso).
-3. Escolha o Movimento no painel que aparece.
-4. O sistema resolve tudo sozinho e mostra o resultado num quadro de dado no centro da tela pra todo mundo conectado — não só quem está com a Arena aberta. O dado gira de verdade por um instante antes de parar na face sorteada (dá suspense); só a divzinha do dado se mexe, o resto da tela fica parado.
+3. Escolha o Movimento no painel que aparece (a Prioridade dele, se tiver, aparece ali junto).
+4. O sistema resolve tudo sozinho e mostra o resultado num quadro de dado no centro da tela pra todo mundo conectado — não só quem está com a Arena aberta. O **d6** do ataque gira e assenta primeiro; só depois disso, se o Movimento tiver Efeito Percentual, o **1d10** gira e assenta (e ganha uma segunda rolagem, também sozinha em sequência, se o ataque foi Crítico e a primeira falhou) — nunca os dois ao mesmo tempo, um de cada vez, dando aquele suspense antes do resultado final aparecer. Só a divzinha do dado se mexe durante a animação — o resto da tela fica parado, sem piscar.
 
 O motor de ataque segue as Regras: rola 1d6 pra Precisão (Cap. 10, respeitando Movimentos 100% automáticos) e Crítico (Cap. 11, natural 6 em Movimento de dano), calcula o Dano Base (Cap. 12) e aplica STAB/Tipos (Cap. 13, com Fraqueza e resistência se cancelando por Tipo do defensor). Se o Movimento tiver um Efeito Percentual conhecido (ex.: Thunderbolt/Paralisia, Toxic/Veneno Grave), rola 1d10 na mesma resolução (Cap. 14) — Crítico dá uma segunda tentativa se a primeira falhar — e, se aplicar, a Condição de status já entra sozinha na ficha do alvo (respeitando a regra de nunca ter duas Condições Principais ao mesmo tempo — Confusão é a exceção, Cap. 20) e aparece com o ícone de sempre. PV chegando a 0 já marca Desmaio (Cap. 19).
 
-O que o motor **não** faz sozinho — continua sendo você quem conduz: decidir quem age primeiro (Velocidade/Prioridade, Cap. 16-17), os testes de início de turno das Condições (Paralisia travar a ação, Sono acordar, Congelamento descongelar, Confusão, Cap. 20-23) e o dano de final de turno de Queimadura/Veneno/Veneno Grave. Cancele o ataque a qualquer momento com **"Cancelar"** no painel.
+O que o motor **não** faz sozinho — continua sendo você quem conduz: a janela de negociação de Prioridade (Cap. 17), os testes de início de turno das Condições (Paralisia travar a ação, Sono acordar, Congelamento descongelar, Confusão, Cap. 20-23) e o dano de final de turno de Queimadura/Veneno/Veneno Grave. Cancele o ataque a qualquer momento com **"Cancelar"** no painel.
+
+### Registro (histórico de rolagens)
+
+O card **"📜 Rolagens da Arena"** guarda as últimas 40 linhas de ataque (Movimento, dados, resultado) — dá pra rolar a lista e ver o que já rolou na batalha, ou clicar **"Limpar"** (só o Mestre) pra zerar entre uma batalha e outra. A rolagem mais nova só aparece ali quando o dado dela termina de girar no quadro central — não estraga o suspense pra quem está olhando o Registro em vez do quadro.
 
 ## Tema claro/escuro
 
