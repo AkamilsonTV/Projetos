@@ -66,16 +66,32 @@ Cada Pokémon mostra automaticamente o sprite (a imagem pixelada) da espécie as
 
 ## Mochila (itens)
 
-Na sua ficha, logo acima da Equipe/Banco, tem a seção **"🎒 Mochila"** — a lista de itens que você carrega (nome + quantidade). **Só o Mestre adiciona, remove ou muda a quantidade de um item** — você só vê o que tem. O efeito mecânico de cada item em batalha ainda está em aberto (Cap. 25); por enquanto usar um item na Arena só consome 1 unidade e fica registrado no Log.
+Na sua ficha, logo acima da Equipe/Banco, tem a seção **"🎒 Mochila"** — a lista de itens que você carrega (nome + quantidade). **Só o Mestre adiciona, remove ou muda a quantidade de um item** — você só vê o que tem. Cada item tem um tipo, que o Mestre define ao criar:
+
+- **💊 Vida** — cura uma quantidade fixa de PV, ou cura total (o Mestre decide qual das duas).
+- **✨ Condição** — cura uma Condição específica (Queimadura, Veneno — que também cura Veneno Grave —, Paralisia, Sono, Congelamento ou Confusão) ou qualquer uma delas de uma vez (tipo um Full Heal).
+- **📦 Outro** — sem efeito mecânico ainda (Cap. 25); só existe como registro de que você carrega ele.
+
+## Cura
+
+Botão **"🩹 Cura"** na sua ficha, logo abaixo da Mochila. Abre um painel com duas abas — **💊 Vida** e **✨ Condição** — listando só os itens daquele tipo que você ainda tem. O fluxo:
+
+1. Escolha a aba certa pra sua necessidade.
+2. Clique no item que quer usar.
+3. Clique em qual dos seus Pokémon (Equipe ou Banco) vai receber.
+
+A cura acontece na hora — de verdade, não é só um registro: PV sobe (ou vai pro máximo) e/ou a Condição/Confusão desaparece, dependendo do item. Consome 1 unidade dele. Funciona fora de batalha, direto na sua ficha, a qualquer momento.
 
 ## Arena (esboço — ainda em construção)
 
 O botão **"🏟️ Arena"** no topo abre um espaço à parte pra montar uma batalha. É a primeira versão, feita pra testarmos e ajustarmos — pode mudar.
 
-- Aparece um card **"Equipe ativa"** pra **cada Treinador da mesa**, não só o seu — mas o que os outros veem ali começa como uma fileira de **Pokébolas**: pra qualquer Pokémon que ainda não foi pra nenhum Time, só você (o dono) e o Mestre sabem quem é de verdade. Só na sua própria Equipe ativa você tem o **⠿** pra arrastar, e logo abaixo dela, se você tiver algum item, sua **🎒 Mochila** (ver seção própria abaixo).
-- Arraste um dos seus pra dentro de um **Time** (o Mestre cria os Times). Ele continua normalmente na sua ficha — a Arena só mostra que ele está nessa batalha.
-- **É isso que revela ele.** Assim que um Pokémon entra num Time — mesmo antes de agir — ele já aparece pra mesa inteira, ali no Time: sprite, uma **barra de PV** (verde acima de 50%, amarela entre 20% e 50%, vermelha em 20% ou menos, igual ao jogo oficial) e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito. **Essa revelação é definitiva e vale também pra Equipe ativa**: a partir desse momento, aquele Pokémon aparece de verdade (não mais como Pokébola) na sua Equipe ativa pra todo mundo, mesmo que depois ele volte pra lá (por uma Troca) e nunca mais entre num Time.
+- Aparece um card **"Equipe ativa"** pra **cada Treinador da mesa**, não só o seu — mas o que os outros veem ali começa como uma fileira de **Pokébolas**: pra qualquer Pokémon que ainda não foi pra nenhum Time, só você (o dono) e o Mestre sabem quem é de verdade. Só na sua própria Equipe ativa você tem o **⠿** pra arrastar, e logo abaixo dela, se você tiver algum item, sua **🎒 Mochila** (ver seção própria acima).
+- **▶️ Entrar na Arena** / **⏏️ Sair da Arena**: botão no topo da sua Equipe ativa. "Entrar" carrega todos os Pokémon da sua Equipe ativa de uma vez pra um Time (se o Mestre já criou mais de um, ele pergunta em qual você quer entrar) — não precisa arrastar um por um. "Sair" faz o caminho inverso: tira todos os seus Pokémon da Arena de uma vez, você fica sem nenhum em campo.
+- Arraste um dos seus pra dentro de um **Time** (o Mestre cria os Times), se preferir fazer manualmente em vez de usar "Entrar na Arena". Ele continua normalmente na sua ficha — a Arena só mostra que ele está nessa batalha.
+- **É isso que revela ele.** Assim que um Pokémon entra num Time — mesmo antes de agir — ele já aparece pra mesa inteira, ali no Time: sprite, uma **barra de PV** com o número **atual/máximo** por cima dela (verde acima de 50%, amarela entre 20% e 50%, vermelha em 20% ou menos, igual ao jogo oficial) e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado). **Essa revelação é definitiva e vale também pra Equipe ativa**: a partir desse momento, aquele Pokémon aparece de verdade (não mais como Pokébola, já com a mesma barra de PV numerada) na sua Equipe ativa pra todo mundo, mesmo que depois ele volte pra lá (por uma Troca) e nunca mais entre num Time.
 - Não tem limite de Treinadores nem de Times — pode ser 1×1, vários contra vários, o que a mesa precisar.
+- **👀 Modo Espectador**: não vai lutar nessa batalha? Um botão no topo da Arena deixa você entrar como espectador (e sair, quando quiser) — não precisa de Pokémon nenhum em campo pra isso. É só presença: aparece uma lista "👀 Assistindo" com quem está acompanhando, visível pra mesa toda.
 
 ### Iniciativa (quem age primeiro)
 
@@ -95,7 +111,7 @@ Não existe mais botão de "Usar" nem de "Atacar" separado — é tudo clicando 
      - Um Movimento **de área** (ex.: Earthquake) também resolve sozinho, acertando todo mundo daquela categoria de uma vez — pode incluir seus próprios aliados junto com os inimigos, dependendo do Movimento (igual nas batalhas em dupla dos jogos oficiais).
      - Um Movimento **de campo** (ex.: Stealth Rock) também resolve na hora, mas sem calcular dano nenhum — é uma mecânica ainda em aberto (Cap. 25), só fica registrado que foi usado.
      - Pra qualquer outro caso (**só aliado**, **você ou aliado**, **só inimigo**, ou **aliado ou inimigo**), o site pede um clique: só quem realmente pode ser alvo daquele Movimento fica destacado e clicável na Arena — clicar em alguém fora da lista não faz nada.
-   - **Usar Item** → escolha um item da sua Mochila (só aparecem os que você ainda tem pelo menos 1) e depois em quem usar (você mesmo ou um aliado em campo). O efeito mecânico de cada item ainda está em aberto (Cap. 25) — por enquanto usar um item só consome 1 unidade dele e fica registrado no Log, sem curar PV nem mudar Condição ainda.
+   - **Usar Item** → a mochila aparece separada por tipo (💊 Vida, ✨ Condição, 📦 Outro), igual na aba Cura da ficha. Escolha o item e depois em quem usar (você mesmo ou um aliado em campo). Itens de Vida e Condição já curam de verdade na hora — PV sobe, Condição/Confusão some — e o Log mostra quanto curou. Itens de Outro tipo ainda não têm efeito mecânico (Cap. 25): só consomem 1 unidade e ficam registrados.
    - **Trocar de Pokémon** → não precisa arrastar nada: a sua **Equipe ativa**, lá embaixo, fica com os Pokémon disponíveis destacados — clique em qualquer um deles (vivo, e que ainda não esteja em campo em outro lugar) pra colocar ele no lugar do atual. O Pokémon que estava lutando volta a aparecer só na Equipe ativa (some do Time), e o novo entra revelado direto. Consome a ação inteira (Cap. 18) — o que entrou só age a partir do turno seguinte dele.
    - **Fugir** → tenta fugir da batalha. Se o Mestre tiver travado a fuga nessa batalha (🔒), nem rola dado — a fuga é bloqueada na hora e você pode escolher outra coisa. Sem trava, o site rola **1d10**: 1–3 e a fuga falha (seu Pokémon continua em campo, mas a ação já foi gasta); 4–10 e ele foge com sucesso, saindo da Arena de vez. Os dois casos ficam registrados no Log.
    - Cancele a qualquer momento clicando em **"Cancelar"** no menu.

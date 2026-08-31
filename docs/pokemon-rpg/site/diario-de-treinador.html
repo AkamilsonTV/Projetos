@@ -279,6 +279,7 @@
   .hp-bar > i{ display:block; height:100%; background:var(--good); transition:width .3s ease; }
   .hp-bar.mid > i{ background:#E0A526; }
   .hp-bar.low > i{ background:var(--danger); }
+  .arena-hp-label{ font-size:.62rem; font-variant-numeric:tabular-nums; color:var(--muted); text-align:center; margin-bottom:2px; }
 
   .moves-list{ display:flex; flex-direction:column; gap:6px; }
   .move-row{ display:grid; grid-template-columns: 1.3fr .8fr .8fr .5fr .5fr; gap:6px; align-items:center; font-size:.76rem; margin-bottom:4px; }
@@ -4413,8 +4414,23 @@ function newTrainer(name, pin){
     pokemons:[], banco:[], itens:[]
   };
 }
-function newItem(nome, quantidade){
-  return { id: uid(), nome: (nome||'').trim(), quantidade: clampInt(quantidade,0,999) };
+var CURA_CONDICAO_LABELS = { '':'Qualquer Condição', queimadura:'Queimadura', veneno:'Veneno/Veneno Grave', paralisia:'Paralisia', sono:'Sono', congelamento:'Congelamento', confuso:'Confusão' };
+/* tipo: 'vida' (cura PV), 'condicao' (cura Condição/Confusão) ou 'outro'
+   (sem efeito mecânico ainda, Cap. 25). cura: só vale pra 'vida' -- PV
+   restaurados, 0 = cura total. condicaoAlvo: só vale pra 'condicao' -- ''
+   cura qualquer Condição + Confusão (tipo Full Heal); um valor específico
+   (queimadura/veneno/paralisia/sono/congelamento/confuso) cura só aquilo
+   ('veneno' cura Veneno e Veneno Grave também). */
+function newItem(nome, quantidade, tipo, extra){
+  extra = extra || {};
+  return {
+    id: uid(),
+    nome: (nome||'').trim(),
+    quantidade: clampInt(quantidade,0,999),
+    tipo: (tipo==='vida'||tipo==='condicao') ? tipo : 'outro',
+    cura: clampInt(extra.cura, 0, 999),
+    condicaoAlvo: CURA_CONDICAO_LABELS.hasOwnProperty(extra.condicaoAlvo) ? extra.condicaoAlvo : ''
+  };
 }
 /* Garante que fichas salvas antes de um campo existir ganhem o valor padrão dele (sem apagar nada). */
 function migrateState(){
@@ -4429,6 +4445,13 @@ function migrateState(){
     if(typeof t.attrPointsAllocated !== 'number') t.attrPointsAllocated = attrSpent(t);
     if(!Array.isArray(t.attrChoicePicks)) t.attrChoicePicks = [];
     if(!Array.isArray(t.itens)) t.itens = [];
+    /* Itens salvos antes de tipo/cura/condicaoAlvo existirem viram 'outro'
+       (continuam sem efeito mecânico, como já eram). */
+    t.itens.forEach(function(it){
+      if(it.tipo!=='vida' && it.tipo!=='condicao') it.tipo = 'outro';
+      if(typeof it.cura !== 'number') it.cura = 0;
+      if(!CURA_CONDICAO_LABELS.hasOwnProperty(it.condicaoAlvo)) it.condicaoAlvo = '';
+    });
     (t.pokemons||[]).concat(t.banco||[]).forEach(function(p){
       migratePokemonMoves(p);
       /* Uma vez revelado na Arena, o Pokémon fica com a sprite visível pra
@@ -4448,6 +4471,10 @@ function migrateState(){
      Pokémon em campo (Mean Look, arena de combate, etc.), decidido pelo
      Mestre; sem isso definido, a fuga rola 1d10 normalmente. */
   if(STATE.arena.fugaTravada===undefined) STATE.arena.fugaTravada = false;
+  /* Espectadores: Treinadores que entraram na Arena só pra assistir, sem
+     trazer Pokémon nenhum -- não interfere em nada da batalha, é só um
+     "quem está de olho" visível pra mesa toda. */
+  if(!Array.isArray(STATE.arena.spectators)) STATE.arena.spectators = [];
   /* Um Pokémon dentro de um Time SEMPRE aparece pra todo mundo -- a
      Pokébola só existe na Equipe ativa, até ele ir pro Time uma vez
      (arenaRevelado, acima). Fichas salvas de antes dessa troca podiam ter
@@ -4854,6 +4881,38 @@ function applyEndOfTurnStatusAndLog(entry){
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   STATE.arena.log.push({ ts: Date.now(), text: esc(nome)+' ('+esc(t.name)+') sofreu <strong>'+dano+'</strong> de dano por '+esc(ailmentLabel(p.status))+(fainted?' — 😵 Desmaiou!':'') });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+}
+/* Aplica de verdade o efeito de um item de Vida ou Condição num Pokémon --
+   usado tanto pela aba Cura da ficha (fora de batalha) quanto por "Usar
+   Item" na Arena. Item tipo 'outro' não faz nada ainda (Cap. 25). Devolve
+   um resumo pro texto do Log/aviso; não mexe em quantidade nem salva
+   sozinho -- quem chama decide isso. */
+function applyItemCure(item, trainer, poke){
+  if(!item || !trainer || !poke) return { tipo:'outro' };
+  if(item.tipo==='vida'){
+    var max = hpMax(trainer, poke);
+    var cur = (poke.currentHP===null||poke.currentHP===undefined) ? max : poke.currentHP;
+    var novoHP = item.cura>0 ? clampInt(cur+item.cura, 0, max) : max;
+    var curado = novoHP-cur;
+    poke.currentHP = novoHP;
+    return { tipo:'vida', quantidade: curado };
+  }
+  if(item.tipo==='condicao'){
+    var alvo = item.condicaoAlvo || '';
+    var curouStatus = false, curouConfuso = false;
+    if(alvo===''){
+      if(poke.status){ poke.status=''; poke.statusTurns=0; curouStatus = true; }
+      if(poke.confuso){ poke.confuso=false; curouConfuso = true; }
+    } else if(alvo==='confuso'){
+      if(poke.confuso){ poke.confuso=false; curouConfuso = true; }
+    } else if(alvo==='veneno'){
+      if(poke.status==='veneno' || poke.status==='veneno_grave'){ poke.status=''; poke.statusTurns=0; curouStatus = true; }
+    } else if(poke.status===alvo){
+      poke.status=''; poke.statusTurns=0; curouStatus = true;
+    }
+    return { tipo:'condicao', curouStatus:curouStatus, curouConfuso:curouConfuso };
+  }
+  return { tipo:'outro' };
 }
 /* Chamado sempre que um Pokémon termina de agir na Arena (ataque, item,
    troca, fuga, ação perdida por Confusão...). Aplica o dano de status dele
@@ -5378,6 +5437,29 @@ DT.arenaToggleFugaLock = function(){
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
   mutate();
 };
+/* Modo Espectador: um Treinador que não vai lutar entra na Arena só pra
+   acompanhar -- não precisa de nenhum Pokémon em campo. É só presença
+   (STATE.arena.spectators), visível pra mesa toda; não muda nada de quem
+   pode fazer o quê. */
+DT.arenaToggleSpectator = function(trainerId){
+  if(!STATE.arena) return;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var t = findTrainer(trainerId);
+  if(!t) return;
+  if(!Array.isArray(STATE.arena.spectators)) STATE.arena.spectators = [];
+  var idx = STATE.arena.spectators.indexOf(trainerId);
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  if(idx===-1){
+    STATE.arena.spectators.push(trainerId);
+    STATE.arena.log.push({ ts: Date.now(), text: '👀 '+esc(t.name)+' entrou como espectador na Arena.' });
+  } else {
+    STATE.arena.spectators.splice(idx,1);
+    STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' saiu do modo espectador.' });
+  }
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  mutate();
+};
 DT.arenaRenameTeam = function(teamId, el){
   var team = STATE.arena.teams.find(function(x){ return x.id===teamId; });
   if(!team) return;
@@ -5410,6 +5492,58 @@ DT.arenaSetEntry = function(trainerId, pokemonId, teamId){
 DT.arenaRemoveEntry = function(entryId){
   if(!STATE.arena) return;
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.id!==entryId; });
+  mutate();
+};
+/* Entrar na Arena: carrega a Equipe ativa inteira do Treinador de uma vez
+   num Time só, já revelada (igual arenaSetEntry). Se só existe 1 Time,
+   entra direto nele; com 2+, pede pra escolher qual (SESSION.enterArenaTeamPick). */
+DT.arenaEnterPick = function(trainerId){
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var teams = (STATE.arena && STATE.arena.teams) || [];
+  if(teams.length===0){ SESSION.error = 'O Mestre ainda não criou nenhum Time nesta Arena.'; render(); return; }
+  if(teams.length===1){ DT.arenaEnter(trainerId, teams[0].id); return; }
+  SESSION.enterArenaTeamPick = trainerId;
+  render();
+};
+DT.arenaCancelEnterPick = function(){ SESSION.enterArenaTeamPick = null; render(); };
+DT.arenaEnter = function(trainerId, teamId){
+  var t = findTrainer(trainerId);
+  if(!STATE.arena || !t) return;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var team = (STATE.arena.teams||[]).find(function(x){ return x.id===teamId; });
+  if(!team) return;
+  var mons = (t.pokemons||[]).filter(function(p){ return p.especie; });
+  var entrou = 0;
+  mons.forEach(function(p){
+    var jaEmCampo = STATE.arena.entries.some(function(e){ return e.trainerId===trainerId && e.pokemonId===p.id; });
+    if(jaEmCampo) return;
+    p.arenaRevelado = true;
+    STATE.arena.entries.push({id:uid(), teamId:teamId, trainerId:trainerId, pokemonId:p.id, revelado:true});
+    entrou++;
+  });
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' entrou na Arena com '+entrou+' Pokémon, no Time "'+esc(team.nome)+'".' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  SESSION.enterArenaTeamPick = null;
+  mutate();
+};
+/* Sair da Arena: tira TODOS os Pokémon desse Treinador da Arena de uma
+   vez, de qualquer Time -- ele fica sem nenhum em campo. */
+DT.arenaLeave = function(trainerId){
+  var t = findTrainer(trainerId);
+  if(!STATE.arena || !t) return;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var antes = STATE.arena.entries.length;
+  STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.trainerId!==trainerId; });
+  if(STATE.arena.entries.length===antes) return; /* não tinha nenhum -- nada pra registrar */
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' saiu da Arena, retirando todo o Time.' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  if(STATE.arena.round) advanceRoundPastFainted(STATE.arena.round);
+  arenaResetActionState();
   mutate();
 };
 /* ---- Fluxo de ação: clica no seu Pokémon já em campo pra selecionar ele
@@ -5556,9 +5690,8 @@ DT.arenaSelectTarget = function(entryId){
     return;
   }
 };
-/* Item ainda não tem efeito mecânico real (quais itens existem em batalha
-   e o que cada um faz é regra em aberto, Cap. 25) -- só consome 1 unidade
-   e registra o uso; não mexe em PV/status. */
+/* Vida e Condição já curam de verdade (applyItemCure); item tipo 'outro'
+   continua só consumindo e registrando o uso, sem efeito (Cap. 25). */
 DT.resolveItemUse = function(atkEntry, itemIdx, targetEntryId){
   var attTrainer = findTrainer(atkEntry.trainerId);
   if(!attTrainer) return;
@@ -5569,11 +5702,17 @@ DT.resolveItemUse = function(atkEntry, itemIdx, targetEntryId){
   var targetPoke = targetTrainer && getPoke(targetEntry.trainerId, targetEntry.pokemonId);
   if(!targetEntry || !targetTrainer || !targetPoke) return;
 
+  var result = applyItemCure(item, targetTrainer, targetPoke);
   item.quantidade = Math.max(0, item.quantidade-1);
   var alvoNome = targetPoke.apelido || targetPoke.especie || 'Pokémon';
+  var efeitoTxt = result.tipo==='vida'
+    ? (result.quantidade>0 ? ('curou '+result.quantidade+' PV.') : 'já estava com PV cheio.')
+    : result.tipo==='condicao'
+      ? ((result.curouStatus||result.curouConfuso) ? 'curou a Condição.' : 'não havia Condição pra curar.')
+      : 'efeito ainda não definido (Cap. 25).';
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   var prefix = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
-  STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(attTrainer.name)+' usou '+esc(item.nome)+' em '+esc(alvoNome)+' — efeito ainda não definido (Cap. 25).' });
+  STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(attTrainer.name)+' usou '+esc(item.nome)+' em '+esc(alvoNome)+' — '+efeitoTxt });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
 
   arenaAdvanceTurn(atkEntry.id);
@@ -5795,17 +5934,21 @@ DT.removeTrainerGM = function(id){
    ainda é regra em aberto) — só o Mestre define o que cada Treinador tem;
    o Treinador vê e, na Arena, pode usar (Cap. 25: sem efeito mecânico
    ainda, só consome e registra). ---- */
-DT.addItem = function(tid, nomeEl, qtyEl){
+DT.addItem = function(tid, nomeEl, qtyEl, tipoEl, curaEl, condicaoEl){
   if(SESSION.role!=='gm') return;
   var t = findTrainer(tid); if(!t) return;
   var nome = (nomeEl.value||'').trim();
   if(!nome) return;
   var qtd = clampInt(qtyEl.value, 1, 999);
+  var tipo = tipoEl ? tipoEl.value : 'outro';
+  var cura = curaEl ? curaEl.value : 0;
+  var condicaoAlvo = condicaoEl ? condicaoEl.value : '';
   if(!Array.isArray(t.itens)) t.itens = [];
   var existing = t.itens.find(function(i){ return i.nome.toLowerCase()===nome.toLowerCase(); });
   if(existing){ existing.quantidade = clampInt(existing.quantidade+qtd, 0, 999); }
-  else { t.itens.push(newItem(nome, qtd)); }
+  else { t.itens.push(newItem(nome, qtd, tipo, {cura:cura, condicaoAlvo:condicaoAlvo})); }
   nomeEl.value = ''; qtyEl.value = '1';
+  if(curaEl) curaEl.value = '0';
   mutate();
 };
 DT.removeItem = function(tid, itemId){
@@ -5820,6 +5963,52 @@ DT.setItemQty = function(tid, itemId, el){
   var it = (t.itens||[]).find(function(i){ return i.id===itemId; });
   if(!it) return;
   it.quantidade = clampInt(el.value, 0, 999);
+  mutate();
+};
+
+/* Aba Cura da ficha (fora de batalha): abre/fecha, escolhe Vida ou
+   Condição, escolhe o item, escolhe o Pokémon -- aplica de verdade
+   (applyItemCure), sem precisar estar na Arena. */
+DT.toggleCura = function(tid){
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===tid;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  SESSION.curaOpenFor = (SESSION.curaOpenFor===tid) ? null : tid;
+  SESSION.curaTab = 'vida';
+  SESSION.curaItemId = null;
+  render();
+};
+DT.curaSetTab = function(tab){
+  if(tab!=='vida' && tab!=='condicao') return;
+  SESSION.curaTab = tab;
+  SESSION.curaItemId = null;
+  render();
+};
+DT.curaPickItem = function(itemId){
+  SESSION.curaItemId = itemId;
+  render();
+};
+DT.curaCancelPick = function(){
+  SESSION.curaItemId = null;
+  render();
+};
+DT.curaApply = function(tid, pokemonId){
+  var t = findTrainer(tid); if(!t) return;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===tid;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var item = (t.itens||[]).find(function(i){ return i.id===SESSION.curaItemId; });
+  if(!item || item.quantidade<=0) return;
+  var p = getPoke(tid, pokemonId);
+  if(!p) return;
+
+  var result = applyItemCure(item, t, p);
+  item.quantidade = Math.max(0, item.quantidade-1);
+  var nome = p.apelido || p.especie || 'Pokémon';
+  SESSION.notice = t.name+' usou '+item.nome+' em '+nome+' — '+(
+    result.tipo==='vida'
+      ? (result.quantidade>0 ? ('curou '+result.quantidade+' PV.') : 'já estava com PV cheio.')
+      : ((result.curouStatus||result.curouConfuso) ? 'curou a Condição.' : 'não havia Condição pra curar.')
+  );
+  SESSION.curaItemId = null;
   mutate();
 };
 
@@ -6219,12 +6408,27 @@ function arenaScreen(){
   out += '<div class="card"><div class="card-head"><span class="index">Esboço · v1</span><h2>🏟️ Arena</h2></div><div class="card-body">'+
     '<p class="muted" style="font-size:.82rem;">Arraste um Pokémon (pelo ⠿) da Equipe ativa pra dentro de um Time. Enquanto ele não vai pro Time nenhuma vez, os outros Treinadores só veem uma Pokébola no lugar dele lá na Equipe ativa — a partir do momento que entra num Time, ele aparece pra mesa inteira, ali e dali em diante. Isso é um primeiro rascunho — me conta o que ajustar.</p>'+
   '</div></div>';
+  out += arenaSpectatorHTML();
   out += arenaInitiativeHTML();
   out += arenaTeamsHTML(isGM);
   out += arenaActionPanelHTML();
   out += arenaSourceHTML();
   out += arenaLogHTML();
   return out;
+}
+/* Modo Espectador: um botão pro próprio jogador entrar/sair (não precisa
+   de Pokémon nenhum em campo pra isso) + a lista de quem está assistindo,
+   visível pra todo mundo. */
+function arenaSpectatorHTML(){
+  var specIds = (STATE.arena && STATE.arena.spectators) || [];
+  var names = specIds.map(function(id){ var t=findTrainer(id); return t?t.name:null; }).filter(Boolean);
+  var isSpectating = SESSION.role==='player' && SESSION.trainerId && specIds.indexOf(SESSION.trainerId)!==-1;
+  var toggle = (SESSION.role==='player' && SESSION.trainerId)
+    ? '<button class="btn-sm" onclick="DT.arenaToggleSpectator(\''+SESSION.trainerId+'\')">'+(isSpectating?'🚪 Sair do modo Espectador':'👀 Entrar como Espectador')+'</button>'
+    : '';
+  var list = names.length ? '<span class="muted" style="font-size:.78rem;">👀 Assistindo: '+names.map(esc).join(', ')+'</span>' : '';
+  if(!toggle && !list) return '';
+  return '<div class="btn-row" style="margin-bottom:14px; align-items:center; flex-wrap:wrap; gap:10px;">'+toggle+list+'</div>';
 }
 /* Fila de iniciativa (Cap. 16): quem age primeiro numa rodada, por
    Velocidade Efetiva -> Natural -> 1d6 em caso de empate. Só o Mestre
@@ -6348,13 +6552,21 @@ function arenaActionPanelHTML(){
 
   if(SESSION.arenaAction==='item'){
     if(SESSION.arenaItemIdx===null || SESSION.arenaItemIdx===undefined){
-      var itemBtns = (attTrainer.itens||[]).map(function(it, i){
-        if(it.quantidade<=0) return '';
-        return '<button class="btn-sm" onclick="DT.arenaPickItem('+i+')">'+esc(it.nome)+'<br><span class="muted" style="font-size:.66rem;">x'+it.quantidade+'</span></button>';
+      var itemBtn = function(it, i){
+        var detail = it.tipo==='vida' ? (it.cura>0 ? ('cura '+it.cura+' PV') : 'cura total')
+          : it.tipo==='condicao' ? ('cura '+CURA_CONDICAO_LABELS[it.condicaoAlvo])
+          : 'x'+it.quantidade;
+        return '<button class="btn-sm" onclick="DT.arenaPickItem('+i+')">'+esc(it.nome)+'<br><span class="muted" style="font-size:.66rem;">x'+it.quantidade+' · '+esc(detail)+'</span></button>';
+      };
+      var groups = ['vida','condicao','outro'].map(function(tipo){
+        var btns = (attTrainer.itens||[]).map(function(it,i){ return (it.quantidade>0 && it.tipo===tipo) ? itemBtn(it,i) : ''; }).join('');
+        if(!btns) return '';
+        return '<p class="muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; margin:8px 0 4px;">'+ITEM_TIPO_LABELS[tipo]+'</p>'+
+          '<div class="btn-row" style="flex-wrap:wrap;">'+btns+'</div>';
       }).join('');
       return '<div class="card arena-attack-panel"><div class="card-body">'+
         '<p><strong>🎒 '+esc(name)+'</strong> vai usar um item — escolha na mochila de '+esc(attTrainer.name)+':</p>'+
-        '<div class="btn-row" style="flex-wrap:wrap;">'+(itemBtns || '<span class="muted">A mochila está vazia.</span>')+'</div>'+
+        (groups || '<span class="muted">A mochila está vazia.</span>')+
         cancelBtn+
       '</div></div>';
     }
@@ -6505,11 +6717,13 @@ function arenaEntryHTML(e){
       '</div>'
     : '';
 
-  return '<div class="'+slotClass+'"'+slotClick+'>'+sprite+
+  return '<div class="'+slotClass+'"'+slotClick+'>'+
+    '<div class="arena-hp-label">'+cur+'/'+max+'</div>'+
+    '<div class="hp-bar'+hpBarTier(pct)+'" style="width:100%;"><i style="width:'+pct+'%"></i></div>'+
+    sprite+
     (isTurnNow ? '<div class="arena-turn-badge">▶ Turno</div>' : '')+
     '<div class="arena-slot-name">'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</div>'+
     '<span class="muted" style="font-size:.62rem;">'+esc(t.name)+'</span>'+
-    '<div class="hp-bar'+hpBarTier(pct)+'" style="margin-top:3px; width:100%;"><i style="width:'+pct+'%"></i></div>'+
     (icons ? '<div class="arena-icons">'+icons+'</div>' : '')+
     controls+
   '</div>';
@@ -6559,11 +6773,14 @@ function arenaTrainerSourceHTML(t){
         var sprite = num
           ? '<img class="poke-sprite" src="'+spriteUrl(num)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
           : '<div class="poke-sprite-placeholder">❔</div>';
+        var max = hpMax(t,p);
+        var cur = (p.currentHP===null||p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
+        var pct = max>0 ? Math.round(cur/max*100) : 0;
+        var hpBits = '<div class="arena-hp-label">'+cur+'/'+max+'</div>'+
+          '<div class="hp-bar'+hpBarTier(pct)+'" style="width:100%;"><i style="width:'+pct+'%"></i></div>';
         var swappable = false;
         var tileClick = '';
         if(swapEntry && p.id!==swapEntry.pokemonId && !placed){
-          var max = hpMax(t,p);
-          var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
           if(cur>0){ swappable = true; tileClick = ' onclick="DT.arenaSwapIn(\''+p.id+'\')"'; }
         }
         var handle = (canControl && !swapEntry)
@@ -6571,6 +6788,7 @@ function arenaTrainerSourceHTML(t){
           : '';
         return '<div class="arena-source-tile'+(placed?' arena-source-tile-used':'')+(swappable?' arena-source-tile-swappable':'')+'"'+tileClick+'>'+
           handle+
+          hpBits+
           sprite+
           '<div style="font-size:.66rem; text-align:center;">'+(p.apelido?esc(p.apelido):esc(p.especie))+'</div>'+
         '</div>';
@@ -6581,7 +6799,27 @@ function arenaTrainerSourceHTML(t){
         itens.map(function(it){ return '<span class="tag">'+esc(it.nome)+' x'+it.quantidade+'</span>'; }).join('')+
       '</div></div>'
     : '';
-  return '<div class="card"><div class="card-head"><span class="index">Equipe ativa</span><h2>'+esc(t.name)+'</h2></div><div class="card-body">'+tiles+mochila+'</div></div>';
+
+  /* Entrar/Sair da Arena: carrega ou descarrega a Equipe ativa inteira
+     desse Treinador de uma vez, sem precisar arrastar Pokémon por
+     Pokémon. Só o dono ou o Mestre veem esse controle. */
+  var hasEntries = entries.some(function(e){ return e.trainerId===t.id; });
+  var enterLeaveBtn = canControl
+    ? (hasEntries
+        ? '<button class="btn-sm btn-danger" onclick="DT.arenaLeave(\''+t.id+'\')">⏏️ Sair da Arena</button>'
+        : '<button class="btn-sm" onclick="DT.arenaEnterPick(\''+t.id+'\')">▶️ Entrar na Arena</button>')
+    : '';
+  var teamPicker = '';
+  if(canControl && SESSION.enterArenaTeamPick===t.id){
+    var teamBtns = (STATE.arena.teams||[]).map(function(team){
+      return '<button class="btn-sm" onclick="DT.arenaEnter(\''+t.id+'\',\''+team.id+'\')">'+esc(team.nome)+'</button>';
+    }).join('');
+    teamPicker = '<div style="margin-top:8px;"><p class="muted" style="font-size:.78rem;">Entrar em qual Time?</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap;">'+teamBtns+
+      '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelEnterPick()">Cancelar</button></div></div>';
+  }
+
+  return '<div class="card"><div class="card-head"><span class="index">Equipe ativa</span><h2>'+esc(t.name)+'</h2>'+enterLeaveBtn+'</div><div class="card-body">'+tiles+mochila+teamPicker+'</div></div>';
 }
 
 function setupScreen(){
@@ -6781,6 +7019,7 @@ function trainerSheetHTML(t, mode){
      ainda é regra em aberto (Cap. 25), por enquanto é só um inventário. */
   out += '<hr class="rule" style="margin:18px 0;">';
   out += inventoryHTML(t, canGM);
+  out += curaHTML(t, mode);
 
   /* pokemon roster: 6 slots ativos + Banco (menu deslizante) */
   out += '<hr class="rule" style="margin:18px 0;">';
@@ -6817,6 +7056,7 @@ function trainerSheetHTML(t, mode){
 /* Mochila do Treinador: o Mestre adiciona/remove/ajusta quantidade; o
    Treinador só vê. Quais itens existem e o que fazem em batalha ainda é
    regra em aberto (Cap. 25) — por enquanto é só o inventário em si. */
+var ITEM_TIPO_LABELS = { vida:'💊 Vida', condicao:'✨ Condição', outro:'📦 Outro' };
 function inventoryHTML(t, canGM){
   var itens = t.itens||[];
   var out = '<h3 style="font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); margin-bottom:8px;">🎒 Mochila</h3>';
@@ -6824,8 +7064,11 @@ function inventoryHTML(t, canGM){
     out += '<p class="muted" style="font-size:.82rem;">'+(canGM ? 'Nenhum item ainda — adicione abaixo.' : 'Nenhum item ainda.')+'</p>';
   } else {
     out += '<div class="inventory-list">'+itens.map(function(it){
+      var detail = it.tipo==='vida' ? (it.cura>0 ? ('cura '+it.cura+' PV') : 'cura total')
+        : it.tipo==='condicao' ? ('cura '+CURA_CONDICAO_LABELS[it.condicaoAlvo])
+        : '';
       return '<div class="inventory-row">'+
-        '<span class="inventory-name">'+esc(it.nome)+'</span>'+
+        '<span class="inventory-name">'+esc(it.nome)+' <span class="tag" style="font-size:.6rem;">'+ITEM_TIPO_LABELS[it.tipo]+(detail?' · '+esc(detail):'')+'</span></span>'+
         (canGM
           ? '<input type="number" min="0" max="999" value="'+it.quantidade+'" onchange="DT.setItemQty(\''+t.id+'\',\''+it.id+'\', this)" style="width:64px;">'+
             '<button class="btn-ghost btn-sm" onclick="DT.removeItem(\''+t.id+'\',\''+it.id+'\')">✕</button>'
@@ -6834,13 +7077,59 @@ function inventoryHTML(t, canGM){
     }).join('')+'</div>';
   }
   if(canGM){
-    out += '<div class="btn-row" style="margin-top:8px;">'+
+    out += '<div class="btn-row" style="margin-top:8px; flex-wrap:wrap;">'+
       '<input type="text" placeholder="Nome do item" id="newItemName_'+t.id+'" style="flex:1; min-width:120px;">'+
-      '<input type="number" min="1" max="999" value="1" id="newItemQty_'+t.id+'" style="width:64px;">'+
-      '<button class="btn-sm" onclick="DT.addItem(\''+t.id+'\', document.getElementById(\'newItemName_'+t.id+'\'), document.getElementById(\'newItemQty_'+t.id+'\'))">+ Adicionar</button>'+
+      '<input type="number" min="1" max="999" value="1" id="newItemQty_'+t.id+'" style="width:64px;" title="Quantidade">'+
+      '<select id="newItemTipo_'+t.id+'" title="Tipo do item">'+
+        '<option value="outro">📦 Outro</option><option value="vida">💊 Vida</option><option value="condicao">✨ Condição</option>'+
+      '</select>'+
+      '<input type="number" min="0" max="999" value="0" id="newItemCura_'+t.id+'" style="width:78px;" title="PV curados (só vale se Tipo = Vida; 0 = cura total)" placeholder="PV (0=total)">'+
+      '<select id="newItemCondicao_'+t.id+'" title="Condição curada (só vale se Tipo = Condição)">'+
+        Object.keys(CURA_CONDICAO_LABELS).map(function(k){ return '<option value="'+k+'">'+esc(CURA_CONDICAO_LABELS[k])+'</option>'; }).join('')+
+      '</select>'+
+      '<button class="btn-sm" onclick="DT.addItem(\''+t.id+'\', document.getElementById(\'newItemName_'+t.id+'\'), document.getElementById(\'newItemQty_'+t.id+'\'), document.getElementById(\'newItemTipo_'+t.id+'\'), document.getElementById(\'newItemCura_'+t.id+'\'), document.getElementById(\'newItemCondicao_'+t.id+'\'))">+ Adicionar</button>'+
     '</div>';
   }
   return out;
+}
+/* Aba Cura: abre a Mochila filtrada em duas abas (Vida/Condição) pra usar
+   um item de cura de verdade num Pokémon da própria ficha, fora de
+   batalha. Só o dono (mode='own') ou o Mestre (mode='gm') usa -- ficha
+   compartilhada (mode='readonly') não mostra nada aqui. */
+function curaHTML(t, mode){
+  if(mode!=='own' && mode!=='gm') return '';
+  var open = SESSION.curaOpenFor===t.id;
+  var toggleBtn = '<button class="btn-sm" onclick="DT.toggleCura(\''+t.id+'\')">🩹 '+(open?'Fechar Cura':'Cura')+'</button>';
+  if(!open) return '<div style="margin:10px 0;">'+toggleBtn+'</div>';
+
+  var tab = SESSION.curaTab || 'vida';
+  var tabs = '<div class="btn-row" style="margin:10px 0 8px;">'+
+    '<button class="btn-sm'+(tab==='vida'?' btn-primary':'')+'" onclick="DT.curaSetTab(\'vida\')">💊 Vida</button>'+
+    '<button class="btn-sm'+(tab==='condicao'?' btn-primary':'')+'" onclick="DT.curaSetTab(\'condicao\')">✨ Condição</button>'+
+  '</div>';
+
+  var itensDoTipo = (t.itens||[]).filter(function(it){ return it.tipo===tab && it.quantidade>0; });
+  var item = SESSION.curaItemId ? (t.itens||[]).find(function(it){ return it.id===SESSION.curaItemId; }) : null;
+  var body;
+  if(item){
+    var mons = (t.pokemons||[]).concat(t.banco||[]).filter(function(p){ return p.especie; });
+    var pokeBtns = mons.map(function(p){
+      var max = hpMax(t,p);
+      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+      return '<button class="btn-sm" onclick="DT.curaApply(\''+t.id+'\',\''+p.id+'\')">'+esc(p.apelido||p.especie)+' <span class="muted">('+cur+'/'+max+')</span></button>';
+    }).join('');
+    body = '<p style="font-size:.8rem;">Usar <strong>'+esc(item.nome)+'</strong> em qual Pokémon?</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap;">'+(pokeBtns || '<span class="muted">Nenhum Pokémon na ficha ainda.</span>')+'</div>'+
+      '<button class="btn-ghost btn-sm" style="margin-top:6px;" onclick="DT.curaCancelPick()">Cancelar</button>';
+  } else {
+    var itemBtns = itensDoTipo.map(function(it){
+      var detail = tab==='vida' ? (it.cura>0 ? ('cura '+it.cura+' PV') : 'cura total') : ('cura '+CURA_CONDICAO_LABELS[it.condicaoAlvo]);
+      return '<button class="btn-sm" onclick="DT.curaPickItem(\''+it.id+'\')">'+esc(it.nome)+'<br><span class="muted" style="font-size:.66rem;">x'+it.quantidade+' · '+esc(detail)+'</span></button>';
+    }).join('');
+    body = '<div class="btn-row" style="flex-wrap:wrap;">'+(itemBtns || '<p class="muted" style="font-size:.78rem;">Nenhum item de '+(tab==='vida'?'Vida':'Condição')+' na mochila.</p>')+'</div>';
+  }
+
+  return '<div class="card" style="margin:10px 0;"><div class="card-body">'+toggleBtn+tabs+body+'</div></div>';
 }
 /* Slot arrastável/soltável: envolve o card (ou um placeholder vazio) com a
    alça de arrastar e os atributos data-drop-* que identificam o alvo. */

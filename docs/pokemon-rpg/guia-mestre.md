@@ -56,20 +56,33 @@ Mesmo mecanismo de arrastar (⠿) que o Treinador tem: mover entre os 6 slots da
 
 ### Mochila (itens)
 
-Logo acima da Equipe/Banco, cada ficha tem a seção **"🎒 Mochila"**. **Só você adiciona, remove e muda a quantidade** de um item — o Treinador só vê o que tem (nome + quantidade), sem poder editar. Pra adicionar, digite o nome, a quantidade e clique **"+ Adicionar"**; se já existir um item com esse nome (não diferencia maiúscula/minúscula) na Mochila daquele Treinador, a quantidade soma em vez de duplicar a linha. O campo de quantidade de cada linha já existente é editável direto (número de 0 a 999), e o **✕** remove o item inteiro.
+Logo acima da Equipe/Banco, cada ficha tem a seção **"🎒 Mochila"**. **Só você adiciona, remove e muda a quantidade** de um item — o Treinador só vê o que tem (nome + quantidade, mais o tipo e o que ele cura), sem poder editar. Pra adicionar, preencha:
 
-Esses itens aparecem na Arena — cada Treinador vê a própria Mochila (com quantidade), e você, como Mestre, vê a de todo mundo (uma por Treinador, dentro da fonte de cada um). O efeito mecânico de cada item em batalha ainda está em aberto (Cap. 25) — ver "Usar Item" logo abaixo.
+- **Nome** e **Quantidade**.
+- **Tipo**: 📦 Outro (padrão, sem efeito ainda — Cap. 25), 💊 Vida ou ✨ Condição.
+- **PV (0=total)**: só importa se o Tipo for Vida — quanto PV aquele item cura; deixe **0** pra cura total (tipo um Full Restore).
+- **Condição curada**: só importa se o Tipo for Condição — escolha "Qualquer Condição" (cura status + Confusão de uma vez, tipo Full Heal) ou uma específica (Veneno cura Veneno Grave também).
+
+Clique **"+ Adicionar"**. Se já existir um item com esse nome (não diferencia maiúscula/minúscula) na Mochila daquele Treinador, a quantidade soma em vez de duplicar a linha — o tipo/cura da linha existente não muda. O campo de quantidade de cada linha já existente é editável direto (número de 0 a 999), e o **✕** remove o item inteiro.
+
+Esses itens aparecem na Arena — cada Treinador vê a própria Mochila (com quantidade), e você, como Mestre, vê a de todo mundo (uma por Treinador, dentro da fonte de cada um).
+
+### Cura (fora de batalha)
+
+Cada ficha (incluindo pela sua visão de Mestre) também tem o botão **"🩹 Cura"**, logo abaixo da Mochila — abre as abas Vida/Condição pra usar um item de cura num Pokémon daquele Treinador sem precisar estar na Arena. Funciona igual pro Treinador usar na própria ficha: escolhe a aba, o item, o Pokémon, e a cura acontece na hora (PV sobe ou Condição/Confusão some), consumindo 1 unidade. Itens tipo Outro não aparecem aqui — ainda não têm efeito (Cap. 25).
 
 ## Arena (esboço — ainda em construção)
 
 Botão **"🏟️ Arena"** no topo. Primeira versão do espaço de batalha — feita pra testarmos e ajustarmos junto.
 
 - **Times**: só você cria (**"+ Novo Time"**), renomeia (campo de texto no topo do Time) e remove (✕, com confirmação). Sem limite — não precisa ser só 2, dá pra fazer quantos Times a mesa precisar.
-- Cada Treinador arrasta (pelo ⠿) um Pokémon da própria Equipe ativa pra dentro de um Time. Isso não tira o Pokémon da ficha dele — a Arena só reflete quem está na batalha.
+- **▶️ Entrar na Arena** / **⏏️ Sair da Arena**: botão no topo do card "Equipe ativa" de cada Treinador (você também pode clicar pelo dono, em qualquer um). "Entrar" carrega a Equipe ativa inteira dele de uma vez num Time — se houver só 1 Time criado, entra direto; com 2+, pergunta em qual. "Sair" tira todos os Pokémon dele da Arena de uma vez, sem precisar remover um por um com o ✕.
+- Cada Treinador também pode arrastar (pelo ⠿) um Pokémon por vez da própria Equipe ativa pra dentro de um Time, se preferir montar aos poucos em vez de usar "Entrar na Arena". Isso não tira o Pokémon da ficha dele — a Arena só reflete quem está na batalha.
 - **A Equipe ativa de todo mundo é pública, mas começa em Pokébola**: qualquer um vê o card "Equipe ativa" de qualquer Treinador da mesa — não é mais só o Mestre e o dono. Só que cada Pokémon que ainda não foi mandado a nenhum Time aparece como **Pokébola** ali pra quem não é dono nem Mestre. Arrastar/trocar continua restrito ao dono daquela ficha (ou você).
-- **Você vê tudo sempre, em qualquer lugar** — é o único papel com visão total da Arena. Os Treinadores só veem os próprios Pokémon de verdade e os que já foram mandados pra um Time alguma vez (mesmo que já tenham voltado pra Equipe ativa depois); o resto ainda aparece como Pokébola pra eles, tanto na Equipe ativa quanto (se por algum motivo acontecer) num Time. **Dentro de um Time, porém, não existe mais Pokébola**: o Pokémon aparece pra mesa inteira assim que entra lá, mesmo antes de agir — é esse instante que conta como "revelar" (e o que também abre a sprite dele na Equipe ativa, dali em diante, pra sempre). Um Pokémon num Time mostra uma **barra de PV** com três cores (verde/amarela/vermelha, conforme o PV atual) visível pra mesa inteira.
+- **Você vê tudo sempre, em qualquer lugar** — é o único papel com visão total da Arena. Os Treinadores só veem os próprios Pokémon de verdade e os que já foram mandados pra um Time alguma vez (mesmo que já tenham voltado pra Equipe ativa depois); o resto ainda aparece como Pokébola pra eles, tanto na Equipe ativa quanto (se por algum motivo acontecer) num Time. **Dentro de um Time, porém, não existe mais Pokébola**: o Pokémon aparece pra mesa inteira assim que entra lá, mesmo antes de agir — é esse instante que conta como "revelar" (e o que também abre a sprite dele na Equipe ativa, dali em diante, pra sempre). Um Pokémon num Time (e também na Equipe ativa, uma vez revelado) mostra uma **barra de PV** com três cores (verde/amarela/vermelha) e o número **atual/máximo** por cima dela, visível pra mesa inteira.
 - Como Mestre, você pode clicar em cima do Pokémon de **qualquer** Treinador (não só dono dele) pra selecioná-lo e agir por ele — útil pra NPC/Pokémon selvagem que você mesmo colocar na Arena, ou pra ajudar um jogador. O **✕** continua ali pra remover um Pokémon da Arena.
 - **🔒 Travar Fuga**: botão só seu, no card "Times". Liga/desliga o bloqueio de fuga pra batalha inteira — use quando algum Movimento, Habilidade ou motivo de história estiver prendendo os Pokémon em campo (Mean Look, uma arena fechada, etc.). Enquanto travada, ninguém foge (nem rola dado); a tela mostra "🔒 Fuga travada" pra todo mundo. Sem a trava, cada tentativa de fuga rola 1d10 na hora — ver "Fugir" logo abaixo.
+- **👀 Modo Espectador**: no topo da Arena, um botão deixa qualquer Treinador entrar (e sair) como espectador — sem precisar trazer Pokémon nenhum, útil pra quem não vai lutar mas quer acompanhar. Aparece uma lista "👀 Assistindo" com quem está nesse modo, visível pra mesa toda (inclusive você).
 
 ### Iniciativa (fila de turnos)
 
@@ -88,7 +101,7 @@ Não existe mais botão de "Usar" nem de "Atacar"/"Agir" separado — é tudo cl
      - **Em você mesmo** ou **de área** → resolve na hora, sem pedir clique nenhum. Um Movimento de área (Earthquake, Discharge, etc.) atinge sozinho todo mundo daquela categoria — pode incluir aliados do próprio atacante junto com os inimigos, dependendo do Movimento, igual nas batalhas em dupla dos jogos oficiais.
      - **De campo** (Stealth Rock, clima) → também resolve na hora, mas sem calcular dano — é uma mecânica ainda em aberto (Cap. 25), só fica um registro de que foi usado.
      - Qualquer outra categoria → pede um clique no alvo, mas **só quem realmente é elegível fica destacado e clicável** na Arena (um clique fora da lista de elegíveis não faz nada, nem em você mesmo com um Movimento estritamente de inimigo). Se não sobrar ninguém elegível no momento (ex.: Helping Hand sem nenhum aliado vivo em campo), aparece um aviso e a ação é cancelada sozinha.
-   - **Usar Item** → escolha um item da Mochila daquele Treinador (só aparecem os que sobrou pelo menos 1 unidade) e depois em quem usar (o próprio Pokémon ou um aliado em campo). O efeito mecânico de cada item ainda está em aberto (Cap. 25) — por enquanto usar um item só desconta 1 unidade da Mochila e fica registrado no Registro, sem curar PV nem mudar Condição ainda.
+   - **Usar Item** → a Mochila aparece separada por tipo (💊 Vida, ✨ Condição, 📦 Outro) e depois pede em quem usar (o próprio Pokémon ou um aliado em campo). Itens de Vida e Condição já curam de verdade na hora — PV sobe ou vai pro máximo, Condição/Confusão some — e o Registro mostra quanto curou. Itens tipo Outro continuam sem efeito mecânico (Cap. 25): só descontam 1 unidade e ficam registrados.
    - **Trocar de Pokémon** → nada de arrastar aqui: a **Equipe ativa** daquele Treinador, lá embaixo, destaca os Pokémon disponíveis — clique em qualquer um (vivo, e que não esteja em campo em outro lugar) pra colocar no lugar do atual. O que estava lutando sai da Arena de vez (some do Time, volta a aparecer só na Equipe ativa dele) e o escolhido entra revelado. Consome a ação inteira (Cap. 18) — o que entrou só age a partir do turno seguinte dele. Se o que saiu tiver Queimadura/Veneno, o dano de fim de turno ainda bate nele antes de sair (é a última ação dele em campo).
    - **Fugir** → tenta fugir da batalha. Se a **🔒 Trava de Fuga** estiver ligada, bloqueia na hora, sem dado nenhum — quem estava tentando pode escolher outra coisa. Sem trava, rola **1d10** na hora: 1–3 e não consegue (a ação é gasta, ele continua em campo); 4–10 e foge com sucesso, saindo da Arena de vez. Os dois casos ficam registrados no Registro.
    - Cancele a qualquer momento com **"Cancelar"** no menu.
@@ -98,7 +111,7 @@ O motor de ação segue as Regras: rola 1d6 pra Precisão (Cap. 10, respeitando 
 
 **Dano de fim de turno já é automático.** Assim que o Pokémon que agiu termina a ação (ataca, usa item, troca ou foge), se ele estiver com Queimadura, Veneno ou Veneno Grave, o dano daquela Condição (Cap. 20: −1 PV Queimadura, −2 PV Veneno, crescente 1→2→3... no Veneno Grave) já é aplicado sozinho e entra no Registro — não precisa esperar a rodada inteira nem aplicar na mão. Isso vale mesmo fora de uma Rodada de Iniciativa ativa.
 
-O que o motor **não** faz sozinho — continua sendo você quem conduz: a janela de negociação de Prioridade (Cap. 17), os testes de início de turno de Paralisia (travar a ação), Sono (acordar) e Congelamento (descongelar) — Confusão já é automática, como descrito acima —, e o efeito de verdade de Movimentos de campo, de itens ou de suporte sem status (Helping Hand, Aromatherapy, etc. — Cap. 25).
+O que o motor **não** faz sozinho — continua sendo você quem conduz: a janela de negociação de Prioridade (Cap. 17), os testes de início de turno de Paralisia (travar a ação), Sono (acordar) e Congelamento (descongelar) — Confusão já é automática, como descrito acima —, e o efeito de verdade de Movimentos de campo ou de suporte sem status (Helping Hand, Aromatherapy, etc. — Cap. 25). Itens de Vida e Condição já curam de verdade (ver "Usar Item" acima); qualquer outro item continua sem efeito mecânico.
 
 ### Registro (histórico de rolagens)
 

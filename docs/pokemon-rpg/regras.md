@@ -356,7 +356,7 @@ Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano F
 - **Regras específicas de Movimentos**: múltiplos acertos, recoil, drenagem, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5) já segue o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano nem uma Condição de status simples (Helping Hand, Aromatherapy, buffs de estágio, etc.) e qualquer Movimento de campo (Stealth Rock, clima — Cap. 8.5).
 - **Captura**: sistema definitivo de Poké Balls ainda precisa ser desenvolvido.
 - **Habilidades**: reservadas para desenvolvimento posterior.
-- **Efeito de Itens em batalha**: a Mochila (nome + quantidade) já existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo). Usar um item na Arena já consome 1 unidade e fica registrado no Log, mas o efeito mecânico de cada item (curar PV, curar status, etc.) ainda será definido.
+- **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo). Itens de **Vida** (curam PV — quantidade fixa ou cura total) e de **Condição** (curam Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal) já têm efeito de verdade — tanto fora de batalha (aba Cura da ficha) quanto na Arena. Qualquer outro item continua só consumindo 1 unidade e registrando o uso, sem efeito mecânico nenhum — o que esses outros itens fazem ainda será definido.
 
 ## Referência Rápida
 
