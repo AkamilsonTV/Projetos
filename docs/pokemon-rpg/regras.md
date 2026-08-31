@@ -226,7 +226,7 @@ Dano mínimo de um golpe que acerte: **1** (mesmo com resultado zero/negativo). 
 - **STAB**: movimento compartilha tipo com o Pokémon → +1 Dano Final.
 - **Super Efetivo**: +2 Dano Final por tipo vulnerável do defensor (fraqueza dupla = +4).
 - **Pouco Efetivo**: −2 por resistência (duas resistências = −4). Fraqueza e resistência podem se cancelar.
-- **Imunidade**: 0 de dano, ignora a regra de dano mínimo.
+- **Imunidade**: 0 de dano, ignora a regra de dano mínimo. Também bloqueia qualquer Efeito Percentual do Movimento (Cap. 14) contra esse alvo — um Pokémon imune ao Tipo do golpe não sofre a Condição de status que ele poderia causar.
 
 ## Capítulo 14 — Efeitos Percentuais
 
@@ -319,6 +319,8 @@ Coexiste com qualquer Condição Principal. No início do turno, antes de testar
 8. Determine o Dano Final (mínimo 1; Imunidade = 0).
 9. Resolva efeitos percentuais (1d10; crítico dá segunda tentativa).
 10. Resolva efeitos de final de turno (Queimadura, Veneno, Veneno Grave, etc.).
+
+Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano Final e Efeito Percentual) já são resolvidos automaticamente pelo botão de Ataque — ver o Guia do Treinador/Guia do Mestre. Os passos 1 a 3 (Prioridade, quem age primeiro, condições que impedem agir) e o 10 (efeitos de final de turno) continuam por conta do Mestre na mesa.
 
 ## Capítulo 25 — Mecânicas ainda em desenvolvimento
 

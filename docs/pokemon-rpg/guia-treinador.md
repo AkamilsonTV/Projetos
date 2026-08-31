@@ -71,8 +71,20 @@ O botão **"🏟️ Arena"** no topo abre um espaço à parte pra montar uma bat
 - Aparece **"Equipe ativa"** com os Pokémon da sua Equipe (só sprite pixelado + nome — arraste pelo **⠿**).
 - Arraste um deles pra dentro de um **Time** (o Mestre cria os Times). Ele continua normalmente na sua ficha — a Arena só mostra que ele está nessa batalha.
 - Enquanto ninguém apertar **"Usar"** naquele Pokémon, os outros Treinadores da mesa (menos o Mestre) veem só uma **Pokébola** no lugar dele — não sabem qual é. Só você (o dono) e o Mestre veem de verdade.
-- Assim que alguém (você ou o Mestre) clica em **"Usar"**, ele fica visível pra mesa inteira — sprite, HP em barra e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito.
+- Assim que alguém (você ou o Mestre) clica em **"Usar"**, ele fica visível pra mesa inteira — sprite, uma **barra de PV** (verde acima de 50%, amarela entre 20% e 50%, vermelha em 20% ou menos, igual ao jogo oficial) e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito.
 - Não tem limite de Treinadores nem de Times — pode ser 1×1, vários contra vários, o que a mesa precisar.
+
+### Atacando
+
+Depois que seu Pokémon já está "Usado" (visível em campo) e não está Desmaiado, aparece um botão **"⚔️ Atacar"** nele. O fluxo é:
+
+1. Clique em **"⚔️ Atacar"** no seu Pokémon.
+2. Clique no alvo — pode ser um adversário ou um aliado, desde que também já esteja "Usado" e vivo. É só clicar em cima do card dele ali na Arena (ele fica destacado, piscando).
+3. Escolha um dos Movimentos do seu Pokémon no painel que aparece embaixo dos Times.
+4. Pronto — o sistema rola os dados sozinho, aplica o dano e mostra tudo num **quadro de dado no centro da tela**: o d6 do ataque, o 1d10 do Efeito Percentual (quando o Movimento tiver um), se foi Crítico, quanto de dano saiu e se alguma Condição de status foi aplicada. O quadro some sozinho depois de alguns segundos, ou clique em **"Fechar"**/fora dele pra tirar na hora.
+
+Tudo isso segue as Regras à risca — Precisão (Cap. 10), Crítico (Cap. 11), Dano (Cap. 12), Tipos (Cap. 13) e Efeito Percentual (Cap. 14) — sem precisar rolar dado físico nem fazer conta na mão. Se o efeito aplicar uma Condição de status, ela já entra na ficha do Pokémon atingido e aparece com o selo/ícone de sempre. O que a Arena **não** faz sozinha: decidir quem age primeiro (iniciativa/Prioridade), aplicar testes de início de turno (Paralisia travar a ação, Sono acordar, etc.) ou cobrar o dano de fim de turno de Queimadura/Veneno — isso continua sendo o Mestre quem conduz na mesa, como sempre foi.
+- Cancele a qualquer momento clicando em **"Cancelar"** no painel do ataque.
 
 ## Tema claro/escuro
 

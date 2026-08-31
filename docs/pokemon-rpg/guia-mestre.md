@@ -60,9 +60,21 @@ Botão **"🏟️ Arena"** no topo. Primeira versão do espaço de batalha — f
 
 - **Times**: só você cria (**"+ Novo Time"**), renomeia (campo de texto no topo do Time) e remove (✕, com confirmação). Sem limite — não precisa ser só 2, dá pra fazer quantos Times a mesa precisar.
 - Cada Treinador arrasta (pelo ⠿) um Pokémon da própria Equipe ativa pra dentro de um Time. Isso não tira o Pokémon da ficha dele — a Arena só reflete quem está na batalha.
-- **Você vê todo mundo sempre**, revelado ou não — é o único papel com visão total da Arena. Os Treinadores só veem os próprios Pokémon e os que já foram "Usados"; o resto aparece como Pokébola pra eles.
+- **Você vê todo mundo sempre**, revelado ou não — é o único papel com visão total da Arena. Os Treinadores só veem os próprios Pokémon e os que já foram "Usados"; o resto aparece como Pokébola pra eles. Um Pokémon "Usado" mostra uma **barra de PV** com três cores (verde/amarela/vermelha, conforme o PV atual) visível pra mesa inteira.
 - Você também pode clicar **"Usar"**/✕ nos Pokémon de qualquer Treinador, se precisar ajustar por eles.
-- Como é um esboço: não mexe em HP, dano ou ordem de turno — isso continua sendo feito na ficha e na mesa, do jeito que já é. A Arena por enquanto só organiza quem está lutando e esconde/revela.
+
+### Resolvendo um ataque de verdade
+
+Qualquer Pokémon já "Usado" e vivo ganha um botão **"⚔️ Atacar"**. Como Mestre, você pode clicar esse botão em qualquer Pokémon da mesa (não só nos seus) — útil pra rodar o ataque de um NPC/Pokémon selvagem que você mesmo colocar na Arena, ou pra ajudar um jogador.
+
+1. Clique **"⚔️ Atacar"** no Pokémon que vai agir.
+2. Clique no alvo (outro Pokémon já "Usado" e vivo — aliado ou adversário, o sistema não distingue times pra isso).
+3. Escolha o Movimento no painel que aparece.
+4. O sistema resolve tudo sozinho e mostra o resultado num quadro de dado no centro da tela pra todo mundo conectado — não só quem está com a Arena aberta.
+
+O motor de ataque segue as Regras: rola 1d6 pra Precisão (Cap. 10, respeitando Movimentos 100% automáticos) e Crítico (Cap. 11, natural 6 em Movimento de dano), calcula o Dano Base (Cap. 12) e aplica STAB/Tipos (Cap. 13, com Fraqueza e resistência se cancelando por Tipo do defensor). Se o Movimento tiver um Efeito Percentual conhecido (ex.: Thunderbolt/Paralisia, Toxic/Veneno Grave), rola 1d10 na mesma resolução (Cap. 14) — Crítico dá uma segunda tentativa se a primeira falhar — e, se aplicar, a Condição de status já entra sozinha na ficha do alvo (respeitando a regra de nunca ter duas Condições Principais ao mesmo tempo — Confusão é a exceção, Cap. 20) e aparece com o ícone de sempre. PV chegando a 0 já marca Desmaio (Cap. 19).
+
+O que o motor **não** faz sozinho — continua sendo você quem conduz: decidir quem age primeiro (Velocidade/Prioridade, Cap. 16-17), os testes de início de turno das Condições (Paralisia travar a ação, Sono acordar, Congelamento descongelar, Confusão, Cap. 20-23) e o dano de final de turno de Queimadura/Veneno/Veneno Grave. Cancele o ataque a qualquer momento com **"Cancelar"** no painel.
 
 ## Tema claro/escuro
 

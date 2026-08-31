@@ -105,14 +105,14 @@ Cada Treinador tem 6 posições de **Equipe** (os Pokémon ativos) e um **Banco*
 
 Funciona com mouse e com toque (celular).
 
-## Arena (esboço v1)
+## Arena (esboço v1 + motor de ataque)
 
-Botão **"🏟️ Arena"** no topo — espaço à parte pra montar uma batalha, feito como primeiro rascunho pra iterar em cima. Modelo de dados novo em `STATE.arena` (`teams` + `entries`), migração automática pra fichas salvas antes disso existir.
+Botão **"🏟️ Arena"** no topo — espaço à parte pra montar uma batalha, feito como primeiro rascunho pra iterar em cima. Modelo de dados novo em `STATE.arena` (`teams` + `entries` + `lastRoll`), migração automática pra fichas salvas antes disso existir.
 
 - **Times**: sem limite, criados/renomeados/removidos só pelo Mestre — não precisa ser 1×1, dá pra ter quantos Times a mesa quiser.
 - Cada Treinador arrasta (pelo ⠿, mesma engine de Pointer Events da Equipe/Banco) um Pokémon da própria Equipe ativa pra dentro de um Time. A entrada guarda só a referência (Treinador + Pokémon) — o Pokémon continua na ficha normalmente, nada é duplicado ou movido de lá.
-- **Visibilidade**: o dono do Pokémon e o Mestre sempre veem o sprite pixelado real, a barra de PV e a Condição/Confuso como ícone (gráfico, não escrito — 🔥☠️⚡💤❄️💫😵). Os demais Treinadores veem uma Pokébola (o mesmo SVG do topo do site) até alguém clicar **"Usar"**, que revela o Pokémon pra mesa inteira.
-- Escopo do v1: só organiza quem está na batalha e o que é visível pra quem. Não calcula dano, turno ou iniciativa — isso continua na ficha/mesa como já era.
+- **Visibilidade**: o dono do Pokémon e o Mestre sempre veem o sprite pixelado real, uma **barra de PV com três cores** (verde/amarela/vermelha, como no jogo oficial) e a Condição/Confuso como ícone (gráfico, não escrito — 🔥☠️⚡💤❄️💫😵). Os demais Treinadores veem uma Pokébola (o mesmo SVG do topo do site) até alguém clicar **"Usar"**, que revela o Pokémon (e a barra de PV) pra mesa inteira.
+- **Ataque de verdade**: qualquer Pokémon já revelado e vivo ganha um botão **"⚔️ Atacar"** — clique nele, depois no alvo (aliado ou adversário, também já revelado) e escolha o Movimento. O motor resolve a Precisão (Cap. 10), Crítico (Cap. 11), Dano (Cap. 12) e Tipos (Cap. 13) com 1d6, e o Efeito Percentual (Cap. 14) com 1d10 quando o Movimento tiver um efeito de status conhecido — se aplicar, a Condição já entra sozinha na ficha do alvo, respeitando a regra de nunca empilhar duas Condições Principais (Confusão é a exceção, Cap. 20). PV chegando a 0 marca Desmaio (Cap. 19) automaticamente. Todo mundo conectado vê um quadro de dado no centro da tela com o resultado (`STATE.arena.lastRoll`), some sozinho depois de alguns segundos. O que fica de fora, por enquanto: iniciativa/Prioridade, os testes de início de turno das Condições e o dano de final de turno — isso continua com o Mestre.
 
 ## O que já está no sistema de regras
 
