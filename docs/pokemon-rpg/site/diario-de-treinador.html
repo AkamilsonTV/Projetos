@@ -231,6 +231,7 @@
   .arena-source-tile{ position:relative; width:64px; padding-top:24px; display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center; }
   .arena-source-tile .drag-handle{ position:absolute; top:0; left:50%; transform:translateX(-50%); }
   .arena-source-tile-used{ opacity:.4; }
+  .arena-source-tile-swappable{ cursor:pointer; border-radius:var(--radius-sm); outline:2px dashed var(--accent); outline-offset:3px; animation:arena-target-pulse 1.1s ease-in-out infinite; }
 
   /* ---- Ataque na Arena: alvo clicável, quem está atacando/foi escolhido ---- */
   .arena-slot-targetable{ cursor:pointer; border-radius:var(--radius-sm); outline:2px dashed var(--accent); outline-offset:3px; animation:arena-target-pulse 1.1s ease-in-out infinite; }
@@ -4427,7 +4428,13 @@ function migrateState(){
     if(typeof t.attrPointsAllocated !== 'number') t.attrPointsAllocated = attrSpent(t);
     if(!Array.isArray(t.attrChoicePicks)) t.attrChoicePicks = [];
     if(!Array.isArray(t.itens)) t.itens = [];
-    (t.pokemons||[]).concat(t.banco||[]).forEach(migratePokemonMoves);
+    (t.pokemons||[]).concat(t.banco||[]).forEach(function(p){
+      migratePokemonMoves(p);
+      /* Uma vez revelado na Arena, o Pokémon fica com a sprite visível pra
+         sempre (mesmo saindo de campo e voltando depois) -- esse flag vive
+         no próprio Pokémon, não na entrada da Arena, que é descartável. */
+      if(p.arenaRevelado===undefined) p.arenaRevelado = false;
+    });
   });
   if(!STATE.arena || typeof STATE.arena!=='object') STATE.arena = {teams:[], entries:[]};
   if(!Array.isArray(STATE.arena.teams)) STATE.arena.teams = [];
@@ -4435,6 +4442,11 @@ function migrateState(){
   if(STATE.arena.lastRoll===undefined) STATE.arena.lastRoll = null;
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   if(STATE.arena.round===undefined) STATE.arena.round = null;
+  /* Trava de Fuga (só o Mestre liga/desliga): quando true, ninguém foge
+     dessa batalha -- representa algum efeito/motivo que prenda os
+     Pokémon em campo (Mean Look, arena de combate, etc.), decidido pelo
+     Mestre; sem isso definido, a fuga rola 1d10 normalmente. */
+  if(STATE.arena.fugaTravada===undefined) STATE.arena.fugaTravada = false;
 }
 /* Fichas salvas antes do método Normal/TM/HM existir ganham 'normal' por
    padrão (sem mudar o Movimento que já estava escolhido). */
@@ -4461,7 +4473,7 @@ function newPokemon(){
     id: uid(), apelido:"", especie:"", especieNum:null, tipo1:"", tipo2:"",
     natural:{hp:1,atk:1,def:1,spa:1,spd:1,spe:1},
     vinculo:0, maturidade:0, currentHP:null,
-    status:"", statusTurns:0, confuso:false,
+    status:"", statusTurns:0, confuso:false, arenaRevelado:false,
     estagios:{atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0},
     moves:[{nome:"",tipo:"",categoria:"Físico",poder:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
            {nome:"",tipo:"",categoria:"Físico",poder:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
@@ -5341,6 +5353,18 @@ DT.arenaAddTeam = function(){
   STATE.arena.teams.push({id:uid(), nome:'Time '+(STATE.arena.teams.length+1)});
   mutate();
 };
+/* Trava de Fuga: só o Mestre liga/desliga, vale pra batalha inteira. Usa
+   quando algum Movimento/Habilidade/motivo de história estiver prendendo
+   os Pokémon em campo -- enquanto travada, ninguém consegue fugir daqui,
+   sem precisar rolar dado nenhum. */
+DT.arenaToggleFugaLock = function(){
+  if(SESSION.role!=='gm' || !STATE.arena) return;
+  STATE.arena.fugaTravada = !STATE.arena.fugaTravada;
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  STATE.arena.log.push({ ts: Date.now(), text: STATE.arena.fugaTravada ? '🔒 O Mestre travou a fuga nesta batalha.' : '🔓 O Mestre destravou a fuga nesta batalha.' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  mutate();
+};
 DT.arenaRenameTeam = function(teamId, el){
   var team = STATE.arena.teams.find(function(x){ return x.id===teamId; });
   if(!team) return;
@@ -5359,7 +5383,12 @@ DT.arenaSetEntry = function(trainerId, pokemonId, teamId){
   if(!STATE.arena) return;
   var entry = STATE.arena.entries.find(function(e){ return e.trainerId===trainerId && e.pokemonId===pokemonId; });
   if(entry){ entry.teamId = teamId; }
-  else { STATE.arena.entries.push({id:uid(), teamId:teamId, trainerId:trainerId, pokemonId:pokemonId, revelado:false}); }
+  else {
+    var p = getPoke(trainerId, pokemonId);
+    /* Se esse Pokémon já foi revelado antes (arenaRevelado, persistido nele
+       mesmo), entra já visível de novo -- não volta a virar Pokébola. */
+    STATE.arena.entries.push({id:uid(), teamId:teamId, trainerId:trainerId, pokemonId:pokemonId, revelado: !!(p && p.arenaRevelado)});
+  }
   mutate();
 };
 DT.arenaRemoveEntry = function(entryId){
@@ -5397,6 +5426,7 @@ DT.arenaSelectActor = function(entryId){
   if(cur<=0) return; /* desmaiado, não pode agir */
 
   if(!e.revelado) e.revelado = true;
+  if(!p.arenaRevelado) p.arenaRevelado = true; /* fica visível pra sempre a partir daqui */
 
   var confCheck = arenaConfusionPreCheck(e);
   if(confCheck){
@@ -5534,45 +5564,84 @@ DT.resolveItemUse = function(atkEntry, itemIdx, targetEntryId){
   arenaResetActionState();
   mutate();
 };
-/* Troca (Cap. 18): consome a ação inteira -- o Pokémon que entra não age
-   nesse turno, só a partir do próximo. */
-DT.arenaSwapIn = function(newEntryId){
+/* Troca (Cap. 18): clique direto num Pokémon da Equipe ativa do mesmo
+   Treinador (nada de arrastar) -- o que estava em campo sai da Arena e
+   volta a aparecer só na Equipe ativa dele; o escolhido entra revelado
+   no lugar, no mesmo Time. Consome a ação inteira -- o que entrou só
+   age a partir do turno seguinte. */
+DT.arenaSwapIn = function(newPokemonId){
   var oldEntry = findArenaEntry(SESSION.arenaAttacker);
-  var newEntry = findArenaEntry(newEntryId);
-  if(!oldEntry || !newEntry || oldEntry.trainerId!==newEntry.trainerId || newEntry.revelado) return;
+  if(!oldEntry) return;
   var oldT = findTrainer(oldEntry.trainerId);
   var oldP = oldT && getPoke(oldEntry.trainerId, oldEntry.pokemonId);
-  var newT = findTrainer(newEntry.trainerId);
-  var newP = newT && getPoke(newEntry.trainerId, newEntry.pokemonId);
-  if(!oldT || !oldP || !newT || !newP) return;
-  var newMax = hpMax(newT, newP);
+  if(!oldT || !oldP) return;
+  var newP = getPoke(oldEntry.trainerId, newPokemonId);
+  if(!newP || newP.id===oldP.id) return;
+  var isInEquipeAtiva = (oldT.pokemons||[]).some(function(x){ return x.id===newPokemonId; });
+  if(!isInEquipeAtiva) return; /* só entra quem já está na Equipe ativa (não no Banco) */
+  var jaEmCampo = (STATE.arena.entries||[]).some(function(x){ return x.trainerId===oldEntry.trainerId && x.pokemonId===newPokemonId; });
+  if(jaEmCampo) return; /* já é outra entrada ativa na Arena (ex.: batalha em dupla) */
+  var newMax = hpMax(oldT, newP);
   var newCur = (newP.currentHP===null||newP.currentHP===undefined) ? newMax : newP.currentHP;
   if(newCur<=0) return; /* não dá pra trocar por um Pokémon desmaiado */
 
-  oldEntry.revelado = false;
-  newEntry.revelado = true;
+  /* A troca é a última ação de quem estava em campo -- se ele tiver
+     Queimadura/Veneno, o dano de fim de turno ainda bate nele antes de sair. */
+  applyEndOfTurnStatusAndLog(oldEntry);
+
+  var round = STATE.arena.round;
+  var wasCurrent = round && currentRoundEntryId()===oldEntry.id;
+
+  var newEntry = { id: uid(), teamId: oldEntry.teamId, trainerId: oldEntry.trainerId, pokemonId: newPokemonId, revelado: true };
+  newP.arenaRevelado = true;
+  var idx = STATE.arena.entries.indexOf(oldEntry);
+  if(idx!==-1) STATE.arena.entries.splice(idx, 1, newEntry);
 
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
-  var prefix = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
+  var prefix = round ? ('Rodada '+round.number+' · ') : '';
   STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(oldT.name)+' trocou '+esc(oldP.apelido||oldP.especie||'Pokémon')+' por '+esc(newP.apelido||newP.especie||'Pokémon')+'.' });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
 
-  arenaAdvanceTurn(oldEntry.id);
+  if(wasCurrent && round){
+    round.currentIdx++;
+    advanceRoundPastFainted(round);
+  }
   arenaResetActionState();
   mutate();
 };
-/* Fuga: sem regra de sucesso/falha definida ainda -- sempre funciona,
-   tira o Pokémon da Arena e encerra o turno dele. */
+/* Fuga: se o Mestre travou a fuga nesta batalha (🔒 Travar Fuga -- algum
+   Movimento/Habilidade/motivo que prenda o Pokémon em campo), bloqueia na
+   hora, sem gastar a ação -- o jogador escolhe outra coisa. Sem trava,
+   rola 1d10: 1-3 não consegue fugir (a ação é gasta, ele continua em
+   campo, o turno passa normalmente); 4-10 foge com sucesso e sai da
+   Arena de vez. */
 DT.arenaFlee = function(){
   var e = findArenaEntry(SESSION.arenaAttacker);
   if(!e) return;
   var t = findTrainer(e.trainerId);
   var p = t && getPoke(e.trainerId, e.pokemonId);
   var nome = p ? (p.apelido||p.especie||'Pokémon') : '?';
+
+  if(STATE.arena.fugaTravada){
+    SESSION.error = 'A fuga está travada pelo Mestre nesta batalha.';
+    arenaResetActionState();
+    render();
+    return;
+  }
+
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   var prefix = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
-  STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(t?t.name:'?')+') fugiu da batalha.' });
+  var d10 = rollDie(10);
+  var sucesso = d10>=4;
+  STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(t?t.name:'?')+') tentou fugir — 1d10: '+d10+(sucesso?' — conseguiu fugir!':' — não conseguiu fugir.') });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+
+  if(!sucesso){
+    arenaAdvanceTurn(e.id);
+    arenaResetActionState();
+    mutate();
+    return;
+  }
 
   var round = STATE.arena.round;
   var wasCurrent = round && currentRoundEntryId()===e.id;
@@ -6282,18 +6351,18 @@ function arenaActionPanelHTML(){
   }
 
   if(SESSION.arenaAction==='trocar'){
-    var bench = (STATE.arena.entries||[]).filter(function(x){ return x.trainerId===atkEntry.trainerId && x.id!==atkEntry.id && !x.revelado; });
-    var swapBtns = bench.map(function(x){
-      var p = getPoke(x.trainerId, x.pokemonId);
-      if(!p) return '';
+    var hasSwapCandidate = (attTrainer.pokemons||[]).some(function(p){
+      if(p.id===attPoke.id) return false;
+      var jaEmCampo = (STATE.arena.entries||[]).some(function(x){ return x.trainerId===attTrainer.id && x.pokemonId===p.id; });
+      if(jaEmCampo) return false;
       var max = hpMax(attTrainer,p);
       var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
-      if(cur<=0) return ''; /* não dá pra trocar por um Pokémon desmaiado */
-      return '<button class="btn-sm" onclick="DT.arenaSwapIn(\''+x.id+'\')">'+esc(p.apelido||p.especie||'?')+'</button>';
-    }).join('');
+      return cur>0;
+    });
     return '<div class="card arena-attack-panel"><div class="card-body">'+
-      '<p>🔁 Trocar <strong>'+esc(name)+'</strong> por qual Pokémon?</p>'+
-      '<div class="btn-row" style="flex-wrap:wrap;">'+(swapBtns || '<span class="muted">Nenhum outro Pokémon disponível pra entrar no lugar.</span>')+'</div>'+
+      '<p>🔁 Trocar <strong>'+esc(name)+'</strong> — '+(hasSwapCandidate
+        ? 'clique em outro Pokémon da <strong>Equipe ativa</strong> de '+esc(attTrainer.name)+' ali embaixo pra colocar ele no lugar.'
+        : 'não sobrou nenhum outro Pokémon disponível na Equipe ativa pra entrar no lugar.')+'</p>'+
       cancelBtn+
     '</div></div>';
   }
@@ -6302,8 +6371,13 @@ function arenaActionPanelHTML(){
 }
 function arenaTeamsHTML(isGM){
   var teams = (STATE.arena && STATE.arena.teams) || [];
+  var travada = !!(STATE.arena && STATE.arena.fugaTravada);
+  var fugaBtn = isGM
+    ? '<button class="btn-sm'+(travada?' btn-danger':' btn-ghost')+'" onclick="DT.arenaToggleFugaLock()" title="Bloqueia toda fuga nesta batalha -- use quando algo (Movimento, Habilidade, motivo de história) estiver prendendo os Pokémon em campo.">'+(travada?'🔒 Fuga travada':'🔓 Travar Fuga')+'</button>'
+    : (travada ? '<span class="tag" style="font-size:.7rem;">🔒 Fuga travada pelo Mestre</span>' : '');
   var out = '<div class="card"><div class="card-head"><span class="index">Mesa</span><h2>Times</h2>'+
     (isGM ? '<button class="btn-sm" onclick="DT.arenaAddTeam()">+ Novo Time</button>' : '')+
+    fugaBtn+
   '</div><div class="card-body">';
   if(teams.length===0){
     out += '<p class="muted">'+(isGM ? 'Clique em "+ Novo Time" pra começar — pode criar quantos quiser (não precisa ser só 2).' : 'O Mestre ainda não criou nenhum Time nesta Arena.')+'</p>';
@@ -6427,6 +6501,14 @@ function arenaSourceHTML(isGM){
 function arenaTrainerSourceHTML(t){
   var mons = t.pokemons.filter(function(p){ return p.especie; });
   var entries = (STATE.arena && STATE.arena.entries) || [];
+  /* Modo "Trocar" ativo pra esse Treinador: quem está agindo escolheu
+     Trocar e é um Pokémon dele -- os tiles da Equipe ativa viram o
+     seletor de troca (clique direto, sem arrastar). */
+  var swapEntry = null;
+  if(SESSION.arenaAttacker && SESSION.arenaAction==='trocar'){
+    var actingEntry = findArenaEntry(SESSION.arenaAttacker);
+    if(actingEntry && actingEntry.trainerId===t.id) swapEntry = actingEntry;
+  }
   var tiles = mons.length===0
     ? '<p class="muted" style="font-size:.78rem;">Equipe ativa vazia.</p>'
     : '<div class="arena-source-row">'+mons.map(function(p){
@@ -6435,8 +6517,16 @@ function arenaTrainerSourceHTML(t){
         var sprite = num
           ? '<img class="poke-sprite" src="'+spriteUrl(num)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
           : '<div class="poke-sprite-placeholder">❔</div>';
-        return '<div class="arena-source-tile'+(placed?' arena-source-tile-used':'')+'">'+
-          '<button type="button" class="drag-handle" title="Arrastar pra um Time" onpointerdown="DT.arenaDragStart(event,\''+t.id+'\',\''+p.id+'\')">⠿</button>'+
+        var swappable = false;
+        var tileClick = '';
+        if(swapEntry && p.id!==swapEntry.pokemonId && !placed){
+          var max = hpMax(t,p);
+          var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+          if(cur>0){ swappable = true; tileClick = ' onclick="DT.arenaSwapIn(\''+p.id+'\')"'; }
+        }
+        var handle = swapEntry ? '' : '<button type="button" class="drag-handle" title="Arrastar pra um Time" onpointerdown="DT.arenaDragStart(event,\''+t.id+'\',\''+p.id+'\')">⠿</button>';
+        return '<div class="arena-source-tile'+(placed?' arena-source-tile-used':'')+(swappable?' arena-source-tile-swappable':'')+'"'+tileClick+'>'+
+          handle+
           sprite+
           '<div style="font-size:.66rem; text-align:center;">'+(p.apelido?esc(p.apelido):esc(p.especie))+'</div>'+
         '</div>';

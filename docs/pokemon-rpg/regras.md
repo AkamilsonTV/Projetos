@@ -295,6 +295,10 @@ A Arena do site não automatiza essa janela — é uma negociação ao vivo entr
 
 Só pode ser feita na vez do Treinador; consome completamente a ação. O novo Pokémon entra mas não age naquele turno — age normalmente a partir do turno seguinte.
 
+### 18.1 Fuga
+
+Tentar fugir da batalha também consome a ação inteira. Se algum Movimento, Habilidade ou motivo de história estiver prendendo o Pokémon em campo, o Mestre pode travar a fuga pra aquela batalha inteira — nesse caso ela é bloqueada direto, sem rolar dado. Sem trava, rola **1d10**: 1–3 não consegue fugir (a ação é gasta, o Pokémon continua em campo); 4–10 foge com sucesso e sai da batalha.
+
 ## Capítulo 19 — Desmaio
 
 Ao chegar a **0 PV**, o Pokémon Desmaia e não pode continuar lutando. Se o Treinador tiver outro Pokémon capaz de lutar, ele entra. Sem Pokémon capazes de lutar de um lado, a batalha termina.
