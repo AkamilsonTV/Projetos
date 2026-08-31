@@ -45,14 +45,23 @@ Funciona com mouse ou toque (celular).
 - **PV atual** (o número de Pontos de Vida que ele tem agora) — tem um botão **"curar"** que enche de volta até o máximo.
 - **Estágios** (±6): os bônus/penalidades temporários de batalha (Ataque, Defesa, Atq. Especial, Def. Especial, Velocidade, Precisão, Evasão).
 
+### Escolhendo os Movimentos
+
+Você mesmo escolhe os 4 Movimentos do seu Pokémon — mas só entre o que a espécie realmente pode aprender (não dá pra digitar qualquer coisa). Pra cada um dos 4 slots, tem três opções:
+
+- **Normal**: os Movimentos que a espécie aprende naturalmente subindo de Nível. Só aparecem os que já estão liberados pelo seu Nível atual de Treinador (Cap. 8.2 das Regras) — o menu mostra "Nome (Nv. X)" pra cada opção.
+- **TM**: os Movimentos que a espécie pode aprender por Fita de Movimento, sem depender de Nível.
+- **HM**: o mesmo, mas por Disco de Movimento.
+
+Clique no método (Normal/TM/HM) e depois escolha o Movimento no menu que aparece — Tipo, Categoria, Poder, Prioridade, Precisão e a Descrição são preenchidos sozinhos. Se a lista aparecer vazia, é porque a espécie não tem nada disponível ali (ou você ainda não subiu Nível suficiente, no caso do Normal).
+
 ### O que só o Mestre edita (você só vê)
 
 - Espécie, Tipo 1/2, Atributos Naturais e Efetivos.
 - Vínculo e Maturidade.
 - Condição (queimadura, veneno, sono, etc.) e Confuso — aparecem em destaque (um selo vermelho) no topo do card quando ativos, pra você não perder o que está rolando na batalha.
-- Os 4 Movimentos — aparecem como uma tabela: Movimento, Tipo, Categoria, Poder, Prioridade, Precisão, e a Descrição de cada um logo abaixo.
 
-Cada Pokémon mostra automaticamente o sprite (a imagem pixelada) da espécie assim que o Mestre define ela. Sem espécie definida ainda, aparece um "❔" no lugar.
+Cada Pokémon mostra automaticamente o sprite (a imagem pixelada) da espécie assim que o Mestre define ela. Sem espécie definida ainda, aparece um "❔" no lugar — e enquanto isso, o seletor de Movimentos fica bloqueado (precisa da Espécie pra saber o que ele pode aprender).
 
 ## Tema claro/escuro
 

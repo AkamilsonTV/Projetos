@@ -163,6 +163,10 @@ Cada Pokémon pode possuir **4 Movimentos** — limite disponível em combate.
 
 Regra de acesso imediato: ao ser capturado, o Pokémon já possui todos os Movimentos naturais cujo requisito seja ≤ ao Nível atual do Treinador — independe de Vínculo e Maturidade (o Vínculo continua necessário só para aproveitar os Atributos).
 
+### 8.4 TM e HM
+
+Além do aprendizado natural por Nível (8.2), um Pokémon pode aprender um Movimento por **TM** ou **HM**, desde que a espécie consiga aprender aquele Movimento por essa via nos jogos oficiais — sem depender do Nível do Treinador. Um Movimento ensinado por TM/HM ocupa um dos 4 slots normalmente, igual a um aprendido por Nível.
+
 ## Capítulo 9 — Poder dos Movimentos
 
 | Power oficial | Poder RPG |

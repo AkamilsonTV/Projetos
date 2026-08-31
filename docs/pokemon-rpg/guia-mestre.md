@@ -38,14 +38,17 @@ Pra configurar um Pokémon:
 
 - **Espécie**: digite o nome em inglês (como no jogo) — o campo autocompleta. Assim que o nome bater com um da base (todos os 1025 Pokémon, Gen 1 a 9), **Tipo 1/2 e os seis Atributos Naturais são preenchidos sozinhos**, já convertidos pela tabela de regras. Depois de preenchido, os campos continuam editáveis à mão, se quiser fugir do oficial.
 - O sprite (imagem pixelada) do Pokémon aparece automaticamente no card assim que a Espécie é reconhecida.
-- **Movimentos**: cada um dos 4 tem um campo "nome" com autocomplete (847 movimentos oficiais). Ao digitar um nome reconhecido, **Tipo, Categoria, Poder, Prioridade, Precisão e um resumo do Efeito são preenchidos sozinhos**. Movimentos de dano fixo ou variável (como Seismic Toss, Dragon Rage) ficam com Poder em branco — é regra em aberto (ver Cap. 25 das Regras), você adjudica na mesa.
 - **Vínculo**: controlado por um slider (0–25) — libera pontos de Atributo do Treinador pro Pokémon usar, conforme a tabela das Regras.
 - **Maturidade**: campo numérico livre — a regra definitiva de evolução ainda está em aberto.
 - **Condição** (queimadura, veneno, sono, paralisia, etc.) e **Confuso**: você aplica durante a batalha; aparecem em destaque na ficha do Treinador assim que ativos, pra ele acompanhar.
 
-### O que é compartilhado com o Treinador
+Você continua com um campo "nome" livre (com autocomplete, 847 movimentos oficiais) pra cada um dos 4 Movimentos, e as regras de sempre: digitar um nome reconhecido preenche Tipo, Categoria, Poder, Prioridade, Precisão e Efeito sozinho; Movimentos de dano fixo ou variável (Seismic Toss, Dragon Rage, etc.) ficam com Poder em branco — regra em aberto (Cap. 25), você adjudica na mesa. **Esse campo continua sem restrição nenhuma** (pode digitar qualquer um dos 847, mesmo que a espécie normalmente não aprendesse), pra você poder fazer exceções e homebrew quando quiser.
 
-PV atual, Apelido e Estágios de batalha o próprio Treinador também edita — não precisa fazer por ele durante o jogo, a menos que queira.
+### O que o Treinador escolhe sozinho
+
+Desde já é o próprio Treinador quem escolhe os 4 Movimentos do Pokémon dele — mas de um jeito restrito: pra cada slot, ele escolhe entre **Normal** (só o que a espécie aprende por Nível, e só até o Nível atual dele — Cap. 8.2/8.4 das Regras), **TM** ou **HM** (só o que a espécie pode aprender por aquela via). Ele nunca digita nada solto — só escolhe de listas geradas a partir da espécie de verdade.
+
+PV atual, Apelido e Estágios de batalha o Treinador também edita — não precisa fazer por ele durante o jogo, a menos que queira.
 
 ### Equipe e Banco
 
