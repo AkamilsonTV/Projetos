@@ -46,7 +46,7 @@ Você continua com um campo "nome" livre (com autocomplete, 847 movimentos ofici
 
 ### O que o Treinador escolhe sozinho
 
-Desde já é o próprio Treinador quem escolhe os 4 Movimentos do Pokémon dele — mas de um jeito restrito: pra cada slot, ele escolhe entre **Normal** (só o que a espécie aprende por Nível, e só até o Nível atual dele — Cap. 8.2/8.4 das Regras), **TM** ou **HM** (só o que a espécie pode aprender por aquela via). Ele nunca digita nada solto — só escolhe de listas geradas a partir da espécie de verdade.
+Desde já é o próprio Treinador quem escolhe os 4 Movimentos do Pokémon dele — mas de um jeito restrito: pra cada slot, ele escolhe entre **Nível** (só o que a espécie aprende por Nível, e só até o Nível atual dele — Cap. 8.2/8.4 das Regras), **Evo** (ganho ao evoluir pra essa forma), **TM** ou **Egg** (só o que a espécie pode aprender por aquela via). Não existe opção de HM — saiu dos jogos oficiais a partir da Geração 9. Ele nunca digita nada solto — só escolhe de listas geradas a partir da espécie de verdade.
 
 PV atual, Apelido e Estágios de batalha o Treinador também edita — não precisa fazer por ele durante o jogo, a menos que queira.
 

@@ -47,13 +47,14 @@ Funciona com mouse ou toque (celular).
 
 ### Escolhendo os Movimentos
 
-Você mesmo escolhe os 4 Movimentos do seu Pokémon — mas só entre o que a espécie realmente pode aprender (não dá pra digitar qualquer coisa). Pra cada um dos 4 slots, tem três opções:
+Você mesmo escolhe os 4 Movimentos do seu Pokémon — mas só entre o que a espécie realmente pode aprender (não dá pra digitar qualquer coisa). Pra cada um dos 4 slots, tem uma barra **"Learnset"** com quatro opções:
 
-- **Normal**: os Movimentos que a espécie aprende naturalmente subindo de Nível. Só aparecem os que já estão liberados pelo seu Nível atual de Treinador (Cap. 8.2 das Regras) — o menu mostra "Nome (Nv. X)" pra cada opção.
+- **Nível**: os Movimentos que a espécie aprende naturalmente subindo de Nível. Só aparecem os que já estão liberados pelo seu Nível atual de Treinador (Cap. 8.2 das Regras) — o menu mostra "Nome (Nv. X)" pra cada opção.
+- **Evo**: os Movimentos que a espécie ganha automaticamente ao evoluir pra essa forma — sem depender de Nível.
 - **TM**: os Movimentos que a espécie pode aprender por Fita de Movimento, sem depender de Nível.
-- **HM**: o mesmo, mas por Disco de Movimento.
+- **Egg**: os Movimentos que a espécie pode aprender por Breeding.
 
-Clique no método (Normal/TM/HM) e depois escolha o Movimento no menu que aparece — Tipo, Categoria, Poder, Prioridade, Precisão e a Descrição são preenchidos sozinhos. Se a lista aparecer vazia, é porque a espécie não tem nada disponível ali (ou você ainda não subiu Nível suficiente, no caso do Normal).
+Clique no método (Nível/Evo/TM/Egg) e depois escolha o Movimento no menu que aparece — Tipo, Categoria, Poder, Prioridade, Precisão e a Descrição são preenchidos sozinhos. Se a lista aparecer vazia, é porque a espécie não tem nada disponível ali (ou você ainda não subiu Nível suficiente, no caso do Nível). Não existe mais opção de HM — os jogos oficiais tiraram essa mecânica a partir da Geração 9.
 
 ### O que só o Mestre edita (você só vê)
 
