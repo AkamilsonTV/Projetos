@@ -212,6 +212,23 @@
   .learnset-label{ font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-dim); font-weight:700; }
   .learnset-bar select{ width:auto; flex:1; min-width:160px; }
 
+  /* ---- Arena (esboço v1) ---- */
+  .arena-teams{ display:flex; gap:14px; flex-wrap:wrap; }
+  .arena-team{ flex:1 1 220px; min-width:200px; border:2px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden; }
+  .arena-team.drop-hover{ outline:2px solid var(--accent); outline-offset:-2px; background:var(--accent-soft); }
+  .arena-team-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:var(--surface-2); border-bottom:2px solid var(--line); }
+  .arena-team-head input[type=text]{ font-weight:700; padding:4px 6px; }
+  .arena-team-body{ display:flex; flex-wrap:wrap; gap:12px; padding:12px; min-height:96px; }
+  .arena-slot, .arena-slot-hidden{ width:78px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; }
+  .arena-pokeball{ width:40px; height:40px; opacity:.85; }
+  .arena-pokeball svg{ width:100%; height:100%; }
+  .arena-slot-name{ font-size:.7rem; font-weight:600; line-height:1.2; }
+  .arena-icons{ font-size:.85rem; line-height:1; margin-top:2px; }
+  .arena-source-row{ display:flex; flex-wrap:wrap; gap:12px; }
+  .arena-source-tile{ position:relative; width:64px; padding-top:24px; display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center; }
+  .arena-source-tile .drag-handle{ position:absolute; top:0; left:50%; transform:translateX(-50%); }
+  .arena-source-tile-used{ opacity:.4; }
+
   .hp-row{ display:flex; align-items:center; gap:10px; }
   .hp-row input[type=number]{ width:70px; }
   .hp-bar{ flex:1; height:8px; background:var(--surface-3); border-radius:4px; overflow:hidden; border:1px solid var(--line); }
@@ -3281,7 +3298,7 @@ var CATEGORY_OPTS = ["Físico","Especial","Status"];
 var BATTLES_PER_LEVEL = 4;
 
 /* =================== ESTADO (sincronizado via Firestore) =================== */
-var STATE = { gmPin: null, trainers: [] };
+var STATE = { gmPin: null, trainers: [], arena: {teams:[], entries:[]} };
 var firestoreReady = false;
 var db = null;
 var stateDocRef = null;
@@ -3295,7 +3312,7 @@ try{
 }catch(e){}
 
 function persistSession(){ try{ localStorage.setItem('dt_session', JSON.stringify({role:SESSION.role, trainerId:SESSION.trainerId})); }catch(e){} }
-function clearSession(){ SESSION.role=null; SESSION.trainerId=null; SESSION.screen='home'; try{ localStorage.removeItem('dt_session'); }catch(e){} }
+function clearSession(){ SESSION.role=null; SESSION.trainerId=null; SESSION.screen='home'; SESSION.showRules=false; SESSION.showArena=false; try{ localStorage.removeItem('dt_session'); }catch(e){} }
 
 /* =================== TEMA (escolha do jogador, não segue o sistema) ===================
    Aplicado logo no carregamento, antes do primeiro render, pra não "piscar"
@@ -3340,6 +3357,9 @@ function migrateState(){
     if(!Array.isArray(t.attrChoicePicks)) t.attrChoicePicks = [];
     (t.pokemons||[]).concat(t.banco||[]).forEach(migratePokemonMoves);
   });
+  if(!STATE.arena || typeof STATE.arena!=='object') STATE.arena = {teams:[], entries:[]};
+  if(!Array.isArray(STATE.arena.teams)) STATE.arena.teams = [];
+  if(!Array.isArray(STATE.arena.entries)) STATE.arena.entries = [];
 }
 /* Fichas salvas antes do método Normal/TM/HM existir ganham 'normal' por
    padrão (sem mudar o Movimento que já estava escolhido). */
@@ -3764,7 +3784,25 @@ DT.dragStart = function(evt, tid, area, idx){
   ghost.textContent = (p && (p.apelido || p.especie)) || 'Pokémon';
   document.body.appendChild(ghost);
   positionGhost(ghost, evt.clientX, evt.clientY);
-  DRAG = { tid:tid, area:area, idx:idx, ghost:ghost, pointerId:evt.pointerId, handleEl:handle, lastTarget:null };
+  DRAG = { kind:'equipe', tid:tid, area:area, idx:idx, ghost:ghost, pointerId:evt.pointerId, handleEl:handle, lastTarget:null };
+  handle.addEventListener('pointermove', DT._dragMove);
+  handle.addEventListener('pointerup', DT._dragEnd);
+  handle.addEventListener('pointercancel', DT._dragCancel);
+};
+/* Mesma engine, pra arrastar um Pokémon (só a referência, sem tirar da
+   Equipe) pra dentro de um Time na Arena — ver DT.arenaSetEntry. */
+DT.arenaDragStart = function(evt, tid, pid){
+  if(DRAG) return;
+  evt.preventDefault();
+  var handle = evt.currentTarget;
+  try{ handle.setPointerCapture(evt.pointerId); }catch(e){}
+  var p = getPoke(tid, pid);
+  var ghost = document.createElement('div');
+  ghost.className = 'drag-ghost';
+  ghost.textContent = (p && (p.apelido || p.especie)) || 'Pokémon';
+  document.body.appendChild(ghost);
+  positionGhost(ghost, evt.clientX, evt.clientY);
+  DRAG = { kind:'arena', tid:tid, pid:pid, ghost:ghost, pointerId:evt.pointerId, handleEl:handle, lastTarget:null };
   handle.addEventListener('pointermove', DT._dragMove);
   handle.addEventListener('pointerup', DT._dragEnd);
   handle.addEventListener('pointercancel', DT._dragCancel);
@@ -3782,7 +3820,14 @@ DT._dragEnd = function(evt){
   var target = findDropTarget(evt.clientX, evt.clientY);
   var drag = DRAG;
   cleanupDrag();
-  if(target) DT.movePokemon(drag.tid, drag.area, drag.idx, target.area, target.idx);
+  if(!target) return;
+  if(drag.kind==='arena'){
+    if(target.area!=='arena-team') return;
+    var team = STATE.arena.teams[target.idx];
+    if(team) DT.arenaSetEntry(drag.tid, drag.pid, team.id);
+  } else {
+    DT.movePokemon(drag.tid, drag.area, drag.idx, target.area, target.idx);
+  }
 };
 DT._dragCancel = function(){ cleanupDrag(); };
 
@@ -3820,6 +3865,49 @@ DT.movePokemon = function(tid, srcArea, srcIdx, dstArea, dstIdx){
   mutate();
 };
 
+/* =================== ARENA (esboço v1) ===================
+   Times sem limite (o Mestre cria/renomeia/remove); Treinadores arrastam
+   um Pokémon da própria Equipe ativa pra dentro de um Time. A entrada só
+   guarda a referência (trainerId+pokemonId) — o Pokémon continua na Equipe
+   normalmente, a Arena só reflete o que já existe na ficha. */
+DT.arenaAddTeam = function(){
+  if(!STATE.arena) STATE.arena = {teams:[], entries:[]};
+  STATE.arena.teams.push({id:uid(), nome:'Time '+(STATE.arena.teams.length+1)});
+  mutate();
+};
+DT.arenaRenameTeam = function(teamId, el){
+  var team = STATE.arena.teams.find(function(x){ return x.id===teamId; });
+  if(!team) return;
+  team.nome = el.value.trim() || team.nome;
+  mutate();
+};
+DT.arenaAskRemoveTeam = function(teamId){ SESSION.confirmRemoveArenaTeam = teamId; render(); };
+DT.arenaCancelRemoveTeam = function(){ SESSION.confirmRemoveArenaTeam = null; render(); };
+DT.arenaRemoveTeam = function(teamId){
+  STATE.arena.teams = STATE.arena.teams.filter(function(x){ return x.id!==teamId; });
+  STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.teamId!==teamId; });
+  SESSION.confirmRemoveArenaTeam = null;
+  mutate();
+};
+DT.arenaSetEntry = function(trainerId, pokemonId, teamId){
+  if(!STATE.arena) return;
+  var entry = STATE.arena.entries.find(function(e){ return e.trainerId===trainerId && e.pokemonId===pokemonId; });
+  if(entry){ entry.teamId = teamId; }
+  else { STATE.arena.entries.push({id:uid(), teamId:teamId, trainerId:trainerId, pokemonId:pokemonId, revelado:false}); }
+  mutate();
+};
+DT.arenaRemoveEntry = function(entryId){
+  if(!STATE.arena) return;
+  STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.id!==entryId; });
+  mutate();
+};
+DT.arenaToggleReveal = function(entryId){
+  var e = (STATE.arena.entries||[]).find(function(x){ return x.id===entryId; });
+  if(!e) return;
+  e.revelado = !e.revelado;
+  mutate();
+};
+
 DT.askRemoveTrainer = function(id){ SESSION.confirmRemoveTrainer = id; render(); };
 DT.cancelRemoveTrainer = function(){ SESSION.confirmRemoveTrainer = null; render(); };
 DT.removeTrainerGM = function(id){
@@ -3850,6 +3938,7 @@ function topbar(rightHTML){
     '<div class="wordmark">'+POKEBALL_SVG+'<div><h1>Diário de Treinador</h1><span class="sub">Pokémon RPG · v0.2</span></div></div>'+
     '<div class="who">'+(rightHTML||'')+
       '<button class="btn-ghost btn-sm" onclick="DT.toggleTheme()" title="Trocar tema">'+(CURRENT_THEME==='dark' ? '☀️' : '🌙')+'</button>'+
+      '<button class="btn-ghost btn-sm" onclick="DT.toggleArena()">🏟️ Arena</button>'+
       '<button class="btn-ghost btn-sm" onclick="DT.toggleRules()">📖 Regras</button>'+
     '</div>'+
   '</div>';
@@ -3866,6 +3955,10 @@ function screenHTML(){
   if(SESSION.showRules){
     var rulesRight = SESSION.role==='gm' ? gmTopRight() : (SESSION.role==='player' ? playerTopRight() : '');
     return wrap(rulesScreen(), rulesRight);
+  }
+  if(SESSION.showArena){
+    var arenaRight = SESSION.role==='gm' ? gmTopRight() : (SESSION.role==='player' ? playerTopRight() : '');
+    return wrap(arenaScreen(), arenaRight);
   }
   if(!FIREBASE_CONFIGURED) return wrap(setupScreen(), '');
   if(!firestoreReady) return wrap('<div class="center-stage"><p class="lede">Carregando…</p></div>', '');
@@ -3956,6 +4049,115 @@ function rulesScreen(){
     body = '<div class="rules-doc">'+cached+'</div>';
   }
   return back+body;
+}
+
+/* =================== ARENA (esboço v1) ==================== */
+var STATUS_ICONS = {queimadura:'🔥', veneno:'☠️', veneno_grave:'☠️', paralisia:'⚡', sono:'💤', congelamento:'❄️'};
+DT.toggleArena = function(){
+  SESSION.showArena = !SESSION.showArena;
+  render();
+};
+function arenaScreen(){
+  var isGM = SESSION.role==='gm';
+  var out = '<div class="btn-row" style="margin-bottom:14px;"><button class="btn-sm" onclick="DT.toggleArena()">← Voltar</button></div>';
+  out += '<div class="card"><div class="card-head"><span class="index">Esboço · v1</span><h2>🏟️ Arena</h2></div><div class="card-body">'+
+    '<p class="muted" style="font-size:.82rem;">Arraste um Pokémon (pelo ⠿) da Equipe ativa pra dentro de um Time. Só o dono do Pokémon e o Mestre veem quem é, antes de "Usar" — os outros veem uma Pokébola no lugar até ele entrar em ação. Isso é um primeiro rascunho — me conta o que ajustar.</p>'+
+  '</div></div>';
+  out += arenaTeamsHTML(isGM);
+  out += arenaSourceHTML(isGM);
+  return out;
+}
+function arenaTeamsHTML(isGM){
+  var teams = (STATE.arena && STATE.arena.teams) || [];
+  var out = '<div class="card"><div class="card-head"><span class="index">Mesa</span><h2>Times</h2>'+
+    (isGM ? '<button class="btn-sm" onclick="DT.arenaAddTeam()">+ Novo Time</button>' : '')+
+  '</div><div class="card-body">';
+  if(teams.length===0){
+    out += '<p class="muted">'+(isGM ? 'Clique em "+ Novo Time" pra começar — pode criar quantos quiser (não precisa ser só 2).' : 'O Mestre ainda não criou nenhum Time nesta Arena.')+'</p>';
+  } else {
+    out += '<div class="arena-teams">'+teams.map(function(team, ti){
+      var entries = (STATE.arena.entries||[]).filter(function(e){ return e.teamId===team.id; });
+      var head = isGM
+        ? '<input type="text" value="'+esc(team.nome)+'" onchange="DT.arenaRenameTeam(\''+team.id+'\', this)">'
+        : '<h3 style="font-size:.9rem;">'+esc(team.nome)+'</h3>';
+      var removeControl = SESSION.confirmRemoveArenaTeam===team.id
+        ? '<span class="muted" style="font-size:.7rem;">Remover?</span> <button class="btn-danger btn-sm" onclick="DT.arenaRemoveTeam(\''+team.id+'\')">Sim</button> <button class="btn-ghost btn-sm" onclick="DT.arenaCancelRemoveTeam()">Não</button>'
+        : '<button class="btn-ghost btn-sm" onclick="DT.arenaAskRemoveTeam(\''+team.id+'\')">✕</button>';
+      var body = entries.length===0
+        ? '<p class="muted" style="font-size:.76rem; padding:8px;">Arraste um Pokémon aqui.</p>'
+        : '<div class="arena-team-body">'+entries.map(arenaEntryHTML).join('')+'</div>';
+      return '<div class="arena-team" data-drop-area="arena-team" data-drop-idx="'+ti+'">'+
+        '<div class="arena-team-head">'+head+(isGM?removeControl:'')+'</div>'+
+        body+
+      '</div>';
+    }).join('')+'</div>';
+  }
+  out += '</div></div>';
+  return out;
+}
+function arenaEntryHTML(e){
+  var t = findTrainer(e.trainerId);
+  if(!t) return '';
+  var p = getPoke(e.trainerId, e.pokemonId);
+  if(!p) return '';
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
+  var isGM = SESSION.role==='gm';
+  var canSeeReal = isGM || isOwner || e.revelado;
+  var canControl = isGM || isOwner;
+
+  if(!canSeeReal){
+    return '<div class="arena-slot arena-slot-hidden"><div class="arena-pokeball">'+POKEBALL_SVG+'</div>'+
+      '<span class="muted" style="font-size:.64rem;">'+esc(t.name)+'</span></div>';
+  }
+
+  var num = pokeSpeciesNum(p);
+  var sprite = num
+    ? '<img class="poke-sprite" src="'+spriteUrl(num)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
+    : '<div class="poke-sprite-placeholder">❔</div>';
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null || p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
+  var pct = max>0 ? Math.round(cur/max*100) : 0;
+  var fainted = cur<=0;
+  var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'');
+
+  var controls = canControl
+    ? '<div class="btn-row" style="gap:4px; margin-top:4px; justify-content:center; flex-wrap:nowrap;">'+
+        '<button class="btn-sm'+(e.revelado?' btn-primary':'')+'" onclick="DT.arenaToggleReveal(\''+e.id+'\')">'+(e.revelado?'Usado':'Usar')+'</button>'+
+        '<button class="btn-ghost btn-sm" onclick="DT.arenaRemoveEntry(\''+e.id+'\')">✕</button>'+
+      '</div>'
+    : '';
+
+  return '<div class="arena-slot">'+sprite+
+    '<div class="arena-slot-name">'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</div>'+
+    '<span class="muted" style="font-size:.62rem;">'+esc(t.name)+'</span>'+
+    '<div class="hp-bar'+(pct<=25?' low':'')+'" style="margin-top:3px; width:100%;"><i style="width:'+pct+'%"></i></div>'+
+    (icons ? '<div class="arena-icons">'+icons+'</div>' : '')+
+    controls+
+  '</div>';
+}
+function arenaSourceHTML(isGM){
+  if(isGM) return (STATE.trainers||[]).map(arenaTrainerSourceHTML).join('');
+  var t = findTrainer(SESSION.trainerId);
+  return t ? arenaTrainerSourceHTML(t) : '<div class="card"><div class="card-body"><p class="muted">Entre como Mestre ou Treinador pra participar da Arena.</p></div></div>';
+}
+function arenaTrainerSourceHTML(t){
+  var mons = t.pokemons.filter(function(p){ return p.especie; });
+  var entries = (STATE.arena && STATE.arena.entries) || [];
+  var tiles = mons.length===0
+    ? '<p class="muted" style="font-size:.78rem;">Equipe ativa vazia.</p>'
+    : '<div class="arena-source-row">'+mons.map(function(p){
+        var num = pokeSpeciesNum(p);
+        var placed = entries.some(function(e){ return e.trainerId===t.id && e.pokemonId===p.id; });
+        var sprite = num
+          ? '<img class="poke-sprite" src="'+spriteUrl(num)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
+          : '<div class="poke-sprite-placeholder">❔</div>';
+        return '<div class="arena-source-tile'+(placed?' arena-source-tile-used':'')+'">'+
+          '<button type="button" class="drag-handle" title="Arrastar pra um Time" onpointerdown="DT.arenaDragStart(event,\''+t.id+'\',\''+p.id+'\')">⠿</button>'+
+          sprite+
+          '<div style="font-size:.66rem; text-align:center;">'+(p.apelido?esc(p.apelido):esc(p.especie))+'</div>'+
+        '</div>';
+      }).join('')+'</div>';
+  return '<div class="card"><div class="card-head"><span class="index">Equipe ativa</span><h2>'+esc(t.name)+'</h2></div><div class="card-body">'+tiles+'</div></div>';
 }
 
 function setupScreen(){

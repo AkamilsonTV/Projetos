@@ -64,6 +64,16 @@ Clique no método (Nível/Evo/TM/Egg) e depois escolha o Movimento no menu que a
 
 Cada Pokémon mostra automaticamente o sprite (a imagem pixelada) da espécie assim que o Mestre define ela. Sem espécie definida ainda, aparece um "❔" no lugar — e enquanto isso, o seletor de Movimentos fica bloqueado (precisa da Espécie pra saber o que ele pode aprender).
 
+## Arena (esboço — ainda em construção)
+
+O botão **"🏟️ Arena"** no topo abre um espaço à parte pra montar uma batalha. É a primeira versão, feita pra testarmos e ajustarmos — pode mudar.
+
+- Aparece **"Equipe ativa"** com os Pokémon da sua Equipe (só sprite pixelado + nome — arraste pelo **⠿**).
+- Arraste um deles pra dentro de um **Time** (o Mestre cria os Times). Ele continua normalmente na sua ficha — a Arena só mostra que ele está nessa batalha.
+- Enquanto ninguém apertar **"Usar"** naquele Pokémon, os outros Treinadores da mesa (menos o Mestre) veem só uma **Pokébola** no lugar dele — não sabem qual é. Só você (o dono) e o Mestre veem de verdade.
+- Assim que alguém (você ou o Mestre) clica em **"Usar"**, ele fica visível pra mesa inteira — sprite, HP em barra e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito.
+- Não tem limite de Treinadores nem de Times — pode ser 1×1, vários contra vários, o que a mesa precisar.
+
 ## Tema claro/escuro
 
 O botão **☀️/🌙** no topo troca entre os dois temas. O site sempre abre no tema **claro** por padrão — a escolha de usar o escuro é sua, fica salva só no seu aparelho, e não segue a configuração do celular/computador.

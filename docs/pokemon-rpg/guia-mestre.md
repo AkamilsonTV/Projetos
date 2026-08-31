@@ -54,6 +54,16 @@ PV atual, Apelido e Estágios de batalha o Treinador também edita — não prec
 
 Mesmo mecanismo de arrastar (⠿) que o Treinador tem: mover entre os 6 slots da Equipe e o Banco (sem limite), trocar de lugar, reordenar. Você pode reorganizar a ficha de qualquer Treinador se precisar.
 
+## Arena (esboço — ainda em construção)
+
+Botão **"🏟️ Arena"** no topo. Primeira versão do espaço de batalha — feita pra testarmos e ajustarmos junto.
+
+- **Times**: só você cria (**"+ Novo Time"**), renomeia (campo de texto no topo do Time) e remove (✕, com confirmação). Sem limite — não precisa ser só 2, dá pra fazer quantos Times a mesa precisar.
+- Cada Treinador arrasta (pelo ⠿) um Pokémon da própria Equipe ativa pra dentro de um Time. Isso não tira o Pokémon da ficha dele — a Arena só reflete quem está na batalha.
+- **Você vê todo mundo sempre**, revelado ou não — é o único papel com visão total da Arena. Os Treinadores só veem os próprios Pokémon e os que já foram "Usados"; o resto aparece como Pokébola pra eles.
+- Você também pode clicar **"Usar"**/✕ nos Pokémon de qualquer Treinador, se precisar ajustar por eles.
+- Como é um esboço: não mexe em HP, dano ou ordem de turno — isso continua sendo feito na ficha e na mesa, do jeito que já é. A Arena por enquanto só organiza quem está lutando e esconde/revela.
+
 ## Tema claro/escuro
 
 Botão **☀️/🌙** no topo. O site sempre abre claro por padrão; a escolha de tema é individual (fica salva só no seu aparelho) e não segue o sistema operacional.

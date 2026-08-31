@@ -105,6 +105,15 @@ Cada Treinador tem 6 posições de **Equipe** (os Pokémon ativos) e um **Banco*
 
 Funciona com mouse e com toque (celular).
 
+## Arena (esboço v1)
+
+Botão **"🏟️ Arena"** no topo — espaço à parte pra montar uma batalha, feito como primeiro rascunho pra iterar em cima. Modelo de dados novo em `STATE.arena` (`teams` + `entries`), migração automática pra fichas salvas antes disso existir.
+
+- **Times**: sem limite, criados/renomeados/removidos só pelo Mestre — não precisa ser 1×1, dá pra ter quantos Times a mesa quiser.
+- Cada Treinador arrasta (pelo ⠿, mesma engine de Pointer Events da Equipe/Banco) um Pokémon da própria Equipe ativa pra dentro de um Time. A entrada guarda só a referência (Treinador + Pokémon) — o Pokémon continua na ficha normalmente, nada é duplicado ou movido de lá.
+- **Visibilidade**: o dono do Pokémon e o Mestre sempre veem o sprite pixelado real, a barra de PV e a Condição/Confuso como ícone (gráfico, não escrito — 🔥☠️⚡💤❄️💫😵). Os demais Treinadores veem uma Pokébola (o mesmo SVG do topo do site) até alguém clicar **"Usar"**, que revela o Pokémon pra mesa inteira.
+- Escopo do v1: só organiza quem está na batalha e o que é visível pra quem. Não calcula dano, turno ou iniciativa — isso continua na ficha/mesa como já era.
+
 ## O que já está no sistema de regras
 
 Todo o núcleo de combate (atributos, Vínculo, PV, Movimentos, dano, tipos, iniciativa, Prioridade, condições de status), a progressão de Nível por batalhas vencidas, a Pokédex completa (Gen 1–9) e o banco de Movimentos oficiais, e a organização de Equipe/Banco por arrastar. Ainda em aberto: Maturidade/Evolução definitiva, Captura, Cura/Recuperação, PP, Itens e Habilidades.
