@@ -208,6 +208,9 @@
   .table-scroll{ overflow-x:auto; }
   .moves-table th:nth-child(-n+3), .moves-table td:nth-child(-n+3){ text-align:left; }
   .moves-table .move-desc-row td{ background:var(--surface-2); color:var(--ink-dim); font-size:.76rem; font-style:italic; }
+  .learnset-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+  .learnset-label{ font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-dim); font-weight:700; }
+  .learnset-bar select{ width:auto; flex:1; min-width:160px; }
 
   .hp-row{ display:flex; align-items:center; gap:10px; }
   .hp-row input[type=number]{ width:70px; }
@@ -4352,15 +4355,17 @@ function pokeCardHTML(t,p,editable,mode){
     }).join('');
     movesBlock = '<div>'+movesLabel+movesHeader+'<div class="moves-list">'+editRows+'</div></div>';
   } else if(mode==='own'){
-    /* Treinador escolhe o Movimento (Normal/TM/HM), mas só entre o que a
-       espécie realmente pode aprender — nunca digita nada na mão aqui. */
+    /* Treinador escolhe o Movimento (Nível/TM/HM), mas só entre o que a
+       espécie realmente pode aprender — nunca digita nada na mão aqui.
+       A barra "Learnset" fica horizontal, acima da mini-tabela de cada
+       Movimento (um bloco por slot, não uma tabela só com 4 linhas). */
     var speciesNumForMoves = pokeSpeciesNum(p);
     var lsForMoves = speciesNumForMoves ? LEARNSETS[speciesNumForMoves] : null;
     var ceilingForMoves = officialLevelCeiling(t.level);
-    var pickRows = p.moves.map(function(m, idx){
+    var moveBlocks = p.moves.map(function(m, idx){
       var metodo = m.metodo || 'normal';
       var opts = movePickOptions(lsForMoves, metodo, ceilingForMoves);
-      var methodBtns = [['normal','Normal'],['tm','TM'],['hm','HM']].map(function(pair){
+      var methodBtns = [['normal','Nível'],['tm','TM'],['hm','HM']].map(function(pair){
         return '<button type="button" class="btn-sm'+(metodo===pair[0]?' btn-primary':'')+'" onclick="DT.setMoveMethod(\''+t.id+'\',\''+did+'\','+idx+',\''+pair[0]+'\')">'+pair[1]+'</button>';
       }).join('');
       var pickerHTML;
@@ -4374,10 +4379,13 @@ function pokeCardHTML(t,p,editable,mode){
           opts.map(function(o){ return '<option value="'+esc(o.name)+'"'+(o.name===m.nome?' selected':'')+'>'+esc(o.label)+'</option>'; }).join('')+
         '</select>';
       }
-      var moveCell = (m.nome ? '<div style="font-weight:600; margin-bottom:4px;">'+esc(m.nome)+'</div>' : '<div class="muted" style="margin-bottom:4px;">(vazio)</div>')+
-        '<div class="btn-row" style="gap:4px; margin-bottom:4px;">'+methodBtns+'</div>'+pickerHTML;
-      return '<tr>'+
-        '<td>'+moveCell+'</td>'+
+      var learnsetBar = '<div class="learnset-bar">'+
+        '<span class="learnset-label">Learnset</span>'+
+        '<div class="btn-row" style="gap:4px;">'+methodBtns+'</div>'+
+        pickerHTML+
+      '</div>';
+      var row = '<tr>'+
+        '<td>'+(m.nome?esc(m.nome):'<span class="muted">(vazio)</span>')+'</td>'+
         '<td>'+(m.tipo?typeBadge(m.tipo):'')+'</td>'+
         '<td>'+esc(m.categoria||'')+'</td>'+
         '<td class="num">'+(m.nome?(m.poder||0):'')+'</td>'+
@@ -4385,10 +4393,10 @@ function pokeCardHTML(t,p,editable,mode){
         '<td class="num">'+(m.precisao?esc(m.precisao):'')+'</td>'+
       '</tr>'+
       (m.efeito ? '<tr class="move-desc-row"><td colspan="6">'+esc(m.efeito)+'</td></tr>' : '');
-    }).join('');
-    movesBlock = '<div>'+movesLabel+
-      '<div class="table-scroll"><table class="stat-table moves-table"><thead><tr><th>Movimento</th><th>Tipo</th><th>Categoria</th><th>Poder</th><th>Prioridade</th><th>Precisão</th></tr></thead><tbody>'+pickRows+'</tbody></table></div>'+
-    '</div>';
+      var table = '<div class="table-scroll"><table class="stat-table moves-table"><thead><tr><th>Movimento</th><th>Tipo</th><th>Categoria</th><th>Poder</th><th>Prioridade</th><th>Precisão</th></tr></thead><tbody>'+row+'</tbody></table></div>';
+      return learnsetBar+table;
+    }).join('<hr class="rule" style="margin:10px 0;">');
+    movesBlock = '<div>'+movesLabel+moveBlocks+'</div>';
   } else {
     var knownMoves = p.moves.filter(function(m){ return m.nome; });
     var rows = knownMoves.map(function(m){
