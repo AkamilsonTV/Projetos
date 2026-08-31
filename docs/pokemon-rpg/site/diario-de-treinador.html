@@ -6201,12 +6201,12 @@ function arenaScreen(){
   var isGM = SESSION.role==='gm';
   var out = '<div class="btn-row" style="margin-bottom:14px;"><button class="btn-sm" onclick="DT.toggleArena()">← Voltar</button></div>';
   out += '<div class="card"><div class="card-head"><span class="index">Esboço · v1</span><h2>🏟️ Arena</h2></div><div class="card-body">'+
-    '<p class="muted" style="font-size:.82rem;">Arraste um Pokémon (pelo ⠿) da Equipe ativa pra dentro de um Time. Só o dono do Pokémon e o Mestre veem quem é, antes de "Usar" — os outros veem uma Pokébola no lugar até ele entrar em ação. Isso é um primeiro rascunho — me conta o que ajustar.</p>'+
+    '<p class="muted" style="font-size:.82rem;">Arraste um Pokémon (pelo ⠿) da Equipe ativa pra dentro de um Time — a Equipe ativa de todo mundo aparece pra mesa inteira. Só quando ele entra em campo é que vira segredo: até agir pela primeira vez, os outros veem uma Pokébola no lugar dele no Time. Isso é um primeiro rascunho — me conta o que ajustar.</p>'+
   '</div></div>';
   out += arenaInitiativeHTML();
   out += arenaTeamsHTML(isGM);
   out += arenaActionPanelHTML();
-  out += arenaSourceHTML(isGM);
+  out += arenaSourceHTML();
   out += arenaLogHTML();
   return out;
 }
@@ -6493,19 +6493,29 @@ function arenaEntryHTML(e){
     controls+
   '</div>';
 }
-function arenaSourceHTML(isGM){
-  if(isGM) return (STATE.trainers||[]).map(arenaTrainerSourceHTML).join('');
-  var t = findTrainer(SESSION.trainerId);
-  return t ? arenaTrainerSourceHTML(t) : '<div class="card"><div class="card-body"><p class="muted">Entre como Mestre ou Treinador pra participar da Arena.</p></div></div>';
+/* A Equipe ativa de TODO MUNDO aparece pra TODO MUNDO na Arena, jogador
+   ou Mestre -- isso é informação pública da mesa (quem cada um tem, com
+   sprite e nome de verdade). O que continua escondido até "entrar em
+   campo" é só o slot dentro do Time (Pokébola até revelar, Cap. 8.5 do
+   guia) -- essa lista aqui nunca teve esse segredo. */
+function arenaSourceHTML(){
+  if((STATE.trainers||[]).length===0){
+    return '<div class="card"><div class="card-body"><p class="muted">Nenhum Treinador criou a ficha ainda.</p></div></div>';
+  }
+  return STATE.trainers.map(arenaTrainerSourceHTML).join('');
 }
 function arenaTrainerSourceHTML(t){
   var mons = t.pokemons.filter(function(p){ return p.especie; });
   var entries = (STATE.arena && STATE.arena.entries) || [];
+  /* Arrastar (ou usar o seletor de troca) só é liberado pro dono do
+     Treinador ou pro Mestre -- ver a Equipe ativa dos outros é público,
+     mas mexer nela continua restrito. */
+  var canControl = SESSION.role==='gm' || (SESSION.role==='player' && SESSION.trainerId===t.id);
   /* Modo "Trocar" ativo pra esse Treinador: quem está agindo escolheu
      Trocar e é um Pokémon dele -- os tiles da Equipe ativa viram o
      seletor de troca (clique direto, sem arrastar). */
   var swapEntry = null;
-  if(SESSION.arenaAttacker && SESSION.arenaAction==='trocar'){
+  if(canControl && SESSION.arenaAttacker && SESSION.arenaAction==='trocar'){
     var actingEntry = findArenaEntry(SESSION.arenaAttacker);
     if(actingEntry && actingEntry.trainerId===t.id) swapEntry = actingEntry;
   }
@@ -6524,7 +6534,9 @@ function arenaTrainerSourceHTML(t){
           var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
           if(cur>0){ swappable = true; tileClick = ' onclick="DT.arenaSwapIn(\''+p.id+'\')"'; }
         }
-        var handle = swapEntry ? '' : '<button type="button" class="drag-handle" title="Arrastar pra um Time" onpointerdown="DT.arenaDragStart(event,\''+t.id+'\',\''+p.id+'\')">⠿</button>';
+        var handle = (canControl && !swapEntry)
+          ? '<button type="button" class="drag-handle" title="Arrastar pra um Time" onpointerdown="DT.arenaDragStart(event,\''+t.id+'\',\''+p.id+'\')">⠿</button>'
+          : '';
         return '<div class="arena-source-tile'+(placed?' arena-source-tile-used':'')+(swappable?' arena-source-tile-swappable':'')+'"'+tileClick+'>'+
           handle+
           sprite+

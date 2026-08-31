@@ -72,9 +72,9 @@ Na sua ficha, logo acima da Equipe/Banco, tem a seção **"🎒 Mochila"** — a
 
 O botão **"🏟️ Arena"** no topo abre um espaço à parte pra montar uma batalha. É a primeira versão, feita pra testarmos e ajustarmos — pode mudar.
 
-- Aparece **"Equipe ativa"** com os Pokémon da sua Equipe (só sprite pixelado + nome — arraste pelo **⠿**), e logo abaixo, se você tiver algum item, sua **🎒 Mochila** (ver seção própria abaixo).
-- Arraste um deles pra dentro de um **Time** (o Mestre cria os Times). Ele continua normalmente na sua ficha — a Arena só mostra que ele está nessa batalha.
-- Enquanto seu Pokémon ainda não entrou em ação, os outros Treinadores da mesa (menos o Mestre) veem só uma **Pokébola** no lugar dele — não sabem qual é. Só você (o dono) e o Mestre veem de verdade.
+- Aparece um card **"Equipe ativa"** pra **cada Treinador da mesa**, não só o seu — sprite pixelado + nome de todo mundo é informação pública (você vê a equipe dos outros, os outros veem a sua). Só na sua própria você tem o **⠿** pra arrastar, e logo abaixo dela, se você tiver algum item, sua **🎒 Mochila** (ver seção própria abaixo).
+- Arraste um dos seus pra dentro de um **Time** (o Mestre cria os Times). Ele continua normalmente na sua ficha — a Arena só mostra que ele está nessa batalha.
+- **É só a partir daí que ele vira segredo.** Enquanto seu Pokémon está num Time mas ainda não entrou em ação, os outros Treinadores da mesa (menos o Mestre) veem só uma **Pokébola** no lugar dele ali no Time — não sabem qual é, mesmo já sabendo (pela Equipe ativa) que ele existe. Só você (o dono) e o Mestre veem de verdade quem é enquanto ele estiver assim.
 - Assim que você clica nele pra agir pela primeira vez (ver "Agindo" abaixo), ele **revela sozinho** — não existe mais um botão separado só pra revelar. A partir daí fica visível pra mesa inteira — sprite, uma **barra de PV** (verde acima de 50%, amarela entre 20% e 50%, vermelha em 20% ou menos, igual ao jogo oficial) e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito. **Essa revelação é definitiva**: mesmo que ele volte pra Equipe ativa (por uma Troca) e entre de novo depois, ele já aparece com a sprite de novo — não vira Pokébola outra vez.
 - Não tem limite de Treinadores nem de Times — pode ser 1×1, vários contra vários, o que a mesa precisar.
 
