@@ -2551,6 +2551,912 @@ var MOVE_EFFECTS = {
   'Scorching Sands':{ailment:'queimadura',chance:30},
   'Freezing Glare':{ailment:'congelamento',chance:10}
 };
+/* ---- Categoria de alvo de cada Movimento (self/aliado/inimigo/área) ----
+   Gerada a partir do CSV oficial do PokeAPI (moves.csv target_id + move_targets.csv),
+   mesma fonte de SPECIES_DEX/MOVES_DEX/LEARNSETS/TYPE_CHART/MOVE_EFFECTS. ---- */
+var MOVE_TARGETS = {
+  'Pound':'any',
+  'Karate Chop':'any',
+  'Double Slap':'any',
+  'Comet Punch':'any',
+  'Mega Punch':'any',
+  'Pay Day':'any',
+  'Fire Punch':'any',
+  'Ice Punch':'any',
+  'Thunder Punch':'any',
+  'Scratch':'any',
+  'Vise Grip':'any',
+  'Guillotine':'any',
+  'Razor Wind':'all-foes',
+  'Swords Dance':'self',
+  'Cut':'any',
+  'Gust':'any',
+  'Wing Attack':'any',
+  'Whirlwind':'any',
+  'Fly':'any',
+  'Bind':'any',
+  'Slam':'any',
+  'Vine Whip':'any',
+  'Stomp':'any',
+  'Double Kick':'any',
+  'Mega Kick':'any',
+  'Jump Kick':'any',
+  'Rolling Kick':'any',
+  'Sand Attack':'any',
+  'Headbutt':'any',
+  'Horn Attack':'any',
+  'Fury Attack':'any',
+  'Horn Drill':'any',
+  'Tackle':'any',
+  'Body Slam':'any',
+  'Wrap':'any',
+  'Take Down':'any',
+  'Thrash':'foe',
+  'Double-Edge':'any',
+  'Tail Whip':'all-foes',
+  'Poison Sting':'any',
+  'Twineedle':'any',
+  'Pin Missile':'any',
+  'Leer':'all-foes',
+  'Bite':'any',
+  'Growl':'all-foes',
+  'Roar':'any',
+  'Sing':'any',
+  'Supersonic':'any',
+  'Sonic Boom':'any',
+  'Disable':'any',
+  'Acid':'all-foes',
+  'Ember':'any',
+  'Flamethrower':'any',
+  'Mist':'field',
+  'Water Gun':'any',
+  'Hydro Pump':'any',
+  'Surf':'all-other',
+  'Ice Beam':'any',
+  'Blizzard':'all-foes',
+  'Psybeam':'any',
+  'Bubble Beam':'any',
+  'Aurora Beam':'any',
+  'Hyper Beam':'any',
+  'Peck':'any',
+  'Drill Peck':'any',
+  'Submission':'any',
+  'Low Kick':'any',
+  'Counter':'foe',
+  'Seismic Toss':'any',
+  'Strength':'any',
+  'Absorb':'any',
+  'Mega Drain':'any',
+  'Leech Seed':'any',
+  'Growth':'self',
+  'Razor Leaf':'all-foes',
+  'Solar Beam':'any',
+  'Poison Powder':'any',
+  'Stun Spore':'any',
+  'Sleep Powder':'any',
+  'Petal Dance':'foe',
+  'String Shot':'all-foes',
+  'Dragon Rage':'any',
+  'Fire Spin':'any',
+  'Thunder Shock':'any',
+  'Thunderbolt':'any',
+  'Thunder Wave':'any',
+  'Thunder':'any',
+  'Rock Throw':'any',
+  'Earthquake':'all-other',
+  'Fissure':'any',
+  'Dig':'any',
+  'Toxic':'any',
+  'Confusion':'any',
+  'Psychic':'any',
+  'Hypnosis':'any',
+  'Meditate':'self',
+  'Agility':'self',
+  'Quick Attack':'any',
+  'Rage':'any',
+  'Teleport':'self',
+  'Night Shade':'any',
+  'Mimic':'any',
+  'Screech':'any',
+  'Double Team':'self',
+  'Recover':'self',
+  'Harden':'self',
+  'Minimize':'self',
+  'Smokescreen':'any',
+  'Confuse Ray':'any',
+  'Withdraw':'self',
+  'Defense Curl':'self',
+  'Barrier':'self',
+  'Light Screen':'field',
+  'Haze':'field',
+  'Reflect':'field',
+  'Focus Energy':'self',
+  'Bide':'self',
+  'Metronome':'self',
+  'Mirror Move':'any',
+  'Self-Destruct':'all-other',
+  'Egg Bomb':'any',
+  'Lick':'any',
+  'Smog':'any',
+  'Sludge':'any',
+  'Bone Club':'any',
+  'Fire Blast':'any',
+  'Waterfall':'any',
+  'Clamp':'any',
+  'Swift':'all-foes',
+  'Skull Bash':'any',
+  'Spike Cannon':'any',
+  'Constrict':'any',
+  'Amnesia':'self',
+  'Kinesis':'any',
+  'Soft-Boiled':'self',
+  'High Jump Kick':'any',
+  'Glare':'any',
+  'Dream Eater':'any',
+  'Poison Gas':'all-foes',
+  'Barrage':'any',
+  'Leech Life':'any',
+  'Lovely Kiss':'any',
+  'Sky Attack':'any',
+  'Transform':'any',
+  'Bubble':'all-foes',
+  'Dizzy Punch':'any',
+  'Spore':'any',
+  'Flash':'any',
+  'Psywave':'any',
+  'Splash':'self',
+  'Acid Armor':'self',
+  'Crabhammer':'any',
+  'Explosion':'all-other',
+  'Fury Swipes':'any',
+  'Bonemerang':'any',
+  'Rest':'self',
+  'Rock Slide':'all-foes',
+  'Hyper Fang':'any',
+  'Sharpen':'self',
+  'Conversion':'self',
+  'Tri Attack':'any',
+  'Super Fang':'any',
+  'Slash':'any',
+  'Substitute':'self',
+  'Struggle':'foe',
+  'Sketch':'any',
+  'Triple Kick':'any',
+  'Thief':'any',
+  'Spider Web':'any',
+  'Mind Reader':'any',
+  'Nightmare':'any',
+  'Flame Wheel':'any',
+  'Snore':'any',
+  'Curse':'foe',
+  'Flail':'any',
+  'Conversion 2':'any',
+  'Aeroblast':'any',
+  'Cotton Spore':'all-foes',
+  'Reversal':'any',
+  'Spite':'any',
+  'Powder Snow':'all-foes',
+  'Protect':'self',
+  'Mach Punch':'any',
+  'Scary Face':'any',
+  'Feint Attack':'any',
+  'Sweet Kiss':'any',
+  'Belly Drum':'self',
+  'Sludge Bomb':'any',
+  'Mud-Slap':'any',
+  'Octazooka':'any',
+  'Spikes':'field',
+  'Zap Cannon':'any',
+  'Foresight':'any',
+  'Destiny Bond':'self',
+  'Perish Song':'all',
+  'Icy Wind':'all-foes',
+  'Detect':'self',
+  'Bone Rush':'any',
+  'Lock-On':'any',
+  'Outrage':'foe',
+  'Sandstorm':'field',
+  'Giga Drain':'any',
+  'Endure':'self',
+  'Charm':'any',
+  'Rollout':'any',
+  'False Swipe':'any',
+  'Swagger':'any',
+  'Milk Drink':'self',
+  'Spark':'any',
+  'Fury Cutter':'any',
+  'Steel Wing':'any',
+  'Mean Look':'any',
+  'Attract':'any',
+  'Sleep Talk':'self',
+  'Heal Bell':'all-allies-and-self',
+  'Return':'any',
+  'Present':'any',
+  'Frustration':'any',
+  'Safeguard':'field',
+  'Pain Split':'any',
+  'Sacred Fire':'any',
+  'Magnitude':'all-other',
+  'Dynamic Punch':'any',
+  'Megahorn':'any',
+  'Dragon Breath':'any',
+  'Baton Pass':'self',
+  'Encore':'any',
+  'Pursuit':'any',
+  'Rapid Spin':'any',
+  'Sweet Scent':'all-foes',
+  'Iron Tail':'any',
+  'Metal Claw':'any',
+  'Vital Throw':'any',
+  'Morning Sun':'self',
+  'Synthesis':'self',
+  'Moonlight':'self',
+  'Hidden Power':'any',
+  'Cross Chop':'any',
+  'Twister':'all-foes',
+  'Rain Dance':'field',
+  'Sunny Day':'field',
+  'Crunch':'any',
+  'Mirror Coat':'foe',
+  'Psych Up':'any',
+  'Extreme Speed':'any',
+  'Ancient Power':'any',
+  'Shadow Ball':'any',
+  'Future Sight':'any',
+  'Rock Smash':'any',
+  'Whirlpool':'any',
+  'Beat Up':'any',
+  'Fake Out':'any',
+  'Uproar':'foe',
+  'Stockpile':'self',
+  'Spit Up':'any',
+  'Swallow':'self',
+  'Heat Wave':'all-foes',
+  'Hail':'field',
+  'Torment':'any',
+  'Flatter':'any',
+  'Will-O-Wisp':'any',
+  'Memento':'any',
+  'Facade':'any',
+  'Focus Punch':'any',
+  'Smelling Salts':'any',
+  'Follow Me':'self',
+  'Nature Power':'any',
+  'Charge':'self',
+  'Taunt':'any',
+  'Helping Hand':'ally',
+  'Trick':'any',
+  'Role Play':'any',
+  'Wish':'self',
+  'Assist':'self',
+  'Ingrain':'self',
+  'Superpower':'any',
+  'Magic Coat':'self',
+  'Recycle':'self',
+  'Revenge':'any',
+  'Brick Break':'any',
+  'Yawn':'any',
+  'Knock Off':'any',
+  'Endeavor':'any',
+  'Eruption':'all-foes',
+  'Skill Swap':'any',
+  'Imprison':'self',
+  'Refresh':'self',
+  'Grudge':'self',
+  'Snatch':'self',
+  'Secret Power':'any',
+  'Dive':'any',
+  'Arm Thrust':'any',
+  'Camouflage':'self',
+  'Tail Glow':'self',
+  'Luster Purge':'any',
+  'Mist Ball':'any',
+  'Feather Dance':'any',
+  'Teeter Dance':'all-other',
+  'Blaze Kick':'any',
+  'Mud Sport':'field',
+  'Ice Ball':'any',
+  'Needle Arm':'any',
+  'Slack Off':'self',
+  'Hyper Voice':'all-foes',
+  'Poison Fang':'any',
+  'Crush Claw':'any',
+  'Blast Burn':'any',
+  'Hydro Cannon':'any',
+  'Meteor Mash':'any',
+  'Astonish':'any',
+  'Weather Ball':'any',
+  'Aromatherapy':'all-allies-and-self',
+  'Fake Tears':'any',
+  'Air Cutter':'all-foes',
+  'Overheat':'any',
+  'Odor Sleuth':'any',
+  'Rock Tomb':'any',
+  'Silver Wind':'any',
+  'Metal Sound':'any',
+  'Grass Whistle':'any',
+  'Tickle':'any',
+  'Cosmic Power':'self',
+  'Water Spout':'all-foes',
+  'Signal Beam':'any',
+  'Shadow Punch':'any',
+  'Extrasensory':'any',
+  'Sky Uppercut':'any',
+  'Sand Tomb':'any',
+  'Sheer Cold':'any',
+  'Muddy Water':'all-foes',
+  'Bullet Seed':'any',
+  'Aerial Ace':'any',
+  'Icicle Spear':'any',
+  'Iron Defense':'self',
+  'Block':'any',
+  'Howl':'all-allies-and-self',
+  'Dragon Claw':'any',
+  'Frenzy Plant':'any',
+  'Bulk Up':'self',
+  'Bounce':'any',
+  'Mud Shot':'any',
+  'Poison Tail':'any',
+  'Covet':'any',
+  'Volt Tackle':'any',
+  'Magical Leaf':'any',
+  'Water Sport':'field',
+  'Calm Mind':'self',
+  'Leaf Blade':'any',
+  'Dragon Dance':'self',
+  'Rock Blast':'any',
+  'Shock Wave':'any',
+  'Water Pulse':'any',
+  'Doom Desire':'any',
+  'Psycho Boost':'any',
+  'Roost':'self',
+  'Gravity':'field',
+  'Miracle Eye':'any',
+  'Wake-Up Slap':'any',
+  'Hammer Arm':'any',
+  'Gyro Ball':'any',
+  'Healing Wish':'self',
+  'Brine':'any',
+  'Natural Gift':'any',
+  'Feint':'any',
+  'Pluck':'any',
+  'Tailwind':'field',
+  'Acupressure':'ally-or-self',
+  'Metal Burst':'foe',
+  'U-turn':'any',
+  'Close Combat':'any',
+  'Payback':'any',
+  'Assurance':'any',
+  'Embargo':'any',
+  'Fling':'any',
+  'Psycho Shift':'any',
+  'Trump Card':'any',
+  'Heal Block':'all-foes',
+  'Wring Out':'any',
+  'Power Trick':'self',
+  'Gastro Acid':'any',
+  'Lucky Chant':'field',
+  'Me First':'foe',
+  'Copycat':'self',
+  'Power Swap':'any',
+  'Guard Swap':'any',
+  'Punishment':'any',
+  'Last Resort':'any',
+  'Worry Seed':'any',
+  'Sucker Punch':'any',
+  'Toxic Spikes':'field',
+  'Heart Swap':'any',
+  'Aqua Ring':'self',
+  'Magnet Rise':'self',
+  'Flare Blitz':'any',
+  'Force Palm':'any',
+  'Aura Sphere':'any',
+  'Rock Polish':'self',
+  'Poison Jab':'any',
+  'Dark Pulse':'any',
+  'Night Slash':'any',
+  'Aqua Tail':'any',
+  'Seed Bomb':'any',
+  'Air Slash':'any',
+  'X-Scissor':'any',
+  'Bug Buzz':'any',
+  'Dragon Pulse':'any',
+  'Dragon Rush':'any',
+  'Power Gem':'any',
+  'Drain Punch':'any',
+  'Vacuum Wave':'any',
+  'Focus Blast':'any',
+  'Energy Ball':'any',
+  'Brave Bird':'any',
+  'Earth Power':'any',
+  'Switcheroo':'any',
+  'Giga Impact':'any',
+  'Nasty Plot':'self',
+  'Bullet Punch':'any',
+  'Avalanche':'any',
+  'Ice Shard':'any',
+  'Shadow Claw':'any',
+  'Thunder Fang':'any',
+  'Ice Fang':'any',
+  'Fire Fang':'any',
+  'Shadow Sneak':'any',
+  'Mud Bomb':'any',
+  'Psycho Cut':'any',
+  'Zen Headbutt':'any',
+  'Mirror Shot':'any',
+  'Flash Cannon':'any',
+  'Rock Climb':'any',
+  'Defog':'any',
+  'Trick Room':'field',
+  'Draco Meteor':'any',
+  'Discharge':'all-other',
+  'Lava Plume':'all-other',
+  'Leaf Storm':'any',
+  'Power Whip':'any',
+  'Rock Wrecker':'any',
+  'Cross Poison':'any',
+  'Gunk Shot':'any',
+  'Iron Head':'any',
+  'Magnet Bomb':'any',
+  'Stone Edge':'any',
+  'Captivate':'all-foes',
+  'Stealth Rock':'field',
+  'Grass Knot':'any',
+  'Chatter':'any',
+  'Judgment':'any',
+  'Bug Bite':'any',
+  'Charge Beam':'any',
+  'Wood Hammer':'any',
+  'Aqua Jet':'any',
+  'Attack Order':'any',
+  'Defend Order':'self',
+  'Heal Order':'self',
+  'Head Smash':'any',
+  'Double Hit':'any',
+  'Roar of Time':'any',
+  'Spacial Rend':'any',
+  'Lunar Dance':'self',
+  'Crush Grip':'any',
+  'Magma Storm':'any',
+  'Dark Void':'all-foes',
+  'Seed Flare':'any',
+  'Ominous Wind':'any',
+  'Shadow Force':'any',
+  'Hone Claws':'self',
+  'Wide Guard':'field',
+  'Guard Split':'any',
+  'Power Split':'any',
+  'Wonder Room':'field',
+  'Psyshock':'any',
+  'Venoshock':'any',
+  'Autotomize':'self',
+  'Rage Powder':'self',
+  'Telekinesis':'any',
+  'Magic Room':'field',
+  'Smack Down':'any',
+  'Storm Throw':'any',
+  'Flame Burst':'any',
+  'Sludge Wave':'all-other',
+  'Quiver Dance':'self',
+  'Heavy Slam':'any',
+  'Synchronoise':'all-other',
+  'Electro Ball':'any',
+  'Soak':'any',
+  'Flame Charge':'any',
+  'Coil':'self',
+  'Low Sweep':'any',
+  'Acid Spray':'any',
+  'Foul Play':'any',
+  'Simple Beam':'any',
+  'Entrainment':'any',
+  'After You':'any',
+  'Round':'any',
+  'Echoed Voice':'any',
+  'Chip Away':'any',
+  'Clear Smog':'any',
+  'Stored Power':'any',
+  'Quick Guard':'field',
+  'Ally Switch':'self',
+  'Scald':'any',
+  'Shell Smash':'self',
+  'Heal Pulse':'any',
+  'Hex':'any',
+  'Sky Drop':'any',
+  'Shift Gear':'self',
+  'Circle Throw':'any',
+  'Incinerate':'all-foes',
+  'Quash':'any',
+  'Acrobatics':'any',
+  'Reflect Type':'any',
+  'Retaliate':'any',
+  'Final Gambit':'any',
+  'Bestow':'any',
+  'Inferno':'any',
+  'Water Pledge':'any',
+  'Fire Pledge':'any',
+  'Grass Pledge':'any',
+  'Volt Switch':'any',
+  'Struggle Bug':'all-foes',
+  'Bulldoze':'all-other',
+  'Frost Breath':'any',
+  'Dragon Tail':'any',
+  'Work Up':'self',
+  'Electroweb':'all-foes',
+  'Wild Charge':'any',
+  'Drill Run':'any',
+  'Dual Chop':'any',
+  'Heart Stamp':'any',
+  'Horn Leech':'any',
+  'Sacred Sword':'any',
+  'Razor Shell':'any',
+  'Heat Crash':'any',
+  'Leaf Tornado':'any',
+  'Steamroller':'any',
+  'Cotton Guard':'self',
+  'Night Daze':'any',
+  'Psystrike':'any',
+  'Tail Slap':'any',
+  'Hurricane':'any',
+  'Head Charge':'any',
+  'Gear Grind':'any',
+  'Searing Shot':'all-other',
+  'Techno Blast':'any',
+  'Relic Song':'all-foes',
+  'Secret Sword':'any',
+  'Glaciate':'all-foes',
+  'Bolt Strike':'any',
+  'Blue Flare':'any',
+  'Fiery Dance':'any',
+  'Freeze Shock':'any',
+  'Ice Burn':'any',
+  'Snarl':'all-foes',
+  'Icicle Crash':'any',
+  'V-create':'any',
+  'Fusion Flare':'any',
+  'Fusion Bolt':'any',
+  'Flying Press':'any',
+  'Mat Block':'field',
+  'Belch':'any',
+  'Rototiller':'all',
+  'Sticky Web':'field',
+  'Fell Stinger':'any',
+  'Phantom Force':'any',
+  'Trick-or-Treat':'any',
+  'Noble Roar':'any',
+  'Ion Deluge':'field',
+  'Parabolic Charge':'all-other',
+  'Forest’s Curse':'any',
+  'Petal Blizzard':'all-other',
+  'Freeze-Dry':'any',
+  'Disarming Voice':'all-foes',
+  'Parting Shot':'any',
+  'Topsy-Turvy':'any',
+  'Draining Kiss':'any',
+  'Crafty Shield':'field',
+  'Flower Shield':'all',
+  'Grassy Terrain':'field',
+  'Misty Terrain':'field',
+  'Electrify':'any',
+  'Play Rough':'any',
+  'Fairy Wind':'any',
+  'Moonblast':'any',
+  'Boomburst':'all-other',
+  'Fairy Lock':'field',
+  'King’s Shield':'self',
+  'Play Nice':'any',
+  'Confide':'any',
+  'Diamond Storm':'all-foes',
+  'Steam Eruption':'any',
+  'Hyperspace Hole':'any',
+  'Water Shuriken':'any',
+  'Mystical Fire':'any',
+  'Spiky Shield':'self',
+  'Aromatic Mist':'ally',
+  'Eerie Impulse':'any',
+  'Venom Drench':'all-foes',
+  'Powder':'any',
+  'Geomancy':'self',
+  'Magnetic Flux':'all-allies-and-self',
+  'Happy Hour':'field',
+  'Electric Terrain':'field',
+  'Dazzling Gleam':'all-foes',
+  'Celebrate':'self',
+  'Hold Hands':'ally',
+  'Baby-Doll Eyes':'any',
+  'Nuzzle':'any',
+  'Hold Back':'any',
+  'Infestation':'any',
+  'Power-Up Punch':'any',
+  'Oblivion Wing':'any',
+  'Thousand Arrows':'all-foes',
+  'Thousand Waves':'all-foes',
+  'Land’s Wrath':'all-foes',
+  'Light of Ruin':'any',
+  'Origin Pulse':'all-foes',
+  'Precipice Blades':'all-foes',
+  'Dragon Ascent':'any',
+  'Hyperspace Fury':'any',
+  'Breakneck Blitz':'any',
+  'All-Out Pummeling':'any',
+  'Supersonic Skystrike':'any',
+  'Acid Downpour':'any',
+  'Tectonic Rage':'any',
+  'Continental Crush':'any',
+  'Savage Spin-Out':'any',
+  'Never-Ending Nightmare':'any',
+  'Corkscrew Crash':'any',
+  'Inferno Overdrive':'any',
+  'Hydro Vortex':'any',
+  'Bloom Doom':'any',
+  'Gigavolt Havoc':'any',
+  'Shattered Psyche':'any',
+  'Subzero Slammer':'any',
+  'Devastating Drake':'any',
+  'Black Hole Eclipse':'any',
+  'Twinkle Tackle':'any',
+  'Catastropika':'any',
+  'Shore Up':'self',
+  'First Impression':'any',
+  'Baneful Bunker':'self',
+  'Spirit Shackle':'any',
+  'Darkest Lariat':'any',
+  'Sparkling Aria':'all-other',
+  'Ice Hammer':'any',
+  'Floral Healing':'any',
+  'High Horsepower':'any',
+  'Strength Sap':'any',
+  'Solar Blade':'any',
+  'Leafage':'any',
+  'Spotlight':'any',
+  'Toxic Thread':'any',
+  'Laser Focus':'self',
+  'Gear Up':'all-allies-and-self',
+  'Throat Chop':'any',
+  'Pollen Puff':'any',
+  'Anchor Shot':'any',
+  'Psychic Terrain':'field',
+  'Lunge':'any',
+  'Fire Lash':'any',
+  'Power Trip':'any',
+  'Burn Up':'any',
+  'Speed Swap':'any',
+  'Smart Strike':'any',
+  'Purify':'any',
+  'Revelation Dance':'any',
+  'Core Enforcer':'all-foes',
+  'Trop Kick':'any',
+  'Instruct':'any',
+  'Beak Blast':'any',
+  'Clanging Scales':'all-foes',
+  'Dragon Hammer':'any',
+  'Brutal Swing':'all-other',
+  'Aurora Veil':'field',
+  'Sinister Arrow Raid':'any',
+  'Malicious Moonsault':'any',
+  'Oceanic Operetta':'any',
+  'Guardian of Alola':'any',
+  'Soul-Stealing 7-Star Strike':'any',
+  'Stoked Sparksurfer':'any',
+  'Pulverizing Pancake':'any',
+  'Extreme Evoboost':'self',
+  'Genesis Supernova':'any',
+  'Shell Trap':'all-foes',
+  'Fleur Cannon':'any',
+  'Psychic Fangs':'any',
+  'Stomping Tantrum':'any',
+  'Shadow Bone':'any',
+  'Accelerock':'any',
+  'Liquidation':'any',
+  'Prismatic Laser':'any',
+  'Spectral Thief':'any',
+  'Sunsteel Strike':'any',
+  'Moongeist Beam':'any',
+  'Tearful Look':'any',
+  'Zing Zap':'any',
+  'Nature’s Madness':'any',
+  'Multi-Attack':'any',
+  '10,000,000 Volt Thunderbolt':'any',
+  'Mind Blown':'all-other',
+  'Plasma Fists':'any',
+  'Photon Geyser':'any',
+  'Light That Burns the Sky':'any',
+  'Searing Sunraze Smash':'any',
+  'Menacing Moonraze Maelstrom':'any',
+  'Let’s Snuggle Forever':'any',
+  'Splintered Stormshards':'any',
+  'Clangorous Soulblaze':'all-foes',
+  'Zippy Zap':'any',
+  'Splishy Splash':'all-foes',
+  'Floaty Fall':'any',
+  'Pika Papow':'any',
+  'Bouncy Bubble':'any',
+  'Buzzy Buzz':'any',
+  'Sizzly Slide':'any',
+  'Glitzy Glow':'any',
+  'Baddy Bad':'any',
+  'Sappy Seed':'any',
+  'Freezy Frost':'any',
+  'Sparkly Swirl':'any',
+  'Veevee Volley':'any',
+  'Double Iron Bash':'any',
+  'Max Guard':'self',
+  'Dynamax Cannon':'any',
+  'Snipe Shot':'any',
+  'Jaw Lock':'any',
+  'Stuff Cheeks':'self',
+  'No Retreat':'self',
+  'Tar Shot':'any',
+  'Magic Powder':'any',
+  'Dragon Darts':'any',
+  'Teatime':'all',
+  'Octolock':'any',
+  'Bolt Beak':'any',
+  'Fishious Rend':'any',
+  'Court Change':'field',
+  'Max Flare':'foe',
+  'Max Flutterby':'foe',
+  'Max Lightning':'foe',
+  'Max Strike':'foe',
+  'Max Knuckle':'foe',
+  'Max Phantasm':'foe',
+  'Max Hailstorm':'foe',
+  'Max Ooze':'foe',
+  'Max Geyser':'foe',
+  'Max Airstream':'foe',
+  'Max Starfall':'foe',
+  'Max Wyrmwind':'foe',
+  'Max Mindstorm':'foe',
+  'Max Rockfall':'foe',
+  'Max Quake':'foe',
+  'Max Darkness':'foe',
+  'Max Overgrowth':'foe',
+  'Max Steelspike':'foe',
+  'Clangorous Soul':'self',
+  'Body Press':'any',
+  'Decorate':'any',
+  'Drum Beating':'any',
+  'Snap Trap':'any',
+  'Pyro Ball':'any',
+  'Behemoth Blade':'any',
+  'Behemoth Bash':'any',
+  'Aura Wheel':'any',
+  'Breaking Swipe':'all-foes',
+  'Branch Poke':'any',
+  'Overdrive':'all-foes',
+  'Apple Acid':'any',
+  'Grav Apple':'any',
+  'Spirit Break':'any',
+  'Strange Steam':'any',
+  'Life Dew':'all-allies-and-self',
+  'Obstruct':'self',
+  'False Surrender':'any',
+  'Meteor Assault':'any',
+  'Eternabeam':'any',
+  'Steel Beam':'any',
+  'Expanding Force':'any',
+  'Steel Roller':'any',
+  'Scale Shot':'any',
+  'Meteor Beam':'any',
+  'Shell Side Arm':'any',
+  'Misty Explosion':'all-other',
+  'Grassy Glide':'any',
+  'Rising Voltage':'any',
+  'Terrain Pulse':'any',
+  'Skitter Smack':'any',
+  'Burning Jealousy':'all-foes',
+  'Lash Out':'any',
+  'Poltergeist':'any',
+  'Corrosive Gas':'all-other',
+  'Coaching':'all-allies-and-self',
+  'Flip Turn':'any',
+  'Triple Axel':'any',
+  'Dual Wingbeat':'any',
+  'Scorching Sands':'any',
+  'Jungle Healing':'all-allies-and-self',
+  'Wicked Blow':'any',
+  'Surging Strikes':'any',
+  'Thunder Cage':'any',
+  'Dragon Energy':'all-foes',
+  'Freezing Glare':'any',
+  'Fiery Wrath':'all-foes',
+  'Thunderous Kick':'any',
+  'Glacial Lance':'all-foes',
+  'Astral Barrage':'all-foes',
+  'Eerie Spell':'any',
+  'Dire Claw':'any',
+  'Psyshield Bash':'any',
+  'Power Shift':'self',
+  'Stone Axe':'any',
+  'Springtide Storm':'all-foes',
+  'Mystical Power':'any',
+  'Raging Fury':'foe',
+  'Wave Crash':'any',
+  'Chloroblast':'any',
+  'Mountain Gale':'any',
+  'Victory Dance':'self',
+  'Headlong Rush':'any',
+  'Barb Barrage':'any',
+  'Esper Wing':'any',
+  'Bitter Malice':'any',
+  'Shelter':'self',
+  'Triple Arrows':'any',
+  'Infernal Parade':'any',
+  'Ceaseless Edge':'any',
+  'Bleakwind Storm':'all-foes',
+  'Wildbolt Storm':'all-foes',
+  'Sandsear Storm':'all-foes',
+  'Lunar Blessing':'all-allies',
+  'Take Heart':'all-allies',
+  'Tera Blast':'any',
+  'Silk Trap':'self',
+  'Axe Kick':'any',
+  'Last Respects':'any',
+  'Lumina Crash':'any',
+  'Order Up':'any',
+  'Jet Punch':'any',
+  'Spicy Extract':'any',
+  'Spin Out':'any',
+  'Population Bomb':'any',
+  'Ice Spinner':'any',
+  'Glaive Rush':'any',
+  'Revival Blessing':'field',
+  'Salt Cure':'any',
+  'Triple Dive':'any',
+  'Mortal Spin':'all-foes',
+  'Doodle':'any',
+  'Fillet Away':'self',
+  'Kowtow Cleave':'any',
+  'Flower Trick':'any',
+  'Torch Song':'any',
+  'Aqua Step':'any',
+  'Raging Bull':'any',
+  'Make It Rain':'all-foes',
+  'Psyblade':'any',
+  'Hydro Steam':'any',
+  'Ruination':'any',
+  'Collision Course':'any',
+  'Electro Drift':'any',
+  'Shed Tail':'self',
+  'Chilly Reception':'field',
+  'Tidy Up':'self',
+  'Snowscape':'field',
+  'Pounce':'any',
+  'Trailblaze':'any',
+  'Chilling Water':'any',
+  'Hyper Drill':'any',
+  'Twin Beam':'any',
+  'Rage Fist':'any',
+  'Armor Cannon':'any',
+  'Bitter Blade':'any',
+  'Double Shock':'any',
+  'Gigaton Hammer':'any',
+  'Comeuppance':'foe',
+  'Aqua Cutter':'any',
+  'Blazing Torque':'any',
+  'Wicked Torque':'any',
+  'Noxious Torque':'any',
+  'Combat Torque':'any',
+  'Magical Torque':'any',
+  'Blood Moon':'any',
+  'Matcha Gotcha':'any',
+  'Syrup Bomb':'any',
+  'Ivy Cudgel':'any',
+  'Electro Shot':'any',
+  'Tera Starstorm':'all-foes',
+  'Fickle Beam':'any',
+  'Burning Bulwark':'self',
+  'Thunderclap':'any',
+  'Mighty Cleave':'any',
+  'Tachyon Cutter':'any',
+  'Hard Press':'any',
+  'Dragon Cheer':'all-allies',
+  'Alluring Voice':'any',
+  'Temper Flare':'any',
+  'Supercell Slam':'any',
+  'Psychic Noise':'any',
+  'Upper Hand':'any',
+  'Malignant Chain':'any'
+};
 /* Tabela 8.2 das regras: Nível do Treinador -> teto de Nível oficial dos
    Movimentos naturais que ele já pode usar. */
 var OFFICIAL_LEVEL_CEILING = [5,10,15,20,25,30,35,40,45,50,55,60,70,80,90,100];
@@ -3459,7 +4365,7 @@ var db = null;
 var stateDocRef = null;
 
 /* =================== SESSÃO LOCAL (só deste navegador) =================== */
-var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', expanded:{}, confirmRemovePoke:null, confirmRemoveTrainer:null, arenaAttacker:null, arenaAttackTarget:null, showRollOverlay:false };
+var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', expanded:{}, confirmRemovePoke:null, confirmRemoveTrainer:null, arenaAttacker:null, arenaMoveIdx:null, arenaAttackTarget:null, showRollOverlay:false };
 try{
   var savedSession = JSON.parse(localStorage.getItem('dt_session')||'null');
   if(savedSession && savedSession.role==='gm'){ SESSION.role='gm'; SESSION.screen='gm-dashboard'; }
@@ -3600,13 +4506,18 @@ function typeModifier(moveTipo, defTipo1, defTipo2){
   return {mod:mod, immune:immune};
 }
 /* Resolve um ataque inteiro (Cap. 10-14) sem alterar nada — devolve um
-   relatório; quem chama decide aplicar (applyAttackResult) e sincronizar. */
-function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke){
+   relatório; quem chama decide aplicar (applyAttackResult) e sincronizar.
+   forcedRoll (opcional) — {d6, efeitoD10a, efeitoD10b} — permite reusar uma
+   rolagem já feita em vez de sortear de novo: usado pelos Movimentos de
+   área (resolveMoveUse), onde a Precisão/Crítico/Efeito é UMA rolagem só
+   pro uso inteiro, aplicada igual a todos os alvos atingidos — só o Dano
+   (que depende do Tipo/Atributos de CADA defensor) varia por alvo. */
+function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRoll){
   var result = { moveName: move.nome, tipo: move.tipo, categoria: move.categoria };
   var isDamaging = move.categoria==='Físico' || move.categoria==='Especial';
   var precisao100 = !move.precisao || parseInt(move.precisao,10)>=100;
   var threshold = hitThreshold(move.precisao);
-  var d6 = rollDie(6);
+  var d6 = forcedRoll ? forcedRoll.d6 : rollDie(6);
   result.d6 = d6;
   var hit = precisao100 ? true : (d6 >= threshold);
   var falhaNatural = (!precisao100) && d6===1;
@@ -3641,11 +4552,11 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke){
   var fx = MOVE_EFFECTS[move.nome];
   if(fx && !tm.immune){
     var d10Threshold = fx.chance/10;
-    var d10a = rollDie(10);
+    var d10a = forcedRoll ? forcedRoll.efeitoD10a : rollDie(10);
     var success = fx.chance>=100 ? true : (d10a <= d10Threshold);
     var d10b = null;
     if(!success && crit){
-      d10b = rollDie(10);
+      d10b = forcedRoll ? (forcedRoll.efeitoD10b!==undefined ? forcedRoll.efeitoD10b : rollDie(10)) : rollDie(10);
       success = fx.chance>=100 ? true : (d10b <= d10Threshold);
     }
     result.efeito = { ailment: fx.ailment, chance: fx.chance, d10a: d10a, d10b: d10b, sucesso: success };
@@ -3678,6 +4589,82 @@ function applyAttackResult(defTrainer, defPoke, result){
   return info;
 }
 
+/* =================== ALVO DE MOVIMENTO ===================
+   Categoria de alvo de cada Movimento, vinda do dado oficial (moves.csv
+   target_id do PokeAPI, ver MOVE_TARGETS) — a lógica descrita real do
+   Movimento é respeitada: um Swords Dance (categoria 'self') só pode ser
+   usado em você mesmo, um Helping Hand ('ally') só num aliado vivo, e por
+   aí vai. 'field' = Movimento de campo/hazard (Stealth Rock, clima, etc.)
+   — não tira um Pokémon como alvo; o motor de dano não simula esse tipo
+   ainda (Cap. 25: mecânicas de Movimento em aberto). */
+var MOVE_TARGET_LABELS = {
+  'self': 'em você mesmo', 'ally': 'só aliado', 'ally-or-self': 'você ou aliado',
+  'foe': 'só inimigo', 'any': 'aliado ou inimigo',
+  'all-foes': 'todos os inimigos', 'all-allies': 'todos os aliados',
+  'all-allies-and-self': 'você e aliados', 'all-other': 'todos, menos você',
+  'all': 'todo mundo em campo', 'field': 'efeito de campo'
+};
+function moveTargetCategory(moveName){ return MOVE_TARGETS[moveName] || 'any'; }
+function moveNeedsManualTarget(category){
+  return category==='ally' || category==='ally-or-self' || category==='foe' || category==='any';
+}
+function moveIsAreaEffect(category){
+  return category==='all-foes' || category==='all-allies' || category==='all-allies-and-self' || category==='all-other' || category==='all';
+}
+function findArenaEntry(entryId){
+  return (STATE.arena.entries||[]).find(function(e){ return e.id===entryId; });
+}
+/* Quem PODE ser alvo desse Movimento pra quem está agindo (actingEntry),
+   já filtrado pra quem está revelado e vivo. Pra categorias manuais
+   (ally/ally-or-self/foe/any) essa lista é o que fica clicável; pra
+   categorias de área é a lista de quem É atingido, sem precisar clicar. */
+function eligibleMoveTargets(actingEntry, category){
+  var entries = (STATE.arena.entries||[]).filter(function(e){
+    if(!e.revelado) return false;
+    var t = findTrainer(e.trainerId); var p = t && getPoke(e.trainerId, e.pokemonId);
+    if(!t || !p) return false;
+    var max = hpMax(t,p);
+    var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+    return cur>0;
+  });
+  var sameTeam = function(e){ return e.teamId===actingEntry.teamId; };
+  var isSelf = function(e){ return e.id===actingEntry.id; };
+  switch(category){
+    case 'self': return entries.filter(isSelf);
+    case 'ally': return entries.filter(function(e){ return sameTeam(e) && !isSelf(e); });
+    case 'ally-or-self': return entries.filter(sameTeam);
+    case 'foe': return entries.filter(function(e){ return !sameTeam(e); });
+    case 'all-foes': return entries.filter(function(e){ return !sameTeam(e); });
+    case 'all-allies': return entries.filter(function(e){ return sameTeam(e) && !isSelf(e); });
+    case 'all-allies-and-self': return entries.filter(sameTeam);
+    case 'all-other': return entries.filter(function(e){ return !isSelf(e); });
+    case 'all': return entries.slice();
+    case 'field': return [];
+    case 'any':
+    default: return entries.filter(function(e){ return !isSelf(e); });
+  }
+}
+/* Resolve um Movimento contra 1+ alvos já elegíveis. Pra Movimento de área
+   (targets.length>1), a Precisão/Crítico/Efeito de UMA rolagem só valem
+   pra todos (Cap. 13/14 das regras) — só o Dano varia por alvo, calculado
+   de novo pra cada um (Tipo/Atributos do defensor mudam). Devolve um array
+   {entry,trainer,poke,result,info}, um por alvo. */
+function resolveMoveUse(attTrainer, attPoke, move, targets){
+  var forced = null;
+  return targets.map(function(tgt){
+    var result = resolveAttack(attTrainer, attPoke, move, tgt.trainer, tgt.poke, forced);
+    if(!forced){
+      forced = {
+        d6: result.d6,
+        efeitoD10a: result.efeito ? result.efeito.d10a : undefined,
+        efeitoD10b: (result.efeito && result.efeito.d10b!==null && result.efeito.d10b!==undefined) ? result.efeito.d10b : undefined
+      };
+    }
+    var info = applyAttackResult(tgt.trainer, tgt.poke, result);
+    return { entry: tgt.entry, trainer: tgt.trainer, poke: tgt.poke, result: result, info: info };
+  });
+}
+
 /* =================== INICIATIVA / TURNO (Cap. 16) ===================
    Ordem de quem age primeiro numa rodada: Velocidade Efetiva (maior primeiro)
    -> empate compara Velocidade Natural -> empate de novo, cada um rola 1d6 e
@@ -3699,20 +4686,40 @@ function velocidadeEfetivaParaIniciativa(trainer, poke){
   return v;
 }
 /* Resolve empates de um grupo rolando 1d6 pra cada um; quem continuar
-   empatado dentro do grupo rola de novo, só esses (recursivo). */
+   empatado dentro do grupo rola de novo, só esses. Iterativo (não
+   recursivo) com um teto de rodadas: um grupo grande (5+ Pokémon num d6 só
+   tem 6 faces) pode ficar reempatando por várias rodadas seguidas — sem um
+   teto, isso já estourou a pilha de chamadas numa recursão sem fim durante
+   os testes. Mantém "baldes" (subgrupos ainda empatados) na ordem já
+   decidida entre eles — só o CONTEÚDO de cada balde ainda empatado é
+   re-rolado e sub-dividido a cada rodada, a posição relativa entre baldes
+   diferentes nunca muda. Depois do teto, quem ainda estiver empatado fica
+   na ordem que já tinha entre si (estável) — mesa nenhuma vai
+   realisticamente precisar de mais que isso pra desempatar no d6. */
 function resolveInitiativeTies(group){
-  if(group.length<=1) return group;
-  group.forEach(function(r){ r.tiebreak = rollDie(6); });
-  group.sort(function(a,b){ return b.tiebreak - a.tiebreak; });
-  var out = [];
-  var i = 0;
-  while(i<group.length){
-    var j = i+1;
-    while(j<group.length && group[j].tiebreak===group[i].tiebreak) j++;
-    var sub = group.slice(i,j);
-    out = out.concat(sub.length>1 ? resolveInitiativeTies(sub) : sub);
-    i = j;
+  if(group.length<=1) return group.slice();
+  var buckets = [group.slice()];
+  var round = 0;
+  var MAX_ROUNDS = 30;
+  while(round<MAX_ROUNDS && buckets.some(function(b){ return b.length>1; })){
+    round++;
+    var newBuckets = [];
+    buckets.forEach(function(b){
+      if(b.length<=1){ newBuckets.push(b); return; }
+      b.forEach(function(r){ r.tiebreak = rollDie(6); });
+      b.sort(function(a,c){ return c.tiebreak-a.tiebreak; });
+      var i = 0;
+      while(i<b.length){
+        var j = i+1;
+        while(j<b.length && b[j].tiebreak===b[i].tiebreak) j++;
+        newBuckets.push(b.slice(i,j));
+        i = j;
+      }
+    });
+    buckets = newBuckets;
   }
+  var out = [];
+  buckets.forEach(function(b){ out = out.concat(b); });
   return out;
 }
 /* Devolve a fila de iniciativa (array de {entryId, velEfetiva, velNatural,
@@ -4271,61 +5278,135 @@ DT.arenaToggleReveal = function(entryId){
   mutate();
 };
 
-/* ---- Fluxo de ataque: "⚔️ Atacar" no seu Pokémon já em campo -> clique no
-   alvo (aliado ou adversário, também já em campo) -> escolhe o Movimento ->
-   ataca. Resolve de verdade (motor acima) e guarda o resultado em
-   STATE.arena.lastRoll pra todo mundo ver o dado rolando. ---- */
+/* ---- Fluxo de ação: "⚔️ Agir" no seu Pokémon já em campo -> escolhe o
+   Movimento -> se a lógica dele pedir um alvo manual (aliado/inimigo/
+   qualquer um), clica em quem já está em campo; se for em si mesmo ou de
+   área, resolve na hora, sem precisar clicar em ninguém. Resolve de
+   verdade (motor acima) e guarda o resultado em STATE.arena.lastRoll pra
+   todo mundo ver o dado rolando. ---- */
 DT.arenaStartAttack = function(entryId){
   SESSION.arenaAttacker = entryId;
+  SESSION.arenaMoveIdx = null;
   SESSION.arenaAttackTarget = null;
   render();
 };
 DT.arenaCancelAttack = function(){
   SESSION.arenaAttacker = null;
+  SESSION.arenaMoveIdx = null;
   SESSION.arenaAttackTarget = null;
   render();
 };
-DT.arenaSelectTarget = function(entryId){
-  if(!SESSION.arenaAttacker || SESSION.arenaAttacker===entryId) return;
-  SESSION.arenaAttackTarget = entryId;
-  render();
-};
-DT.arenaAttack = function(moveIdx){
-  var entries = STATE.arena.entries || [];
-  var atkEntry = entries.find(function(x){ return x.id===SESSION.arenaAttacker; });
-  var defEntry = entries.find(function(x){ return x.id===SESSION.arenaAttackTarget; });
-  if(!atkEntry || !defEntry) return;
+DT.arenaPickMove = function(moveIdx){
+  var atkEntry = findArenaEntry(SESSION.arenaAttacker);
+  if(!atkEntry) return;
   var attTrainer = findTrainer(atkEntry.trainerId);
-  var defTrainer = findTrainer(defEntry.trainerId);
   var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
-  var defPoke = defTrainer && getPoke(defTrainer.id, defEntry.pokemonId);
-  if(!attTrainer || !defTrainer || !attPoke || !defPoke) return;
+  if(!attPoke) return;
   var move = (attPoke.moves||[])[moveIdx];
   if(!move || !move.nome) return;
+  var category = moveTargetCategory(move.nome);
 
-  var result = resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke);
-  var info = applyAttackResult(defTrainer, defPoke, result);
+  if(category==='field'){ DT.resolveFieldMove(atkEntry, move); return; }
+
+  if(moveNeedsManualTarget(category)){
+    if(eligibleMoveTargets(atkEntry, category).length===0){
+      SESSION.error = 'Não há alvo válido pra "'+move.nome+'" agora ('+MOVE_TARGET_LABELS[category]+').';
+      SESSION.arenaAttacker = null; SESSION.arenaMoveIdx = null; SESSION.arenaAttackTarget = null;
+      render();
+      return;
+    }
+    SESSION.arenaMoveIdx = moveIdx;
+    SESSION.arenaAttackTarget = null;
+    render();
+    return;
+  }
+
+  /* self, ou Movimento de área: resolve sozinho, sem clique de alvo */
+  DT.resolveArenaMove(atkEntry, move, category, null);
+};
+DT.arenaSelectTarget = function(entryId){
+  if(SESSION.arenaMoveIdx===null || SESSION.arenaMoveIdx===undefined) return;
+  var atkEntry = findArenaEntry(SESSION.arenaAttacker);
+  if(!atkEntry) return;
+  var attTrainer = findTrainer(atkEntry.trainerId);
+  var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
+  var move = attPoke && (attPoke.moves||[])[SESSION.arenaMoveIdx];
+  if(!move) return;
+  var category = moveTargetCategory(move.nome);
+  var eligibleIds = eligibleMoveTargets(atkEntry, category).map(function(e){ return e.id; });
+  if(eligibleIds.indexOf(entryId)===-1) return; /* não é um alvo válido pra esse Movimento -- ignora o clique */
+  DT.resolveArenaMove(atkEntry, move, category, [entryId]);
+};
+/* Movimento de campo (Stealth Rock, clima, etc.) — não tira Pokémon como
+   alvo, e o motor de dano ainda não simula esse efeito (Cap. 25). Só
+   registra o uso no Registro e passa a vez, sem overlay de dado. */
+DT.resolveFieldMove = function(atkEntry, move){
+  var attTrainer = findTrainer(atkEntry.trainerId);
+  var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
+  if(!attTrainer || !attPoke) return;
+  var nome = attPoke.apelido || attPoke.especie || 'Pokémon';
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  var prefix = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
+  STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(attTrainer.name)+') usou '+esc(move.nome)+' — efeito de campo, ainda não simulado (Cap. 25).' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  if(STATE.arena.round && currentRoundEntryId()===atkEntry.id){
+    STATE.arena.round.currentIdx++;
+    advanceRoundPastFainted(STATE.arena.round);
+  }
+  SESSION.arenaAttacker = null; SESSION.arenaMoveIdx = null; SESSION.arenaAttackTarget = null;
+  mutate();
+};
+/* Resolve de verdade um Movimento contra 1+ alvos (manualTargetIds, ou os
+   alvos automáticos de self/área quando null) e sincroniza tudo. */
+DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds){
+  var attTrainer = findTrainer(atkEntry.trainerId);
+  var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
+  if(!attTrainer || !attPoke) return;
+
+  var targetEntries = manualTargetIds
+    ? manualTargetIds.map(findArenaEntry).filter(Boolean)
+    : eligibleMoveTargets(atkEntry, category);
+
+  var resolved = targetEntries.map(function(e){
+    var t = findTrainer(e.trainerId);
+    var p = t && getPoke(e.trainerId, e.pokemonId);
+    return (t && p) ? { entry: e, trainer: t, poke: p } : null;
+  }).filter(Boolean);
+
+  if(resolved.length===0){
+    SESSION.error = 'Não há alvo válido pra "'+move.nome+'" agora.';
+    SESSION.arenaAttacker = null; SESSION.arenaMoveIdx = null; SESSION.arenaAttackTarget = null;
+    render();
+    return;
+  }
+
+  var perTarget = resolveMoveUse(attTrainer, attPoke, move, resolved);
+  var first = perTarget[0].result;
 
   STATE.arena.lastRoll = {
     ts: Date.now(),
     round: STATE.arena.round ? STATE.arena.round.number : null,
     atacante: attPoke.apelido || attPoke.especie || 'Pokémon',
     atacanteTrainer: attTrainer.name,
-    alvo: defPoke.apelido || defPoke.especie || 'Pokémon',
-    alvoTrainer: defTrainer.name,
     move: move.nome,
-    d6: result.d6, hit: result.hit, falhaNatural: result.falhaNatural, crit: result.crit,
-    dano: result.dano||0, immune: !!result.immune,
-    efeito: result.efeito || null,
-    fainted: info.fainted, statusApplied: info.statusApplied
+    d6: first.d6, hit: first.hit, falhaNatural: first.falhaNatural, crit: first.crit,
+    efeito: first.efeito || null,
+    alvos: perTarget.map(function(pt){
+      return {
+        nome: pt.poke.apelido || pt.poke.especie || 'Pokémon',
+        trainerNome: pt.trainer.name,
+        dano: pt.result.dano||0, immune: !!pt.result.immune,
+        fainted: pt.info.fainted, statusApplied: pt.info.statusApplied
+      };
+    })
   };
 
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   STATE.arena.log.push({ ts: STATE.arena.lastRoll.ts, text: rollLogLine(STATE.arena.lastRoll) });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
 
-  /* Se é a vez desse atacante na fila de iniciativa, o ataque já passa a
-     vez sozinho pro próximo (pulando quem já desmaiou). Se não é a vez dele
+  /* Se é a vez desse atacante na fila de iniciativa, agir já passa a vez
+     sozinho pro próximo (pulando quem já desmaiou). Se não é a vez dele
      (Prioridade, NPC do Mestre fora de ordem etc.), a fila não muda — só o
      Mestre/quem estiver na vez mexe nela pelo botão "Próximo". */
   if(STATE.arena.round && currentRoundEntryId()===atkEntry.id){
@@ -4334,6 +5415,7 @@ DT.arenaAttack = function(moveIdx){
   }
 
   SESSION.arenaAttacker = null;
+  SESSION.arenaMoveIdx = null;
   SESSION.arenaAttackTarget = null;
   mutate();
 };
@@ -4533,41 +5615,94 @@ var DIE_FACES = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
 function ailmentLabel(ailment){
   return ailment==='confuso' ? 'Confuso' : (STATUS_LABELS[ailment]||ailment);
 }
+/* O quanto o Efeito Percentual realmente "pegou" NESSE alvo — diferente de
+   lr.efeito.sucesso (que é só se o 1d10 bateu, compartilhado pra todos os
+   alvos de um Movimento de área): mesmo com o 1d10 batendo, o Cap. 20 pode
+   ter bloqueado (o alvo já tinha uma Condição) — o texto tem que refletir
+   isso, não dizer "aplicado" quando na prática não mudou nada. */
+function effectOutcomeText(lr, alvo){
+  if(!lr.efeito) return null;
+  if(!lr.efeito.sucesso) return 'Efeito não aplicado.';
+  if(alvo.statusApplied) return 'Efeito aplicado: '+(STATUS_ICONS[alvo.statusApplied]||'💫')+' '+esc(ailmentLabel(alvo.statusApplied));
+  return 'Efeito bateu, mas '+esc(alvo.nome)+' já tinha uma Condição (Cap. 20) — não muda.';
+}
 /* Linhas do resultado final, compartilhadas entre o overlay (assentado) e
-   qualquer outro lugar que precise descrever uma rolagem em texto. */
+   qualquer outro lugar que precise descrever uma rolagem em texto.
+   lr.alvos é sempre um array (1 alvo pra Movimento normal, vários pra
+   Movimento de área) — Precisão/Crítico/Efeito (lr.hit/crit/efeito) são
+   compartilhados entre todos; só Dano/Imunidade/Desmaio/status aplicado
+   variam por alvo (Cap. 13/14: cada defensor tem seu próprio Tipo/PV/
+   Condição já ativa). */
 function rollSummaryLines(lr){
   var lines = [];
-  lines.push('<strong>'+esc(lr.atacante)+'</strong> ('+esc(lr.atacanteTrainer)+') usou <strong>'+esc(lr.move)+'</strong> em <strong>'+esc(lr.alvo)+'</strong> ('+esc(lr.alvoTrainer)+')');
-  if(lr.immune){
-    lines.push('Sem efeito — imune a esse Tipo.');
-  } else if(!lr.hit){
-    lines.push('Errou'+(lr.falhaNatural?' — Falha Natural!':'')+'.');
-  } else {
-    lines.push(lr.dano ? ('Dano: <strong>'+lr.dano+'</strong>'+(lr.crit?' · Crítico!':'')) : (lr.crit?'Crítico!':'Acertou.'));
-    if(lr.fainted) lines.push('😵 Desmaiou!');
+  var alvos = lr.alvos || [];
+  var nomes = alvos.map(function(a){ return a.nome+' ('+a.trainerNome+')'; }).join(', ');
+  lines.push('<strong>'+esc(lr.atacante)+'</strong> ('+esc(lr.atacanteTrainer)+') usou <strong>'+esc(lr.move)+'</strong>'+(nomes ? (' em <strong>'+esc(nomes)+'</strong>') : ''));
+  if(alvos.length===0){
+    lines.push('Nenhum alvo em campo pra esse Movimento.');
+    return lines;
   }
-  if(lr.efeito){
-    lines.push(lr.efeito.sucesso
-      ? ('Efeito aplicado: '+(STATUS_ICONS[lr.efeito.ailment]||'💫')+' '+esc(ailmentLabel(lr.efeito.ailment)))
-      : 'Efeito não aplicado.');
+  if(!lr.hit){
+    lines.push('Errou'+(lr.falhaNatural?' — Falha Natural!':'')+'.');
+    return lines;
+  }
+  if(alvos.length===1){
+    var a = alvos[0];
+    if(a.immune){
+      lines.push('Sem efeito — imune a esse Tipo.');
+    } else {
+      lines.push(a.dano ? ('Dano: <strong>'+a.dano+'</strong>'+(lr.crit?' · Crítico!':'')) : (lr.crit?'Crítico!':'Acertou.'));
+      if(a.fainted) lines.push('😵 Desmaiou!');
+    }
+    var fx = effectOutcomeText(lr, a);
+    if(fx) lines.push(fx);
+  } else {
+    if(lr.crit) lines.push('Crítico!');
+    alvos.forEach(function(a){
+      var bits = [];
+      if(a.immune) bits.push('imune');
+      else if(a.dano) bits.push('dano '+a.dano);
+      if(a.fainted) bits.push('😵 desmaiou');
+      if(a.statusApplied) bits.push((STATUS_ICONS[a.statusApplied]||'💫')+' '+esc(ailmentLabel(a.statusApplied)));
+      lines.push('• '+esc(a.nome)+(bits.length ? (': '+bits.join(', ')) : ''));
+    });
+    if(lr.efeito && !lr.efeito.sucesso) lines.push('Efeito não aplicado em ninguém.');
   }
   return lines;
 }
 /* Uma linha só, densa, pro registro/log da Arena (não precisa ser bonita,
    só clara e curta o bastante pra caber várias na tela). */
 function rollLogLine(lr){
+  var alvos = lr.alvos || [];
   var parts = [];
   if(lr.round) parts.push('Rodada '+lr.round);
-  parts.push(esc(lr.atacante)+' ('+esc(lr.atacanteTrainer)+') usou '+esc(lr.move)+' em '+esc(lr.alvo)+' ('+esc(lr.alvoTrainer)+')');
+  var nomes = alvos.map(function(a){ return a.nome+' ('+a.trainerNome+')'; }).join(', ') || '—';
+  parts.push(esc(lr.atacante)+' ('+esc(lr.atacanteTrainer)+') usou '+esc(lr.move)+' em '+esc(nomes));
   parts.push('d6: '+lr.d6+(lr.crit?' · Crítico':'')+(lr.falhaNatural?' · Falha Natural':''));
-  if(lr.immune) parts.push('imune');
-  else if(!lr.hit) parts.push('errou');
-  else if(lr.dano) parts.push('dano '+lr.dano);
-  if(lr.efeito){
-    parts.push('1d10: '+lr.efeito.d10a+(lr.efeito.d10b?(' → '+lr.efeito.d10b):'')+
-      (lr.efeito.sucesso ? (' — aplicou '+esc(ailmentLabel(lr.efeito.ailment))) : ' — sem efeito'));
+  if(!lr.hit){
+    parts.push('errou');
+  } else if(alvos.length===1){
+    var a = alvos[0];
+    if(a.immune) parts.push('imune');
+    else if(a.dano) parts.push('dano '+a.dano);
+    if(a.fainted) parts.push('😵 desmaiou');
+  } else if(alvos.length>1){
+    parts.push(alvos.map(function(a){
+      var bits = [];
+      if(a.immune) bits.push('imune'); else if(a.dano) bits.push('dano '+a.dano);
+      if(a.fainted) bits.push('desmaiou');
+      return esc(a.nome)+(bits.length?(' '+bits.join('/')):'');
+    }).join('; '));
   }
-  if(lr.fainted) parts.push('😵 desmaiou');
+  if(lr.efeito){
+    parts.push('1d10: '+lr.efeito.d10a+(lr.efeito.d10b?(' → '+lr.efeito.d10b):''));
+    if(alvos.length===1){
+      parts.push(alvos[0].statusApplied ? ('aplicou '+esc(ailmentLabel(alvos[0].statusApplied))) : 'sem efeito');
+    } else {
+      var applied = alvos.filter(function(a){ return a.statusApplied; }).map(function(a){ return esc(a.nome); });
+      parts.push(applied.length ? ('aplicou em '+applied.join(', ')) : 'sem efeito em ninguém');
+    }
+  }
   return parts.join(' · ');
 }
 function diceOverlayHTML(){
@@ -4802,13 +5937,15 @@ function arenaLogHTML(){
   out += '</div></div>';
   return out;
 }
-/* Painel do ataque em andamento: some se ninguém estiver atacando; enquanto
-   falta escolher o alvo, só mostra o aviso (o clique é direto no slot lá em
-   cima); depois de escolher o alvo, mostra os Movimentos do atacante. */
+/* Painel da ação em andamento: some se ninguém estiver agindo. Primeiro
+   mostra os Movimentos do Pokémon (a lógica de alvo de cada um já aparece
+   junto — self/aliado/inimigo/área); ao escolher um que precise de alvo
+   manual, o clique passa a ser direto no slot lá em cima (só os elegíveis
+   pra esse Movimento ficam clicáveis); um self/campo/área resolve na hora,
+   sem esse segundo passo. */
 function arenaAttackPanelHTML(){
   if(!SESSION.arenaAttacker) return '';
-  var entries = STATE.arena.entries || [];
-  var atkEntry = entries.find(function(x){ return x.id===SESSION.arenaAttacker; });
+  var atkEntry = findArenaEntry(SESSION.arenaAttacker);
   if(!atkEntry){ SESSION.arenaAttacker=null; return ''; }
   var attTrainer = findTrainer(atkEntry.trainerId);
   var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
@@ -4816,27 +5953,25 @@ function arenaAttackPanelHTML(){
   var name = attPoke.apelido || attPoke.especie || 'Pokémon';
   var cancelBtn = '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelAttack()">Cancelar</button>';
 
-  if(!SESSION.arenaAttackTarget){
+  if(SESSION.arenaMoveIdx===null || SESSION.arenaMoveIdx===undefined){
+    var moveBtns = (attPoke.moves||[]).map(function(m, i){
+      if(!m.nome) return '';
+      var cat = moveTargetCategory(m.nome);
+      var detail = [m.tipo||'?', m.categoria||'', m.poder?('Poder '+m.poder):'', m.prioridade ? ('Prioridade '+(m.prioridade>0?'+':'')+m.prioridade) : '', 'Alvo: '+(MOVE_TARGET_LABELS[cat]||cat)].filter(Boolean).join(' · ');
+      return '<button class="btn-sm" onclick="DT.arenaPickMove('+i+')">'+esc(m.nome)+'<br><span class="muted" style="font-size:.66rem;">'+esc(detail)+'</span></button>';
+    }).join('');
     return '<div class="card arena-attack-panel"><div class="card-body">'+
-      '<p><strong>⚔️ '+esc(name)+'</strong> vai atacar — clique no alvo (aliado ou adversário, já em campo) ali em cima.</p>'+
+      '<p><strong>⚔️ '+esc(name)+'</strong> vai agir — escolha o Movimento:</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap;">'+(moveBtns || '<span class="muted">Esse Pokémon não tem Movimentos definidos.</span>')+'</div>'+
       cancelBtn+
     '</div></div>';
   }
 
-  var defEntry = entries.find(function(x){ return x.id===SESSION.arenaAttackTarget; });
-  var defTrainer = defEntry && findTrainer(defEntry.trainerId);
-  var defPoke = defEntry && defTrainer && getPoke(defTrainer.id, defEntry.pokemonId);
-  if(!defPoke){ SESSION.arenaAttackTarget=null; return arenaAttackPanelHTML(); }
-  var defName = defPoke.apelido || defPoke.especie || 'Pokémon';
-  var moveBtns = (attPoke.moves||[]).map(function(m, i){
-    if(!m.nome) return '';
-    var detail = [m.tipo||'?', m.categoria||'', m.poder?('Poder '+m.poder):'', m.prioridade ? ('Prioridade '+(m.prioridade>0?'+':'')+m.prioridade) : ''].filter(Boolean).join(' · ');
-    return '<button class="btn-sm" onclick="DT.arenaAttack('+i+')">'+esc(m.nome)+'<br><span class="muted" style="font-size:.66rem;">'+esc(detail)+'</span></button>';
-  }).join('');
-
+  var move = (attPoke.moves||[])[SESSION.arenaMoveIdx];
+  if(!move){ SESSION.arenaMoveIdx=null; return arenaAttackPanelHTML(); }
+  var category = moveTargetCategory(move.nome);
   return '<div class="card arena-attack-panel"><div class="card-body">'+
-    '<p><strong>⚔️ '+esc(name)+'</strong> ataca <strong>'+esc(defName)+'</strong> — escolha o Movimento:</p>'+
-    '<div class="btn-row" style="flex-wrap:wrap;">'+(moveBtns || '<span class="muted">Esse Pokémon não tem Movimentos definidos.</span>')+'</div>'+
+    '<p><strong>⚔️ '+esc(name)+'</strong> vai usar <strong>'+esc(move.nome)+'</strong> — clique no alvo ('+esc(MOVE_TARGET_LABELS[category]||'alvo')+') ali em cima.</p>'+
     cancelBtn+
   '</div></div>';
 }
@@ -4893,29 +6028,39 @@ function arenaEntryHTML(e){
   var fainted = cur<=0;
   var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'');
 
-  /* Fluxo de ataque: enquanto escolhe alvo (Atacante já definido, Alvo ainda
-     não), qualquer outra entrada já em campo e viva vira um alvo clicável —
-     aliado ou adversário, tanto faz. */
+  /* Fluxo de ação: enquanto escolhe alvo (Movimento já escolhido, alvo
+     ainda não), só quem for realmente elegível pra esse Movimento fica
+     clicável — respeita a lógica dele (self/aliado/inimigo/qualquer um). */
   var slotClass = 'arena-slot';
   var slotClick = '';
   var targetable = false;
   if(e.id===SESSION.arenaAttacker) slotClass += ' arena-slot-attacking';
   else if(e.id===SESSION.arenaAttackTarget) slotClass += ' arena-slot-target-picked';
-  else if(SESSION.arenaAttacker && !SESSION.arenaAttackTarget && e.revelado && !fainted){
-    slotClass += ' arena-slot-targetable';
-    slotClick = ' onclick="DT.arenaSelectTarget(\''+e.id+'\')"';
-    targetable = true;
+  else if(SESSION.arenaAttacker && SESSION.arenaMoveIdx!=null && !SESSION.arenaAttackTarget){
+    var atkEntryForTarget = findArenaEntry(SESSION.arenaAttacker);
+    var attTForTarget = atkEntryForTarget && findTrainer(atkEntryForTarget.trainerId);
+    var attPForTarget = attTForTarget && getPoke(atkEntryForTarget.trainerId, atkEntryForTarget.pokemonId);
+    var mvForTarget = attPForTarget && (attPForTarget.moves||[])[SESSION.arenaMoveIdx];
+    if(atkEntryForTarget && mvForTarget){
+      var catForTarget = moveTargetCategory(mvForTarget.nome);
+      var eligibleForTarget = eligibleMoveTargets(atkEntryForTarget, catForTarget).map(function(x){ return x.id; });
+      if(eligibleForTarget.indexOf(e.id)!==-1){
+        slotClass += ' arena-slot-targetable';
+        slotClick = ' onclick="DT.arenaSelectTarget(\''+e.id+'\')"';
+        targetable = true;
+      }
+    }
   }
   var isTurnNow = e.id===currentRoundEntryId();
   if(isTurnNow) slotClass += ' arena-slot-turn';
 
-  /* Enquanto o card inteiro é o alvo do clique (escolhendo quem vai levar o
-     ataque), some com os botões — senão o clique pode acabar caindo em cima
-     de "Usar"/"Atacar" (que bloqueiam a propagação) em vez de escolher o alvo. */
+  /* Enquanto o card inteiro é o alvo do clique (escolhendo quem vai levar a
+     ação), some com os botões — senão o clique pode acabar caindo em cima
+     de "Usar"/"Agir" (que bloqueiam a propagação) em vez de escolher o alvo. */
   var controls = (canControl && !targetable)
     ? '<div class="btn-row" style="gap:4px; margin-top:4px; justify-content:center; flex-wrap:wrap;">'+
         '<button class="btn-sm'+(e.revelado?' btn-primary':'')+'" onclick="event.stopPropagation();DT.arenaToggleReveal(\''+e.id+'\')">'+(e.revelado?'Usado':'Usar')+'</button>'+
-        (e.revelado && !fainted ? '<button class="btn-sm" onclick="event.stopPropagation();DT.arenaStartAttack(\''+e.id+'\')">⚔️ Atacar</button>' : '')+
+        (e.revelado && !fainted ? '<button class="btn-sm" onclick="event.stopPropagation();DT.arenaStartAttack(\''+e.id+'\')">⚔️ Agir</button>' : '')+
         '<button class="btn-ghost btn-sm" onclick="event.stopPropagation();DT.arenaRemoveEntry(\''+e.id+'\')">✕</button>'+
       '</div>'
     : '';

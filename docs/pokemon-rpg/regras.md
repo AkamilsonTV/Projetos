@@ -173,6 +173,22 @@ Além do aprendizado natural por Nível (8.2), um Pokémon pode ter um Movimento
 
 Um Movimento vindo de qualquer uma dessas formas ocupa um dos 4 slots normalmente, igual a um aprendido por Nível. **HM não existe neste sistema** — o mecanismo foi removido dos jogos oficiais a partir da Geração 9 (já vinha sendo substituído por Pokémon de Montaria desde a Geração 7).
 
+### 8.5 Alvo do Movimento
+
+Cada Movimento tem uma lógica própria de quem ele pode atingir — a mesma dos jogos oficiais, não é livre escolha do jogador:
+
+- **Em si mesmo** (ex.: Swords Dance, Rest): só o próprio usuário. Não pode ser usado em outro Pokémon.
+- **Só aliado** (ex.: Helping Hand): só um Pokémon do mesmo Time, nunca o próprio usuário nem um inimigo.
+- **Você ou aliado** (ex.: Acupressure): o usuário ou um Pokémon do mesmo Time.
+- **Só inimigo** (ex.: Counter): só um Pokémon de outro Time.
+- **Qualquer um** (a maioria dos Movimentos de dano, ex.: Thunderbolt, Tackle): qualquer outro Pokémon em campo, aliado ou inimigo — igual às batalhas em dupla dos jogos oficiais, nada impede mirar no próprio time.
+- **Área** (ex.: Earthquake, Discharge): atinge todo mundo de uma categoria de uma vez só — pode incluir aliados junto com inimigos, dependendo do Movimento (ver abaixo). Não tira ninguém como alvo manualmente — é automático.
+- **Campo** (ex.: Stealth Rock, clima): não mira em nenhum Pokémon específico — afeta o campo/lado da batalha. Mecânica ainda em aberto (Cap. 25).
+
+Um Movimento de Área pode ser: todos os inimigos, todos os aliados (sem contar você), você e seus aliados, todo mundo menos você, ou literalmente todo mundo em campo — depende do Movimento específico, seguindo o mesmo dado oficial de Tipo/Poder/Precisão.
+
+**Rolagem de um Movimento de Área**: a Precisão/Crítico (1d6, Cap. 10/11) e o Efeito Percentual (1d10, Cap. 14) são **uma rolagem só pro uso inteiro**, valendo igual pra todos os alvos atingidos — só o Dano (Cap. 12/13) é calculado de novo pra cada um, porque depende do Tipo e dos Atributos de cada defensor. Isso é uma simplificação deliberada pra esse sistema (o Cap. 25 já lista "múltiplos alvos" como mecânica sem regra própria) — sem isso, seria uma rolagem inteira repetida pra cada Pokémon atingido, toda vez.
+
 ## Capítulo 9 — Poder dos Movimentos
 
 | Power oficial | Poder RPG |
@@ -331,7 +347,7 @@ Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano F
 - **Maturidade e Evolução**: estrutura existe (incluindo reinício após evolução), tabela definitiva de progressão das espécies ainda será construída.
 - **Cura e Recuperação**: Recover, Roost, Synthesis e outros ainda precisam ser adaptados.
 - **PP**: ainda será decidido se existirá e como será simplificado.
-- **Regras específicas de Movimentos**: múltiplos acertos, recoil, drenagem, Peso, Velocidade, dano variável e outras exceções.
+- **Regras específicas de Movimentos**: múltiplos acertos, recoil, drenagem, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5) já segue o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano nem uma Condição de status simples (Helping Hand, Aromatherapy, buffs de estágio, etc.) e qualquer Movimento de campo (Stealth Rock, clima — Cap. 8.5).
 - **Captura**: sistema definitivo de Poké Balls ainda precisa ser desenvolvido.
 - **Itens e Habilidades**: reservados para desenvolvimento posterior.
 

@@ -80,17 +80,21 @@ Um card **"🎯 Iniciativa"** aparece no topo da Arena. O Mestre calcula a fila 
 
 A fila é só um guia — **atacar nunca é bloqueado** por não ser sua vez (Prioridade e outras exceções continuam sendo o Mestre quem decide na mesa, Cap. 17). Mas quando o dono do Pokémon que está com a vez ataca, a fila passa pro próximo sozinha; fora isso, quem estiver com a vez (ou o Mestre) clica em **"⏭️ Próximo"** pra passar adiante manualmente.
 
-### Atacando
+### Agindo
 
-Depois que seu Pokémon já está "Usado" (visível em campo) e não está Desmaiado, aparece um botão **"⚔️ Atacar"** nele. O fluxo é:
+Depois que seu Pokémon já está "Usado" (visível em campo) e não está Desmaiado, aparece um botão **"⚔️ Agir"** nele. O fluxo é:
 
-1. Clique em **"⚔️ Atacar"** no seu Pokémon.
-2. Clique no alvo — pode ser um adversário ou um aliado, desde que também já esteja "Usado" e vivo. É só clicar em cima do card dele ali na Arena (ele fica destacado, piscando).
-3. Escolha um dos Movimentos do seu Pokémon no painel que aparece embaixo dos Times (a Prioridade do Movimento aparece ali também, se ele tiver uma).
-4. Pronto — o sistema rola os dados sozinho e mostra tudo num **quadro de dado no centro da tela**. Primeiro o **d6** do ataque gira e assenta; se o Movimento tiver um Efeito Percentual, **depois** disso o **1d10** gira e assenta também (um de cada vez, nunca os dois juntos) — e se o ataque foi Crítico e esse primeiro 1d10 falhou, ainda rola uma **segunda tentativa** de 1d10 (Cap. 14), também na sua vez. Só depois que os dois já rolaram é que aparece o resultado completo: se foi Crítico, quanto de dano saiu, e se alguma Condição de status foi aplicada. O quadro some sozinho depois de alguns segundos, ou clique em **"Fechar"**/fora dele pra tirar na hora.
+1. Clique em **"⚔️ Agir"** no seu Pokémon.
+2. Escolha um dos Movimentos do seu Pokémon no painel que aparece embaixo dos Times — cada um já mostra **quem pode ser alvo** dele ("Alvo: em você mesmo", "só aliado", "aliado ou inimigo" etc.), e a Prioridade, se tiver.
+3. **A lógica de cada Movimento é respeitada de verdade** — o site não deixa escolher qualquer coisa:
+   - Um Movimento **em você mesmo** (ex.: Swords Dance) resolve na hora, sem precisar clicar em ninguém.
+   - Um Movimento **de área** (ex.: Earthquake) também resolve sozinho, acertando todo mundo daquela categoria de uma vez — pode incluir seus próprios aliados junto com os inimigos, dependendo do Movimento (igual nas batalhas em dupla dos jogos oficiais).
+   - Um Movimento **de campo** (ex.: Stealth Rock) também resolve na hora, mas sem calcular dano nenhum — é uma mecânica ainda em aberto (Cap. 25), só fica registrado que foi usado.
+   - Pra qualquer outro caso (**só aliado**, **você ou aliado**, **só inimigo**, ou **aliado ou inimigo**), o site pede um clique: só quem realmente pode ser alvo daquele Movimento fica destacado e clicável na Arena — clicar em alguém fora da lista não faz nada.
+4. Quando o alvo (ou os alvos) já está definido, o sistema rola os dados sozinho e mostra tudo num **quadro de dado no centro da tela**. Primeiro o **d6** do ataque gira e assenta; se o Movimento tiver um Efeito Percentual, **depois** disso o **1d10** gira e assenta também (um de cada vez, nunca os dois juntos) — e se o ataque foi Crítico e esse primeiro 1d10 falhou, ainda rola uma **segunda tentativa** de 1d10 (Cap. 14), também na sua vez. Só depois que os dois já rolaram é que aparece o resultado completo: se foi Crítico, quanto de dano saiu, e se alguma Condição de status foi aplicada — num Movimento de área, o quadro mostra o resultado de cada alvo atingido. O quadro some sozinho depois de alguns segundos, ou clique em **"Fechar"**/fora dele pra tirar na hora.
 
-Tudo isso segue as Regras à risca — Precisão (Cap. 10), Crítico (Cap. 11), Dano (Cap. 12), Tipos (Cap. 13) e Efeito Percentual (Cap. 14) — sem precisar rolar dado físico nem fazer conta na mão. Se o efeito aplicar uma Condição de status, ela já entra na ficha do Pokémon atingido e aparece com o selo/ícone de sempre. O que a Arena **não** faz sozinha: os testes de início de turno das Condições (Paralisia travar a ação, Sono acordar, etc.) ou o dano de fim de turno de Queimadura/Veneno — isso continua sendo o Mestre quem conduz na mesa, como sempre foi.
-- Cancele a qualquer momento clicando em **"Cancelar"** no painel do ataque.
+Tudo isso segue as Regras à risca — Precisão (Cap. 10), Crítico (Cap. 11), Dano (Cap. 12), Tipos (Cap. 13), Efeito Percentual (Cap. 14) e Alvo do Movimento (Cap. 8.5) — sem precisar rolar dado físico nem fazer conta na mão. Se o efeito aplicar uma Condição de status, ela já entra na ficha do Pokémon atingido e aparece com o selo/ícone de sempre; se ele já estiver com outra Condição, o quadro avisa que o efeito bateu mas não mudou nada (regra de nunca ter duas Condições ao mesmo tempo, Cap. 20). O que a Arena **não** faz sozinha: os testes de início de turno das Condições (Paralisia travar a ação, Sono acordar, etc.) ou o dano de fim de turno de Queimadura/Veneno — isso continua sendo o Mestre quem conduz na mesa, como sempre foi.
+- Cancele a qualquer momento clicando em **"Cancelar"** no painel.
 
 ### Registro (histórico de rolagens)
 
