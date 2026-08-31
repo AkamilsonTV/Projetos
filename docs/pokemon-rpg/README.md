@@ -10,9 +10,15 @@ O site é uma página HTML única, hospedada de graça no **GitHub Pages**, com 
 
 O tema é mais "jogo" que "wiki": fundo em tom pergaminho, cantos arredondados, títulos numa fonte pixelada (Press Start 2P) e badges de Tipo em formato de pílula. Cada Pokémon na ficha mostra automaticamente o sprite pixelado oficial da espécie (via [PokeAPI/sprites](https://github.com/PokeAPI/sprites), puxado pelo número da Pokédex salvo quando a Espécie é preenchida) — sem espécie definida, mostra um "❔" no lugar.
 
-## Regras dentro do site
+## Regras e guias dentro do site
 
-O botão **"📖 Regras"** (no topo, em qualquer tela) busca e mostra `regras.md` direto deste repositório — não é uma cópia colada no site. Ou seja: sempre que `regras.md` for atualizado e o commit for enviado, a próxima vez que alguém abrir "Regras" no site já vê a versão nova, sem precisar tocar no HTML. Funciona antes mesmo de configurar o Firebase.
+O botão **"📖 Regras"** (no topo, em qualquer tela) abre três sub-abas, cada uma buscando o `.md` correspondente direto deste repositório — não são cópias coladas no site:
+
+- **📜 Regras** — [`regras.md`](regras.md), o livro de regras.
+- **🎒 Guia do Treinador** — [`guia-treinador.md`](guia-treinador.md), passo a passo de uso pra quem joga: desde entrar/criar personagem até cada função da própria ficha (tema claro/escuro incluso).
+- **🛠️ Guia do Mestre** — [`guia-mestre.md`](guia-mestre.md), o mesmo tipo de passo a passo, mas das funções exclusivas do Mestre.
+
+Como nenhum desses é uma cópia colada no HTML: sempre que a gente atualizar qualquer um dos três arquivos e enviar o commit, a próxima vez que alguém abrir aquela aba no site já vê a versão nova, sem precisar tocar no código. **Toda função nova do site precisa ganhar uma explicação nesses guias** — ao contrário do livro de regras (que só existe pra descrever o sistema em si), os guias existem pra ensinar a usar o que já está em vigor no site, então não podem ficar desatualizados. Funciona antes mesmo de configurar o Firebase.
 
 ## Como usar o site
 

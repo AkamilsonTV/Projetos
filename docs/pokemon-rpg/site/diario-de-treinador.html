@@ -2808,46 +2808,67 @@ function playerTopRight(){
 }
 
 /* ---- Configuração pendente do Firebase ---- */
-/* ---- Regras: busca regras.md (mesmo repositório) em tempo real, então
-   qualquer atualização do arquivo já aparece aqui sozinha no próximo load,
-   sem precisar copiar o texto pra dentro deste HTML também. ---- */
-var RULES_HTML = null; /* null = ainda não buscou; '' = falhou; string = pronto */
-var RULES_FETCHING = false;
-function fetchRules(){
-  if(RULES_HTML !== null || RULES_FETCHING) return;
-  RULES_FETCHING = true;
-  fetch('../regras.md', {cache:'no-cache'}).then(function(r){
+/* ---- Regras e guias: busca os .md (mesmo repositório) em tempo real, então
+   qualquer atualização dos arquivos já aparece aqui sozinha no próximo load,
+   sem precisar copiar o texto pra dentro deste HTML também. Três abas: o
+   livro de regras e um guia de uso pra cada papel (Treinador/Mestre). ---- */
+var RULES_DOCS = {
+  regras:     { file: 'regras.md',          label: '📜 Regras' },
+  treinador:  { file: 'guia-treinador.md',  label: '🎒 Guia do Treinador' },
+  mestre:     { file: 'guia-mestre.md',     label: '🛠️ Guia do Mestre' }
+};
+var RULES_CACHE = {}; /* key -> null (não buscou) | '' (falhou) | string (pronto) */
+var RULES_FETCHING = {};
+function fetchRulesDoc(key){
+  if(RULES_CACHE[key] !== undefined && RULES_CACHE[key] !== null) return;
+  if(RULES_FETCHING[key]) return;
+  RULES_FETCHING[key] = true;
+  fetch('../'+RULES_DOCS[key].file, {cache:'no-cache'}).then(function(r){
     if(!r.ok) throw new Error('HTTP '+r.status);
     return r.text();
   }).then(function(md){
     var html = (window.marked && typeof marked.parse==='function') ? marked.parse(md) : '<pre>'+esc(md)+'</pre>';
-    RULES_HTML = html.replace(/<table>/g, '<div class="table-scroll"><table>').replace(/<\/table>/g, '</table></div>');
-    RULES_FETCHING = false;
+    RULES_CACHE[key] = html.replace(/<table>/g, '<div class="table-scroll"><table>').replace(/<\/table>/g, '</table></div>');
+    RULES_FETCHING[key] = false;
     render();
   }).catch(function(){
-    RULES_HTML = '';
-    RULES_FETCHING = false;
+    RULES_CACHE[key] = '';
+    RULES_FETCHING[key] = false;
     render();
   });
 }
 DT.toggleRules = function(){
   SESSION.showRules = !SESSION.showRules;
-  if(SESSION.showRules) fetchRules();
+  if(SESSION.showRules){
+    if(!SESSION.rulesTab) SESSION.rulesTab = 'regras';
+    fetchRulesDoc(SESSION.rulesTab);
+  }
   render();
 };
-DT.retryRules = function(){ RULES_HTML = null; fetchRules(); render(); };
+DT.showRulesTab = function(key){
+  SESSION.rulesTab = key;
+  fetchRulesDoc(key);
+  render();
+};
+DT.retryRules = function(){ RULES_CACHE[SESSION.rulesTab] = null; fetchRulesDoc(SESSION.rulesTab); render(); };
 function rulesScreen(){
-  var back = '<div class="btn-row" style="margin-bottom:14px;"><button class="btn-sm" onclick="DT.toggleRules()">← Voltar</button></div>';
+  var key = SESSION.rulesTab || 'regras';
+  var doc = RULES_DOCS[key];
+  var tabs = '<div class="btn-row rules-tabs">'+Object.keys(RULES_DOCS).map(function(k){
+    return '<button class="btn-sm'+(k===key?' btn-primary':'')+'" onclick="DT.showRulesTab(\''+k+'\')">'+RULES_DOCS[k].label+'</button>';
+  }).join('')+'</div>';
+  var back = '<div class="btn-row" style="margin-bottom:14px; justify-content:space-between;"><button class="btn-sm" onclick="DT.toggleRules()">← Voltar</button>'+tabs+'</div>';
+  var cached = RULES_CACHE[key];
   var body;
-  if(RULES_HTML === null){
-    body = '<div class="center-stage"><p class="lede">Carregando as regras…</p></div>';
-  } else if(RULES_HTML === ''){
-    body = '<div class="center-stage"><div><h1>Não consegui carregar as regras</h1>'+
+  if(cached === undefined || cached === null){
+    body = '<div class="center-stage"><p class="lede">Carregando…</p></div>';
+  } else if(cached === ''){
+    body = '<div class="center-stage"><div><h1>Não consegui carregar</h1>'+
       '<p class="lede">Verifique sua internet e tente de novo, ou veja o arquivo direto no repositório: '+
-      '<a href="../regras.md" target="_blank" rel="noopener">regras.md</a>.</p></div>'+
+      '<a href="../'+doc.file+'" target="_blank" rel="noopener">'+doc.file+'</a>.</p></div>'+
       '<button class="btn-sm" onclick="DT.retryRules()">Tentar de novo</button></div>';
   } else {
-    body = '<div class="rules-doc">'+RULES_HTML+'</div>';
+    body = '<div class="rules-doc">'+cached+'</div>';
   }
   return back+body;
 }
