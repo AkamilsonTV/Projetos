@@ -72,10 +72,9 @@ Na sua ficha, logo acima da Equipe/Banco, tem a seção **"🎒 Mochila"** — a
 
 O botão **"🏟️ Arena"** no topo abre um espaço à parte pra montar uma batalha. É a primeira versão, feita pra testarmos e ajustarmos — pode mudar.
 
-- Aparece um card **"Equipe ativa"** pra **cada Treinador da mesa**, não só o seu — sprite pixelado + nome de todo mundo é informação pública (você vê a equipe dos outros, os outros veem a sua). Só na sua própria você tem o **⠿** pra arrastar, e logo abaixo dela, se você tiver algum item, sua **🎒 Mochila** (ver seção própria abaixo).
+- Aparece um card **"Equipe ativa"** pra **cada Treinador da mesa**, não só o seu — mas o que os outros veem ali começa como uma fileira de **Pokébolas**: pra qualquer Pokémon que ainda não foi pra nenhum Time, só você (o dono) e o Mestre sabem quem é de verdade. Só na sua própria Equipe ativa você tem o **⠿** pra arrastar, e logo abaixo dela, se você tiver algum item, sua **🎒 Mochila** (ver seção própria abaixo).
 - Arraste um dos seus pra dentro de um **Time** (o Mestre cria os Times). Ele continua normalmente na sua ficha — a Arena só mostra que ele está nessa batalha.
-- **É só a partir daí que ele vira segredo.** Enquanto seu Pokémon está num Time mas ainda não entrou em ação, os outros Treinadores da mesa (menos o Mestre) veem só uma **Pokébola** no lugar dele ali no Time — não sabem qual é, mesmo já sabendo (pela Equipe ativa) que ele existe. Só você (o dono) e o Mestre veem de verdade quem é enquanto ele estiver assim.
-- Assim que você clica nele pra agir pela primeira vez (ver "Agindo" abaixo), ele **revela sozinho** — não existe mais um botão separado só pra revelar. A partir daí fica visível pra mesa inteira — sprite, uma **barra de PV** (verde acima de 50%, amarela entre 20% e 50%, vermelha em 20% ou menos, igual ao jogo oficial) e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito. **Essa revelação é definitiva**: mesmo que ele volte pra Equipe ativa (por uma Troca) e entre de novo depois, ele já aparece com a sprite de novo — não vira Pokébola outra vez.
+- **É isso que revela ele.** Assim que um Pokémon entra num Time — mesmo antes de agir — ele já aparece pra mesa inteira, ali no Time: sprite, uma **barra de PV** (verde acima de 50%, amarela entre 20% e 50%, vermelha em 20% ou menos, igual ao jogo oficial) e a Condição/Confuso como ícone (🔥 queimadura, ☠️ veneno, ⚡ paralisia, 💤 sono, ❄️ congelamento, 💫 confuso, 😵 desmaiado), sem nada escrito. **Essa revelação é definitiva e vale também pra Equipe ativa**: a partir desse momento, aquele Pokémon aparece de verdade (não mais como Pokébola) na sua Equipe ativa pra todo mundo, mesmo que depois ele volte pra lá (por uma Troca) e nunca mais entre num Time.
 - Não tem limite de Treinadores nem de Times — pode ser 1×1, vários contra vários, o que a mesa precisar.
 
 ### Iniciativa (quem age primeiro)
@@ -88,7 +87,7 @@ A fila é só um guia — **atacar nunca é bloqueado** por não ser sua vez (Pr
 
 Não existe mais botão de "Usar" nem de "Atacar" separado — é tudo clicando **direto no card do seu Pokémon** em campo (contanto que ele não esteja Desmaiado e não seja a vez de outra ação já em andamento). O fluxo é:
 
-1. **Clique no seu Pokémon.** Se ele ainda não tinha sido revelado pra mesa, revela sozinho nesse clique (não precisa de nada separado pra isso).
+1. **Clique no seu Pokémon.** Ele já está visível pra mesa inteira desde que entrou no Time — clicar pra agir não muda nada nessa parte, só abre o menu.
    - Se ele estiver **Confuso**, o site já rola os dois 1d6 da Confusão (Cap. 23) nessa hora, antes de qualquer outra coisa: primeiro o 1d6 pra ver se a Confusão termina (5–6 termina); se continuar, um segundo 1d6 pra ver se ele perde a ação (1–2 perde e sofre 1 PV; 3–6 age normalmente). Um aviso na tela mostra os dois resultados. Se ele perder a ação, o turno já passa sozinho e o menu nem abre.
 2. Se a ação seguir, abre um menu com quatro opções: **Atacar**, **Usar Item**, **Trocar de Pokémon**, **Fugir**.
    - **Atacar** → escolha um dos Movimentos do seu Pokémon — cada um já mostra **quem pode ser alvo** dele ("Alvo: em você mesmo", "só aliado", "aliado ou inimigo" etc.) e a Prioridade, se tiver. A lógica de cada Movimento é respeitada de verdade — o site não deixa escolher qualquer coisa:
