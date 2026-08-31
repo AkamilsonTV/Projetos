@@ -242,11 +242,16 @@
   .dice-overlay{ position:fixed; inset:0; background:rgba(20,14,8,.55); display:flex; align-items:center; justify-content:center; z-index:200; padding:20px; animation:dice-fade-in .15s ease-out; }
   .dice-overlay-card{ background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); padding:22px 26px; max-width:360px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
   .dice-d6{ font-size:4.4rem; line-height:1; margin-bottom:6px; }
+  .dice-d6.dice-rolling{ display:inline-block; animation:dice-spin .32s linear infinite; }
   .dice-d10{ font-size:1.3rem; font-weight:700; margin-bottom:10px; color:var(--accent); }
+  .dice-d10.dice-rolling{ animation:dice-flicker .14s linear infinite; }
   .dice-d10-label{ font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); vertical-align:middle; margin-right:4px; }
   .dice-summary{ font-size:.86rem; line-height:1.5; margin-bottom:14px; }
+  .dice-summary-rolling{ font-style:italic; color:var(--ink-dim); }
   @keyframes dice-fade-in{ from{ opacity:0; } to{ opacity:1; } }
   @keyframes dice-pop-in{ 0%{ transform:scale(.5) rotate(-8deg); opacity:0; } 70%{ transform:scale(1.08) rotate(3deg); opacity:1; } 100%{ transform:scale(1) rotate(0); } }
+  @keyframes dice-spin{ 0%{ transform:rotate(0deg) scale(1); } 50%{ transform:rotate(180deg) scale(1.18); } 100%{ transform:rotate(360deg) scale(1); } }
+  @keyframes dice-flicker{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
 
   .hp-row{ display:flex; align-items:center; gap:10px; }
   .hp-row input[type=number]{ width:70px; }
@@ -297,6 +302,7 @@
 </head>
 <body>
 <div id="app"></div>
+<div id="diceOverlay"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -4229,18 +4235,51 @@ window.DT = DT;
    abrir o overlay pra ESSE aparelho, com um timer local pra fechar sozinho. */
 var LAST_SHOWN_ROLL_TS = 0;
 var rollHideTimer = null;
+/* ---- Animação do dado "rolando" antes de mostrar o resultado ----
+   O overlay mora na SUA PRÓPRIA div (#diceOverlay, fora de #app) só por
+   isso: girar o dado precisa re-desenhar bem rápido (a cada ~90ms), e se
+   isso passasse pelo render() normal, a ficha inteira (sprites e tudo mais
+   dentro de #app) seria reconstruída junto a cada quadro — pisca a tela
+   toda por nada. Assim só a divzinha do dado se repinta.
+   A animação em si é dirigida pelo tempo: enquanto
+   Date.now()-DICE_ROLL_ANIM.start < duration, cada repintura sorteia uma
+   face nova pro dado — dá o efeito de "rolando" e continua correta mesmo
+   se um snapshot do Firebase (que troca o objeto STATE inteiro) chegar no
+   meio do caminho, porque compara pelo "ts" da rolagem, não pela referência
+   do objeto. */
+var DICE_ANIM_MS = 650;
+var DICE_ROLL_ANIM = null; /* {ts, start, duration} */
+var diceAnimTimer = null;
+function renderDiceOverlay(){
+  var el = document.getElementById('diceOverlay');
+  if(el) el.innerHTML = diceOverlayHTML();
+}
+function startDiceRollAnimation(lr){
+  DICE_ROLL_ANIM = { ts: lr.ts, start: Date.now(), duration: DICE_ANIM_MS };
+  if(diceAnimTimer) clearInterval(diceAnimTimer);
+  diceAnimTimer = setInterval(function(){
+    if(!DICE_ROLL_ANIM || Date.now()-DICE_ROLL_ANIM.start >= DICE_ROLL_ANIM.duration){
+      clearInterval(diceAnimTimer); diceAnimTimer = null; DICE_ROLL_ANIM = null;
+      renderDiceOverlay();
+      return;
+    }
+    renderDiceOverlay();
+  }, 90);
+}
 function checkArenaRoll(){
   var lr = STATE.arena && STATE.arena.lastRoll;
   if(lr && lr.ts && lr.ts !== LAST_SHOWN_ROLL_TS){
     LAST_SHOWN_ROLL_TS = lr.ts;
     SESSION.showRollOverlay = true;
+    startDiceRollAnimation(lr);
     if(rollHideTimer) clearTimeout(rollHideTimer);
-    rollHideTimer = setTimeout(function(){ SESSION.showRollOverlay = false; rollHideTimer = null; render(); }, 3600);
+    rollHideTimer = setTimeout(function(){ SESSION.showRollOverlay = false; rollHideTimer = null; renderDiceOverlay(); }, 3600);
   }
 }
 function render(){
   checkArenaRoll();
   document.getElementById('app').innerHTML = screenHTML();
+  renderDiceOverlay();
 }
 
 var POKEBALL_SVG = '<svg class="pokeball" viewBox="0 0 24 24" aria-hidden="true">'+
@@ -4291,7 +4330,7 @@ function screenHTML(){
   }
 }
 function wrap(bodyHTML, rightHTML){
-  return '<div class="shell">'+topbar(rightHTML)+banners()+bodyHTML+legalFooter()+'</div>'+diceOverlayHTML()+typeDatalist('typeList')+speciesDatalist('speciesDexList')+moveDatalist('movesDexList');
+  return '<div class="shell">'+topbar(rightHTML)+banners()+bodyHTML+legalFooter()+'</div>'+typeDatalist('typeList')+speciesDatalist('speciesDexList')+moveDatalist('movesDexList');
 }
 /* ---- Overlay de dado no centro da tela: aparece pra todo mundo conectado
    quando um ataque é resolvido na Arena (STATE.arena.lastRoll), não só pra
@@ -4301,35 +4340,54 @@ function diceOverlayHTML(){
   if(!SESSION.showRollOverlay) return '';
   var lr = STATE.arena && STATE.arena.lastRoll;
   if(!lr) return '';
-  var lines = [];
-  lines.push('<strong>'+esc(lr.atacante)+'</strong> ('+esc(lr.atacanteTrainer)+') usou <strong>'+esc(lr.move)+'</strong> em <strong>'+esc(lr.alvo)+'</strong> ('+esc(lr.alvoTrainer)+')');
-  if(lr.immune){
-    lines.push('Sem efeito — imune a esse Tipo.');
-  } else if(!lr.hit){
-    lines.push('Errou'+(lr.falhaNatural?' — Falha Natural!':'')+'.');
-  } else {
-    lines.push(lr.dano ? ('Dano: <strong>'+lr.dano+'</strong>'+(lr.crit?' · Crítico!':'')) : (lr.crit?'Crítico!':'Acertou.'));
-    if(lr.fainted) lines.push('😵 Desmaiou!');
-  }
+  var rolling = !!(DICE_ROLL_ANIM && DICE_ROLL_ANIM.ts===lr.ts && (Date.now()-DICE_ROLL_ANIM.start) < DICE_ROLL_ANIM.duration);
+
+  var d6Face = rolling ? rollDie(6) : lr.d6;
+  var d6HTML = '<div class="dice-d6'+(rolling?' dice-rolling':'')+'">'+(DIE_FACES[d6Face]||d6Face)+'</div>';
+
+  var d10Line = '';
   if(lr.efeito){
-    lines.push(lr.efeito.sucesso
-      ? ('Efeito aplicado: '+(STATUS_ICONS[lr.efeito.ailment]||'💫')+' '+esc(lr.efeito.ailment==='confuso' ? 'Confuso' : (STATUS_LABELS[lr.efeito.ailment]||lr.efeito.ailment)))
-      : 'Efeito não aplicado.');
+    var d10Show = rolling ? rollDie(10) : lr.efeito.d10a;
+    d10Line = '<div class="dice-d10'+(rolling?' dice-rolling':'')+'"><span class="dice-d10-label">1d10</span> '+d10Show+(!rolling && lr.efeito.d10b ? (' → '+lr.efeito.d10b) : '')+'</div>';
   }
-  var d10Line = lr.efeito ? ('<div class="dice-d10"><span class="dice-d10-label">1d10</span> '+lr.efeito.d10a+(lr.efeito.d10b?(' → '+lr.efeito.d10b):'')+'</div>') : '';
+
+  var summaryHTML;
+  if(rolling){
+    summaryHTML = '<div class="dice-summary dice-summary-rolling">🎲 Rolando os dados…</div>';
+  } else {
+    var lines = [];
+    lines.push('<strong>'+esc(lr.atacante)+'</strong> ('+esc(lr.atacanteTrainer)+') usou <strong>'+esc(lr.move)+'</strong> em <strong>'+esc(lr.alvo)+'</strong> ('+esc(lr.alvoTrainer)+')');
+    if(lr.immune){
+      lines.push('Sem efeito — imune a esse Tipo.');
+    } else if(!lr.hit){
+      lines.push('Errou'+(lr.falhaNatural?' — Falha Natural!':'')+'.');
+    } else {
+      lines.push(lr.dano ? ('Dano: <strong>'+lr.dano+'</strong>'+(lr.crit?' · Crítico!':'')) : (lr.crit?'Crítico!':'Acertou.'));
+      if(lr.fainted) lines.push('😵 Desmaiou!');
+    }
+    if(lr.efeito){
+      lines.push(lr.efeito.sucesso
+        ? ('Efeito aplicado: '+(STATUS_ICONS[lr.efeito.ailment]||'💫')+' '+esc(lr.efeito.ailment==='confuso' ? 'Confuso' : (STATUS_LABELS[lr.efeito.ailment]||lr.efeito.ailment)))
+        : 'Efeito não aplicado.');
+    }
+    summaryHTML = '<div class="dice-summary">'+lines.join('<br>')+'</div>';
+  }
+
   return '<div class="dice-overlay" onclick="DT.dismissRoll()">'+
     '<div class="dice-overlay-card" onclick="event.stopPropagation()">'+
-      '<div class="dice-d6">'+(DIE_FACES[lr.d6]||lr.d6)+'</div>'+
+      d6HTML+
       d10Line+
-      '<div class="dice-summary">'+lines.join('<br>')+'</div>'+
-      '<button class="btn-sm" onclick="DT.dismissRoll()">Fechar</button>'+
+      summaryHTML+
+      (!rolling ? '<button class="btn-sm" onclick="DT.dismissRoll()">Fechar</button>' : '')+
     '</div>'+
   '</div>';
 }
 DT.dismissRoll = function(){
   SESSION.showRollOverlay = false;
   if(rollHideTimer){ clearTimeout(rollHideTimer); rollHideTimer = null; }
-  render();
+  if(diceAnimTimer){ clearInterval(diceAnimTimer); diceAnimTimer = null; }
+  DICE_ROLL_ANIM = null;
+  renderDiceOverlay();
 };
 function legalFooter(){
   return '<footer class="legal">Ficha compartilhada apenas com quem tem o link e conhece os PINs. Não é um cofre: qualquer pessoa com acesso técnico ao link pode inspecionar os dados salvos no banco.</footer>';

@@ -70,7 +70,7 @@ Qualquer Pokémon já "Usado" e vivo ganha um botão **"⚔️ Atacar"**. Como M
 1. Clique **"⚔️ Atacar"** no Pokémon que vai agir.
 2. Clique no alvo (outro Pokémon já "Usado" e vivo — aliado ou adversário, o sistema não distingue times pra isso).
 3. Escolha o Movimento no painel que aparece.
-4. O sistema resolve tudo sozinho e mostra o resultado num quadro de dado no centro da tela pra todo mundo conectado — não só quem está com a Arena aberta.
+4. O sistema resolve tudo sozinho e mostra o resultado num quadro de dado no centro da tela pra todo mundo conectado — não só quem está com a Arena aberta. O dado gira de verdade por um instante antes de parar na face sorteada (dá suspense); só a divzinha do dado se mexe, o resto da tela fica parado.
 
 O motor de ataque segue as Regras: rola 1d6 pra Precisão (Cap. 10, respeitando Movimentos 100% automáticos) e Crítico (Cap. 11, natural 6 em Movimento de dano), calcula o Dano Base (Cap. 12) e aplica STAB/Tipos (Cap. 13, com Fraqueza e resistência se cancelando por Tipo do defensor). Se o Movimento tiver um Efeito Percentual conhecido (ex.: Thunderbolt/Paralisia, Toxic/Veneno Grave), rola 1d10 na mesma resolução (Cap. 14) — Crítico dá uma segunda tentativa se a primeira falhar — e, se aplicar, a Condição de status já entra sozinha na ficha do alvo (respeitando a regra de nunca ter duas Condições Principais ao mesmo tempo — Confusão é a exceção, Cap. 20) e aparece com o ícone de sempre. PV chegando a 0 já marca Desmaio (Cap. 19).
 
