@@ -6,6 +6,10 @@
 
 O site é uma página HTML única, hospedada de graça no **GitHub Pages**, com os dados (fichas de todo mundo) salvos em tempo real num banco **Firebase Firestore** (também grátis, sem cartão de crédito). Sem esse banco configurado, o site abre mas mostra uma tela avisando que falta ligar o banco de dados.
 
+## Regras dentro do site
+
+O botão **"📖 Regras"** (no topo, em qualquer tela) busca e mostra `regras.md` direto deste repositório — não é uma cópia colada no site. Ou seja: sempre que `regras.md` for atualizado e o commit for enviado, a próxima vez que alguém abrir "Regras" no site já vê a versão nova, sem precisar tocar no HTML. Funciona antes mesmo de configurar o Firebase.
+
 ## Como usar o site
 
 - **Mestre**: define um PIN na primeira vez que entrar em "Sou o Mestre"; depois disso, usa esse mesmo PIN pra sempre. Vê e edita a ficha de todos os Treinadores da mesa, incluindo Nível e Vínculo (que os jogadores só enxergam, não editam) e o contador de batalhas vencidas (visível só pro Mestre).
