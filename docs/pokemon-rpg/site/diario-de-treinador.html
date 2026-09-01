@@ -6299,7 +6299,7 @@ function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPok
         arenaLog(esc(defNome)+' tem Effect Spore — grudou '+pick+' em '+esc(attNome)+'!');
       }
     }
-    if((defAbility==='Rough Skin' || defAbility==='Iron Barbs')){
+    if((defAbility==='Rough Skin' || defAbility==='Iron Barbs') && attAbility!=='Magic Guard'){
       var dmg1 = Math.max(1, Math.ceil(attMax/8));
       attPoke.currentHP = clampInt(((attPoke.currentHP===null||attPoke.currentHP===undefined)?attMax:attPoke.currentHP)-dmg1, 0, attMax);
       if(attPoke.currentHP<=0) resetStages(attPoke);
@@ -6330,7 +6330,7 @@ function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPok
     defPoke.status = 'veneno'; defPoke.statusTurns = 0;
     arenaLog(esc(attNome)+' tem Poison Touch — envenenou '+esc(defNome)+' no contato!');
   }
-  if(info.fainted && contact && (defAbility==='Aftermath')){
+  if(info.fainted && contact && defAbility==='Aftermath' && attAbility!=='Magic Guard'){
     var dmg2 = Math.max(1, Math.ceil(attMax/4));
     attPoke.currentHP = clampInt(((attPoke.currentHP===null||attPoke.currentHP===undefined)?attMax:attPoke.currentHP)-dmg2, 0, attMax);
     if(attPoke.currentHP<=0) resetStages(attPoke);
@@ -6364,15 +6364,25 @@ function stageLblName(stat){ return {atk:'Ataque',def:'Defesa',spa:'Ataque Espec
 function applyMoveSelfHealEffects(attTrainer, attPoke, defTrainer, defPoke, move, result){
   if(!result.hit) return;
   var attNome = pokeNome(attPoke), defNome = pokeNome(defPoke);
+  /* Magic Guard (Habilidade real, "protects against damage not directly
+     caused by a move"): bloqueia recuo E o dano invertido de Liquid Ooze
+     no próprio ATACANTE -- os dois são dano indireto nele, não o golpe de
+     ninguém acertando ele. Não bloqueia a cura normal do Dreno (curar não
+     é dano) nem a cura de MOVE_HEAL no defensor (idem). */
+  var attTemMagicGuard = attPoke.habilidade==='Magic Guard';
   if(result.dano>0){
     var recoilPct = MOVE_RECOIL[move.nome];
     if(recoilPct){
-      var attMax = hpMax(attTrainer, attPoke);
-      var attCur = (attPoke.currentHP===null||attPoke.currentHP===undefined) ? attMax : attPoke.currentHP;
-      var recoilDmg = Math.max(1, Math.ceil(result.dano*recoilPct/100));
-      attPoke.currentHP = clampInt(attCur-recoilDmg, 0, attMax);
-      if(attPoke.currentHP<=0) resetStages(attPoke);
-      arenaLog(esc(attNome)+' sofreu '+recoilDmg+' de dano de recuo com '+esc(move.nome)+'.');
+      if(attTemMagicGuard){
+        arenaLog(esc(attNome)+' tem Magic Guard — não sofreu o recuo de '+esc(move.nome)+'.');
+      } else {
+        var attMax = hpMax(attTrainer, attPoke);
+        var attCur = (attPoke.currentHP===null||attPoke.currentHP===undefined) ? attMax : attPoke.currentHP;
+        var recoilDmg = Math.max(1, Math.ceil(result.dano*recoilPct/100));
+        attPoke.currentHP = clampInt(attCur-recoilDmg, 0, attMax);
+        if(attPoke.currentHP<=0) resetStages(attPoke);
+        arenaLog(esc(attNome)+' sofreu '+recoilDmg+' de dano de recuo com '+esc(move.nome)+'.');
+      }
     }
     var drainPct = MOVE_DRAIN[move.nome];
     if(drainPct){
@@ -6380,9 +6390,13 @@ function applyMoveSelfHealEffects(attTrainer, attPoke, defTrainer, defPoke, move
       var attMax2 = hpMax(attTrainer, attPoke);
       var attCur2 = (attPoke.currentHP===null||attPoke.currentHP===undefined) ? attMax2 : attPoke.currentHP;
       if(defPoke.habilidade==='Liquid Ooze'){
-        attPoke.currentHP = clampInt(attCur2-drainAmt, 0, attMax2);
-        if(attPoke.currentHP<=0) resetStages(attPoke);
-        arenaLog(esc(defNome)+' tem Liquid Ooze — '+esc(attNome)+' sofreu '+drainAmt+' de dano em vez de curar com '+esc(move.nome)+'.');
+        if(attTemMagicGuard){
+          arenaLog(esc(attNome)+' tem Magic Guard — Liquid Ooze de '+esc(defNome)+' não fez efeito nele.');
+        } else {
+          attPoke.currentHP = clampInt(attCur2-drainAmt, 0, attMax2);
+          if(attPoke.currentHP<=0) resetStages(attPoke);
+          arenaLog(esc(defNome)+' tem Liquid Ooze — '+esc(attNome)+' sofreu '+drainAmt+' de dano em vez de curar com '+esc(move.nome)+'.');
+        }
       } else {
         attPoke.currentHP = clampInt(attCur2+drainAmt, 0, attMax2);
         arenaLog(esc(attNome)+' recuperou '+drainAmt+' PV com '+esc(move.nome)+'.');
@@ -6817,7 +6831,7 @@ function arenaConfusionPreCheck(entry){
   if(!t || !p || !p.confuso) return null;
   var d6end = rollDie(6);
   var ended = d6end>=5;
-  var result = { nome: p.apelido||p.especie||'Pokémon', trainerNome: t.name, d6end: d6end, ended: ended, tested:false, d6act:null, lostAction:false, dano:0, fainted:false };
+  var result = { nome: p.apelido||p.especie||'Pokémon', trainerNome: t.name, d6end: d6end, ended: ended, tested:false, d6act:null, lostAction:false, dano:0, fainted:false, magicGuard:false };
   if(ended){
     p.confuso = false;
     return result;
@@ -6827,6 +6841,10 @@ function arenaConfusionPreCheck(entry){
   result.d6act = d6act;
   if(d6act<=2){
     result.lostAction = true;
+    /* Magic Guard: continua perdendo a ação (a Confusão em si não é
+       "dano"), mas o 1 PV de bater nele mesmo é dano indireto de verdade
+       -- bloqueado. */
+    if(p.habilidade==='Magic Guard'){ result.magicGuard = true; return result; }
     var max = hpMax(t,p);
     var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
     var novoHP = clampInt(cur-1, 0, max);
@@ -7739,7 +7757,20 @@ DT.arenaSelectActor = function(entryId){
     return;
   }
 
-  if(!e.revelado) e.revelado = true;
+  /* Uma entrada revelado:false só existe hoje vinda da Soltura em segredo
+     (Cap. 55, DT.arenaPickLead) -- NUNCA deixa o próprio dono agir com ela
+     e revelar sozinho assim, senão furaria a revelação simultânea (bastava
+     atacar com o Pokémon soltado antes do Mestre clicar Revelar). O Mestre
+     ainda pode, se precisar corrigir algo na mesa -- mesma exceção de
+     sempre ("Mestre supervisiona"). */
+  if(!e.revelado){
+    if(SESSION.role!=='gm'){
+      SESSION.error = 'Esse Pokémon ainda está em segredo — espere o Mestre revelar todo mundo antes de agir.';
+      render();
+      return;
+    }
+    e.revelado = true;
+  }
   if(!p.arenaRevelado) p.arenaRevelado = true; /* fica visível pra sempre a partir daqui */
 
   /* Paralisia/Sono/Congelamento (Cap. 20.4/21/22) resolvem ANTES da
@@ -7780,7 +7811,7 @@ DT.arenaSelectActor = function(entryId){
     var plainLines = [];
     plainLines.push('1d6 pra eliminar a Confusão: '+confCheck.d6end+(confCheck.ended?' — termina!':' — continua confuso'));
     if(confCheck.tested){
-      plainLines.push('1d6 pra agir: '+confCheck.d6act+(confCheck.lostAction ? (' — perde a ação, sofre 1 PV'+(confCheck.fainted?' (desmaiou!)':'')) : ' — age normalmente'));
+      plainLines.push('1d6 pra agir: '+confCheck.d6act+(confCheck.lostAction ? (confCheck.magicGuard ? ' — perde a ação, mas Magic Guard bloqueia o PV do próprio golpe' : (' — perde a ação, sofre 1 PV'+(confCheck.fainted?' (desmaiou!)':''))) : ' — age normalmente'));
     }
     var quem = confCheck.nome+' ('+confCheck.trainerNome+')';
     SESSION.notice = quem+' está Confuso — '+plainLines.join(' · ');
@@ -9142,6 +9173,11 @@ function arenaEntryHTML(e){
      rodada ativa, só quem está com a vez fica clicável pro Treinador --
      o Mestre sempre vê tudo clicável, fora de ordem inclusive. */
   var podeAgirAgora = isGM || !STATE.arena.round || isTurnNow;
+  /* Ainda em segredo (Cap. 55): revelado:false só existe vindo da Soltura
+     -- nem o próprio dono clica pra agir com ela antes do Mestre revelar
+     todo mundo (isso furaria a revelação simultânea). O Mestre continua
+     vendo normal, pode agir/revelar na mão se precisar. */
+  var aindaSecreto = !e.revelado && !isGM;
   if(e.id===SESSION.arenaAttackTarget){
     slotClass += ' arena-slot-target-picked';
   } else if(targetable){
@@ -9149,10 +9185,10 @@ function arenaEntryHTML(e){
     slotClick = ' onclick="DT.arenaSelectTarget(\''+e.id+'\')"';
   } else if(e.id===actingNow){
     slotClass += ' arena-slot-attacking';
-  } else if(!actingNow && canControl && !fainted && podeAgirAgora){
+  } else if(!actingNow && canControl && !fainted && podeAgirAgora && !aindaSecreto){
     slotClass += ' arena-slot-selectable';
     slotClick = ' onclick="DT.arenaSelectActor(\''+e.id+'\')"';
-  } else if(!actingNow && canControl && !fainted && !podeAgirAgora){
+  } else if(!actingNow && canControl && !fainted && (!podeAgirAgora || aindaSecreto)){
     slotClass += ' arena-slot-waiting';
   } else if(!actingNow && faintedSwappable){
     slotClass += ' arena-slot-selectable arena-slot-fainted-swap';
