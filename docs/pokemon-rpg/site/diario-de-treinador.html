@@ -3725,6 +3725,39 @@ var MOVE_HEAL = {
    de resetar (resetStages), mecânica diferente de qualquer troca hoje no
    sistema, em aberto. ---- */
 var SWITCH_OUT_MOVES = { 'U-turn':1, 'Volt Switch':1, 'Parting Shot':1 };
+/* ---- Movimentos de carregar 2 turnos (Cap. 25) -- a PokeAPI não marca
+   isso em nenhum campo (Solar Beam tem category:'damage', igual qualquer
+   golpe comum), então é lista curada à mão dos "Movimentos de dois turnos"
+   oficiais: no 1º turno o usuário só se prepara (a Precisão/Crítico/dano
+   nem chegam a ser rolados ainda), e o golpe sai sozinho no 2º turno, sem
+   passar pelo menu de novo (DT.arenaSelectActor solta na hora se
+   poke.carregando estiver marcado) -- é a correção do bug relatado ("Solar
+   Beam ataca direto, sem carregar"). NÃO inclui Focus Punch (quebra por
+   dano recebido, mecânica diferente) nem Uproar/Outrage (repetem a cada
+   turno, não carregam). Fica de fora, por enquanto (Cap. 25): a
+   semi-invulnerabilidade de Fly/Dig/Dive/Bounce/Phantom Force/Shadow Force
+   durante a carga (esquiva de quase tudo) e o Power Herb (puxaria o golpe
+   pro mesmo turno, sem carregar) -- aqui só a parte "carrega 1 turno,
+   golpeia no outro" que estava faltando pra todos eles. */
+var CHARGE_MOVES = {
+  'Bounce':1, 'Dig':1, 'Dive':1, 'Electro Shot':1, 'Fly':1, 'Freeze Shock':1,
+  'Geomancy':1, 'Ice Burn':1, 'Meteor Beam':1, 'Phantom Force':1,
+  'Razor Wind':1, 'Shadow Force':1, 'Sky Attack':1, 'Skull Bash':1,
+  'Solar Beam':1, 'Solar Blade':1
+};
+/* Texto de sabor pro turno de carga -- some do Log assim que o golpe sai
+   de verdade no turno seguinte. Sem entrada aqui, cai no genérico "se
+   prepara". */
+var CHARGE_MOVE_MSG = {
+  'Bounce':'pula bem alto', 'Dig':'cava um túnel e se esconde',
+  'Dive':'mergulha fundo na água', 'Electro Shot':'reúne eletricidade',
+  'Fly':'voa bem alto', 'Freeze Shock':'reúne eletricidade congelante',
+  'Geomancy':'absorve energia do ambiente', 'Ice Burn':'reúne um calor abrasador',
+  'Meteor Beam':'reúne energia cósmica', 'Phantom Force':'desaparece',
+  'Razor Wind':'reúne vento cortante', 'Shadow Force':'desaparece',
+  'Sky Attack':'recolhe as asas para o próximo ataque', 'Skull Bash':'abaixa a cabeça',
+  'Solar Beam':'reúne luz', 'Solar Blade':'reúne luz para condensar em uma lâmina'
+};
 /* ---- Categoria de alvo de cada Movimento (self/aliado/inimigo/área) ----
    Gerada a partir do CSV oficial do PokeAPI (moves.csv target_id + move_targets.csv),
    mesma fonte de SPECIES_DEX/MOVES_DEX/LEARNSETS/TYPE_CHART/MOVE_EFFECTS. ---- */
@@ -5686,6 +5719,7 @@ function migrateState(){
       if(typeof p.habilidade !== 'string') p.habilidade = '';
       else if(p.habilidade!=='' && habilidadesDaEspecie(p.especie).indexOf(p.habilidade)===-1) p.habilidade = ''; /* espécie mudou, ou nome corrompido */
       if(typeof p.flashFireBoost !== 'boolean') p.flashFireBoost = false; /* Flash Fire (Cap. 6.3) -- flag de batalha, nunca precisa persistir marcado entre sessões */
+      if(p.carregando===undefined) p.carregando = null; /* Movimento de carga (Cap. 25) -- flag de batalha, mesmo caso do Flash Fire acima */
     });
   });
   if(!STATE.arena || typeof STATE.arena!=='object') STATE.arena = {teams:[], entries:[]};
@@ -5761,7 +5795,7 @@ function newPokemon(){
     id: uid(), apelido:"", especie:"", especieNum:null, tipo1:"", tipo2:"",
     natural:{hp:1,atk:1,def:1,spa:1,spd:1,spe:1},
     vinculo:0, maturidade:0, currentHP:null,
-    status:"", statusTurns:0, confuso:false, arenaRevelado:false, natureza:"", habilidade:"", flashFireBoost:false,
+    status:"", statusTurns:0, confuso:false, arenaRevelado:false, natureza:"", habilidade:"", flashFireBoost:false, carregando:null,
     estagios:{atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0},
     moves:[{nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
            {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
@@ -5896,9 +5930,12 @@ function bumpStage(poke, stat, delta){
 /* Cap. 15.1: Estágio zera sozinho sempre que o Pokémon sai de campo --
    desmaiou, foi trocado, fugiu -- igual no jogo oficial. Chamado em todo
    ponto onde isso acontece de verdade (arenaSwapIn, arenaLeave,
-   arenaFlee, e todo caminho que zera o PV dele). */
+   arenaFlee, e todo caminho que zera o PV dele). Um Movimento de carga
+   (Cap. 25) pendente também se perde nesse instante -- não faz sentido um
+   Pokémon "soltar" um golpe carregado depois de já ter saído de campo. */
 function resetStages(poke){
   poke.estagios = {atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0};
+  poke.carregando = null;
 }
 function arenaLog(text){
   if(!STATE.arena) return;
@@ -7880,6 +7917,42 @@ DT.arenaSelectActor = function(entryId){
     }
   }
 
+  /* Movimento de carga (Cap. 25): esse Pokémon carregou no turno anterior
+     (Solar Beam e companhia, ver CHARGE_MOVES) -- o golpe sai sozinho
+     agora, sem abrir o menu Atacar/Item/Trocar/Fugir de novo. Limpa
+     poke.carregando ANTES de chamar resolveArenaMove: assim a checagem lá
+     dentro (CHARGE_MOVES[...] && !attPoke.carregando) já vê carregando
+     vazio e resolve o golpe de verdade dessa vez (dado, dano, tudo), em
+     vez de começar uma carga nova. */
+  if(p.carregando){
+    var charge = p.carregando;
+    p.carregando = null;
+    var chargedMove = (p.moves||[])[charge.moveIdx];
+    if(chargedMove && chargedMove.nome===charge.moveName){
+      var manualIds = null;
+      if(moveNeedsManualTarget(charge.category)){
+        var eligibleNow = eligibleMoveTargets(e, charge.category).map(function(x){ return x.id; });
+        manualIds = (charge.targetIds||[]).filter(function(id){ return eligibleNow.indexOf(id)!==-1; });
+        if(manualIds.length===0){
+          var nomeFizzle = p.apelido || p.especie || 'Pokémon';
+          if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+          var prefixFizzle = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
+          STATE.arena.log.push({ ts: Date.now(), text: prefixFizzle+esc(nomeFizzle)+' ('+esc(t.name)+') soltou '+esc(charge.moveName)+' — não sobrou alvo em campo, o golpe se perde.' });
+          if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+          arenaAdvanceTurn(e.id);
+          arenaResetActionState();
+          mutate();
+          return;
+        }
+      }
+      DT.resolveArenaMove(e, chargedMove, charge.category, manualIds, true);
+      return;
+    }
+    /* o Movimento mudou no meio da carga (o Mestre trocou o moveset) --
+       não tem mais o que soltar; desiste em silêncio e abre o menu normal
+       abaixo, igual um turno qualquer. */
+  }
+
   SESSION.arenaAttacker = entryId;
   SESSION.arenaAction = 'menu';
   SESSION.arenaMoveIdx = null;
@@ -8231,8 +8304,14 @@ DT.resolveFieldMove = function(atkEntry, move){
   mutate();
 };
 /* Resolve de verdade um Movimento contra 1+ alvos (manualTargetIds, ou os
-   alvos automáticos de self/área quando null) e sincroniza tudo. */
-DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds){
+   alvos automáticos de self/área quando null) e sincroniza tudo.
+   isChargeRelease (Cap. 25, opcional) -- só true quando DT.arenaSelectActor
+   está soltando um Movimento de carga no 2º turno (Solar Beam e
+   companhia, ver CHARGE_MOVES): sem isso, o PP seria descontado DE NOVO
+   (já foi pago no turno de carga) e, pior, o "if" de início de carga
+   entraria de novo (poke.carregando já foi limpo ali antes de chamar
+   aqui) -- soltando o golpe pra sempre em vez de golpear de verdade. */
+DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChargeRelease){
   var attTrainer = findTrainer(atkEntry.trainerId);
   var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
   if(!attTrainer || !attPoke) return;
@@ -8259,9 +8338,37 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds){
      simplificação de mesa: não empilha por ter vários alvos com Pressure
      ao mesmo tempo, só conta uma vez. Movimento sem PP cadastrado (>0)
      nunca desconta nada. */
-  if((move.pp||0)>0){
+  /* PP (Cap. 8.6): não desconta de novo no turno de soltar um Movimento de
+     carga -- já foi pago inteiro no turno de carregar (ver isChargeRelease
+     acima), igual no jogo oficial. */
+  if((move.pp||0)>0 && !isChargeRelease){
     var pressureNoAlvo = resolved.some(function(r){ return r.poke.habilidade==='Pressure'; });
     move.ppAtual = Math.max(0, (move.ppAtual||0) - (pressureNoAlvo ? 2 : 1));
+  }
+
+  /* Movimento de carga (Cap. 25): sem carga pendente desse Movimento ainda
+     E sem ser o turno de soltar (isChargeRelease) -- esse uso é o 1º dos
+     dois turnos: trava o Movimento e os alvos escolhidos agora e passa a
+     vez, sem Precisão/Crítico/dano nenhum rolando ainda. Sem o
+     isChargeRelease aqui, a 2ª chamada (o turno de soltar, que já limpou
+     poke.carregando antes de chamar) cairia de novo nesse mesmo "if" —
+     carregando pra sempre em vez de golpear de verdade. */
+  if(CHARGE_MOVES[move.nome] && !attPoke.carregando && !isChargeRelease){
+    attPoke.carregando = {
+      moveIdx: (attPoke.moves||[]).indexOf(move),
+      moveName: move.nome,
+      category: category,
+      targetIds: resolved.map(function(r){ return r.entry.id; })
+    };
+    var nomeCarga = attPoke.apelido || attPoke.especie || 'Pokémon';
+    if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+    var prefixCarga = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
+    STATE.arena.log.push({ ts: Date.now(), text: prefixCarga+esc(nomeCarga)+' ('+esc(attTrainer.name)+') usou '+esc(move.nome)+' — '+esc(CHARGE_MOVE_MSG[move.nome]||'se prepara')+'... vai golpear no próximo turno.' });
+    if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+    arenaAdvanceTurn(atkEntry.id);
+    arenaResetActionState();
+    mutate();
+    return;
   }
 
   var perTarget = resolveMoveUse(attTrainer, attPoke, move, resolved);
@@ -9242,7 +9349,7 @@ function arenaEntryHTML(e){
   var cur = (p.currentHP===null || p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
   var pct = max>0 ? Math.round(cur/max*100) : 0;
   var fainted = cur<=0;
-  var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'');
+  var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'')+(!fainted && p.carregando?'🌀':'');
   /* Desmaiou, mas ainda sobra alguém pra entrar no lugar (Cap. 25/59): o
      próprio slot desmaiado vira o convite pra escolher o próximo, sem
      precisar ir pelo menu Atacar/Item/Trocar/Fugir (que não faz sentido
@@ -9404,6 +9511,7 @@ function arenaStatsPanelHTML(){
       '<div style="margin-top:6px;">PV: <strong>'+cur+'/'+max+'</strong>'+(cur<=0?' <span class="badge status-bad">Desmaiado</span>':'')+'</div>'+
       (p.status ? '<div>Condição: <span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span></div>' : '')+
       (p.confuso ? '<div>Confuso: <span class="badge status-bad">Sim</span></div>' : '')+
+      (p.carregando ? '<div>🌀 Carregando: <strong>'+esc(p.carregando.moveName)+'</strong> — golpeia no próximo turno</div>' : '')+
       '<div style="margin-top:6px;">Habilidade: '+(p.habilidade?('<strong>'+esc(p.habilidade)+'</strong>'):'<span class="muted">Nenhuma</span>')+
         (habAtual && habAtual.efeito ? '<div class="muted" style="font-size:.68rem;">'+esc(habAtual.efeito)+'</div>' : '')+'</div>'+
       '<div>Natureza: '+(naturezaAtual ? esc(naturezaAtual.nome) : '<span class="muted">Nenhuma</span>')+'</div>'+
