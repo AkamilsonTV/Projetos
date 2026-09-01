@@ -86,20 +86,24 @@ Clique numa aba pra ver os itens daquela categoria. **Só o Mestre adiciona, rem
 - **💫 Reviver** — o único tipo que funciona em Pokémon desmaiado (ou o Centro Pokémon, narrativamente). Devolve PV (uma quantidade fixa ou o total, dependendo do item) e reativa o Pokémon.
 - **🔄 Vida + Condição** — cura PV e cura Condição/Confusão ao mesmo tempo (tipo um Full Restore). Mesma trava do tipo Vida: não funciona em desmaiado.
 - **🔋 PP** — Ether, Max Ether, Elixir, Max Elixir, PP Up e PP Max (Cap. 8.6.1 das Regras): recuperam ou aumentam o PP de um Movimento (ou dos 4 de uma vez, no caso de Elixir/Max Elixir) de um Pokémon que não esteja desmaiado.
-- **📦 Outro** — itens catalogados (Pokébolas, Itens de Batalha, de Evolução, Segurados, TMs etc.) que ainda não têm mecânica própria no sistema (Cap. 25); existem como registro do que você carrega, sem efeito automático por enquanto.
+- **📦 Outro** — Pokébolas, pedras de evolução, Itens de Batalha, Segurados, TMs etc. Ainda sem efeito mecânico automático de verdade no sistema (Cap. 25) — usar um desses pede em qual Pokémon (qualquer um, mesmo desmaiado) e consome a unidade, mas não evolui/captura/ensina Movimento sozinho.
 
 Pokémon desmaiado só sai desse estado com um item **💫 Reviver** ou levando ele ao Centro Pokémon (fora de jogo/narrativo) — nenhum outro tipo de item cura ele.
 
+### Usando um item direto da Mochila
+
+Toda linha da tabela com quantidade acima de 0 tem um botão **"▶️ Usar"**. Clicar nele já abre a **Cura** (seção abaixo) com esse item escolhido — pula direto pra "em qual Pokémon", sem precisar abrir a Cura, achar a aba certa e achar o item de novo lá dentro. O sistema entende sozinho o que fazer a partir do tipo do item: pede o Pokémon certo pra ele (só quem não está desmaiado, pra Vida/Condição/Vida+Condição; só quem está desmaiado, pra Reviver; qualquer um, pra PP e Outro) e, se for um item de PP que mexe num Movimento só, ainda pergunta qual dos 4.
+
 ## Cura
 
-Botão **"🩹 Cura"** na sua ficha, logo abaixo da Mochila. Abre um painel com cinco abas — **💊 Vida**, **✨ Condição**, **💫 Reviver**, **🔄 Vida + Condição** e **🔋 PP** — listando só os itens daquele tipo que você ainda tem. O fluxo:
+Botão **"🩹 Cura"** na sua ficha, logo abaixo da Mochila. Abre um painel com seis abas — **💊 Vida**, **✨ Condição**, **💫 Reviver**, **🔄 Vida + Condição**, **🔋 PP** e **📦 Outro** — listando só os itens daquele tipo que você ainda tem. Dá pra chegar aqui de duas formas: clicando **"🩹 Cura"** e escolhendo a aba+item na mão, ou clicando **"▶️ Usar"** direto na linha do item lá na Mochila (já pula os dois primeiros passos abaixo). O fluxo:
 
 1. Escolha a aba certa pra sua necessidade.
 2. Clique no item que quer usar.
-3. Clique em qual dos seus Pokémon (Equipe ou Banco) vai receber. Nas abas Vida e Vida+Condição só aparecem Pokémon **não desmaiados**; na aba Reviver só aparecem os **desmaiados**; a aba Condição mostra todos, menos quem já está sem a Condição que o item cura; a aba PP também exclui desmaiados.
+3. Clique em qual dos seus Pokémon (Equipe ou Banco) vai receber. Nas abas Vida e Vida+Condição só aparecem Pokémon **não desmaiados**; na aba Reviver só aparecem os **desmaiados**; a aba Condição mostra todos, menos quem já está sem a Condição que o item cura; as abas PP e Outro mostram qualquer um, mesmo desmaiado.
 4. **Só na aba PP**, e só pros itens que afetam um Movimento por vez (Ether, Max Ether, PP Up, PP Max) — Elixir e Max Elixir pulam esse passo, afetando os 4 de uma vez: escolha qual dos 4 Movimentos do Pokémon recebe o item.
 
-A cura acontece na hora — de verdade, não é só um registro: PV sobe (ou vai pro máximo), a Condição/Confusão desaparece, o Pokémon reanima e/ou o PP do Movimento aumenta, dependendo do item. Consome 1 unidade dele. Funciona fora de batalha, direto na sua ficha, a qualquer momento.
+A cura acontece na hora — de verdade, não é só um registro: PV sobe (ou vai pro máximo), a Condição/Confusão desaparece, o Pokémon reanima e/ou o PP do Movimento aumenta, dependendo do item. Consome 1 unidade dele. Um item **📦 Outro** também passa por esse fluxo — escolhe o Pokémon e consome a unidade — mas ainda sem efeito mecânico automático de verdade (Cap. 25). Funciona fora de batalha, direto na sua ficha, a qualquer momento.
 
 ## Arena (esboço — ainda em construção)
 

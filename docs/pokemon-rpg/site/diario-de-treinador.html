@@ -5461,14 +5461,12 @@ function findItemByName(name){
   }
   return null;
 }
-/* Categorias desligadas (STATE.itemCategoriasDesativadas, só o Mestre
-   mexe) somem do catálogo aqui -- tanto do autocomplete quanto do
-   preenchimento automático, mas sem apagar item nenhum que algum
-   Treinador já tenha (ver DT.toggleItemCategoria). */
+/* Catálogo inteiro, sempre -- a organização por categoria acontece só como
+   apresentação (as 5 abas da Mochila, mochilaTabForItem/MOCHILA_TABS), não
+   como um liga/desliga que esconde itens do catálogo pra mesa inteira
+   (isso existiu numa versão anterior e foi removido por confuso). */
 function itemDexAtivo(){
-  var off = (STATE.itemCategoriasDesativadas||[]);
-  if(off.length===0) return ITEM_DEX;
-  return ITEM_DEX.filter(function(it){ return off.indexOf(it.categoria)===-1; });
+  return ITEM_DEX;
 }
 function itemDatalist(id){
   return '<datalist id="'+id+'">'+itemDexAtivo().map(function(it){ return '<option value="'+esc(it.nome)+'">'; }).join('')+'</datalist>';
@@ -5610,10 +5608,6 @@ function migrateState(){
       if(typeof p.flashFireBoost !== 'boolean') p.flashFireBoost = false; /* Flash Fire (Cap. 6.3) -- flag de batalha, nunca precisa persistir marcado entre sessões */
     });
   });
-  /* Categorias do catálogo de itens (ITEM_CATEGORIAS) que o Mestre desligou
-     nesta mesa -- é uma configuração da mesa inteira, não por Treinador nem
-     por batalha, por isso mora direto em STATE (ver DT.toggleItemCategoria). */
-  if(!Array.isArray(STATE.itemCategoriasDesativadas)) STATE.itemCategoriasDesativadas = [];
   if(!STATE.arena || typeof STATE.arena!=='object') STATE.arena = {teams:[], entries:[]};
   if(!Array.isArray(STATE.arena.teams)) STATE.arena.teams = [];
   if(!Array.isArray(STATE.arena.entries)) STATE.arena.entries = [];
@@ -6622,6 +6616,7 @@ function describeItemCureResult(result){
     if(result.curouStatus||result.curouConfuso) partes.push('curou a Condição');
     return partes.length ? (partes.join(' e ')+'.') : 'já estava com PV cheio e sem Condição pra curar.';
   }
+  if(result.tipo==='outro') return 'consumido — ainda sem efeito mecânico automático (Cap. 25), só fica registrado o uso.';
   return 'efeito ainda não definido (Cap. 25).';
 }
 /* Chamado sempre que um Pokémon termina de agir na Arena (ataque, item,
@@ -7836,40 +7831,24 @@ DT.addItem = function(tid, nomeEl, qtyEl, tipoEl, curaEl, condicaoEl, reviveFull
 /* Caminho principal de "+ Adicionar" (item escolhido de verdade do
    catálogo, num <select> só com o que existe pra aba aberta): sem campos
    soltos pra preencher, tudo (tipo/cura/condição/reviver/PP/descrição/
-   categoria) vem direto do ITEM_DEX. Devolve a quantidade escolhida pra
-   quem chamou (0 = não fez nada, nome vazio/inválido). */
-DT.addCatalogItem = function(tid, selectEl, qtyEl){
+   categoria) vem direto do ITEM_DEX. Sempre soma 1 unidade -- pra mais, o
+   Mestre ajusta a Quantidade direto na linha da tabela depois de
+   adicionado. Devolve a quantidade adicionada pra quem chamou (0 = não
+   fez nada, nome vazio/inválido). */
+DT.addCatalogItem = function(tid, selectEl){
   if(SESSION.role!=='gm') return 0;
   var t = findTrainer(tid); if(!t) return 0;
   var found = findItemByName(selectEl.value);
   if(!found) return 0;
-  var qtd = clampInt(qtyEl.value, 1, 999);
   if(!Array.isArray(t.itens)) t.itens = [];
   var existing = t.itens.find(function(i){ return i.nome.toLowerCase()===found.nome.toLowerCase(); });
-  if(existing){ existing.quantidade = clampInt(existing.quantidade+qtd, 0, 999); }
+  if(existing){ existing.quantidade = clampInt(existing.quantidade+1, 0, 999); }
   else {
-    t.itens.push(newItem(found.nome, qtd, found.tipo, {cura:found.cura, condicaoAlvo:found.condicaoAlvo, reviveFull:found.reviveFull, categoria:found.categoria, ppAlvo:found.ppAlvo, ppFull:found.ppFull, ppUp:found.ppUp, descricao:found.descricao}));
+    t.itens.push(newItem(found.nome, 1, found.tipo, {cura:found.cura, condicaoAlvo:found.condicaoAlvo, reviveFull:found.reviveFull, categoria:found.categoria, ppAlvo:found.ppAlvo, ppFull:found.ppFull, ppUp:found.ppUp, descricao:found.descricao}));
   }
   selectEl.selectedIndex = 0;
-  qtyEl.value = '1';
-  var previewEl = document.getElementById('mochilaAddPreview_'+tid);
-  if(previewEl) previewEl.innerHTML = '';
   mutate();
-  return qtd;
-};
-/* Prévia embaixo do seletor de item da Mochila, ao trocar a escolha --
-   manipula só esse parágrafo direto no DOM, SEM chamar render(): render()
-   reconstrói a tela inteira do zero (screenHTML() vira o innerHTML de
-   #app), o que reseta qualquer <select>/<input> pro valor "de fábrica" do
-   template -- chamar render() aqui apagaria a própria escolha que acabou
-   de ser feita antes mesmo do Mestre clicar "+ Adicionar". */
-DT.previewMochilaItem = function(tid, selectEl){
-  var el = document.getElementById('mochilaAddPreview_'+tid);
-  if(!el) return;
-  var found = findItemByName(selectEl.value);
-  el.innerHTML = found
-    ? ('<strong>'+esc(found.nome)+'</strong> — <span class="muted">'+esc(itemCuraDetailText(found))+'</span><br><span class="muted" style="font-size:.72rem;">'+esc(found.descricao||'')+'</span>')
-    : '';
+  return 1;
 };
 /* Mostra/esconde o formulário de item personalizado (fora do catálogo) --
    pela mesma razão do comentário acima, é manipulação direta de DOM sem
@@ -7882,20 +7861,14 @@ DT.toggleMochilaCustom = function(tid){
 /* Digitou (ou escolheu do autocomplete) um nome que bate com o catálogo
    oficial (ITEM_DEX), dentro do formulário de item personalizado --
    preenche Tipo/Cura/Condição/Reviver/PP/Descrição sozinho, igual já
-   acontece pra Espécie e Movimento. Uma categoria desligada nesta mesa
-   (DT.toggleItemCategoria) não preenche -- avisa e para por aí. Escreve só
-   no parágrafo de aviso local (sem render(), pelo mesmo motivo do
-   DT.previewMochilaItem acima) -- render() aqui reesconderia o próprio
+   acontece pra Espécie e Movimento. Escreve só no parágrafo de aviso
+   local (sem render(), pelo mesmo motivo do comentário de
+   DT.toggleMochilaCustom acima) -- render() aqui reesconderia o próprio
    formulário personalizado que acabou de ser preenchido.*/
 DT.autofillNewItem = function(tid, nameEl){
   var noteEl = document.getElementById('newItemAutofillNote_'+tid);
   var found = findItemByName(nameEl.value);
   if(!found){ if(noteEl) noteEl.textContent = ''; return; }
-  var off = (STATE.itemCategoriasDesativadas||[]).indexOf(found.categoria)!==-1;
-  if(off){
-    if(noteEl) noteEl.textContent = 'A categoria "'+found.categoria+'" está desativada nesta mesa — o Mestre pode religar em Configurações de Itens.';
-    return;
-  }
   var tipoEl = document.getElementById('newItemTipo_'+tid);
   var curaEl = document.getElementById('newItemCura_'+tid);
   var condicaoEl = document.getElementById('newItemCondicao_'+tid);
@@ -7920,17 +7893,6 @@ DT.removeItem = function(tid, itemId){
   t.itens = (t.itens||[]).filter(function(i){ return i.id!==itemId; });
   mutate();
 };
-/* Liga/desliga uma categoria inteira do catálogo (ITEM_DEX) pra mesa
-   inteira -- só afeta o autocomplete/preenchimento automático ao
-   adicionar item, nunca os itens que os Treinadores já têm. */
-DT.toggleItemCategoria = function(categoria){
-  if(SESSION.role!=='gm') return;
-  if(!Array.isArray(STATE.itemCategoriasDesativadas)) STATE.itemCategoriasDesativadas = [];
-  var idx = STATE.itemCategoriasDesativadas.indexOf(categoria);
-  if(idx===-1) STATE.itemCategoriasDesativadas.push(categoria);
-  else STATE.itemCategoriasDesativadas.splice(idx,1);
-  mutate();
-};
 DT.setItemQty = function(tid, itemId, el){
   if(SESSION.role!=='gm') return;
   var t = findTrainer(tid); if(!t) return;
@@ -7938,6 +7900,22 @@ DT.setItemQty = function(tid, itemId, el){
   if(!it) return;
   it.quantidade = clampInt(el.value, 0, 999);
   mutate();
+};
+/* Botão "Usar" de cada linha da Mochila -- pula direto pra dentro da Cura
+   (mesmo painel/fluxo de baixo, curaHTML) já com o item escolhido, sem o
+   jogador precisar abrir a Cura, achar a aba certa e achar o item de novo
+   lá. Dono da ficha ou o Mestre, igual quem já podia usar a Cura. */
+DT.mochilaUseItem = function(tid, itemId){
+  var t = findTrainer(tid); if(!t) return;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===tid;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var item = (t.itens||[]).find(function(i){ return i.id===itemId; });
+  if(!item || item.quantidade<=0) return;
+  SESSION.curaOpenFor = tid;
+  SESSION.curaTab = item.tipo;
+  SESSION.curaItemId = item.id;
+  SESSION.curaPokeId = null;
+  render();
 };
 
 /* Aba Cura da ficha (fora de batalha): abre/fecha, escolhe Vida ou
@@ -7953,7 +7931,7 @@ DT.toggleCura = function(tid){
   render();
 };
 DT.curaSetTab = function(tab){
-  if(!ITEM_TIPOS_VALIDOS.hasOwnProperty(tab) || tab==='outro') return;
+  if(!ITEM_TIPOS_VALIDOS.hasOwnProperty(tab)) return;
   SESSION.curaTab = tab;
   SESSION.curaItemId = null;
   SESSION.curaPokeId = null;
@@ -8865,7 +8843,6 @@ function gmLoginScreen(){
 function gmDashboardScreen(){
   var trainers = STATE.trainers;
   var head = '<div class="card"><div class="card-head"><span class="index">Mesa</span><h2>Treinadores ('+trainers.length+')</h2></div></div>';
-  head += itemCategoriasHTML();
   if(trainers.length===0){
     return head+'<div class="card"><div class="card-body"><p class="muted">Nenhum Treinador criou a ficha ainda. Compartilhe o link do Diário com o grupo — cada um cria a própria ficha em "Sou Treinador".</p></div></div>';
   }
@@ -8886,30 +8863,6 @@ function gmDashboardScreen(){
 function shareBadge(t){
   return t.shareEnabled ? '<span class="badge on">Compartilhada</span>' : '<span class="badge off">Privada</span>';
 }
-/* Painel do Mestre pra ligar/desligar categorias inteiras do catálogo de
-   itens (ITEM_CATEGORIAS) -- desligar uma categoria só tira ela do
-   autocomplete/"Dados oficiais" do formulário de item dali em diante; não
-   apaga nenhum item que algum Treinador já tenha na Mochila. */
-function itemCategoriasHTML(){
-  var expanded = !!SESSION.expanded.itemCategorias;
-  var off = STATE.itemCategoriasDesativadas || [];
-  var summary = '<div class="trainer-summary" onclick="DT.toggleExpand(\'itemCategorias\')">'+
-    '<div class="left"><span class="name">🎒 Categorias de Itens</span><span class="meta">'+(ITEM_CATEGORIAS.length-off.length)+'/'+ITEM_CATEGORIAS.length+' ativas</span></div>'+
-    '<span class="muted">'+(expanded?'▲':'▼')+'</span>'+
-  '</div>';
-  var body = '';
-  if(expanded){
-    body = '<div class="card-body"><p class="muted" style="font-size:.8rem;">Desligar uma categoria some com ela do catálogo oficial (autocomplete e preenchimento automático ao adicionar item) pra mesa inteira — não apaga nenhum item que os Treinadores já tenham.</p>'+
-      '<div class="btn-row" style="flex-wrap:wrap; margin-top:8px;">'+
-        ITEM_CATEGORIAS.map(function(cat){
-          var isOff = off.indexOf(cat)!==-1;
-          return '<button class="btn-sm'+(isOff?'':' btn-primary')+'" onclick="DT.toggleItemCategoria(\''+esc(cat)+'\')">'+(isOff?'🔒 ':'✅ ')+esc(cat)+'</button>';
-        }).join('')+
-      '</div></div>';
-  }
-  return '<div class="card">'+summary+body+'</div>';
-}
-
 /* ---- Player entry / login / create ---- */
 function playerEntryScreen(){
   return '<div class="center-stage"><div><h1>Área do Treinador</h1><p class="lede">Já tem uma ficha nesta mesa ou está começando agora?</p></div>'+
@@ -9046,7 +8999,7 @@ function trainerSheetHTML(t, mode){
   /* Mochila (itens) — só o Mestre define o que existe; efeito de batalha
      ainda é regra em aberto (Cap. 25), por enquanto é só um inventário. */
   out += '<hr class="rule" style="margin:18px 0;">';
-  out += inventoryHTML(t, canGM);
+  out += inventoryHTML(t, canGM, mode);
   out += curaHTML(t, mode);
 
   /* pokemon roster: 6 slots ativos + Banco (menu deslizante) */
@@ -9098,17 +9051,16 @@ function itemCuraDetailText(it){
     if(it.ppUp) return (it.ppFull?'PP Máximo no teto':'+20% de PP Máximo')+' de '+alvoTxt;
     return (it.ppFull?'PP cheio':'+10 PP')+' em '+alvoTxt;
   }
-  return 'sem efeito ainda';
+  return 'sem efeito automático ainda (Cap. 25)';
 }
 /* =================== MOCHILA: 5 ABAS, CADA UMA UMA TABELA DE VERDADE ===================
    Reorganização da Mochila em 5 abas fixas (Poções e Berries / Pokébolas /
    Itens de Missão / TM / Inventário Geral) -- cada uma agrupa uma ou mais
-   categorias do catálogo oficial (ITEM_DEX.categoria); tudo que não bate
-   com nenhuma (categoria em branco, digitado à mão, ou Itens de Batalha/
+   categorias do catálogo oficial (ITEM_DEX.categoria, ainda em 11
+   categorias, só que sem nenhum jeito de desligar); tudo que não bate com
+   nenhuma (categoria em branco, digitado à mão, ou Itens de Batalha/
    Evolução/Segurados/Recuperação de PP) cai no "Inventário Geral", que é
-   o catch-all. Só reorganiza a APRESENTAÇÃO -- o toggle de categoria do
-   Mestre (ITEM_CATEGORIAS/DT.toggleItemCategoria) continua granular,
-   nas 11 categorias de sempre. */
+   o catch-all. */
 var MOCHILA_TABS = ['pocoes','pokebolas','missao','tm','geral'];
 var MOCHILA_TAB_LABELS = { pocoes:'💊 Poções e Berries', pokebolas:'⚪ Pokébolas', missao:'🗝️ Itens de Missão', tm:'💿 TM', geral:'🎒 Inventário Geral' };
 var MOCHILA_TAB_CATEGORIAS = {
@@ -9137,7 +9089,7 @@ DT.setMochilaTab = function(tid, tab){
   SESSION.mochilaTab[tid] = tab;
   render();
 };
-function inventoryHTML(t, canGM){
+function inventoryHTML(t, canGM, mode){
   var itens = t.itens||[];
   var out = '<h3 style="font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); margin-bottom:8px;">🎒 Mochila</h3>';
   var activeTab = (SESSION.mochilaTab && SESSION.mochilaTab[t.id]) || 'pocoes';
@@ -9147,17 +9099,22 @@ function inventoryHTML(t, canGM){
       return '<button class="btn-sm'+(activeTab===k?' btn-primary':'')+'" onclick="DT.setMochilaTab(\''+t.id+'\',\''+k+'\')">'+MOCHILA_TAB_LABELS[k]+'</button>';
     }).join('')+
   '</div>';
+  /* Botão "Usar" (pula direto pra dentro da Cura, já com o item escolhido
+     -- ver DT.mochilaUseItem/curaHTML): pro dono da ficha ou o Mestre,
+     igual quem já pode usar a aba Cura. */
+  var canUse = (mode==='own' || mode==='gm');
   var itensDaAba = itens.filter(function(it){ return mochilaTabForItem(it)===activeTab; });
   if(itensDaAba.length===0){
     out += '<p class="muted" style="font-size:.82rem;">'+(canGM ? 'Nenhum item aqui ainda — adicione abaixo (a categoria escolhe a aba sozinha).' : 'Nenhum item aqui ainda.')+'</p>';
   } else {
-    out += '<div class="table-scroll"><table class="stat-table inventory-table"><thead><tr><th>Nome</th><th>Descrição</th><th>Quantidade</th>'+(canGM?'<th></th>':'')+'</tr></thead><tbody>'+
+    out += '<div class="table-scroll"><table class="stat-table inventory-table"><thead><tr><th>Nome</th><th>Descrição</th><th>Quantidade</th>'+(canUse?'<th></th>':'')+(canGM?'<th></th>':'')+'</tr></thead><tbody>'+
       itensDaAba.map(function(it){
         return '<tr><td>'+esc(it.nome)+'</td>'+
           '<td class="muted" style="font-size:.72rem;">'+esc(it.descricao||'—')+'</td>'+
           '<td class="num">'+(canGM
             ? '<input type="number" min="0" max="999" value="'+it.quantidade+'" onchange="DT.setItemQty(\''+t.id+'\',\''+it.id+'\', this)" style="width:64px;">'
             : String(it.quantidade))+'</td>'+
+          (canUse ? '<td>'+(it.quantidade>0 ? '<button class="btn-sm" onclick="DT.mochilaUseItem(\''+t.id+'\',\''+it.id+'\')">▶️ Usar</button>' : '')+'</td>' : '')+
           (canGM ? '<td><button class="btn-ghost btn-sm" onclick="DT.removeItem(\''+t.id+'\',\''+it.id+'\')">✕</button></td>' : '')+
         '</tr>';
       }).join('')+
@@ -9165,11 +9122,15 @@ function inventoryHTML(t, canGM){
   }
   if(canGM){
     /* Fluxo principal: escolher da lista (agrupada por categoria, só com
-       o que existe pra essa aba) já preenche tudo sozinho -- não tem mais
-       nada pra digitar/decidir além de "qual item" e "quantos". O
-       formulário de item personalizado (fora do catálogo, ou pra fugir do
-       oficial) some por baixo de um botão, pra não competir visualmente
-       com o caminho comum. */
+       o que existe pra essa aba) e clicar "+ Adicionar" -- nada mais pra
+       decidir, o item entra com Tipo/Cura/Condição/PP/Descrição/Categoria
+       inteiros do catálogo. Sempre soma 1 unidade; pra mais, ajusta a
+       Quantidade na própria linha da tabela depois. O formulário de item
+       personalizado (fora do catálogo, ou pra fugir do oficial) some por
+       baixo de um botão, pra não competir visualmente com o caminho
+       comum -- é a única exceção que ainda expõe Tipo/PV/Condição/PP à
+       mão, e só porque não tem como vir de um catálogo pra um item que o
+       catálogo não conhece. */
     var itensDaAbaCatalogo = itemsForMochilaTab(activeTab);
     var porCategoria = {};
     itensDaAbaCatalogo.forEach(function(it){ (porCategoria[it.categoria] = porCategoria[it.categoria]||[]).push(it); });
@@ -9181,14 +9142,12 @@ function inventoryHTML(t, canGM){
     out += '<div class="card" style="margin-top:10px;"><div class="card-body">'+
       '<p style="font-size:.78rem; font-weight:700; margin-bottom:8px;">+ Adicionar a '+MOCHILA_TAB_LABELS[activeTab]+'</p>'+
       '<div class="btn-row" style="flex-wrap:wrap;">'+
-        '<select id="mochilaAddSelect_'+t.id+'" onchange="DT.previewMochilaItem(\''+t.id+'\', this)" style="flex:1; min-width:180px;">'+
+        '<select id="mochilaAddSelect_'+t.id+'" style="flex:1; min-width:180px;">'+
           '<option value="">— escolher item —</option>'+optionsHTML+
         '</select>'+
-        '<input type="number" min="1" max="999" value="1" id="mochilaAddQty_'+t.id+'" style="width:64px;" title="Quantidade">'+
-        '<button class="btn-sm btn-primary" onclick="DT.addCatalogItem(\''+t.id+'\', document.getElementById(\'mochilaAddSelect_'+t.id+'\'), document.getElementById(\'mochilaAddQty_'+t.id+'\'))">+ Adicionar</button>'+
+        '<button class="btn-sm btn-primary" onclick="DT.addCatalogItem(\''+t.id+'\', document.getElementById(\'mochilaAddSelect_'+t.id+'\'))">+ Adicionar</button>'+
       '</div>'+
-      '<p id="mochilaAddPreview_'+t.id+'" class="muted" style="font-size:.78rem; margin-top:6px; min-height:1.1em;"></p>'+
-      '<button class="btn-ghost btn-sm" style="margin-top:2px;" onclick="DT.toggleMochilaCustom(\''+t.id+'\')">✏️ Item personalizado (fora do catálogo)</button>'+
+      '<button class="btn-ghost btn-sm" style="margin-top:8px;" onclick="DT.toggleMochilaCustom(\''+t.id+'\')">✏️ Item personalizado (fora do catálogo)</button>'+
       '<div id="mochilaCustomForm_'+t.id+'" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);">'+
         '<div class="btn-row" style="flex-wrap:wrap;">'+
           '<input type="text" placeholder="Nome do item" id="newItemName_'+t.id+'" list="newItemNameList_'+t.id+'" onchange="DT.autofillNewItem(\''+t.id+'\', this)" style="flex:1; min-width:120px;">'+
@@ -9234,7 +9193,7 @@ function curaHTML(t, mode){
   var toggleBtn = '<button class="btn-sm" onclick="DT.toggleCura(\''+t.id+'\')">🩹 '+(open?'Fechar Cura':'Cura')+'</button>';
   if(!open) return '<div style="margin:10px 0;">'+toggleBtn+'</div>';
 
-  var CURA_TABS = ['vida','condicao','revive','ambos','pp'];
+  var CURA_TABS = ['vida','condicao','revive','ambos','pp','outro'];
   var tab = CURA_TABS.indexOf(SESSION.curaTab)!==-1 ? SESSION.curaTab : 'vida';
   var tabs = '<div class="btn-row" style="margin:10px 0 8px; flex-wrap:wrap;">'+
     CURA_TABS.map(function(k){
@@ -9262,15 +9221,18 @@ function curaHTML(t, mode){
         '<button class="btn-ghost btn-sm" onclick="DT.curaCancelPick()">Cancelar</button>'+
       '</div>';
   } else if(item){
-    /* Reviver só mira em quem está desmaiado; PP funciona em qualquer um
-       (mesmo desmaiado -- é possível recarregar PP fora de combate);
+    /* Reviver só mira em quem está desmaiado; PP e Outro funcionam em
+       qualquer um (PP porque dá pra recarregar fora de combate mesmo
+       desmaiado; Outro -- Pokébola, pedra, item-chave, TM etc. -- porque
+       ainda não tem regra própria de PV/Condição associada, Cap. 25);
        qualquer outro tipo só em quem NÃO está desmaiado (Cap. 19) --
        mesma regra da Arena (eligibleItemTargets), aplicada aqui na ficha
        inteira (Equipe + Banco) em vez de só quem está em campo. */
     var wantsFainted = item.tipo==='revive';
+    var semRestricao = item.tipo==='pp' || item.tipo==='outro';
     var mons = (t.pokemons||[]).concat(t.banco||[]).filter(function(p){
       if(!p.especie) return false;
-      if(item.tipo==='pp') return true;
+      if(semRestricao) return true;
       var max = hpMax(t,p);
       var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
       var fainted = cur<=0;
@@ -9283,7 +9245,7 @@ function curaHTML(t, mode){
       var onclick = irParaMovimento ? "DT.curaPickPoke('"+p.id+"')" : "DT.curaApply('"+t.id+"','"+p.id+"')";
       return '<button class="btn-sm" onclick="'+onclick+'">'+esc(p.apelido||p.especie)+' <span class="muted">('+cur+'/'+max+')</span></button>';
     }).join('');
-    var semAlvo = wantsFainted ? 'Nenhum Pokémon desmaiado agora.' : 'Nenhum Pokémon disponível (todos desmaiados, ou a ficha está vazia).';
+    var semAlvo = wantsFainted ? 'Nenhum Pokémon desmaiado agora.' : (semRestricao ? 'A ficha ainda não tem nenhum Pokémon.' : 'Nenhum Pokémon disponível (todos desmaiados, ou a ficha está vazia).');
     body = '<p style="font-size:.8rem;">Usar <strong>'+esc(item.nome)+'</strong> em qual Pokémon?</p>'+
       '<div class="btn-row" style="flex-wrap:wrap;">'+(pokeBtns || '<span class="muted">'+semAlvo+'</span>')+'</div>'+
       '<button class="btn-ghost btn-sm" style="margin-top:6px;" onclick="DT.curaCancelPick()">Cancelar</button>';
