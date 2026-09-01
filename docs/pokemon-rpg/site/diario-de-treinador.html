@@ -222,11 +222,18 @@
   .arena-team-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:var(--surface-2); border-bottom:2px solid var(--line); }
   .arena-team-head input[type=text]{ font-weight:700; padding:4px 6px; }
   .arena-team-body{ display:flex; flex-wrap:wrap; gap:12px; padding:12px; min-height:96px; }
-  .arena-slot, .arena-slot-hidden{ width:78px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; }
+  .arena-slot, .arena-slot-hidden{ width:78px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; position:relative; }
+  .arena-info-btn{ position:absolute; top:-6px; right:-6px; width:20px; height:20px; padding:0; border-radius:50%; background:var(--surface); border:1px solid var(--line); font-size:.66rem; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); }
+  .arena-info-btn:hover{ border-color:var(--accent); }
   .arena-pokeball{ width:40px; height:40px; opacity:.85; }
   .arena-pokeball svg{ width:100%; height:100%; }
   .arena-slot-name{ font-size:.7rem; font-weight:600; line-height:1.2; }
   .arena-icons{ font-size:.85rem; line-height:1; margin-top:2px; }
+  /* ---- Indicativo de Estágio (Cap. 15.1): "Atq +1"/"Vel -2" por Atributo alterado ---- */
+  .arena-stage-badges{ display:flex; flex-wrap:wrap; justify-content:center; gap:2px; margin-top:2px; }
+  .stage-badge{ font-size:.56rem; font-weight:700; line-height:1; padding:2px 5px; border-radius:var(--radius-pill); white-space:nowrap; }
+  .stage-badge-up{ background:var(--teal-soft); color:var(--teal); }
+  .stage-badge-down{ background:var(--danger-soft); color:var(--danger); }
   .arena-source-row{ display:flex; flex-wrap:wrap; gap:12px; }
   .arena-source-tile{ position:relative; width:64px; padding-top:24px; display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center; }
   .arena-source-tile .drag-handle{ position:absolute; top:0; left:50%; transform:translateX(-50%); }
@@ -247,6 +254,25 @@
   .arena-attack-panel{ margin-top:14px; }
   .arena-attack-panel .btn-row{ margin-top:8px; margin-bottom:10px; }
   .arena-attack-panel button br{ display:block; content:""; margin-top:2px; }
+
+  /* ---- Painel flutuante de atributos (Cap. 15.1): arrastável pela barra do
+     topo, posição só local (SESSION, nunca sincroniza). Sem posição salva,
+     fica ancorado perto do topo direito por padrão. ---- */
+  .arena-stats-panel{ position:fixed; top:70px; right:16px; width:250px; max-width:calc(100vw - 24px); background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); box-shadow:0 12px 32px rgba(0,0,0,.28); z-index:150; }
+  .arena-stats-head{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--line); cursor:grab; touch-action:none; background:var(--surface-2); border-radius:var(--radius) var(--radius) 0 0; }
+  .arena-stats-head.arena-stats-dragging{ cursor:grabbing; }
+  .arena-stats-head .poke-sprite, .arena-stats-head .poke-sprite-placeholder{ width:32px; height:32px; flex-shrink:0; }
+  .arena-stats-head-name{ flex:1; min-width:0; }
+  .arena-stats-head-name strong{ display:block; font-size:.8rem; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .arena-stats-close{ background:none; border:none; font-size:1rem; line-height:1; cursor:pointer; color:var(--ink-dim); padding:2px 4px; }
+  .arena-stats-close:hover{ color:var(--danger); }
+  .arena-stats-body{ padding:10px; font-size:.78rem; max-height:70vh; overflow-y:auto; }
+  .arena-stats-table{ width:100%; border-collapse:collapse; margin-top:4px; }
+  .arena-stats-table th, .arena-stats-table td{ padding:3px 4px; text-align:center; border-bottom:1px solid var(--line); }
+  .arena-stats-table th{ font-size:.62rem; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-dim); font-weight:700; }
+  .arena-stats-table td:first-child, .arena-stats-table th:first-child{ text-align:left; }
+  .arena-stats-moves{ list-style:none; margin:4px 0 0; padding:0; display:flex; flex-direction:column; gap:3px; }
+  .arena-stats-moves li{ display:flex; justify-content:space-between; gap:6px; }
 
   /* ---- Overlay de dado (centro da tela, some sozinho) ---- */
   .dice-overlay{ position:fixed; inset:0; background:rgba(20,14,8,.55); display:flex; align-items:center; justify-content:center; z-index:200; padding:20px; animation:dice-fade-in .15s ease-out; }
@@ -5534,6 +5560,12 @@ var stateDocRef = null;
 var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', expanded:{}, confirmRemovePoke:null, confirmRemoveTrainer:null,
   arenaAttacker:null, arenaAction:null, arenaMoveIdx:null, arenaAttackTarget:null, arenaItemIdx:null, arenaConfusionCheck:null,
   arenaForcedSwitch:false,
+  /* Painel flutuante de atributos (Cap. 15.1): puramente local, nunca
+     sincroniza -- cada viewer abre/arrasta o próprio, sem afetar os
+     outros. arenaStatsFor = id da entrada da Arena sendo mostrada (null =
+     fechado); arenaStatsPos = {x,y} da última posição arrastada (null =
+     usa a posição padrão do CSS). */
+  arenaStatsFor:null, arenaStatsPos:null,
   showRollOverlay:false };
 try{
   var savedSession = JSON.parse(localStorage.getItem('dt_session')||'null');
@@ -6352,7 +6384,28 @@ function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPok
     }
   }
 }
-function stageLblName(stat){ return {atk:'Ataque',def:'Defesa',spa:'Ataque Especial',spd:'Defesa Especial',spe:'Velocidade'}[stat] || stat; }
+function stageLblName(stat){ return {atk:'Ataque',def:'Defesa',spa:'Ataque Especial',spd:'Defesa Especial',spe:'Velocidade',precisao:'Precisão',evasao:'Evasão'}[stat] || stat; }
+/* Indicativo visual de Estágio (Cap. 15.1): badges tipo "Atq +1"/"Vel -2"
+   pra cada Atributo alterado do Pokémon -- verde (stage-badge-up) se o
+   Estágio for positivo, vermelho (stage-badge-down) se negativo; Estágio 0
+   nunca aparece. Cobre os 5 Atributos normais mais Precisão/Evasão.
+   Existia só o INPUT numérico escondido na ficha completa (Cap. 6.3) --
+   Calm Mind/Intimidate e companhia sempre mudaram o Estágio de verdade
+   (effectiveStat já lê poke.estagios), só não tinha onde ENXERGAR isso
+   durante a própria batalha; esse é o indicativo que faltava. */
+var STAGE_BADGE_ABBR = {atk:'Atq',def:'Def',spa:'AEsp',spd:'DEsp',spe:'Vel',precisao:'Prec',evasao:'Evas'};
+var STAGE_BADGE_ORDER = ['atk','def','spa','spd','spe','precisao','evasao'];
+function stageBadgesHTML(poke){
+  if(!poke || !poke.estagios) return '';
+  var bits = STAGE_BADGE_ORDER.map(function(stat){
+    var v = poke.estagios[stat]||0;
+    if(v===0) return '';
+    var cls = v>0 ? 'stage-badge-up' : 'stage-badge-down';
+    var sign = v>0 ? '+' : '';
+    return '<span class="stage-badge '+cls+'" title="'+esc(stageLblName(stat)||STAGE_BADGE_ABBR[stat])+'">'+STAGE_BADGE_ABBR[stat]+' '+sign+v+'</span>';
+  }).join('');
+  return bits ? '<div class="arena-stage-badges">'+bits+'</div>' : '';
+}
 /* Recuo/Dreno/Cura pós-golpe (Cap. 25, ver MOVE_RECOIL/MOVE_DRAIN/MOVE_HEAL
    acima) -- roda depois de applyAttackResult (dano já aplicado no alvo),
    pra Recuo/Dreno serem calculados em cima do result.dano de verdade
@@ -7870,6 +7923,66 @@ DT.arenaClearVictory = function(){
   STATE.arena.vencedor = null;
   mutate();
 };
+/* Painel flutuante de atributos (Cap. 15.1) -- puramente local (SESSION,
+   nunca sincroniza): cada viewer abre/fecha/arrasta o seu, sem afetar os
+   outros. Só abre pra quem já enxerga essa entrada de verdade (mesma
+   regra de canSeeReal do card -- dono, Mestre, ou já revelada); pra
+   qualquer outra, não faz nada (defesa em profundidade -- o botão que
+   chama isso já nem aparece nesse caso). */
+DT.arenaStatsShow = function(entryId){
+  var e = findArenaEntry(entryId);
+  if(!e) return;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
+  var isGM = SESSION.role==='gm';
+  if(!isGM && !isOwner && !e.revelado) return;
+  SESSION.arenaStatsFor = entryId;
+  render();
+};
+DT.arenaStatsClose = function(){
+  SESSION.arenaStatsFor = null;
+  render();
+};
+/* Arrastar o painel pela barra do topo -- engine própria e mais simples
+   que DRAG (Equipe/Time): só um elemento, sem ghost nem drop target,
+   mexe direto no style.left/top do próprio painel enquanto arrasta (fora
+   do ciclo de render(), senão a posição resetava a cada frame) e só
+   grava a posição final em SESSION.arenaStatsPos no soltar -- daí em
+   diante um render() normal já nasce na posição certa. */
+var STATS_DRAG = null; /* {panelEl, pointerId, offX, offY} */
+DT._statsDragMove = function(evt){
+  if(!STATS_DRAG) return;
+  var x = clampInt(evt.clientX - STATS_DRAG.offX, 0, window.innerWidth - STATS_DRAG.panelEl.offsetWidth);
+  var y = clampInt(evt.clientY - STATS_DRAG.offY, 0, window.innerHeight - 40);
+  STATS_DRAG.panelEl.style.left = x+'px';
+  STATS_DRAG.panelEl.style.top = y+'px';
+  STATS_DRAG.panelEl.style.right = 'auto';
+  STATS_DRAG.lastX = x; STATS_DRAG.lastY = y;
+};
+DT._statsDragEnd = function(evt){
+  if(!STATS_DRAG) return;
+  var head = STATS_DRAG.headEl;
+  head.removeEventListener('pointermove', DT._statsDragMove);
+  head.removeEventListener('pointerup', DT._statsDragEnd);
+  head.removeEventListener('pointercancel', DT._statsDragEnd);
+  try{ head.releasePointerCapture(STATS_DRAG.pointerId); }catch(err){}
+  head.classList.remove('arena-stats-dragging');
+  if(STATS_DRAG.lastX!==undefined) SESSION.arenaStatsPos = { x: STATS_DRAG.lastX, y: STATS_DRAG.lastY };
+  STATS_DRAG = null;
+};
+DT.arenaStatsDragStart = function(evt){
+  if(STATS_DRAG) return;
+  var head = evt.currentTarget;
+  var panel = head.closest('.arena-stats-panel');
+  if(!panel) return;
+  evt.preventDefault();
+  try{ head.setPointerCapture(evt.pointerId); }catch(err){}
+  var rect = panel.getBoundingClientRect();
+  STATS_DRAG = { panelEl:panel, headEl:head, pointerId:evt.pointerId, offX: evt.clientX-rect.left, offY: evt.clientY-rect.top };
+  head.classList.add('arena-stats-dragging');
+  head.addEventListener('pointermove', DT._statsDragMove);
+  head.addEventListener('pointerup', DT._statsDragEnd);
+  head.addEventListener('pointercancel', DT._statsDragEnd);
+};
 DT.arenaChooseAction = function(kind){
   if(!SESSION.arenaAttacker) return;
   if(kind==='atacar'){ SESSION.arenaAction = 'move'; SESSION.arenaMoveIdx = null; render(); return; }
@@ -8839,6 +8952,7 @@ function arenaScreen(){
   out += arenaActionPanelHTML();
   out += arenaSourceHTML();
   out += arenaLogHTML();
+  out += arenaStatsPanelHTML();
   return out;
 }
 /* Painel de Soltura (Cap. 55): mostra quem já entrou (presente) e quem já
@@ -9205,7 +9319,15 @@ function arenaEntryHTML(e){
       '</div>'
     : '';
 
+  /* Ver atributos (Cap. 15.1): qualquer um que enxergue essa entrada de
+     verdade (mesma regra de canSeeReal, já garantida por estarmos aqui)
+     pode abrir o painel flutuante -- informação pública, igual a Equipe
+     ativa. event.stopPropagation() pra não disparar o clique do card
+     inteiro (agir/escolher alvo) por baixo do botão. */
+  var statsBtn = '<button type="button" class="arena-info-btn" title="Ver atributos" onclick="event.stopPropagation();DT.arenaStatsShow(\''+e.id+'\')">📊</button>';
+
   return '<div class="'+slotClass+'"'+slotClick+'>'+
+    statsBtn+
     '<div class="arena-hp-label">'+cur+'/'+max+'</div>'+
     '<div class="hp-bar'+hpBarTier(pct)+'" style="width:100%;"><i style="width:'+pct+'%"></i></div>'+
     sprite+
@@ -9214,7 +9336,80 @@ function arenaEntryHTML(e){
     '<div class="arena-slot-name">'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</div>'+
     '<span class="muted" style="font-size:.62rem;">'+esc(t.name)+'</span>'+
     (icons ? '<div class="arena-icons">'+icons+'</div>' : '')+
+    stageBadgesHTML(p)+
     controls+
+  '</div>';
+}
+/* Painel flutuante de atributos (Cap. 15.1): mostra o "preview" do Pokémon
+   escolhido em SESSION.arenaStatsFor -- Tipo, PV, Condição, Habilidade,
+   Natureza e a tabela Atributo/Estágio/Efetivo, tudo lido com o mesmo
+   effectiveStat() que a própria batalha usa (não é um valor calculado à
+   parte -- é literalmente o número real). Refaz a mesma checagem de
+   visibilidade de DT.arenaStatsShow porque ela pode ter mudado entre abrir
+   o painel e este render (ex.: era o dono/Mestre e trocou de sessão, ou a
+   entrada nem existe mais). Posição vem de SESSION.arenaStatsPos (puramente
+   local, nunca sincroniza) -- sem posição salva ainda, usa a âncora padrão
+   do CSS (perto do topo direito). */
+function arenaStatsPanelHTML(){
+  if(!SESSION.arenaStatsFor) return '';
+  var e = findArenaEntry(SESSION.arenaStatsFor);
+  if(!e) return '';
+  var t = findTrainer(e.trainerId);
+  var p = t && getPoke(e.trainerId, e.pokemonId);
+  if(!t || !p) return '';
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
+  var isGM = SESSION.role==='gm';
+  if(!isGM && !isOwner && !e.revelado) return '';
+
+  var num = pokeSpeciesNum(p);
+  var sprite = num
+    ? '<img class="poke-sprite" src="'+spriteUrl(num)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
+    : '<div class="poke-sprite-placeholder">❔</div>';
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null||p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
+
+  var habAtual = findAbilityByName(p.habilidade);
+  var naturezaAtual = findNatureByName(p.natureza);
+
+  var statsRows = STAGE_STATS.map(function(stat){
+    var stage = p.estagios[stat]||0;
+    return '<tr><td>'+esc(stageLblName(stat))+'</td>'+
+      '<td>'+(stage>0?'+':'')+stage+'</td>'+
+      '<td>'+effectiveStat(t,p,stat)+'</td></tr>';
+  }).join('');
+  /* Precisão/Evasão não têm um "Efetivo" numérico igual aos outros 5 (Cap.
+     15.1 -- elas mexem direto na % de acerto na hora da rolagem), então só
+     aparecem na tabela quando o Estágio é diferente de 0. */
+  var extraRows = ['precisao','evasao'].map(function(stat){
+    var stage = p.estagios[stat]||0;
+    if(stage===0) return '';
+    return '<tr><td>'+esc(stageLblName(stat))+'</td><td>'+(stage>0?'+':'')+stage+'</td><td>—</td></tr>';
+  }).join('');
+
+  var movesHTML = (p.moves||[]).filter(function(m){ return m.nome; }).map(function(m){
+    return '<li><span>'+esc(m.nome)+'</span><span class="muted">'+(m.ppAtual||0)+'/'+(m.pp||0)+' PP</span></li>';
+  }).join('');
+
+  var posStyle = SESSION.arenaStatsPos ? ' style="left:'+SESSION.arenaStatsPos.x+'px; top:'+SESSION.arenaStatsPos.y+'px; right:auto;"' : '';
+
+  return '<div class="arena-stats-panel"'+posStyle+'>'+
+    '<div class="arena-stats-head" onpointerdown="DT.arenaStatsDragStart(event)">'+
+      sprite+
+      '<div class="arena-stats-head-name"><strong>'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</strong>'+
+        '<span class="muted" style="font-size:.66rem;">'+esc(t.name)+'</span></div>'+
+      '<button type="button" class="arena-stats-close" title="Fechar" onclick="DT.arenaStatsClose()">✕</button>'+
+    '</div>'+
+    '<div class="arena-stats-body">'+
+      typeTags(p)+
+      '<div style="margin-top:6px;">PV: <strong>'+cur+'/'+max+'</strong>'+(cur<=0?' <span class="badge status-bad">Desmaiado</span>':'')+'</div>'+
+      (p.status ? '<div>Condição: <span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span></div>' : '')+
+      (p.confuso ? '<div>Confuso: <span class="badge status-bad">Sim</span></div>' : '')+
+      '<div style="margin-top:6px;">Habilidade: '+(p.habilidade?('<strong>'+esc(p.habilidade)+'</strong>'):'<span class="muted">Nenhuma</span>')+
+        (habAtual && habAtual.efeito ? '<div class="muted" style="font-size:.68rem;">'+esc(habAtual.efeito)+'</div>' : '')+'</div>'+
+      '<div>Natureza: '+(naturezaAtual ? esc(naturezaAtual.nome) : '<span class="muted">Nenhuma</span>')+'</div>'+
+      '<table class="arena-stats-table"><thead><tr><th>Atributo</th><th>Estágio</th><th>Efetivo</th></tr></thead><tbody>'+statsRows+extraRows+'</tbody></table>'+
+      (movesHTML ? '<ul class="arena-stats-moves">'+movesHTML+'</ul>' : '')+
+    '</div>'+
   '</div>';
 }
 /* A Equipe ativa de TODO MUNDO aparece pra TODO MUNDO na Arena, jogador
