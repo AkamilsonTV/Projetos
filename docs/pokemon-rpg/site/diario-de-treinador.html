@@ -240,6 +240,7 @@
   .arena-slot-selectable:hover{ outline:2px solid var(--accent); outline-offset:3px; }
   .arena-slot-attacking{ border-radius:var(--radius-sm); outline:2px solid var(--accent); outline-offset:3px; }
   .arena-slot-target-picked{ border-radius:var(--radius-sm); outline:2px solid var(--danger); outline-offset:3px; }
+  .arena-slot-waiting{ opacity:.55; }
   .arena-slot-turn{ position:relative; }
   .arena-turn-badge{ position:absolute; top:-8px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--accent-ink); font-size:.6rem; font-weight:700; padding:1px 6px; border-radius:var(--radius-pill); white-space:nowrap; }
   @keyframes arena-target-pulse{ 0%,100%{ outline-color:var(--accent); } 50%{ outline-color:transparent; } }
@@ -3459,6 +3460,12 @@ var MOVE_EFFECTS = {
   'Searing Shot':{ailment:'queimadura',chance:30},
   'Relic Song':{ailment:'sono',chance:10},
   'Bolt Strike':{ailment:'paralisia',chance:20},
+  /* Rest não vem do fetch automático (a PokeAPI não marca ele com nenhum
+     ailment -- é "categoria unique" lá, cura+dorme junto): sempre 100%,
+     porque é o próprio efeito principal do Movimento, não um efeito
+     colateral de dano. resolveMoveUse limpa a Condição anterior antes de
+     aplicar essa (Rest também cura qualquer Condição que já tinha). */
+  'Rest':{ailment:'sono',chance:100},
   'Blue Flare':{ailment:'queimadura',chance:20},
   'Freeze Shock':{ailment:'paralisia',chance:30},
   'Ice Burn':{ailment:'queimadura',chance:30},
@@ -3652,6 +3659,46 @@ var MOVE_STAT_EFFECTS = {
   'Work Up':{changes:[{stat:'atk',change:1},{stat:'spa',change:1}],chance:100},
   'Zippy Zap':{changes:[{stat:'evasao',change:1}],chance:100,self:true}
 };
+/* ---- Recuo (dano no próprio usuário, % do dano CAUSADO no alvo) e Dreno
+   (cura no próprio usuário, também % do dano causado) -- dado oficial
+   (meta.drain da PokeAPI: negativo = recuo, positivo = dreno), Cap. 25.
+   Só os 11+11 Movimentos que realmente têm um dos dois; os demais nunca
+   entram aqui. Struggle e Clangorous Soul (custo fixo de PV só por USAR
+   o Movimento, não por dano causado) ficam de fora -- mecânica diferente,
+   rara, e Struggle nem é selecionável no sistema (sem Struggle
+   automático, Cap. 8.6). ---- */
+var MOVE_RECOIL = {
+  'Brave Bird':33,'Double-Edge':33,'Flare Blitz':33,'Head Charge':25,'Head Smash':50,
+  'Light of Ruin':50,'Submission':25,'Take Down':25,'Volt Tackle':33,'Wild Charge':25,'Wood Hammer':33
+};
+var MOVE_DRAIN = {
+  'Absorb':50,'Bouncy Bubble':100,'Drain Punch':50,'Draining Kiss':75,'Dream Eater':50,
+  'Giga Drain':50,'Horn Leech':50,'Leech Life':50,'Mega Drain':50,'Oblivion Wing':75,'Parabolic Charge':50
+};
+/* ---- Movimentos de cura (Cap. 25): curam quem for o ALVO resolvido do
+   Movimento (o próprio usuário pra Recover/Synthesis/Roost..., um aliado
+   escolhido pra Heal Pulse) em X% do PV Máximo DELE -- dado oficial
+   (meta.healing da PokeAPI). Rest é um caso à parte: cura 100% (PV
+   cheio) E aplica sono (Cap. 8.6.1/21), já tratado direto em
+   MOVE_EFFECTS/resolveMoveUse -- por isso ele também aparece aqui, com
+   100. Jungle Healing e Purify (efeito duplo, cura+cura de Condição de
+   quem não é o alvo do dano) ficam de fora por enquanto -- regra em
+   aberto, pra não arriscar um efeito errado. ---- */
+var MOVE_HEAL = {
+  'Floral Healing':50,'Heal Order':50,'Heal Pulse':50,'Life Dew':25,'Milk Drink':50,
+  'Moonlight':50,'Morning Sun':50,'Recover':50,'Rest':100,'Roost':50,'Shore Up':50,
+  'Slack Off':50,'Soft-Boiled':50,'Swallow':25,'Synthesis':50
+};
+/* ---- Movimentos que trocam o usuário de campo DEPOIS de resolver o
+   próprio efeito (Cap. 25) -- a PokeAPI não marca isso em nenhum campo
+   (U-turn/Volt Switch têm category:'damage', igual qualquer golpe comum),
+   então é lista curada à mão, mesmo padrão de PUNCH_MOVES/BITE_MOVES/
+   SOUND_MOVES. Só entra quem troca de verdade OFERECENDO escolha (o
+   Treinador escolhe quem entra, igual uma troca manual) -- Baton Pass fica
+   de fora por enquanto: ele também passa os Estágios pro que entrar em vez
+   de resetar (resetStages), mecânica diferente de qualquer troca hoje no
+   sistema, em aberto. ---- */
+var SWITCH_OUT_MOVES = { 'U-turn':1, 'Volt Switch':1, 'Parting Shot':1 };
 /* ---- Categoria de alvo de cada Movimento (self/aliado/inimigo/área) ----
    Gerada a partir do CSV oficial do PokeAPI (moves.csv target_id + move_targets.csv),
    mesma fonte de SPECIES_DEX/MOVES_DEX/LEARNSETS/TYPE_CHART/MOVE_EFFECTS. ---- */
@@ -5486,6 +5533,7 @@ var stateDocRef = null;
 /* =================== SESSÃO LOCAL (só deste navegador) =================== */
 var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', expanded:{}, confirmRemovePoke:null, confirmRemoveTrainer:null,
   arenaAttacker:null, arenaAction:null, arenaMoveIdx:null, arenaAttackTarget:null, arenaItemIdx:null, arenaConfusionCheck:null,
+  arenaForcedSwitch:false,
   showRollOverlay:false };
 try{
   var savedSession = JSON.parse(localStorage.getItem('dt_session')||'null');
@@ -5619,6 +5667,11 @@ function migrateState(){
      Pokémon em campo (Mean Look, arena de combate, etc.), decidido pelo
      Mestre; sem isso definido, a fuga rola 1d10 normalmente. */
   if(STATE.arena.fugaTravada===undefined) STATE.arena.fugaTravada = false;
+  /* Vitória automática (Cap. 25/59): id do Time que venceu quando o outro
+     lado inteiro fica sem nenhum Pokémon vivo (nem em campo, nem sobrando
+     na Equipe ativa pra entrar) -- null enquanto a batalha continua.
+     Calculado sozinho em arenaCheckVictory(), nunca escolhido à mão. */
+  if(STATE.arena.vencedor===undefined) STATE.arena.vencedor = null;
   /* Espectadores: Treinadores que entraram na Arena só pra assistir, sem
      trazer Pokémon nenhum -- não interfere em nada da batalha, é só um
      "quem está de olho" visível pra mesa toda. */
@@ -6066,6 +6119,12 @@ function applyAttackResult(defTrainer, defPoke, result, attPoke){
     defPoke.currentHP = clampInt(cur - result.dano, 0, max);
     if(defPoke.currentHP<=0){ info.fainted = true; resetStages(defPoke); }
   }
+  /* Cap. 22: "Movimentos específicos podem descongelar automaticamente" --
+     na prática, qualquer golpe de Fogo que acerte de verdade (com dano)
+     descongela quem estava Congelado, oficial e sem exceção por nome. */
+  if(result.dano>0 && result.tipo==='Fogo' && defPoke.status==='congelamento'){
+    defPoke.status = ''; defPoke.statusTurns = 0;
+  }
   /* Shield Dust só bloqueia efeito colateral vindo de um golpe de OUTRO
      Pokémon -- nunca o próprio (ex.: usar Rest nela mesma continua
      fazendo ela dormir de propósito). */
@@ -6295,6 +6354,51 @@ function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPok
   }
 }
 function stageLblName(stat){ return {atk:'Ataque',def:'Defesa',spa:'Ataque Especial',spd:'Defesa Especial',spe:'Velocidade'}[stat] || stat; }
+/* Recuo/Dreno/Cura pós-golpe (Cap. 25, ver MOVE_RECOIL/MOVE_DRAIN/MOVE_HEAL
+   acima) -- roda depois de applyAttackResult (dano já aplicado no alvo),
+   pra Recuo/Dreno serem calculados em cima do result.dano de verdade
+   causado, e Cura em cima do PV Máximo de quem for mesmo o alvo resolvido
+   do golpe (defPoke -- o próprio usuário nos golpes 'self', um aliado
+   escolhido no Heal Pulse). Liquid Ooze (Habilidade real, ainda sem
+   nenhum gatilho no motor): dreno vira dano pro ATACANTE, na mesma
+   quantidade que ia curar, em vez de curar o defensor. */
+function applyMoveSelfHealEffects(attTrainer, attPoke, defTrainer, defPoke, move, result){
+  if(!result.hit) return;
+  var attNome = pokeNome(attPoke), defNome = pokeNome(defPoke);
+  if(result.dano>0){
+    var recoilPct = MOVE_RECOIL[move.nome];
+    if(recoilPct){
+      var attMax = hpMax(attTrainer, attPoke);
+      var attCur = (attPoke.currentHP===null||attPoke.currentHP===undefined) ? attMax : attPoke.currentHP;
+      var recoilDmg = Math.max(1, Math.ceil(result.dano*recoilPct/100));
+      attPoke.currentHP = clampInt(attCur-recoilDmg, 0, attMax);
+      if(attPoke.currentHP<=0) resetStages(attPoke);
+      arenaLog(esc(attNome)+' sofreu '+recoilDmg+' de dano de recuo com '+esc(move.nome)+'.');
+    }
+    var drainPct = MOVE_DRAIN[move.nome];
+    if(drainPct){
+      var drainAmt = Math.max(1, Math.ceil(result.dano*drainPct/100));
+      var attMax2 = hpMax(attTrainer, attPoke);
+      var attCur2 = (attPoke.currentHP===null||attPoke.currentHP===undefined) ? attMax2 : attPoke.currentHP;
+      if(defPoke.habilidade==='Liquid Ooze'){
+        attPoke.currentHP = clampInt(attCur2-drainAmt, 0, attMax2);
+        if(attPoke.currentHP<=0) resetStages(attPoke);
+        arenaLog(esc(defNome)+' tem Liquid Ooze — '+esc(attNome)+' sofreu '+drainAmt+' de dano em vez de curar com '+esc(move.nome)+'.');
+      } else {
+        attPoke.currentHP = clampInt(attCur2+drainAmt, 0, attMax2);
+        arenaLog(esc(attNome)+' recuperou '+drainAmt+' PV com '+esc(move.nome)+'.');
+      }
+    }
+  }
+  var healPct = MOVE_HEAL[move.nome];
+  if(healPct){
+    var defMax = hpMax(defTrainer, defPoke);
+    var defCur = (defPoke.currentHP===null||defPoke.currentHP===undefined) ? defMax : defPoke.currentHP;
+    var healAmt = Math.max(1, Math.ceil(defMax*healPct/100));
+    defPoke.currentHP = clampInt(defCur+healAmt, 0, defMax);
+    arenaLog(esc(defNome)+' recuperou '+healAmt+' PV com '+esc(move.nome)+'.');
+  }
+}
 function resolveMoveUse(attTrainer, attPoke, move, targets){
   var forced = null;
   return targets.map(function(tgt){
@@ -6308,8 +6412,21 @@ function resolveMoveUse(attTrainer, attPoke, move, targets){
         estagioD10b: (result.estagioEfeito && result.estagioEfeito.d10b!==null && result.estagioEfeito.d10b!==undefined) ? result.estagioEfeito.d10b : undefined
       };
     }
+    /* Rest cura qualquer Condição anterior antes de aplicar o próprio sono
+       -- sem isso, o "if(!defPoke.status)" de applyAttackResult bloquearia
+       o sono dele mesmo (ex.: usar Rest já Envenenado deve limpar o
+       Veneno e dormir, não ficar preso no Veneno). */
+    if(move.nome==='Rest') { tgt.poke.status=''; tgt.poke.statusTurns=0; }
     var info = applyAttackResult(tgt.trainer, tgt.poke, result, attPoke);
     applyAbilityHooksAfterHit(attTrainer, attPoke, move, tgt.trainer, tgt.poke, result, info);
+    applyMoveSelfHealEffects(attTrainer, attPoke, tgt.trainer, tgt.poke, move, result);
+    /* Recuo/Liquid Ooze podem ter desmaiado o próprio ATACANTE -- info só
+       carrega o desfecho do alvo (defPoke), então isso fica num campo à
+       parte pra quem chama poder perceber (Cap. 25/59: pedir próximo
+       Pokémon também quando quem desmaiar for quem atacou). */
+    var attMaxNow = hpMax(attTrainer, attPoke);
+    var attCurNow = (attPoke.currentHP===null||attPoke.currentHP===undefined) ? attMaxNow : attPoke.currentHP;
+    info.attackerFainted = attCurNow<=0;
     return { entry: tgt.entry, trainer: tgt.trainer, poke: tgt.poke, result: result, info: info };
   });
 }
@@ -6630,6 +6747,65 @@ function arenaAdvanceTurn(entryId){
     STATE.arena.round.currentIdx++;
     advanceRoundPastFainted(STATE.arena.round);
   }
+  arenaCheckVictory(); /* o dano de status do fim de turno pode ter sido o golpe final (Cap. 25/59) */
+}
+/* Cap. 20.4/21/22 — testado toda vez que um Pokémon com Paralisia, Sono ou
+   Congelamento é selecionado pra agir, ANTES do menu (e antes até da
+   Confusão -- Cap. 24 resolve nessa ordem: Paralisia/Sono/Congelamento
+   primeiro, Confusão depois). Só uma dessas três roda por vez -- são
+   Condições Principais e nunca coexistem entre si (Cap. 20). Devolve null
+   se nenhuma delas se aplica (Queimadura/Veneno/Veneno Grave não impedem
+   agir, só doem no fim do turno -- já automático em
+   applyEndOfTurnStatusAndLog).
+     - Paralisia (20.4): 1d6, 1-2 perde a ação, 3-6 age normalmente.
+     - Congelamento (22): 1d6, 1-4 continua congelado (perde a ação), 5-6
+       descongela e já pode agir nesse mesmo turno.
+     - Sono (21): 1º turno é obrigatório, sem teste, sempre perde a ação.
+       Do 2º ao 3º turno, 1d6 no início da ação: 5-6 acorda (pode agir),
+       1-4 continua dormindo. Se o 3º turno também falhar, o limite máximo
+       (3 turnos) já foi atingido -- acorda garantido na próxima seleção,
+       sem precisar rolar de novo. Contagem de turno reaproveita
+       p.statusTurns (o mesmo campo do contador de Veneno Grave -- nunca
+       precisa dos dois ao mesmo tempo, são Condições Principais
+       diferentes). */
+function arenaStatusActionPreCheck(entry){
+  var t = findTrainer(entry.trainerId);
+  var p = t && getPoke(entry.trainerId, entry.pokemonId);
+  if(!t || !p) return null;
+  var nome = p.apelido||p.especie||'Pokémon';
+  if(p.status==='paralisia'){
+    var d6 = rollDie(6);
+    return { tipo:'paralisia', nome:nome, trainerNome:t.name, d6:d6, lostAction: d6<=2 };
+  }
+  if(p.status==='congelamento'){
+    var d6b = rollDie(6);
+    var descongelou = d6b>=5;
+    if(descongelou){ p.status=''; p.statusTurns=0; }
+    return { tipo:'congelamento', nome:nome, trainerNome:t.name, d6:d6b, lostAction:!descongelou, descongelou:descongelou };
+  }
+  if(p.status==='sono'){
+    var turno = (p.statusTurns||0) + 1;
+    var result = { tipo:'sono', nome:nome, trainerNome:t.name, turno:turno, d6:null, lostAction:true, acordou:false };
+    if(turno===1){
+      /* 1º turno obrigatório, sem teste. */
+    } else if(turno<=3){
+      var d6c = rollDie(6);
+      result.d6 = d6c;
+      if(d6c>=5) result.acordou = true;
+    } else {
+      /* já passou do 3º turno testado e continuava dormindo -- acorda
+         garantido agora (Cap. 21). */
+      result.acordou = true;
+    }
+    if(result.acordou){
+      result.lostAction = false;
+      p.status = ''; p.statusTurns = 0;
+    } else {
+      p.statusTurns = turno;
+    }
+    return result;
+  }
+  return null;
 }
 /* Cap. 23 — testado toda vez que um Pokémon Confuso é selecionado pra agir,
    ANTES do menu de ação aparecer: 1d6 pra tentar eliminar a Confusão (5-6
@@ -7376,11 +7552,65 @@ function arenaResetActionState(){
   SESSION.arenaAttackTarget = null;
   SESSION.arenaItemIdx = null;
   SESSION.arenaItemTargetId = null;
+  SESSION.arenaForcedSwitch = false;
+}
+/* Quem dá pra escolher pra trocar no lugar de quem está em campo agora:
+   outro Pokémon vivo da Equipe ativa DESSE Treinador, que ainda não seja
+   outra entrada já em campo (ex.: batalha em dupla). Mesma checagem usada
+   tanto pro painel de troca (voluntária ou forçada por U-turn/Volt Switch/
+   Parting Shot) quanto pra decidir, logo depois de um golpe desses
+   resolver, se dá pra abrir esse painel ou se é melhor só passar a vez
+   normal (Cap. 25/59: sem ninguém pra entrar, não tem o que escolher). */
+function arenaHasSwapCandidate(trainer, currentPokeId){
+  return (trainer.pokemons||[]).some(function(p){
+    if(p.id===currentPokeId) return false;
+    var jaEmCampo = (STATE.arena.entries||[]).some(function(x){ return x.trainerId===trainer.id && x.pokemonId===p.id; });
+    if(jaEmCampo) return false;
+    var max = hpMax(trainer,p);
+    var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+    return cur>0;
+  });
+}
+/* Vitória automática (Cap. 25/59): sempre que um Pokémon vai a 0 PV dentro
+   da Arena (dano recebido, recuo/Liquid Ooze/Rough Skin no atacante, dano
+   de status por turno, dano de Confusão), chama isso depois -- confere se
+   sobrou algum Treinador, de algum Time, com QUALQUER Pokémon ainda vivo
+   na Equipe ativa (em campo ou não). Só um Time sobrando vivo = vitória na
+   hora pra ele, sem precisar do Mestre apertar nada; log próprio, e
+   arenaSelectActor passa a recusar qualquer ação nova depois disso (a
+   batalha acabou). Idempotente -- com vencedor já decidido, nem recalcula. */
+function arenaCheckVictory(){
+  if(!STATE.arena || STATE.arena.vencedor) return;
+  var teams = STATE.arena.teams || [];
+  if(teams.length<2) return; /* só faz sentido decidir vencedor com 2+ Times na mesa */
+  var teamOfTrainer = {};
+  (STATE.arena.entries||[]).forEach(function(e){ teamOfTrainer[e.trainerId] = e.teamId; });
+  var teamsAlive = {};
+  Object.keys(teamOfTrainer).forEach(function(trainerId){
+    var t = findTrainer(trainerId);
+    if(!t) return;
+    var algumVivo = (t.pokemons||[]).some(function(p){
+      var max = hpMax(t,p);
+      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+      return cur>0;
+    });
+    if(algumVivo) teamsAlive[teamOfTrainer[trainerId]] = true;
+  });
+  var aliveTeamIds = Object.keys(teamsAlive);
+  if(aliveTeamIds.length===1){
+    var winnerId = aliveTeamIds[0];
+    var winnerTeam = teams.find(function(tm){ return tm.id===winnerId; });
+    STATE.arena.vencedor = winnerId;
+    if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+    STATE.arena.log.push({ ts: Date.now(), text: '🏆 <strong>'+esc(winnerTeam?winnerTeam.nome:'Time')+'</strong> venceu a batalha — não sobrou nenhum Pokémon vivo do outro lado!' });
+    if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  }
 }
 /* Selecionar um Pokémon pra agir: revela sozinho se preciso, testa
    Confusão (Cap. 23) antes de mais nada — se perder a ação, o turno já
    acaba aqui, sem abrir o menu. */
 DT.arenaSelectActor = function(entryId){
+  if(STATE.arena && STATE.arena.vencedor) return; /* batalha já acabou (Cap. 25/59) -- ninguém age mais até o Mestre limpar */
   var e = findArenaEntry(entryId);
   if(!e) return;
   var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
@@ -7392,8 +7622,54 @@ DT.arenaSelectActor = function(entryId){
   var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
   if(cur<=0) return; /* desmaiado, não pode agir */
 
+  /* Trava de turno: com uma Rodada de Iniciativa ativa, só quem está com a
+     vez (currentRoundEntryId) pode agir -- nem fora de ordem, nem de novo
+     depois de já ter agido nessa rodada (o índice já andou pra frente em
+     arenaAdvanceTurn assim que ele agiu). Sem rodada ativa (Mestre ainda
+     não clicou "Iniciar Rodada"), continua livre, igual antes. O Mestre
+     sempre pode agir por qualquer um fora de ordem -- é quem adjudica
+     Prioridade (Cap. 17) na mesa e corrige a mesa quando precisa. */
+  if(SESSION.role!=='gm' && STATE.arena.round && currentRoundEntryId()!==entryId){
+    SESSION.error = 'Ainda não é a vez desse Pokémon — espere a fila de Iniciativa chegar nele.';
+    render();
+    return;
+  }
+
   if(!e.revelado) e.revelado = true;
   if(!p.arenaRevelado) p.arenaRevelado = true; /* fica visível pra sempre a partir daqui */
+
+  /* Paralisia/Sono/Congelamento (Cap. 20.4/21/22) resolvem ANTES da
+     Confusão, e do mesmo jeito: se perder a ação, o turno já encerra
+     aqui, sem chegar a abrir o menu. */
+  var statusCheck = arenaStatusActionPreCheck(e);
+  if(statusCheck){
+    var statusLine;
+    if(statusCheck.tipo==='paralisia'){
+      statusLine = 'está Paralisado — 1d6 pra agir: '+statusCheck.d6+(statusCheck.lostAction?' — perde a ação':' — age normalmente');
+    } else if(statusCheck.tipo==='congelamento'){
+      statusLine = 'está Congelado — 1d6 pra descongelar: '+statusCheck.d6+(statusCheck.descongelou?' — descongelou! Pode agir':' — continua congelado');
+    } else { /* sono */
+      if(statusCheck.turno===1){
+        statusLine = 'está Dormindo (1º turno, obrigatório) — perde a ação';
+      } else if(statusCheck.d6!==null){
+        statusLine = 'está Dormindo (turno '+statusCheck.turno+') — 1d6 pra acordar: '+statusCheck.d6+(statusCheck.acordou?' — acordou! Pode agir':' — continua dormindo');
+      } else {
+        statusLine = 'estava Dormindo — acordou automaticamente (já eram 3 turnos)';
+      }
+    }
+    var quemStatus = statusCheck.nome+' ('+statusCheck.trainerNome+')';
+    SESSION.notice = quemStatus+' '+statusLine;
+    if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+    STATE.arena.log.push({ ts: Date.now(), text: esc(quemStatus)+' '+esc(statusLine) });
+    if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+
+    if(statusCheck.lostAction){
+      arenaAdvanceTurn(e.id); /* perdeu a ação -- o turno dele já encerra aqui */
+      arenaResetActionState();
+      mutate();
+      return;
+    }
+  }
 
   var confCheck = arenaConfusionPreCheck(e);
   if(confCheck){
@@ -7426,6 +7702,38 @@ DT.arenaSelectActor = function(entryId){
 DT.arenaCancelAction = function(){
   arenaResetActionState();
   render();
+};
+/* Desmaiou em campo, mas ainda sobra alguém na Equipe ativa (Cap. 25/59):
+   clicar no próprio slot desmaiado (dono ou Mestre) já abre o painel de
+   troca igual um "Trocar" manual -- reaproveita esse mesmo painel/fluxo
+   (arenaSwapIn resolve de vez). Sem candidato nenhum não tem o que fazer
+   aqui -- é o outro Time que já venceu, arenaCheckVictory cuida disso
+   sozinho assim que ele caiu. */
+DT.arenaSelectFainted = function(entryId){
+  if(STATE.arena && STATE.arena.vencedor) return;
+  var e = findArenaEntry(entryId);
+  if(!e) return;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var t = findTrainer(e.trainerId);
+  var p = t && getPoke(e.trainerId, e.pokemonId);
+  if(!t || !p) return;
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+  if(cur>0) return; /* só faz sentido pra quem já desmaiou -- vivo usa arenaSelectActor normal */
+  if(!arenaHasSwapCandidate(t, p.id)) return;
+  SESSION.arenaAttacker = entryId;
+  SESSION.arenaAction = 'trocar';
+  SESSION.arenaForcedSwitch = false; /* pode cancelar -- diferente da troca no meio de um U-turn, aqui não tem ação pendente */
+  render();
+};
+/* O Mestre limpa o banner de vitória quando quiser seguir de novo (nova
+   batalha, revanche, o que for) -- não mexe em Times/Entradas/Rodada
+   sozinho, só reabre a possibilidade de agir (Cap. 25/59). */
+DT.arenaClearVictory = function(){
+  if(SESSION.role!=='gm' || !STATE.arena) return;
+  STATE.arena.vencedor = null;
+  mutate();
 };
 DT.arenaChooseAction = function(kind){
   if(!SESSION.arenaAttacker) return;
@@ -7608,6 +7916,7 @@ DT.arenaSwapIn = function(newPokemonId){
     round.currentIdx++;
     advanceRoundPastFainted(round);
   }
+  arenaCheckVictory(); /* o dano de status ao sair (Queimadura/Veneno) pode ter sido o golpe final nele -- Cap. 25/59 */
   arenaResetActionState();
   mutate();
 };
@@ -7731,6 +8040,24 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds){
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   STATE.arena.log.push({ ts: STATE.arena.lastRoll.ts, text: rollLogLine(STATE.arena.lastRoll) });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+
+  /* Movimento de trocar pós-ataque (U-turn/Volt Switch/Parting Shot, Cap.
+     25): se o golpe resolveu de verdade (o atacante não desmaiou nele
+     mesmo -- recuo, Liquid Ooze, Rough Skin/Aftermath no contato) E ainda
+     sobra alguém na Equipe ativa pra entrar no lugar, a troca É a
+     continuação obrigatória dessa mesma ação -- abre o painel de troca
+     igual uma troca manual, sem passar a vez ainda (arenaSwapIn cuida do
+     dano de status de fim de turno E de avançar a Rodada quando o
+     Treinador escolher quem entra). Sem candidato (ou o atacante já
+     desmaiou), não tem o que trocar -- passa a vez normal, do jeito de
+     sempre. */
+  arenaCheckVictory(); /* o dano desse golpe pode ter sido o que faltava pro Time inimigo inteiro (Cap. 25/59), antes até de decidir se troca */
+  if(SWITCH_OUT_MOVES[move.nome] && !perTarget[0].info.attackerFainted && arenaHasSwapCandidate(attTrainer, attPoke.id)){
+    SESSION.arenaAction = 'trocar';
+    SESSION.arenaForcedSwitch = true;
+    mutate();
+    return;
+  }
 
   /* arenaAdvanceTurn já aplica o dano de status do PRÓPRIO atacante (Cap.
      20, "sempre depois que o Pokémon atingido agir") e, se é a vez dele na
@@ -8351,6 +8678,18 @@ DT.toggleArena = function(){
   SESSION.showArena = !SESSION.showArena;
   render();
 };
+/* Banner de vitória (Cap. 25/59): STATE.arena.vencedor só é preenchido por
+   arenaCheckVictory sozinho (nunca à mão) -- some quando o Mestre limpar
+   (DT.arenaClearVictory), sem precisar zerar Times/Entradas/Rodada
+   nenhuma, pra ele decidir com calma o que vem depois. */
+function arenaVictoryHTML(){
+  if(!STATE.arena || !STATE.arena.vencedor) return '';
+  var team = (STATE.arena.teams||[]).find(function(t){ return t.id===STATE.arena.vencedor; });
+  return '<div class="card" style="border-color:#d4a017;"><div class="card-body" style="text-align:center;">'+
+    '<p style="font-size:1.1rem; margin:0 0 8px;">🏆 <strong>'+esc(team?team.nome:'Time')+'</strong> venceu a batalha!</p>'+
+    (SESSION.role==='gm' ? '<button class="btn-sm" onclick="DT.arenaClearVictory()">Limpar e continuar</button>' : '<p class="muted" style="font-size:.8rem;">O Mestre decide o que vem a seguir.</p>')+
+  '</div></div>';
+}
 function arenaScreen(){
   var isGM = SESSION.role==='gm';
   var out = '<div class="btn-row" style="margin-bottom:14px;"><button class="btn-sm" onclick="DT.toggleArena()">← Voltar</button></div>';
@@ -8358,6 +8697,7 @@ function arenaScreen(){
     '<p class="muted" style="font-size:.82rem;">Arraste um Pokémon (pelo ⠿) da Equipe ativa pra dentro de um Time. Enquanto ele não vai pro Time nenhuma vez, os outros Treinadores só veem uma Pokébola no lugar dele lá na Equipe ativa — a partir do momento que entra num Time, ele aparece pra mesa inteira, ali e dali em diante. Isso é um primeiro rascunho — me conta o que ajustar.</p>'+
   '</div></div>';
   out += arenaSpectatorHTML();
+  out += arenaVictoryHTML();
   out += arenaInitiativeHTML();
   out += arenaTeamsHTML(isGM);
   out += arenaActionPanelHTML();
@@ -8546,19 +8886,15 @@ function arenaActionPanelHTML(){
   }
 
   if(SESSION.arenaAction==='trocar'){
-    var hasSwapCandidate = (attTrainer.pokemons||[]).some(function(p){
-      if(p.id===attPoke.id) return false;
-      var jaEmCampo = (STATE.arena.entries||[]).some(function(x){ return x.trainerId===attTrainer.id && x.pokemonId===p.id; });
-      if(jaEmCampo) return false;
-      var max = hpMax(attTrainer,p);
-      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
-      return cur>0;
-    });
+    var hasSwapCandidate = arenaHasSwapCandidate(attTrainer, attPoke.id);
+    var forced = !!SESSION.arenaForcedSwitch;
     return '<div class="card arena-attack-panel"><div class="card-body">'+
-      '<p>🔁 Trocar <strong>'+esc(name)+'</strong> — '+(hasSwapCandidate
+      '<p>🔁 '+(forced
+        ? '<strong>'+esc(name)+'</strong> usou um Movimento que troca de campo depois de agir — '
+        : 'Trocar <strong>'+esc(name)+'</strong> — ')+(hasSwapCandidate
         ? 'clique em outro Pokémon da <strong>Equipe ativa</strong> de '+esc(attTrainer.name)+' ali embaixo pra colocar ele no lugar.'
         : 'não sobrou nenhum outro Pokémon disponível na Equipe ativa pra entrar no lugar.')+'</p>'+
-      cancelBtn+
+      (forced ? '' : cancelBtn)+
     '</div></div>';
   }
 
@@ -8626,6 +8962,11 @@ function arenaEntryHTML(e){
   var pct = max>0 ? Math.round(cur/max*100) : 0;
   var fainted = cur<=0;
   var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'');
+  /* Desmaiou, mas ainda sobra alguém pra entrar no lugar (Cap. 25/59): o
+     próprio slot desmaiado vira o convite pra escolher o próximo, sem
+     precisar ir pelo menu Atacar/Item/Trocar/Fugir (que não faz sentido
+     pra quem já caiu). */
+  var faintedSwappable = fainted && canControl && !(STATE.arena && STATE.arena.vencedor) && arenaHasSwapCandidate(t, p.id);
 
   /* Fluxo de ação, tudo por clique direto no card (sem botão "Usar" nem
      "Agir" separados):
@@ -8660,6 +9001,11 @@ function arenaEntryHTML(e){
     }
   }
 
+  var isTurnNow = e.id===currentRoundEntryId();
+  /* Mesma trava de DT.arenaSelectActor: sem rodada ativa, livre; com
+     rodada ativa, só quem está com a vez fica clicável pro Treinador --
+     o Mestre sempre vê tudo clicável, fora de ordem inclusive. */
+  var podeAgirAgora = isGM || !STATE.arena.round || isTurnNow;
   if(e.id===SESSION.arenaAttackTarget){
     slotClass += ' arena-slot-target-picked';
   } else if(targetable){
@@ -8667,11 +9013,15 @@ function arenaEntryHTML(e){
     slotClick = ' onclick="DT.arenaSelectTarget(\''+e.id+'\')"';
   } else if(e.id===actingNow){
     slotClass += ' arena-slot-attacking';
-  } else if(!actingNow && canControl && !fainted){
+  } else if(!actingNow && canControl && !fainted && podeAgirAgora){
     slotClass += ' arena-slot-selectable';
     slotClick = ' onclick="DT.arenaSelectActor(\''+e.id+'\')"';
+  } else if(!actingNow && canControl && !fainted && !podeAgirAgora){
+    slotClass += ' arena-slot-waiting';
+  } else if(!actingNow && faintedSwappable){
+    slotClass += ' arena-slot-selectable arena-slot-fainted-swap';
+    slotClick = ' onclick="DT.arenaSelectFainted(\''+e.id+'\')"';
   }
-  var isTurnNow = e.id===currentRoundEntryId();
   if(isTurnNow) slotClass += ' arena-slot-turn';
 
   /* Enquanto o card inteiro é o alvo do clique (agir ou escolher alvo),
@@ -8688,6 +9038,7 @@ function arenaEntryHTML(e){
     '<div class="hp-bar'+hpBarTier(pct)+'" style="width:100%;"><i style="width:'+pct+'%"></i></div>'+
     sprite+
     (isTurnNow ? '<div class="arena-turn-badge">▶ Turno</div>' : '')+
+    (faintedSwappable ? '<div class="arena-turn-badge" style="background:#7a1f1f;">😵 Escolher próximo</div>' : '')+
     '<div class="arena-slot-name">'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</div>'+
     '<span class="muted" style="font-size:.62rem;">'+esc(t.name)+'</span>'+
     (icons ? '<div class="arena-icons">'+icons+'</div>' : '')+
