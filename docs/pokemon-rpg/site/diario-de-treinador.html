@@ -5676,18 +5676,17 @@ function migrateState(){
      trazer Pokémon nenhum -- não interfere em nada da batalha, é só um
      "quem está de olho" visível pra mesa toda. */
   if(!Array.isArray(STATE.arena.spectators)) STATE.arena.spectators = [];
-  /* Um Pokémon dentro de um Time SEMPRE aparece pra todo mundo -- a
-     Pokébola só existe na Equipe ativa, até ele ir pro Time uma vez
-     (arenaRevelado, acima). Fichas salvas de antes dessa troca podiam ter
-     entrada com revelado:false (Time escondido até agir) -- essa migração
-     acerta as duas pontas: a entrada já existe, então já foi pro Time. */
-  (STATE.arena.entries||[]).forEach(function(e){
-    if(!e.revelado){
-      e.revelado = true;
-      var p = getPoke(e.trainerId, e.pokemonId);
-      if(p) p.arenaRevelado = true;
-    }
-  });
+  /* Fluxo de entrada guiado (Cap. 17/55): quem já entrou na Arena e
+     escolheu um Time, mas ainda não soltou nenhum Pokémon (nem revelou) --
+     {trainerId, teamId}, uma linha por Treinador. Uma entrada de combate
+     (STATE.arena.entries) só nasce quando ele solta de verdade
+     (DT.arenaPickLead), e só fica visível pros outros quando o Mestre
+     revela (DT.arenaRevelarTodos) -- por isso entrada com revelado:false
+     agora é um estado válido e esperado, não sobra de migração nenhuma;
+     bem diferente de antes (Cap. 9/12), quando ir pro Time já revelava na
+     hora sempre. */
+  if(!Array.isArray(STATE.arena.presentes)) STATE.arena.presentes = [];
+  if(STATE.arena.solturaAberta===undefined) STATE.arena.solturaAberta = false;
 }
 /* Fichas salvas antes do método Normal/TM/HM existir ganham 'normal' por
    padrão (sem mudar o Movimento que já estava escolhido). */
@@ -7481,9 +7480,22 @@ DT.arenaRemoveEntry = function(entryId){
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.id!==entryId; });
   mutate();
 };
-/* Entrar na Arena: carrega a Equipe ativa inteira do Treinador de uma vez
-   num Time só, já revelada (igual arenaSetEntry). Se só existe 1 Time,
-   entra direto nele; com 2+, pede pra escolher qual (SESSION.enterArenaTeamPick). */
+/* ---- Fluxo guiado de entrada na Arena (Cap. 17/55): Entrar (escolhe o
+   Time, sem trazer nenhum Pokémon ainda) -> o Mestre libera a Soltura
+   quando achar que já está todo mundo -> cada Treinador solta UM Pokémon
+   por vez, em segredo (DT.arenaPickLead) -> quando todo mundo que entrou
+   já soltou o seu, o Mestre revela todos de uma vez (DT.arenaRevelarTodos)
+   -- surpresa pros outros até esse momento. Depois de revelado, um
+   Pokémon que caia em batalha é reposto na hora, sem passar por essa
+   sincronia de novo (arenaSelectFainted/arenaSwapIn, Cap. 59). ---- */
+function arenaPresente(trainerId){
+  return (STATE.arena.presentes||[]).find(function(pr){ return pr.trainerId===trainerId; });
+}
+/* Entrar na Arena: só registra presença + Time escolhido -- não traz
+   nenhum Pokémon pro campo ainda (isso só acontece em arenaPickLead, e só
+   fica visível pros outros depois de arenaRevelarTodos). Se só existe 1
+   Time, entra direto nele; com 2+, pede pra escolher qual
+   (SESSION.enterArenaTeamPick). */
 DT.arenaEnterPick = function(trainerId){
   var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
   if(SESSION.role!=='gm' && !isOwner) return;
@@ -7501,36 +7513,128 @@ DT.arenaEnter = function(trainerId, teamId){
   if(SESSION.role!=='gm' && !isOwner) return;
   var team = (STATE.arena.teams||[]).find(function(x){ return x.id===teamId; });
   if(!team) return;
-  var mons = (t.pokemons||[]).filter(function(p){ return p.especie; });
-  var entrou = 0;
-  mons.forEach(function(p){
-    var jaEmCampo = STATE.arena.entries.some(function(e){ return e.trainerId===trainerId && e.pokemonId===p.id; });
-    if(jaEmCampo) return;
-    p.arenaRevelado = true;
-    STATE.arena.entries.push({id:uid(), teamId:teamId, trainerId:trainerId, pokemonId:p.id, revelado:true});
-    applyOnSwitchInAbility(t, p, teamId);
-    entrou++;
-  });
+  if(!Array.isArray(STATE.arena.presentes)) STATE.arena.presentes = [];
+  var presente = arenaPresente(trainerId);
+  if(presente){ presente.teamId = teamId; }
+  else { STATE.arena.presentes.push({trainerId:trainerId, teamId:teamId}); }
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
-  STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' entrou na Arena com '+entrou+' Pokémon, no Time "'+esc(team.nome)+'".' });
+  STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' entrou na Arena, no Time "'+esc(team.nome)+'" — aguardando a soltura dos Pokémon.' });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
   SESSION.enterArenaTeamPick = null;
   mutate();
 };
+/* O Mestre libera a Soltura quando achar que já está todo mundo (ou quem
+   for entrar por enquanto) na Arena -- a partir daqui cada Treinador
+   presente já pode soltar o próprio Pokémon (arenaPickLead). Continua
+   aberta pro resto da sessão (não fecha sozinha), então quem entrar depois
+   também consegue soltar o dele a qualquer momento, sem travar tudo de
+   novo -- exatamente o "Mestre supervisiona" de sempre. */
+DT.arenaOpenSoltura = function(){
+  if(SESSION.role!=='gm' || !STATE.arena) return;
+  if(!(STATE.arena.presentes||[]).length) return;
+  if(STATE.arena.solturaAberta) return;
+  STATE.arena.solturaAberta = true;
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  STATE.arena.log.push({ ts: Date.now(), text: '🔓 O Mestre liberou a soltura dos Pokémon — cada Treinador já pode escolher o seu, em segredo.' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  mutate();
+};
+/* Soltar UM Pokémon (Cap. 55): cria a entrada de combate já com
+   revelado:false -- só o próprio dono e o Mestre veem qual foi, os outros
+   só veem uma Pokébola no Time (mesmo tratamento de sempre pra entrada não
+   revelada). Não dispara Habilidade de entrada nem marca arenaRevelado
+   ainda -- isso só acontece de verdade no momento da revelação
+   (arenaRevelarTodos), pra não vazar pista nenhuma da escolha antes da
+   hora pela Equipe ativa pública. Só um Pokémon por vez nessa soltura
+   inicial -- reposição depois de desmaio usa outro caminho (Cap. 59). */
+DT.arenaPickLead = function(trainerId, pokemonId){
+  if(!STATE.arena || !STATE.arena.solturaAberta) return;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var presente = arenaPresente(trainerId);
+  if(!presente) return; /* precisa ter entrado num Time antes */
+  var jaEscolheu = (STATE.arena.entries||[]).some(function(e){ return e.trainerId===trainerId; });
+  if(jaEscolheu) return;
+  var t = findTrainer(trainerId);
+  var p = t && getPoke(trainerId, pokemonId);
+  if(!t || !p || !p.especie) return;
+  var isInEquipeAtiva = (t.pokemons||[]).some(function(x){ return x.id===pokemonId; });
+  if(!isInEquipeAtiva) return;
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+  if(cur<=0) return; /* não solta um Pokémon desmaiado */
+  STATE.arena.entries.push({id:uid(), teamId:presente.teamId, trainerId:trainerId, pokemonId:pokemonId, revelado:false});
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' soltou o próprio Pokémon em segredo — aguardando os outros pra revelar.' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  mutate();
+};
+/* Voltar atrás numa escolha ainda secreta (antes da revelação) -- só faz
+   sentido enquanto a entrada continuar revelado:false; depois de revelada,
+   é uma troca de verdade (arenaSwapIn), não um "desfazer". */
+DT.arenaCancelPickLead = function(trainerId){
+  if(!STATE.arena) return;
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
+  if(SESSION.role!=='gm' && !isOwner) return;
+  var entry = (STATE.arena.entries||[]).find(function(e){ return e.trainerId===trainerId && !e.revelado; });
+  if(!entry) return;
+  var p = getPoke(entry.trainerId, entry.pokemonId);
+  if(p) resetStages(p);
+  STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.id!==entry.id; });
+  mutate();
+};
+/* O Mestre revela de uma vez só todo mundo que já soltou (Cap. 55) -- só
+   funciona quando NINGUÉM que está presente ainda falta escolher (senão o
+   Mestre pode soltar por ele direto, arenaPickLead, em vez de forçar uma
+   revelação pela metade). Em duas passadas: primeiro revela todo mundo
+   (marca revelado + arenaRevelado), só DEPOIS dispara Habilidade de
+   entrada (Intimidate etc.) -- assim quem tiver Intimidate já enxerga
+   todo mundo que entrou junto nessa mesma soltura, igual uma entrada
+   simultânea de verdade. */
+DT.arenaRevelarTodos = function(){
+  if(SESSION.role!=='gm' || !STATE.arena) return;
+  var presentes = STATE.arena.presentes||[];
+  if(!presentes.length) return;
+  var faltam = presentes.some(function(pr){
+    return !(STATE.arena.entries||[]).some(function(e){ return e.trainerId===pr.trainerId; });
+  });
+  if(faltam) return;
+  var reveladosAgora = (STATE.arena.entries||[]).filter(function(e){
+    return !e.revelado && presentes.some(function(pr){ return pr.trainerId===e.trainerId; });
+  });
+  if(!reveladosAgora.length) return;
+  reveladosAgora.forEach(function(e){
+    e.revelado = true;
+    var p = getPoke(e.trainerId, e.pokemonId);
+    if(p) p.arenaRevelado = true;
+  });
+  reveladosAgora.forEach(function(e){
+    var t = findTrainer(e.trainerId);
+    var p = t && getPoke(e.trainerId, e.pokemonId);
+    if(t && p) applyOnSwitchInAbility(t, p, e.teamId);
+  });
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  STATE.arena.log.push({ ts: Date.now(), text: '🎉 O Mestre revelou os '+reveladosAgora.length+' Pokémon escolhidos — a batalha pode começar!' });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  mutate();
+};
 /* Sair da Arena: tira TODOS os Pokémon desse Treinador da Arena de uma
-   vez, de qualquer Time -- ele fica sem nenhum em campo. */
+   vez, de qualquer Time -- ele fica sem nenhum em campo, e também sai da
+   lista de presença (precisa entrar de novo, escolher Time de novo). */
 DT.arenaLeave = function(trainerId){
   var t = findTrainer(trainerId);
   if(!STATE.arena || !t) return;
   var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
   if(SESSION.role!=='gm' && !isOwner) return;
   var antes = STATE.arena.entries.length;
+  var eraPresente = !!arenaPresente(trainerId);
   (STATE.arena.entries||[]).filter(function(e){ return e.trainerId===trainerId; }).forEach(function(e){
     var p = getPoke(e.trainerId, e.pokemonId);
     if(p){ applyOnSwitchOutAbility(t, p); resetStages(p); }
   });
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.trainerId!==trainerId; });
-  if(STATE.arena.entries.length===antes) return; /* não tinha nenhum -- nada pra registrar */
+  STATE.arena.presentes = (STATE.arena.presentes||[]).filter(function(pr){ return pr.trainerId!==trainerId; });
+  if(STATE.arena.entries.length===antes && !eraPresente) return; /* não tinha nenhum nem tava presente -- nada pra registrar */
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' saiu da Arena, retirando todo o Time.' });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
@@ -8694,16 +8798,48 @@ function arenaScreen(){
   var isGM = SESSION.role==='gm';
   var out = '<div class="btn-row" style="margin-bottom:14px;"><button class="btn-sm" onclick="DT.toggleArena()">← Voltar</button></div>';
   out += '<div class="card"><div class="card-head"><span class="index">Esboço · v1</span><h2>🏟️ Arena</h2></div><div class="card-body">'+
-    '<p class="muted" style="font-size:.82rem;">Arraste um Pokémon (pelo ⠿) da Equipe ativa pra dentro de um Time. Enquanto ele não vai pro Time nenhuma vez, os outros Treinadores só veem uma Pokébola no lugar dele lá na Equipe ativa — a partir do momento que entra num Time, ele aparece pra mesa inteira, ali e dali em diante. Isso é um primeiro rascunho — me conta o que ajustar.</p>'+
+    '<p class="muted" style="font-size:.82rem;">Entre num Time (▶️ Entrar na Arena, ali embaixo), espere o Mestre liberar a soltura, e solte o seu primeiro Pokémon em segredo — o Mestre revela todo mundo de uma vez quando o resto da mesa também já tiver escolhido. Depois disso, pode arrastar um Pokémon (pelo ⠿) direto pra um Time também, se precisar corrigir algo na mão.</p>'+
   '</div></div>';
   out += arenaSpectatorHTML();
   out += arenaVictoryHTML();
+  out += arenaSolturaHTML(isGM);
   out += arenaInitiativeHTML();
   out += arenaTeamsHTML(isGM);
   out += arenaActionPanelHTML();
   out += arenaSourceHTML();
   out += arenaLogHTML();
   return out;
+}
+/* Painel de Soltura (Cap. 55): mostra quem já entrou (presente) e quem já
+   soltou o próprio Pokémon (sem dizer QUAL -- isso só quando revelar), pra
+   todo mundo acompanhar o andamento. Some sozinho se ninguém entrou ainda. */
+function arenaSolturaHTML(isGM){
+  var presentes = (STATE.arena && STATE.arena.presentes) || [];
+  if(!presentes.length) return '';
+  var entries = (STATE.arena && STATE.arena.entries) || [];
+  var aberta = !!(STATE.arena && STATE.arena.solturaAberta);
+  var linhas = presentes.map(function(pr){
+    var t = findTrainer(pr.trainerId);
+    var team = (STATE.arena.teams||[]).find(function(x){ return x.id===pr.teamId; });
+    var jaEscolheu = entries.some(function(e){ return e.trainerId===pr.trainerId; });
+    var icone = !aberta ? '⏳' : (jaEscolheu ? '✅' : '⏳');
+    return '<li>'+icone+' '+esc(t?t.name:'?')+' <span class="muted">('+esc(team?team.nome:'?')+')</span></li>';
+  }).join('');
+  var todosEscolheram = presentes.every(function(pr){ return entries.some(function(e){ return e.trainerId===pr.trainerId; }); });
+  var acao = '';
+  if(isGM){
+    acao = !aberta
+      ? '<button class="btn-sm" onclick="DT.arenaOpenSoltura()">🔓 Soltar Pokémon</button>'
+      : (todosEscolheram
+          ? '<button class="btn-sm btn-primary" onclick="DT.arenaRevelarTodos()">🎉 Revelar</button>'
+          : '<span class="muted" style="font-size:.78rem;">Aguardando todo mundo soltar o seu antes de revelar (ou solte por eles em "Equipe ativa").</span>');
+  } else if(!aberta){
+    acao = '<span class="muted" style="font-size:.78rem;">Aguardando o Mestre liberar a soltura dos Pokémon.</span>';
+  }
+  return '<div class="card"><div class="card-head"><span class="index">Cap. 17/55</span><h2>🎁 Soltura</h2></div><div class="card-body">'+
+    '<ul style="margin:0 0 8px; padding-left:1.2em; font-size:.82rem;">'+linhas+'</ul>'+
+    acao+
+  '</div></div>';
 }
 /* Modo Espectador: um botão pro próprio jogador entrar/sair (não precisa
    de Pokémon nenhum em campo pra isso) + a lista de quem está assistindo,
@@ -9071,6 +9207,14 @@ function arenaTrainerSourceHTML(t){
     var actingEntry = findArenaEntry(SESSION.arenaAttacker);
     if(actingEntry && actingEntry.trainerId===t.id) swapEntry = actingEntry;
   }
+  /* Soltura inicial (Cap. 55): presente na Arena, o Mestre já liberou a
+     soltura, e ainda não soltou nenhum Pokémon -- os tiles da Equipe ativa
+     viram o seletor de "qual eu solto", em segredo (só ele e o Mestre
+     enxergam essa tela; os outros só vão ver o resultado quando o Mestre
+     revelar todo mundo de uma vez, arenaRevelarTodos). */
+  var presente = arenaPresente(t.id);
+  var jaEscolheuLead = entries.some(function(e){ return e.trainerId===t.id; });
+  var pickingLead = canControl && !!presente && !!STATE.arena.solturaAberta && !jaEscolheuLead && !swapEntry;
   var tiles = mons.length===0
     ? '<p class="muted" style="font-size:.78rem;">Equipe ativa vazia.</p>'
     : '<div class="arena-source-row">'+mons.map(function(p){
@@ -9099,8 +9243,10 @@ function arenaTrainerSourceHTML(t){
         var tileClick = '';
         if(swapEntry && p.id!==swapEntry.pokemonId && !placed){
           if(cur>0){ swappable = true; tileClick = ' onclick="DT.arenaSwapIn(\''+p.id+'\')"'; }
+        } else if(pickingLead && !placed){
+          if(cur>0){ swappable = true; tileClick = ' onclick="DT.arenaPickLead(\''+t.id+'\',\''+p.id+'\')"'; }
         }
-        var handle = (canControl && !swapEntry)
+        var handle = (canControl && !swapEntry && !pickingLead)
           ? '<button type="button" class="drag-handle" title="Arrastar pra um Time" onpointerdown="DT.arenaDragStart(event,\''+t.id+'\',\''+p.id+'\')">⠿</button>'
           : '';
         return '<div class="arena-source-tile'+(placed?' arena-source-tile-used':'')+(swappable?' arena-source-tile-swappable':'')+'"'+tileClick+'>'+
@@ -9117,12 +9263,13 @@ function arenaTrainerSourceHTML(t){
       '</div></div>'
     : '';
 
-  /* Entrar/Sair da Arena: carrega ou descarrega a Equipe ativa inteira
-     desse Treinador de uma vez, sem precisar arrastar Pokémon por
-     Pokémon. Só o dono ou o Mestre veem esse controle. */
+  /* Entrar/Sair da Arena (Cap. 55): "Entrar" só registra presença + Time
+     -- quem já está presente ou já soltou algum Pokémon mostra "Sair" no
+     lugar. Só o dono ou o Mestre veem esse controle. */
   var hasEntries = entries.some(function(e){ return e.trainerId===t.id; });
+  var emArena = hasEntries || !!presente;
   var enterLeaveBtn = canControl
-    ? (hasEntries
+    ? (emArena
         ? '<button class="btn-sm btn-danger" onclick="DT.arenaLeave(\''+t.id+'\')">⏏️ Sair da Arena</button>'
         : '<button class="btn-sm" onclick="DT.arenaEnterPick(\''+t.id+'\')">▶️ Entrar na Arena</button>')
     : '';
@@ -9135,8 +9282,25 @@ function arenaTrainerSourceHTML(t){
       '<div class="btn-row" style="flex-wrap:wrap;">'+teamBtns+
       '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelEnterPick()">Cancelar</button></div></div>';
   }
+  /* Status da Soltura (Cap. 55), só pra quem controla essa ficha (dono ou
+     Mestre) -- os outros na mesa não veem nada disso, só o resultado final
+     depois da revelação. */
+  var solturaStatus = '';
+  if(canControl && presente){
+    if(!STATE.arena.solturaAberta){
+      solturaStatus = '<p class="muted" style="font-size:.78rem; margin-top:8px;">⏳ Aguardando o Mestre liberar a soltura dos Pokémon.</p>';
+    } else if(pickingLead){
+      solturaStatus = '<p class="muted" style="font-size:.78rem; margin-top:8px;">🎁 Clique em um Pokémon da Equipe ativa acima pra soltá-lo, em segredo.</p>';
+    } else if(jaEscolheuLead){
+      var leadEntry = entries.find(function(e){ return e.trainerId===t.id; });
+      if(leadEntry && !leadEntry.revelado){
+        solturaStatus = '<p class="muted" style="font-size:.78rem; margin-top:8px;">🤫 Você já soltou seu Pokémon — está em segredo até o Mestre revelar. '+
+          '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelPickLead(\''+t.id+'\')">↩️ Escolher outro</button></p>';
+      }
+    }
+  }
 
-  return '<div class="card"><div class="card-head"><span class="index">Equipe ativa</span><h2>'+esc(t.name)+'</h2>'+enterLeaveBtn+'</div><div class="card-body">'+tiles+mochila+teamPicker+'</div></div>';
+  return '<div class="card"><div class="card-head"><span class="index">Equipe ativa</span><h2>'+esc(t.name)+'</h2>'+enterLeaveBtn+'</div><div class="card-body">'+tiles+mochila+teamPicker+solturaStatus+'</div></div>';
 }
 
 function setupScreen(){
