@@ -7833,17 +7833,67 @@ DT.addItem = function(tid, nomeEl, qtyEl, tipoEl, curaEl, condicaoEl, reviveFull
   if(ppUpEl) ppUpEl.checked = false;
   mutate();
 };
+/* Caminho principal de "+ Adicionar" (item escolhido de verdade do
+   catálogo, num <select> só com o que existe pra aba aberta): sem campos
+   soltos pra preencher, tudo (tipo/cura/condição/reviver/PP/descrição/
+   categoria) vem direto do ITEM_DEX. Devolve a quantidade escolhida pra
+   quem chamou (0 = não fez nada, nome vazio/inválido). */
+DT.addCatalogItem = function(tid, selectEl, qtyEl){
+  if(SESSION.role!=='gm') return 0;
+  var t = findTrainer(tid); if(!t) return 0;
+  var found = findItemByName(selectEl.value);
+  if(!found) return 0;
+  var qtd = clampInt(qtyEl.value, 1, 999);
+  if(!Array.isArray(t.itens)) t.itens = [];
+  var existing = t.itens.find(function(i){ return i.nome.toLowerCase()===found.nome.toLowerCase(); });
+  if(existing){ existing.quantidade = clampInt(existing.quantidade+qtd, 0, 999); }
+  else {
+    t.itens.push(newItem(found.nome, qtd, found.tipo, {cura:found.cura, condicaoAlvo:found.condicaoAlvo, reviveFull:found.reviveFull, categoria:found.categoria, ppAlvo:found.ppAlvo, ppFull:found.ppFull, ppUp:found.ppUp, descricao:found.descricao}));
+  }
+  selectEl.selectedIndex = 0;
+  qtyEl.value = '1';
+  var previewEl = document.getElementById('mochilaAddPreview_'+tid);
+  if(previewEl) previewEl.innerHTML = '';
+  mutate();
+  return qtd;
+};
+/* Prévia embaixo do seletor de item da Mochila, ao trocar a escolha --
+   manipula só esse parágrafo direto no DOM, SEM chamar render(): render()
+   reconstrói a tela inteira do zero (screenHTML() vira o innerHTML de
+   #app), o que reseta qualquer <select>/<input> pro valor "de fábrica" do
+   template -- chamar render() aqui apagaria a própria escolha que acabou
+   de ser feita antes mesmo do Mestre clicar "+ Adicionar". */
+DT.previewMochilaItem = function(tid, selectEl){
+  var el = document.getElementById('mochilaAddPreview_'+tid);
+  if(!el) return;
+  var found = findItemByName(selectEl.value);
+  el.innerHTML = found
+    ? ('<strong>'+esc(found.nome)+'</strong> — <span class="muted">'+esc(itemCuraDetailText(found))+'</span><br><span class="muted" style="font-size:.72rem;">'+esc(found.descricao||'')+'</span>')
+    : '';
+};
+/* Mostra/esconde o formulário de item personalizado (fora do catálogo) --
+   pela mesma razão do comentário acima, é manipulação direta de DOM sem
+   render(), pra não apagar o que o Mestre já tiver digitado lá dentro. */
+DT.toggleMochilaCustom = function(tid){
+  var el = document.getElementById('mochilaCustomForm_'+tid);
+  if(!el) return;
+  el.style.display = (el.style.display==='none') ? 'block' : 'none';
+};
 /* Digitou (ou escolheu do autocomplete) um nome que bate com o catálogo
-   oficial (ITEM_DEX) -- preenche Tipo/Cura/Condição/Reviver sozinho, igual
-   já acontece pra Espécie e Movimento. Uma categoria desligada nesta mesa
-   (DT.toggleItemCategoria) não preenche -- avisa e para por aí. */
+   oficial (ITEM_DEX), dentro do formulário de item personalizado --
+   preenche Tipo/Cura/Condição/Reviver/PP/Descrição sozinho, igual já
+   acontece pra Espécie e Movimento. Uma categoria desligada nesta mesa
+   (DT.toggleItemCategoria) não preenche -- avisa e para por aí. Escreve só
+   no parágrafo de aviso local (sem render(), pelo mesmo motivo do
+   DT.previewMochilaItem acima) -- render() aqui reesconderia o próprio
+   formulário personalizado que acabou de ser preenchido.*/
 DT.autofillNewItem = function(tid, nameEl){
+  var noteEl = document.getElementById('newItemAutofillNote_'+tid);
   var found = findItemByName(nameEl.value);
-  if(!found) return;
+  if(!found){ if(noteEl) noteEl.textContent = ''; return; }
   var off = (STATE.itemCategoriasDesativadas||[]).indexOf(found.categoria)!==-1;
   if(off){
-    SESSION.error = 'A categoria "'+found.categoria+'" está desativada nesta mesa — o Mestre pode religar em Configurações de Itens.';
-    render();
+    if(noteEl) noteEl.textContent = 'A categoria "'+found.categoria+'" está desativada nesta mesa — o Mestre pode religar em Configurações de Itens.';
     return;
   }
   var tipoEl = document.getElementById('newItemTipo_'+tid);
@@ -7862,8 +7912,7 @@ DT.autofillNewItem = function(tid, nameEl){
   if(ppAlvoEl) ppAlvoEl.value = found.ppAlvo||'um';
   if(ppFullEl) ppFullEl.checked = !!found.ppFull;
   if(ppUpEl) ppUpEl.checked = !!found.ppUp;
-  SESSION.notice = 'Preenchido com os dados oficiais de '+found.nome+' ('+found.categoria+').';
-  render();
+  if(noteEl) noteEl.textContent = 'Preenchido com os dados oficiais de '+found.nome+' ('+found.categoria+').';
 };
 DT.removeItem = function(tid, itemId){
   if(SESSION.role!=='gm') return;
@@ -9075,6 +9124,13 @@ function mochilaTabForItem(it){
   }
   return 'geral';
 }
+/* Itens do catálogo (já filtrado pelas categorias desligadas do Mestre,
+   itemDexAtivo) que caem na aba atualmente aberta -- é a lista que
+   alimenta o seletor de "+ Adicionar", pra cada aba só mostrar o que faz
+   sentido nela em vez do catálogo de 417 itens inteiro de uma vez. */
+function itemsForMochilaTab(tab){
+  return itemDexAtivo().filter(function(it){ return mochilaTabForItem(it)===tab; });
+}
 DT.setMochilaTab = function(tid, tab){
   if(MOCHILA_TABS.indexOf(tab)===-1) return;
   if(!SESSION.mochilaTab) SESSION.mochilaTab = {};
@@ -9108,26 +9164,63 @@ function inventoryHTML(t, canGM){
     '</tbody></table></div>';
   }
   if(canGM){
-    out += '<div class="btn-row" style="margin-top:8px; flex-wrap:wrap;">'+
-      '<input type="text" placeholder="Nome do item" id="newItemName_'+t.id+'" list="newItemNameList_'+t.id+'" onchange="DT.autofillNewItem(\''+t.id+'\', this)" style="flex:1; min-width:120px;">'+
-      itemDatalist('newItemNameList_'+t.id)+
-      '<input type="number" min="1" max="999" value="1" id="newItemQty_'+t.id+'" style="width:64px;" title="Quantidade">'+
-      '<input type="text" placeholder="Descrição (preenche sozinha se o nome bater com o catálogo)" id="newItemDescricao_'+t.id+'" style="flex:2; min-width:160px;">'+
-      '<select id="newItemTipo_'+t.id+'" title="Tipo do item">'+
-        Object.keys(ITEM_TIPO_LABELS).map(function(k){ return '<option value="'+k+'">'+ITEM_TIPO_LABELS[k]+'</option>'; }).join('')+
-      '</select>'+
-      '<input type="number" min="0" max="999" value="0" id="newItemCura_'+t.id+'" style="width:78px;" title="PV curados (só vale se Tipo = Vida ou Vida + Condição; 0 = cura total)" placeholder="PV (0=total)">'+
-      '<select id="newItemCondicao_'+t.id+'" title="Condição curada (só vale se Tipo = Condição ou Vida + Condição)">'+
-        Object.keys(CURA_CONDICAO_LABELS).map(function(k){ return '<option value="'+k+'">'+esc(CURA_CONDICAO_LABELS[k])+'</option>'; }).join('')+
-      '</select>'+
-      '<label style="display:flex; align-items:center; gap:4px; font-size:.72rem;" title="Só vale se Tipo = Reviver"><input type="checkbox" id="newItemReviveFull_'+t.id+'"> PV cheio ao reviver</label>'+
-      '<select id="newItemPPAlvo_'+t.id+'" title="Só vale se Tipo = PP -- em quantos Movimentos mexe">'+
-        '<option value="um">PP: 1 Movimento</option><option value="todos">PP: todos os Movimentos</option>'+
-      '</select>'+
-      '<label style="display:flex; align-items:center; gap:4px; font-size:.72rem;" title="Só vale se Tipo = PP"><input type="checkbox" id="newItemPPFull_'+t.id+'"> PP cheio de uma vez</label>'+
-      '<label style="display:flex; align-items:center; gap:4px; font-size:.72rem;" title="Só vale se Tipo = PP -- aumenta o Máximo pra sempre, em vez de só recarregar"><input type="checkbox" id="newItemPPUp_'+t.id+'"> aumenta o PP Máximo</label>'+
-      '<button class="btn-sm" onclick="DT.addItem(\''+t.id+'\', document.getElementById(\'newItemName_'+t.id+'\'), document.getElementById(\'newItemQty_'+t.id+'\'), document.getElementById(\'newItemTipo_'+t.id+'\'), document.getElementById(\'newItemCura_'+t.id+'\'), document.getElementById(\'newItemCondicao_'+t.id+'\'), document.getElementById(\'newItemReviveFull_'+t.id+'\'), document.getElementById(\'newItemDescricao_'+t.id+'\'), document.getElementById(\'newItemPPAlvo_'+t.id+'\'), document.getElementById(\'newItemPPFull_'+t.id+'\'), document.getElementById(\'newItemPPUp_'+t.id+'\'))">+ Adicionar</button>'+
-    '</div>';
+    /* Fluxo principal: escolher da lista (agrupada por categoria, só com
+       o que existe pra essa aba) já preenche tudo sozinho -- não tem mais
+       nada pra digitar/decidir além de "qual item" e "quantos". O
+       formulário de item personalizado (fora do catálogo, ou pra fugir do
+       oficial) some por baixo de um botão, pra não competir visualmente
+       com o caminho comum. */
+    var itensDaAbaCatalogo = itemsForMochilaTab(activeTab);
+    var porCategoria = {};
+    itensDaAbaCatalogo.forEach(function(it){ (porCategoria[it.categoria] = porCategoria[it.categoria]||[]).push(it); });
+    var optionsHTML = Object.keys(porCategoria).sort().map(function(cat){
+      return '<optgroup label="'+esc(cat)+'">'+porCategoria[cat].map(function(it){
+        return '<option value="'+esc(it.nome)+'">'+esc(it.nome)+'</option>';
+      }).join('')+'</optgroup>';
+    }).join('');
+    out += '<div class="card" style="margin-top:10px;"><div class="card-body">'+
+      '<p style="font-size:.78rem; font-weight:700; margin-bottom:8px;">+ Adicionar a '+MOCHILA_TAB_LABELS[activeTab]+'</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap;">'+
+        '<select id="mochilaAddSelect_'+t.id+'" onchange="DT.previewMochilaItem(\''+t.id+'\', this)" style="flex:1; min-width:180px;">'+
+          '<option value="">— escolher item —</option>'+optionsHTML+
+        '</select>'+
+        '<input type="number" min="1" max="999" value="1" id="mochilaAddQty_'+t.id+'" style="width:64px;" title="Quantidade">'+
+        '<button class="btn-sm btn-primary" onclick="DT.addCatalogItem(\''+t.id+'\', document.getElementById(\'mochilaAddSelect_'+t.id+'\'), document.getElementById(\'mochilaAddQty_'+t.id+'\'))">+ Adicionar</button>'+
+      '</div>'+
+      '<p id="mochilaAddPreview_'+t.id+'" class="muted" style="font-size:.78rem; margin-top:6px; min-height:1.1em;"></p>'+
+      '<button class="btn-ghost btn-sm" style="margin-top:2px;" onclick="DT.toggleMochilaCustom(\''+t.id+'\')">✏️ Item personalizado (fora do catálogo)</button>'+
+      '<div id="mochilaCustomForm_'+t.id+'" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);">'+
+        '<div class="btn-row" style="flex-wrap:wrap;">'+
+          '<input type="text" placeholder="Nome do item" id="newItemName_'+t.id+'" list="newItemNameList_'+t.id+'" onchange="DT.autofillNewItem(\''+t.id+'\', this)" style="flex:1; min-width:120px;">'+
+          itemDatalist('newItemNameList_'+t.id)+
+          '<input type="number" min="1" max="999" value="1" id="newItemQty_'+t.id+'" style="width:64px;" title="Quantidade">'+
+        '</div>'+
+        '<p id="newItemAutofillNote_'+t.id+'" class="muted" style="font-size:.74rem; margin:4px 0;"></p>'+
+        '<div class="btn-row" style="flex-wrap:wrap; margin-top:4px;">'+
+          '<input type="text" placeholder="Descrição (preenche sozinha se o nome bater com o catálogo)" id="newItemDescricao_'+t.id+'" style="flex:2; min-width:160px;">'+
+          '<select id="newItemTipo_'+t.id+'" title="Tipo do item">'+
+            Object.keys(ITEM_TIPO_LABELS).map(function(k){ return '<option value="'+k+'">'+ITEM_TIPO_LABELS[k]+'</option>'; }).join('')+
+          '</select>'+
+        '</div>'+
+        '<div class="btn-row" style="flex-wrap:wrap; margin-top:6px;">'+
+          '<input type="number" min="0" max="999" value="0" id="newItemCura_'+t.id+'" style="width:78px;" title="PV curados (só vale se Tipo = Vida ou Vida + Condição; 0 = cura total)" placeholder="PV (0=total)">'+
+          '<select id="newItemCondicao_'+t.id+'" title="Condição curada (só vale se Tipo = Condição ou Vida + Condição)">'+
+            Object.keys(CURA_CONDICAO_LABELS).map(function(k){ return '<option value="'+k+'">'+esc(CURA_CONDICAO_LABELS[k])+'</option>'; }).join('')+
+          '</select>'+
+          '<label style="display:flex; align-items:center; gap:4px; font-size:.72rem;" title="Só vale se Tipo = Reviver"><input type="checkbox" id="newItemReviveFull_'+t.id+'"> PV cheio ao reviver</label>'+
+        '</div>'+
+        '<div class="btn-row" style="flex-wrap:wrap; margin-top:6px;">'+
+          '<select id="newItemPPAlvo_'+t.id+'" title="Só vale se Tipo = PP -- em quantos Movimentos mexe">'+
+            '<option value="um">PP: 1 Movimento</option><option value="todos">PP: todos os Movimentos</option>'+
+          '</select>'+
+          '<label style="display:flex; align-items:center; gap:4px; font-size:.72rem;" title="Só vale se Tipo = PP"><input type="checkbox" id="newItemPPFull_'+t.id+'"> PP cheio de uma vez</label>'+
+          '<label style="display:flex; align-items:center; gap:4px; font-size:.72rem;" title="Só vale se Tipo = PP -- aumenta o Máximo pra sempre, em vez de só recarregar"><input type="checkbox" id="newItemPPUp_'+t.id+'"> aumenta o PP Máximo</label>'+
+        '</div>'+
+        '<div class="btn-row" style="margin-top:8px;">'+
+          '<button class="btn-sm" onclick="DT.addItem(\''+t.id+'\', document.getElementById(\'newItemName_'+t.id+'\'), document.getElementById(\'newItemQty_'+t.id+'\'), document.getElementById(\'newItemTipo_'+t.id+'\'), document.getElementById(\'newItemCura_'+t.id+'\'), document.getElementById(\'newItemCondicao_'+t.id+'\'), document.getElementById(\'newItemReviveFull_'+t.id+'\'), document.getElementById(\'newItemDescricao_'+t.id+'\'), document.getElementById(\'newItemPPAlvo_'+t.id+'\'), document.getElementById(\'newItemPPFull_'+t.id+'\'), document.getElementById(\'newItemPPUp_'+t.id+'\'))">+ Adicionar personalizado</button>'+
+        '</div>'+
+      '</div>'+
+    '</div></div>';
   }
   return out;
 }
