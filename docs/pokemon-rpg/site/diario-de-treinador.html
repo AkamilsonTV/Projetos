@@ -7478,7 +7478,7 @@ DT.arenaPickItem = function(itemIdx){
   var attTrainer = findTrainer(atkEntry.trainerId);
   if(!attTrainer) return;
   var item = (attTrainer.itens||[])[itemIdx];
-  if(!item || item.quantidade<=0) return;
+  if(!item || item.quantidade<=0 || !itemUsavelEmEquipe(item)) return;
   if(eligibleItemTargets(atkEntry, item).length===0){
     SESSION.error = item.tipo==='revive' ? 'Não há ninguém desmaiado pra reviver agora.' : 'Não há em quem usar esse item agora.';
     arenaResetActionState();
@@ -7902,47 +7902,31 @@ DT.setItemQty = function(tid, itemId, el){
   mutate();
 };
 /* Botão "Usar" de cada linha da Mochila -- pula direto pra dentro da Cura
-   (mesmo painel/fluxo de baixo, curaHTML) já com o item escolhido, sem o
-   jogador precisar abrir a Cura, achar a aba certa e achar o item de novo
-   lá. Dono da ficha ou o Mestre, igual quem já podia usar a Cura. */
+   (mesmo painel/fluxo de baixo, curaHTML) já com o item escolhido: não tem
+   mais aba nem lista pra escolher de novo, o item já veio escolhido de ter
+   clicado na própria linha dele -- o painel só pergunta em qual Pokémon.
+   Dono da ficha ou o Mestre, igual quem já podia usar a Cura. Item sem uso
+   condizente no próprio time (Pokébola, ver itemUsavelEmEquipe) nem chega
+   a abrir nada. */
 DT.mochilaUseItem = function(tid, itemId){
   var t = findTrainer(tid); if(!t) return;
   var isOwner = SESSION.role==='player' && SESSION.trainerId===tid;
   if(SESSION.role!=='gm' && !isOwner) return;
   var item = (t.itens||[]).find(function(i){ return i.id===itemId; });
-  if(!item || item.quantidade<=0) return;
+  if(!item || item.quantidade<=0 || !itemUsavelEmEquipe(item)) return;
   SESSION.curaOpenFor = tid;
-  SESSION.curaTab = item.tipo;
   SESSION.curaItemId = item.id;
   SESSION.curaPokeId = null;
   render();
 };
 
-/* Aba Cura da ficha (fora de batalha): abre/fecha, escolhe Vida ou
-   Condição, escolhe o item, escolhe o Pokémon -- aplica de verdade
+/* Cura (fora de batalha): entra só pelo botão "Usar" de um item na Mochila
+   (DT.mochilaUseItem, que já escolhe o item) -- daqui em diante só falta
+   escolher o Pokémon (e, pro PP de um Movimento só, qual Movimento). Sem
+   aba nem lista de item pra navegar aqui dentro; aplica de verdade
    (applyItemCure), sem precisar estar na Arena. */
-DT.toggleCura = function(tid){
-  var isOwner = SESSION.role==='player' && SESSION.trainerId===tid;
-  if(SESSION.role!=='gm' && !isOwner) return;
-  SESSION.curaOpenFor = (SESSION.curaOpenFor===tid) ? null : tid;
-  SESSION.curaTab = 'vida';
-  SESSION.curaItemId = null;
-  SESSION.curaPokeId = null;
-  render();
-};
-DT.curaSetTab = function(tab){
-  if(!ITEM_TIPOS_VALIDOS.hasOwnProperty(tab)) return;
-  SESSION.curaTab = tab;
-  SESSION.curaItemId = null;
-  SESSION.curaPokeId = null;
-  render();
-};
-DT.curaPickItem = function(itemId){
-  SESSION.curaItemId = itemId;
-  SESSION.curaPokeId = null;
-  render();
-};
 DT.curaCancelPick = function(){
+  SESSION.curaOpenFor = null;
   SESSION.curaItemId = null;
   SESSION.curaPokeId = null;
   render();
@@ -7971,9 +7955,9 @@ DT.curaApply = function(tid, pokemonId, moveIdx){
   var nome = p.apelido || p.especie || 'Pokémon';
   SESSION.notice = t.name+' usou '+item.nome+' em '+nome+' — '+describeItemCureResult(result);
   /* Se ficou bloqueado (alvo errado pro tipo do item -- ex.: Revive em quem
-     não desmaiou), não volta pra lista: deixa escolher outro Pokémon sem
-     precisar clicar no item de novo. */
-  if(!result.bloqueado){ SESSION.curaItemId = null; SESSION.curaPokeId = null; }
+     não desmaiou), não fecha o painel: deixa escolher outro Pokémon sem
+     precisar clicar em "Usar" de novo. Se aplicou de verdade, fecha tudo. */
+  if(!result.bloqueado){ SESSION.curaOpenFor = null; SESSION.curaItemId = null; SESSION.curaPokeId = null; }
   mutate();
 };
 
@@ -8521,7 +8505,7 @@ function arenaActionPanelHTML(){
         return '<button class="btn-sm" onclick="DT.arenaPickItem('+i+')">'+esc(it.nome)+'<br><span class="muted" style="font-size:.66rem;">x'+it.quantidade+' · '+esc(itemCuraDetailText(it))+'</span></button>';
       };
       var groups = ['vida','condicao','revive','ambos','pp','outro'].map(function(tipo){
-        var btns = (attTrainer.itens||[]).map(function(it,i){ return (it.quantidade>0 && it.tipo===tipo) ? itemBtn(it,i) : ''; }).join('');
+        var btns = (attTrainer.itens||[]).map(function(it,i){ return (it.quantidade>0 && it.tipo===tipo && itemUsavelEmEquipe(it)) ? itemBtn(it,i) : ''; }).join('');
         if(!btns) return '';
         return '<p class="muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; margin:8px 0 4px;">'+ITEM_TIPO_LABELS[tipo]+'</p>'+
           '<div class="btn-row" style="flex-wrap:wrap;">'+btns+'</div>';
@@ -9038,6 +9022,16 @@ function trainerSheetHTML(t, mode){
    Treinador só vê. Quais itens existem e o que fazem em batalha ainda é
    regra em aberto (Cap. 25) — por enquanto é só o inventário em si. */
 var ITEM_TIPO_LABELS = { vida:'💊 Vida', condicao:'✨ Condição', revive:'💫 Reviver', ambos:'🔄 Vida + Condição', pp:'🔋 PP', outro:'📦 Outro' };
+/* Pokébola não tem uso condizente em cima do próprio time (é pra CAPTURAR
+   um Pokémon selvagem/alheio, não usar num Pokémon que já é seu) -- então,
+   até existir um sistema de captura de verdade (envolvendo a Arena), ela
+   fica de fora do botão "Usar" tanto na Mochila quanto na Arena. Qualquer
+   outro item 'outro' (pedra de evolução, item segurado, TM etc.) continua
+   liberado -- faz sentido escolher um Pokémon do time pra eles, mesmo sem
+   efeito mecânico de verdade ainda (Cap. 25). */
+function itemUsavelEmEquipe(it){
+  return it.categoria !== 'Pokébolas';
+}
 /* Texto curto do que um item de cura faz, pros botões de escolha (Cura da
    ficha e "Usar Item" na Arena) -- não confundir com describeItemCureResult,
    que é o RESULTADO depois de já ter usado. */
@@ -9114,7 +9108,7 @@ function inventoryHTML(t, canGM, mode){
           '<td class="num">'+(canGM
             ? '<input type="number" min="0" max="999" value="'+it.quantidade+'" onchange="DT.setItemQty(\''+t.id+'\',\''+it.id+'\', this)" style="width:64px;">'
             : String(it.quantidade))+'</td>'+
-          (canUse ? '<td>'+(it.quantidade>0 ? '<button class="btn-sm" onclick="DT.mochilaUseItem(\''+t.id+'\',\''+it.id+'\')">▶️ Usar</button>' : '')+'</td>' : '')+
+          (canUse ? '<td>'+(it.quantidade>0 && itemUsavelEmEquipe(it) ? '<button class="btn-sm" onclick="DT.mochilaUseItem(\''+t.id+'\',\''+it.id+'\')">▶️ Usar</button>' : '')+'</td>' : '')+
           (canGM ? '<td><button class="btn-ghost btn-sm" onclick="DT.removeItem(\''+t.id+'\',\''+it.id+'\')">✕</button></td>' : '')+
         '</tr>';
       }).join('')+
@@ -9183,27 +9177,19 @@ function inventoryHTML(t, canGM, mode){
   }
   return out;
 }
-/* Aba Cura: abre a Mochila filtrada em duas abas (Vida/Condição) pra usar
-   um item de cura de verdade num Pokémon da própria ficha, fora de
-   batalha. Só o dono (mode='own') ou o Mestre (mode='gm') usa -- ficha
-   compartilhada (mode='readonly') não mostra nada aqui. */
+/* Cura: painel que aplica um item de verdade (applyItemCure) num Pokémon
+   da própria ficha, fora de batalha. Só entra pelo botão "▶️ Usar" de um
+   item lá na Mochila (DT.mochilaUseItem já escolhe o item e abre isto) --
+   sem aba nem lista pra escolher de novo aqui dentro, o item já é sabido:
+   o painel só pergunta em qual Pokémon (e, pro PP de um Movimento só,
+   qual Movimento). Só o dono (mode='own') ou o Mestre (mode='gm') vê --
+   ficha compartilhada (mode='readonly') não mostra nada aqui. */
 function curaHTML(t, mode){
   if(mode!=='own' && mode!=='gm') return '';
-  var open = SESSION.curaOpenFor===t.id;
-  var toggleBtn = '<button class="btn-sm" onclick="DT.toggleCura(\''+t.id+'\')">🩹 '+(open?'Fechar Cura':'Cura')+'</button>';
-  if(!open) return '<div style="margin:10px 0;">'+toggleBtn+'</div>';
-
-  var CURA_TABS = ['vida','condicao','revive','ambos','pp','outro'];
-  var tab = CURA_TABS.indexOf(SESSION.curaTab)!==-1 ? SESSION.curaTab : 'vida';
-  var tabs = '<div class="btn-row" style="margin:10px 0 8px; flex-wrap:wrap;">'+
-    CURA_TABS.map(function(k){
-      return '<button class="btn-sm'+(tab===k?' btn-primary':'')+'" onclick="DT.curaSetTab(\''+k+'\')">'+ITEM_TIPO_LABELS[k]+'</button>';
-    }).join('')+
-  '</div>';
-
-  var itensDoTipo = (t.itens||[]).filter(function(it){ return it.tipo===tab && it.quantidade>0; });
+  if(SESSION.curaOpenFor!==t.id) return '';
   var item = SESSION.curaItemId ? (t.itens||[]).find(function(it){ return it.id===SESSION.curaItemId; }) : null;
-  var pokeParaMovimento = (item && item.tipo==='pp' && item.ppAlvo==='um' && SESSION.curaPokeId) ? getPoke(t.id, SESSION.curaPokeId) : null;
+  if(!item) return '';
+  var pokeParaMovimento = (item.tipo==='pp' && item.ppAlvo==='um' && SESSION.curaPokeId) ? getPoke(t.id, SESSION.curaPokeId) : null;
   var body;
   if(pokeParaMovimento){
     /* Passo 3 (só Ether/Max Ether/PP Up/PP Max): qual dos 4 Movimentos recebe. */
@@ -9220,7 +9206,7 @@ function curaHTML(t, mode){
         '<button class="btn-ghost btn-sm" onclick="DT.curaBackToPoke()">‹ Trocar Pokémon</button>'+
         '<button class="btn-ghost btn-sm" onclick="DT.curaCancelPick()">Cancelar</button>'+
       '</div>';
-  } else if(item){
+  } else {
     /* Reviver só mira em quem está desmaiado; PP e Outro funcionam em
        qualquer um (PP porque dá pra recarregar fora de combate mesmo
        desmaiado; Outro -- Pokébola, pedra, item-chave, TM etc. -- porque
@@ -9249,14 +9235,9 @@ function curaHTML(t, mode){
     body = '<p style="font-size:.8rem;">Usar <strong>'+esc(item.nome)+'</strong> em qual Pokémon?</p>'+
       '<div class="btn-row" style="flex-wrap:wrap;">'+(pokeBtns || '<span class="muted">'+semAlvo+'</span>')+'</div>'+
       '<button class="btn-ghost btn-sm" style="margin-top:6px;" onclick="DT.curaCancelPick()">Cancelar</button>';
-  } else {
-    var itemBtns = itensDoTipo.map(function(it){
-      return '<button class="btn-sm" onclick="DT.curaPickItem(\''+it.id+'\')">'+esc(it.nome)+'<br><span class="muted" style="font-size:.66rem;">x'+it.quantidade+' · '+esc(itemCuraDetailText(it))+'</span></button>';
-    }).join('');
-    body = '<div class="btn-row" style="flex-wrap:wrap;">'+(itemBtns || '<p class="muted" style="font-size:.78rem;">Nenhum item de '+ITEM_TIPO_LABELS[tab]+' na mochila.</p>')+'</div>';
   }
 
-  return '<div class="card" style="margin:10px 0;"><div class="card-body">'+toggleBtn+tabs+body+'</div></div>';
+  return '<div class="card" style="margin:10px 0;"><div class="card-body">'+body+'</div></div>';
 }
 /* Slot arrastável/soltável: envolve o card (ou um placeholder vazio) com a
    alça de arrastar e os atributos data-drop-* que identificam o alvo. */
