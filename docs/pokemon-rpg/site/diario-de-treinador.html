@@ -2010,13 +2010,62 @@ function natureModifier(poke, stat){
 }
 /* Nomes das Habilidades reais que uma Espécie pode ter (normais + oculta),
    direto do SPECIES_DEX (campo hab, injetado da PokeAPI) -- [] se a
-   Espécie ainda não bateu com nenhuma do dado oficial. */
+   Espécie ainda não bateu com nenhuma do dado oficial. Usado pra validar
+   se uma Habilidade é oficialmente possível pra essa Espécie -- essa
+   validação NUNCA muda, mesmo pras Habilidades que não têm gatilho
+   mecânico (ver ABILITY_MECH_SET abaixo): uma Habilidade real continua
+   real, só deixa de aparecer no seletor quando existe opção melhor. */
 function habilidadesDaEspecie(especieName){
   var sp = findSpeciesByName(especieName);
   return (sp && sp.hab) ? sp.hab.map(function(h){ return h.n; }) : [];
 }
 function findAbilityByName(nome){
   return ABILITIES_DEX.find(function(a){ return a.name===nome; }) || null;
+}
+/* =================== HABILIDADES: QUAIS TÊM GATILHO MECÂNICO =================
+   Das 373 Habilidades reais (ABILITIES_DEX), essas 92 ganharam gatilho
+   automático de verdade no motor de batalha (ver bloco ABILITY_* mais
+   abaixo, perto do motor de ataque) -- escolhidas pra cobrir a maior
+   quantidade de Pokémon possível (84,5% das 1025 espécies têm pelo menos
+   UMA Habilidade mecânica entre as reais dela) sem inventar sistemas que
+   a gente ainda não tem (clima, terreno, item equipado, PP, flinch,
+   multi-hit) -- essas ficam de fora de propósito, mesmo sendo comuns.
+   As outras ~280 Habilidades continuam 100% no banco de dados
+   (ABILITIES_DEX), com nome e efeito oficial certinhos -- só não
+   aparecem mais no seletor do Mestre quando a Espécie tem alguma
+   alternativa mecânica (habilidadesSelecionaveisDaEspecie); pra Espécie
+   que não tem NENHUMA mecânica entre as reais dela, o seletor cai de
+   volta pra lista completa (nunca deixa sem nenhuma opção) -- aí
+   continua sendo só texto de referência, igual era antes dessa leva. */
+var ABILITY_MECH_SET = {
+  'Sturdy':1,'Intimidate':1,'Levitate':1,'Own Tempo':1,'Water Absorb':1,'Thick Fat':1,'Flash Fire':1,
+  'Oblivious':1,'Guts':1,'Regenerator':1,'Weak Armor':1,'Hydration':1,'Hustle':1,'Flame Body':1,'Shed Skin':1,
+  'Static':1,'Technician':1,'Leaf Guard':1,'Mold Breaker':1,'Clear Body':1,'Ice Body':1,'Natural Cure':1,
+  'Sap Sipper':1,'Poison Point':1,'Iron Fist':1,'Sniper':1,'Lightning Rod':1,'Synchronize':1,'Insomnia':1,
+  'Vital Spirit':1,'Rattled':1,'Moxie':1,'Defiant':1,'Soundproof':1,'Unaware':1,'Rain Dish':1,'Competitive':1,
+  'Water Veil':1,'Speed Boost':1,'Compound Eyes':1,'Serene Grace':1,'Scrappy':1,'Volt Absorb':1,'Shield Dust':1,
+  'Tinted Lens':1,'Swarm':1,'Overgrow':1,'Blaze':1,'Torrent':1,'Shell Armor':1,'Battle Armor':1,'Telepathy':1,
+  'White Smoke':1,'Full Metal Body':1,'Hyper Cutter':1,'Inner Focus':1,'Contrary':1,'Guard Dog':1,'Limber':1,
+  'Magma Armor':1,'Immunity':1,'Effect Spore':1,'Rough Skin':1,'Iron Barbs':1,'Gooey':1,'Tangling Hair':1,
+  'Aftermath':1,'Poison Touch':1,'Wonder Guard':1,'Teravolt':1,'Turboblaze':1,'Storm Drain':1,
+  'Sheer Force':1,'Run Away':1,'Beast Boost':1,'Protosynthesis':1,'Quark Drive':1,'Healer':1,'Justified':1,
+  'Fluffy':1,'Adaptability':1,'Download':1,'Super Luck':1,'Sweet Veil':1,'Strong Jaw':1,'Wonder Skin':1,
+  'Huge Power':1,'Pure Power':1,'Magic Guard':1,'No Guard':1,'Defeatist':1,'Heatproof':1
+};
+/* Só as Habilidades reais da Espécie que TÊM gatilho mecânico (objetos
+   {n,h} originais, preserva a marca de Oculta) -- [] se nenhuma das reais
+   dela estiver em ABILITY_MECH_SET. */
+function habilidadesMecanicasDaEspecie(especieName){
+  var sp = findSpeciesByName(especieName);
+  var hab = (sp && sp.hab) || [];
+  return hab.filter(function(h){ return !!ABILITY_MECH_SET[h.n]; });
+}
+/* Nomes que o seletor do Mestre deve oferecer: só as mecânicas, quando a
+   Espécie tiver pelo menos uma -- senão, TODAS as reais dela (nunca
+   deixa o Mestre sem nenhuma opção pra escolher). */
+function habilidadesSelecionaveisDaEspecie(especieName){
+  var mecanicas = habilidadesMecanicasDaEspecie(especieName).map(function(h){ return h.n; });
+  return mecanicas.length ? mecanicas : habilidadesDaEspecie(especieName);
 }
 
 /* Tabela 6.1: Base Stat oficial -> Atributo Natural RPG (1-20) */
@@ -5127,6 +5176,7 @@ function migrateState(){
       else if(p.natureza!=='' && !findNatureByName(p.natureza)) p.natureza = ''; /* nome que não bate com nenhuma Natureza real */
       if(typeof p.habilidade !== 'string') p.habilidade = '';
       else if(p.habilidade!=='' && habilidadesDaEspecie(p.especie).indexOf(p.habilidade)===-1) p.habilidade = ''; /* espécie mudou, ou nome corrompido */
+      if(typeof p.flashFireBoost !== 'boolean') p.flashFireBoost = false; /* Flash Fire (Cap. 6.3) -- flag de batalha, nunca precisa persistir marcado entre sessões */
     });
   });
   /* Categorias do catálogo de itens (ITEM_CATEGORIAS) que o Mestre desligou
@@ -5186,7 +5236,7 @@ function newPokemon(){
     id: uid(), apelido:"", especie:"", especieNum:null, tipo1:"", tipo2:"",
     natural:{hp:1,atk:1,def:1,spa:1,spd:1,spe:1},
     vinculo:0, maturidade:0, currentHP:null,
-    status:"", statusTurns:0, confuso:false, arenaRevelado:false, natureza:"", habilidade:"",
+    status:"", statusTurns:0, confuso:false, arenaRevelado:false, natureza:"", habilidade:"", flashFireBoost:false,
     estagios:{atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0},
     moves:[{nome:"",tipo:"",categoria:"Físico",poder:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
            {nome:"",tipo:"",categoria:"Físico",poder:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
@@ -5213,11 +5263,61 @@ function liberatedForStat(trainer, poke, stat){
 }
 function effectiveHPStat(trainer, poke){ return (poke.natural.hp||0) + liberatedForStat(trainer, poke, 'hp'); }
 function hpMax(trainer, poke){ return 10 + effectiveHPStat(trainer, poke)*3; }
+/* O Atributo (Natural) que essa Habilidade favorece pra Protosynthesis/
+   Quark Drive -- em cima do jogo oficial (que olha o maior Base Stat
+   real), sem depender de clima/item que a gente não tem: compara os
+   cinco Atributos Naturais (nunca PV) e usa o maior. Empate resolve pela
+   ordem Atq/Def/AEsp/DEsp/Vel (primeiro que achar). */
+function highestNaturalStat(poke){
+  var best = 'atk', bestVal = -Infinity;
+  STAGE_STATS.forEach(function(s){
+    var v = (poke.natural && poke.natural[s]) || 0;
+    if(v>bestVal){ bestVal = v; best = s; }
+  });
+  return best;
+}
+/* Bônus fixo (convertido pro nosso sistema, já pensado pra ficar
+   equilibrado com o resto do jogo) que algumas Habilidades somam direto
+   no Atributo Efetivo -- entra dentro de effectiveStat pra aparecer tanto
+   na ficha quanto em qualquer cálculo (dano, Iniciativa) que já usa esse
+   Atributo. Guts/Hustle/Huge Power/Pure Power só valem no Atq (é o que a
+   Habilidade real afeta); Defeatist tira do Atq E do AEsp quando o PV
+   já está na metade ou menos; Protosynthesis/Quark Drive somam no
+   Atributo mais alto -- oficialmente depende de Sol Forte/item, aqui fica
+   sempre ativo por simplificação (a gente não tem clima nem item
+   equipado ainda). */
+function abilityFlatStatBonus(trainer, poke, stat){
+  var ab = poke.habilidade;
+  if(!ab || stat==='hp') return 0;
+  var bonus = 0;
+  if(stat==='atk'){
+    if(ab==='Guts' && poke.status) bonus += 2;
+    if(ab==='Hustle') bonus += 2;
+    if(ab==='Huge Power' || ab==='Pure Power') bonus += 2;
+  }
+  if((stat==='atk' || stat==='spa') && ab==='Defeatist'){
+    var max = hpMax(trainer, poke);
+    var cur = (poke.currentHP===null||poke.currentHP===undefined) ? max : poke.currentHP;
+    if(cur <= Math.ceil(max/2)) bonus -= 2;
+  }
+  if((ab==='Protosynthesis' || ab==='Quark Drive') && stat===highestNaturalStat(poke)) bonus += 2;
+  return bonus;
+}
 function effectiveStat(trainer, poke, stat){
   var base = (poke.natural[stat]||0) + liberatedForStat(trainer, poke, stat);
   if(stat==='hp') return base;
   var stage = (poke.estagios && poke.estagios[stat]) || 0;
-  return base + stage + natureModifier(poke, stat);
+  return base + stage + natureModifier(poke, stat) + abilityFlatStatBonus(trainer, poke, stat);
+}
+/* Igual effectiveStat, mas ignora o Estágio (usada só dentro do motor de
+   ataque pra Unaware -- Cap. 21: essa Habilidade faz o Pokémon "não
+   enxergar" mudança de Estágio, sua ou do outro, dependendo de quem
+   ataca/defende). Nature e o bônus fixo de Habilidade continuam contando
+   (não são "mudança de Estágio"). */
+function effectiveStatIgnoringStage(trainer, poke, stat){
+  var base = (poke.natural[stat]||0) + liberatedForStat(trainer, poke, stat);
+  if(stat==='hp') return base;
+  return base + natureModifier(poke, stat) + abilityFlatStatBonus(trainer, poke, stat);
 }
 function attrBudget(level){ return clampInt(level,1,16); }
 function attrSpent(trainer){ var s=0; ATTR_ORDER.forEach(function(k){ s += trainer.attrPoints[k]||0; }); return s; }
@@ -5256,6 +5356,93 @@ function typeModifier(moveTipo, defTipo1, defTipo2){
   });
   return {mod:mod, immune:immune};
 }
+
+/* =================== HABILIDADES: MOTOR DE GATILHOS =================
+   Só as Habilidades de ABILITY_MECH_SET (perto de habilidadesDaEspecie)
+   chegam até aqui -- as outras ~280 continuam só texto de referência, sem
+   nada rodando por trás. Tabelas e listas pequenas primeiro, o "efeito de
+   verdade" de cada uma entra direto no motor (resolveAttack,
+   applyAttackResult, applyAbilityHooksAfterHit, os hooks de entrada/saída
+   da Arena e o fim de turno) -- ver cada ponto pra saber onde ela dispara. */
+function bumpStage(poke, stat, delta){
+  if(!poke.estagios) poke.estagios = {atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0};
+  poke.estagios[stat] = clampInt((poke.estagios[stat]||0)+delta, -6, 6);
+}
+function arenaLog(text){
+  if(!STATE.arena) return;
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  STATE.arena.log.push({ ts: Date.now(), text: text });
+  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+}
+/* Cap. 10: a gente não tem um dado de "faz contato" por Movimento (a
+   PokeAPI não expõe isso) -- aproximação: todo Movimento Físico faz
+   contato, EXCETO essa lista curada dos golpes à distância mais
+   conhecidos (terremoto, pedras/ossos arremessados, explosões...). É uma
+   simplificação de propósito, documentada aqui e no Cap. 6.3 das Regras;
+   o Mestre sempre pode adjudicar diferente na mesa. */
+var NO_CONTACT_PHYSICAL = {
+  'Earthquake':1,'Magnitude':1,'Bulldoze':1,'Fissure':1,'Rock Slide':1,'Rock Throw':1,'Rock Blast':1,
+  'Rock Wrecker':1,'Stone Edge':1,'Sand Tomb':1,'Bone Club':1,'Bonemerang':1,'Bone Rush':1,'Spike Cannon':1,
+  'Icicle Spear':1,'Egg Bomb':1,'Barrage':1,'Seed Bomb':1,'Bullet Seed':1,'Rock Tomb':1,'Smack Down':1,
+  'Thousand Arrows':1,'Thousand Waves':1,'Explosion':1,'Self-Destruct':1,'Mind Blown':1,'Steel Beam':1
+};
+function moveMakesContact(move){
+  return !!(move && move.categoria==='Físico' && !NO_CONTACT_PHYSICAL[move.nome]);
+}
+/* Iron Fist / Strong Jaw: listas curadas de golpes de soco/mordida (a
+   PokeAPI também não expõe essa marcação por Movimento). */
+var PUNCH_MOVES = {
+  'Bullet Punch':1,'Comet Punch':1,'Dizzy Punch':1,'Drain Punch':1,'Dynamic Punch':1,'Fire Punch':1,
+  'Focus Punch':1,'Ice Punch':1,'Jet Punch':1,'Mach Punch':1,'Mega Punch':1,'Power-Up Punch':1,
+  'Shadow Punch':1,'Sucker Punch':1,'Thunder Punch':1,'Meteor Mash':1,'Plasma Fists':1,
+  'Double Iron Bash':1,'Ice Hammer':1,'Hammer Arm':1,'Rage Fist':1
+};
+var BITE_MOVES = { 'Bite':1,'Crunch':1,'Fire Fang':1,'Ice Fang':1,'Thunder Fang':1,'Poison Fang':1,'Hyper Fang':1,'Psychic Fangs':1 };
+/* Soundproof: imune a Movimentos baseados em som -- dano E efeito
+   percentual, igual uma imunidade de Tipo. Lista curada (idem acima). */
+var SOUND_MOVES = {
+  'Growl':1,'Roar':1,'Sing':1,'Supersonic':1,'Screech':1,'Snore':1,'Uproar':1,'Hyper Voice':1,
+  'Grass Whistle':1,'Metal Sound':1,'Chatter':1,'Round':1,'Echoed Voice':1,'Relic Song':1,
+  'Disarming Voice':1,'Boomburst':1,'Parting Shot':1,'Confide':1,'Overdrive':1,'Clanging Scales':1,
+  'Clangorous Soul':1,'Sparkling Aria':1,'Bug Buzz':1,'Noble Roar':1,'Eerie Spell':1
+};
+var MOLD_BREAKER_ABILITIES = { 'Mold Breaker':1, 'Teravolt':1, 'Turboblaze':1 };
+/* Intimidate (entrada em campo, Cap. 16/6.3): quem tem uma dessas
+   Habilidades não perde o Atq com Intimidate; Contrary/Guard Dog viram o
+   -1 em +1. Defiant/Competitive somam um bônus em cima da queda (quando
+   ela realmente aconteceu -- não quando foi bloqueada/revertida).
+   Rattled ainda ganha +1 Vel além de perder o Atq normalmente. */
+var INTIMIDATE_BLOCK = { 'Clear Body':1,'White Smoke':1,'Full Metal Body':1,'Hyper Cutter':1,'Inner Focus':1,'Own Tempo':1,'Oblivious':1,'Scrappy':1 };
+var INTIMIDATE_REVERSE = { 'Contrary':1, 'Guard Dog':1 };
+/* Imunidade a Condição/Confuso por Habilidade -- Cap. 20/23. Leaf Guard
+   bloqueia as 5 Condições Principais de uma vez (oficialmente só com Sol
+   Forte; aqui fica sempre ativo, mesma simplificação do Protosynthesis). */
+var STATUS_IMUNE_HABILIDADE = { 'Immunity':'veneno','Limber':'paralisia','Insomnia':'sono','Vital Spirit':'sono','Water Veil':'queimadura','Magma Armor':'congelamento','Sweet Veil':'sono' };
+var STATUS_IMUNE_TOTAL = { 'Leaf Guard':1 };
+function abilityBlocksStatus(poke, statusKey){
+  var ab = poke && poke.habilidade;
+  if(!ab) return false;
+  if(statusKey==='confuso') return ab==='Own Tempo';
+  if(STATUS_IMUNE_TOTAL[ab]) return true;
+  return STATUS_IMUNE_HABILIDADE[ab]===statusKey;
+}
+/* Absorção/imunidade de Tipo por Habilidade (Levitate, Water Absorb...),
+   aplicada dentro de resolveAttack -- devolve null se essa Habilidade não
+   se aplica a esse Movimento. 'imune' sozinho só bloqueia; 'heal'/'stage'
+   descrevem o efeito colateral (aplicado depois, em applyAttackResult,
+   pra resolveAttack continuar sem alterar nada -- mesmo padrão do
+   result.efeito já existente). */
+function abilityTypeAbsorb(defAbility, moveTipo){
+  if(moveTipo==='Terra' && defAbility==='Levitate') return {imune:true};
+  if(moveTipo==='Água' && defAbility==='Water Absorb') return {imune:true, heal:true};
+  if(moveTipo==='Elétrico' && defAbility==='Volt Absorb') return {imune:true, heal:true};
+  if(moveTipo==='Grama' && defAbility==='Sap Sipper') return {imune:true, stage:'atk'};
+  if(moveTipo==='Água' && defAbility==='Storm Drain') return {imune:true, stage:'spa'};
+  if(moveTipo==='Elétrico' && defAbility==='Lightning Rod') return {imune:true, stage:'spa'};
+  if(moveTipo==='Fogo' && defAbility==='Flash Fire') return {imune:true, fireBoost:true};
+  return null;
+}
+
 /* Resolve um ataque inteiro (Cap. 10-14) sem alterar nada — devolve um
    relatório; quem chama decide aplicar (applyAttackResult) e sincronizar.
    forcedRoll (opcional) — {d6, efeitoD10a, efeitoD10b} — permite reusar uma
@@ -5266,29 +5453,101 @@ function typeModifier(moveTipo, defTipo1, defTipo2){
 function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRoll){
   var result = { moveName: move.nome, tipo: move.tipo, categoria: move.categoria };
   var isDamaging = move.categoria==='Físico' || move.categoria==='Especial';
+  var attAbility = attPoke.habilidade, defAbility = defPoke.habilidade;
+  var moldBreaker = !!MOLD_BREAKER_ABILITIES[attAbility];
+  var noGuard = attAbility==='No Guard' || defAbility==='No Guard';
+
   var precisao100 = !move.precisao || parseInt(move.precisao,10)>=100;
   var threshold = hitThreshold(move.precisao);
+  if(attAbility==='Compound Eyes') threshold = Math.max(1, threshold-1);
+  if(attAbility==='Hustle' && move.categoria==='Físico') threshold = threshold+1;
+  if(defAbility==='Wonder Skin' && move.categoria==='Status') threshold = threshold+1;
   var d6 = forcedRoll ? forcedRoll.d6 : rollDie(6);
   result.d6 = d6;
-  var hit = precisao100 ? true : (d6 >= threshold);
-  var falhaNatural = (!precisao100) && d6===1;
+  var hit = noGuard ? true : (precisao100 ? true : (d6 >= threshold));
+  var falhaNatural = (!noGuard) && (!precisao100) && d6===1;
   var crit = isDamaging && d6===6;
+  if(defAbility==='Shell Armor' || defAbility==='Battle Armor') crit = false;
   result.hit = hit; result.falhaNatural = falhaNatural; result.crit = crit;
 
   if(!hit){ result.dano = 0; return result; }
 
   var tm = typeModifier(move.tipo, defPoke.tipo1, defPoke.tipo2);
   result.immune = tm.immune;
+  result.abilityAbsorb = null;
+
+  /* Habilidades que bloqueiam/alteram o Tipo (Levitate, Wonder Guard,
+     absorções, Thick Fat...) -- Mold Breaker/Teravolt/Turboblaze no
+     atacante ignoram TODAS elas (menos Sturdy, que não é "esconder o
+     efeito do golpe", é sobreviver ao dano -- Cap. 6.3). Scrappy/Tinted
+     Lens são do atacante e continuam valendo mesmo sem Mold Breaker. */
+  if(!moldBreaker){
+    var absorb = abilityTypeAbsorb(defAbility, move.tipo);
+    if(absorb){ tm.immune = true; result.immune = true; result.abilityAbsorb = absorb; }
+    if(defAbility==='Wonder Guard' && isDamaging && tm.mod<=0){ tm.immune = true; result.immune = true; }
+    if(defAbility==='Thick Fat' && (move.tipo==='Fogo'||move.tipo==='Gelo')) tm.mod -= 2;
+  }
+  /* Soundproof: imune a golpe baseado em som, por nome (lista curada) --
+     não é uma imunidade "esconder o golpe" no mesmo sentido de
+     Levitate/Wonder Guard, então Mold Breaker não ignora ela. */
+  if(defAbility==='Soundproof' && SOUND_MOVES[move.nome]){ tm.immune = true; result.immune = true; }
+  if(attAbility==='Scrappy' && tm.immune && !result.abilityAbsorb && (move.tipo==='Normal'||move.tipo==='Lutador')){
+    tm.immune = false; result.immune = false;
+  }
+  if(attAbility==='Tinted Lens' && tm.mod<0) tm.mod = 0;
 
   if(isDamaging && !tm.immune){
     var atkStat = move.categoria==='Físico' ? 'atk' : 'spa';
     var defStat = move.categoria==='Físico' ? 'def' : 'spd';
-    var atkEff = effectiveStat(attTrainer, attPoke, atkStat);
-    var defEff = effectiveStat(defTrainer, defPoke, defStat);
+    var atkEff = (defAbility==='Unaware') ? effectiveStatIgnoringStage(attTrainer, attPoke, atkStat) : effectiveStat(attTrainer, attPoke, atkStat);
+    var defEff = (attAbility==='Unaware') ? effectiveStatIgnoringStage(defTrainer, defPoke, defStat) : effectiveStat(defTrainer, defPoke, defStat);
     var base = atkEff + (move.poder||0) - defEff;
-    var stab = (move.tipo && (move.tipo===attPoke.tipo1 || move.tipo===attPoke.tipo2)) ? 1 : 0;
-    var dano = base + stab + tm.mod + (crit?4:0);
-    result.dano = Math.max(1, dano);
+    var stab = (move.tipo && (move.tipo===attPoke.tipo1 || move.tipo===attPoke.tipo2)) ? (attAbility==='Adaptability' ? 2 : 1) : 0;
+
+    /* Bônus fixo de dano por Habilidade do atacante -- Technician (golpe
+       fraco), Iron Fist/Strong Jaw (soco/mordida), Sheer Force (perde o
+       efeito colateral, ganha poder), Overgrow/Blaze/Torrent/Swarm (PV
+       baixo + Tipo bate), Sniper (Crítico), Flash Fire já ativado antes
+       (golpe de Fogo de novo). Tudo convertido em valores fixos pequenos,
+       equilibrado com o resto do dano (Cap. 12). */
+    var attMax = hpMax(attTrainer, attPoke);
+    var attCur = (attPoke.currentHP===null||attPoke.currentHP===undefined) ? attMax : attPoke.currentHP;
+    var bonus = 0;
+    if(attAbility==='Technician' && (move.poder||0)<=3) bonus += 1;
+    if(attAbility==='Iron Fist' && PUNCH_MOVES[move.nome]) bonus += 1;
+    if(attAbility==='Strong Jaw' && BITE_MOVES[move.nome]) bonus += 1;
+    if(attAbility==='Sheer Force' && MOVE_EFFECTS[move.nome]) bonus += 2;
+    if(attCur<=Math.ceil(attMax/3)){
+      if(attAbility==='Overgrow' && move.tipo==='Grama') bonus += 2;
+      if(attAbility==='Blaze' && move.tipo==='Fogo') bonus += 2;
+      if(attAbility==='Torrent' && move.tipo==='Água') bonus += 2;
+      if(attAbility==='Swarm' && move.tipo==='Inseto') bonus += 2;
+    }
+    if(attAbility==='Flash Fire' && attPoke.flashFireBoost && move.tipo==='Fogo') bonus += 2;
+    if(crit && attAbility==='Sniper') bonus += 2;
+
+    var dano = base + stab + tm.mod + (crit?4:0) + bonus;
+    dano = Math.max(1, dano);
+
+    /* Redutores finais, por proporção (não somam com o bônus acima, agem
+       depois dele) -- Fluffy (contato pela metade, mas Fogo dobra o que
+       sofre) e Heatproof (Fogo pela metade). */
+    if(defAbility==='Fluffy'){
+      if(moveMakesContact(move)) dano = Math.max(1, Math.ceil(dano/2));
+      if(move.tipo==='Fogo') dano = dano+2;
+    }
+    if(defAbility==='Heatproof' && move.tipo==='Fogo') dano = Math.max(1, Math.ceil(dano/2));
+
+    /* Sturdy (Cap. 6.3): com o PV cheio, nunca desmaia num golpe só --
+       fica com 1 PV. Mold Breaker/Teravolt/Turboblaze NÃO ignoram Sturdy
+       (não é "esconder efeito do golpe", é aguentar o dano). */
+    if(defAbility==='Sturdy'){
+      var defMax = hpMax(defTrainer, defPoke);
+      var defCurNow = (defPoke.currentHP===null||defPoke.currentHP===undefined) ? defMax : defPoke.currentHP;
+      if(defCurNow===defMax && dano>=defMax){ dano = defMax-1; result.sturdySalvou = true; }
+    }
+
+    result.dano = dano;
     result.stab = !!stab;
     result.tipoMod = tm.mod;
   } else {
@@ -5299,18 +5558,22 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
      Tipo que bloqueia o dano. Crítico com efeito dá uma segunda tentativa
      se a primeira falhar. A tabela do Cap. 14 usa a Chance em dezenas de
      "faixa do d10" (10% = só o 1, 20% = 1-2, ..., 90% = 1-9), daí a divisão
-     por 10 — comparar a Chance (0-100) direto com o d10 (1-10) sempre bateria. */
+     por 10 — comparar a Chance (0-100) direto com o d10 (1-10) sempre bateria.
+     Sheer Force troca o efeito colateral por poder extra (já somado acima)
+     -- não rola o d10, o golpe nunca tem efeito nele. Serene Grace dobra
+     a Chance (limitada a 100). */
   var fx = MOVE_EFFECTS[move.nome];
-  if(fx && !tm.immune){
-    var d10Threshold = fx.chance/10;
+  if(fx && !tm.immune && attAbility!=='Sheer Force'){
+    var chance = (attAbility==='Serene Grace') ? Math.min(100, fx.chance*2) : fx.chance;
+    var d10Threshold = chance/10;
     var d10a = forcedRoll ? forcedRoll.efeitoD10a : rollDie(10);
-    var success = fx.chance>=100 ? true : (d10a <= d10Threshold);
+    var success = chance>=100 ? true : (d10a <= d10Threshold);
     var d10b = null;
     if(!success && crit){
       d10b = forcedRoll ? (forcedRoll.efeitoD10b!==undefined ? forcedRoll.efeitoD10b : rollDie(10)) : rollDie(10);
-      success = fx.chance>=100 ? true : (d10b <= d10Threshold);
+      success = chance>=100 ? true : (d10b <= d10Threshold);
     }
-    result.efeito = { ailment: fx.ailment, chance: fx.chance, d10a: d10a, d10b: d10b, sucesso: success };
+    result.efeito = { ailment: fx.ailment, chance: chance, d10a: d10a, d10b: d10b, sucesso: success };
   }
 
   return result;
@@ -5328,13 +5591,29 @@ function applyAttackResult(defTrainer, defPoke, result){
     defPoke.currentHP = clampInt(cur - result.dano, 0, max);
     if(defPoke.currentHP<=0) info.fainted = true;
   }
-  if(result.efeito && result.efeito.sucesso){
+  /* Absorção de Tipo (Water/Volt Absorb, Sap Sipper, Storm Drain/
+     Lightning Rod, Flash Fire) -- computada em resolveAttack
+     (result.abilityAbsorb), aplicada aqui de verdade. */
+  if(result.abilityAbsorb){
+    var ab = result.abilityAbsorb;
+    if(ab.heal){
+      var maxH = hpMax(defTrainer, defPoke);
+      var curH = (defPoke.currentHP===null||defPoke.currentHP===undefined) ? maxH : defPoke.currentHP;
+      defPoke.currentHP = clampInt(curH + Math.max(1, Math.ceil(maxH/4)), 0, maxH);
+    }
+    if(ab.stage) bumpStage(defPoke, ab.stage, 1);
+    if(ab.fireBoost) defPoke.flashFireBoost = true;
+  }
+  if(result.efeito && result.efeito.sucesso && defPoke.habilidade!=='Shield Dust'){
     if(result.efeito.ailment==='confuso'){
-      if(!defPoke.confuso){ defPoke.confuso = true; info.statusApplied = 'confuso'; }
+      if(!defPoke.confuso && !abilityBlocksStatus(defPoke,'confuso')){ defPoke.confuso = true; info.statusApplied = 'confuso'; }
     } else if(!defPoke.status){
-      defPoke.status = result.efeito.ailment;
-      defPoke.statusTurns = 0;
-      info.statusApplied = result.efeito.ailment;
+      var ailmentNorm = result.efeito.ailment==='veneno_grave' ? 'veneno' : result.efeito.ailment;
+      if(!abilityBlocksStatus(defPoke, ailmentNorm)){
+        defPoke.status = result.efeito.ailment;
+        defPoke.statusTurns = 0;
+        info.statusApplied = result.efeito.ailment;
+      }
     }
   }
   return info;
@@ -5420,6 +5699,86 @@ function eligibleItemTargets(actingEntry, item){
    pra todos (Cap. 13/14 das regras) — só o Dano varia por alvo, calculado
    de novo pra cada um (Tipo/Atributos do defensor mudam). Devolve um array
    {entry,trainer,poke,result,info}, um por alvo. */
+var SYNCHRONIZE_AILMENTS = { 'queimadura':1,'veneno':1,'veneno_grave':1,'paralisia':1 };
+function pokeNome(p){ return (p && (p.apelido||p.especie)) || 'Pokémon'; }
+/* Gatilhos de Habilidade que disparam DEPOIS de um golpe acertar (contato
+   recebido, KO, Synchronize...) -- roda uma vez por alvo, logo depois de
+   applyAttackResult, com acesso a atacante E defensor dos dois lados
+   (por isso não entra em applyAttackResult, que só recebe o defensor). */
+function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPoke, result, info){
+  if(!result.hit || result.immune) return;
+  var contact = moveMakesContact(move);
+  var dealt = result.dano>0;
+  var attAbility = attPoke.habilidade, defAbility = defPoke.habilidade;
+  var attMax = hpMax(attTrainer, attPoke);
+  var defNome = pokeNome(defPoke), attNome = pokeNome(attPoke);
+
+  /* --- Habilidade do DEFENSOR, disparada por ser atingido --- */
+  if(dealt && contact && attAbility!=='Shield Dust'){
+    var CONTACT_AILMENT = { Static:'paralisia', 'Poison Point':'veneno', 'Flame Body':'queimadura' };
+    if(CONTACT_AILMENT[defAbility] && !attPoke.status && rollDie(10)<=3 && !abilityBlocksStatus(attPoke, CONTACT_AILMENT[defAbility])){
+      attPoke.status = CONTACT_AILMENT[defAbility]; attPoke.statusTurns = 0;
+      arenaLog(esc(defNome)+' tem '+defAbility+' — deu '+CONTACT_AILMENT[defAbility]+' em '+esc(attNome)+' no contato!');
+    }
+    if(defAbility==='Effect Spore' && !attPoke.status && rollDie(10)<=3){
+      var pick = ['paralisia','veneno','sono'][rollDie(3)-1];
+      if(!abilityBlocksStatus(attPoke, pick)){
+        attPoke.status = pick; attPoke.statusTurns = 0;
+        arenaLog(esc(defNome)+' tem Effect Spore — grudou '+pick+' em '+esc(attNome)+'!');
+      }
+    }
+    if((defAbility==='Rough Skin' || defAbility==='Iron Barbs')){
+      var dmg1 = Math.max(1, Math.ceil(attMax/8));
+      attPoke.currentHP = clampInt(((attPoke.currentHP===null||attPoke.currentHP===undefined)?attMax:attPoke.currentHP)-dmg1, 0, attMax);
+      arenaLog(esc(defNome)+' tem '+defAbility+' — '+esc(attNome)+' sofreu '+dmg1+' de dano no contato.');
+    }
+    if(defAbility==='Gooey' || defAbility==='Tangling Hair'){
+      bumpStage(attPoke, 'spe', -1);
+      arenaLog(esc(defNome)+' tem '+defAbility+' — Velocidade de '+esc(attNome)+' caiu 1 estágio.');
+    }
+  }
+  if(dealt){
+    if(defAbility==='Weak Armor' && move.categoria==='Físico'){
+      bumpStage(defPoke, 'def', -1); bumpStage(defPoke, 'spe', 2);
+      arenaLog(esc(defNome)+' tem Weak Armor — Defesa caiu, Velocidade subiu.');
+    }
+    if(defAbility==='Justified' && move.tipo==='Sombrio'){
+      bumpStage(defPoke, 'atk', 1);
+      arenaLog(esc(defNome)+' tem Justified — Ataque subiu 1 estágio.');
+    }
+    if(defAbility==='Rattled' && (move.tipo==='Sombrio'||move.tipo==='Inseto'||move.tipo==='Fantasma')){
+      bumpStage(defPoke, 'spe', 1);
+      arenaLog(esc(defNome)+' tem Rattled — Velocidade subiu 1 estágio.');
+    }
+  }
+
+  /* --- Habilidade do ATACANTE, disparada por acertar --- */
+  if(dealt && contact && attAbility==='Poison Touch' && defAbility!=='Shield Dust' && !defPoke.status && rollDie(10)<=3 && !abilityBlocksStatus(defPoke,'veneno')){
+    defPoke.status = 'veneno'; defPoke.statusTurns = 0;
+    arenaLog(esc(attNome)+' tem Poison Touch — envenenou '+esc(defNome)+' no contato!');
+  }
+  if(info.fainted && contact && (defAbility==='Aftermath')){
+    var dmg2 = Math.max(1, Math.ceil(attMax/4));
+    attPoke.currentHP = clampInt(((attPoke.currentHP===null||attPoke.currentHP===undefined)?attMax:attPoke.currentHP)-dmg2, 0, attMax);
+    arenaLog(esc(defNome)+' tem Aftermath — '+esc(attNome)+' sofreu '+dmg2+' de dano ao desmaiar ele no contato.');
+  }
+  if(info.statusApplied && SYNCHRONIZE_AILMENTS[info.statusApplied] && defAbility==='Synchronize' && !attPoke.status && attAbility!=='Shield Dust'){
+    var synced = info.statusApplied==='veneno_grave' ? 'veneno' : info.statusApplied;
+    if(!abilityBlocksStatus(attPoke, synced)){
+      attPoke.status = synced; attPoke.statusTurns = 0;
+      arenaLog(esc(defNome)+' tem Synchronize — devolveu a Condição pra '+esc(attNome)+'.');
+    }
+  }
+  if(info.fainted){
+    if(attAbility==='Moxie'){ bumpStage(attPoke,'atk',1); arenaLog(esc(attNome)+' tem Moxie — Ataque subiu 1 estágio ao desmaiar o oponente.'); }
+    if(attAbility==='Beast Boost'){
+      var best = highestNaturalStat(attPoke);
+      bumpStage(attPoke, best, 1);
+      arenaLog(esc(attNome)+' tem Beast Boost — '+stageLblName(best)+' subiu 1 estágio ao desmaiar o oponente.');
+    }
+  }
+}
+function stageLblName(stat){ return {atk:'Ataque',def:'Defesa',spa:'Ataque Especial',spd:'Defesa Especial',spe:'Velocidade'}[stat] || stat; }
 function resolveMoveUse(attTrainer, attPoke, move, targets){
   var forced = null;
   return targets.map(function(tgt){
@@ -5432,6 +5791,7 @@ function resolveMoveUse(attTrainer, attPoke, move, targets){
       };
     }
     var info = applyAttackResult(tgt.trainer, tgt.poke, result);
+    applyAbilityHooksAfterHit(attTrainer, attPoke, move, tgt.trainer, tgt.poke, result, info);
     return { entry: tgt.entry, trainer: tgt.trainer, poke: tgt.poke, result: result, info: info };
   });
 }
@@ -5561,19 +5921,67 @@ function applyEndOfTurnStatusAndLog(entry){
   if(!t || !p) return;
   var max = hpMax(t,p);
   var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
-  if(cur<=0) return; /* já desmaiado, sem dano de status */
-  var dano = 0;
-  if(p.status==='queimadura') dano = 1; /* Cap. 20.1 */
-  else if(p.status==='veneno') dano = 2; /* Cap. 20.2 */
-  else if(p.status==='veneno_grave'){ p.statusTurns = (p.statusTurns||0)+1; dano = p.statusTurns; } /* Cap. 20.3: 1,2,3,4,5... */
-  if(dano<=0) return;
-  var novoHP = clampInt(cur-dano, 0, max);
-  p.currentHP = novoHP;
-  var fainted = novoHP<=0;
+  if(cur<=0) return; /* já desmaiado, sem tique de fim de turno nenhum */
+  var ability = p.habilidade;
   var nome = p.apelido||p.especie||'Pokémon';
-  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
-  STATE.arena.log.push({ ts: Date.now(), text: esc(nome)+' ('+esc(t.name)+') sofreu <strong>'+dano+'</strong> de dano por '+esc(ailmentLabel(p.status))+(fainted?' — 😵 Desmaiou!':'') });
-  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+
+  /* Dano de status por turno (Cap. 20) -- Magic Guard bloqueia de vez
+     (imune a qualquer dano que não seja de golpe direto); Poison Heal
+     inverte Veneno/Veneno Grave em cura em vez de dano. */
+  if(ability==='Magic Guard'){
+    /* sem dano nenhum -- e sem incrementar o contador de Veneno Grave,
+       já que o "acumulando" representa o dano que não está acontecendo. */
+  } else if(ability==='Poison Heal' && (p.status==='veneno' || p.status==='veneno_grave')){
+    var curaPH = Math.max(1, Math.ceil(max/8));
+    var novoPH = clampInt(cur+curaPH, 0, max);
+    if(novoPH>cur){
+      p.currentHP = novoPH;
+      arenaLog(esc(nome)+' ('+esc(t.name)+') tem Poison Heal — recuperou <strong>'+curaPH+'</strong> PV em vez de sofrer o Veneno.');
+    }
+  } else {
+    var dano = 0;
+    if(p.status==='queimadura') dano = 1; /* Cap. 20.1 */
+    else if(p.status==='veneno') dano = 2; /* Cap. 20.2 */
+    else if(p.status==='veneno_grave'){ p.statusTurns = (p.statusTurns||0)+1; dano = p.statusTurns; } /* Cap. 20.3: 1,2,3,4,5... */
+    if(dano>0){
+      var novoHP = clampInt(cur-dano, 0, max);
+      p.currentHP = novoHP;
+      var fainted = novoHP<=0;
+      arenaLog(esc(nome)+' ('+esc(t.name)+') sofreu <strong>'+dano+'</strong> de dano por '+esc(ailmentLabel(p.status))+(fainted?' — 😵 Desmaiou!':''));
+    }
+  }
+
+  /* Tiques passivos de Habilidade no fim do turno de quem agiu (Speed
+     Boost, Shed Skin, Ice Body/Rain Dish, Healer) -- só se ele continuar
+     vivo depois do que já rolou acima. */
+  var curNow = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+  if(curNow<=0) return;
+  if(ability==='Speed Boost'){
+    bumpStage(p,'spe',1);
+    arenaLog(esc(nome)+' tem Speed Boost — Velocidade subiu 1 estágio.');
+  }
+  if(ability==='Shed Skin' && p.status && rollDie(10)<=3){
+    arenaLog(esc(nome)+' tem Shed Skin — curou a própria Condição ('+esc(ailmentLabel(p.status))+').');
+    p.status=''; p.statusTurns=0;
+  }
+  if((ability==='Ice Body' || ability==='Rain Dish') && curNow<max){
+    var curaTick = Math.max(1, Math.ceil(max/16));
+    p.currentHP = clampInt(curNow+curaTick, 0, max);
+    arenaLog(esc(nome)+' tem '+ability+' — recuperou '+curaTick+' PV.');
+  }
+  if(ability==='Healer'){
+    var ally = (STATE.arena.entries||[]).map(function(e){
+      if(e.teamId!==entry.teamId || e.id===entry.id || !e.revelado) return null;
+      var at = findTrainer(e.trainerId); var ap = at && getPoke(e.trainerId, e.pokemonId);
+      if(!at || !ap || !ap.status) return null;
+      var amax = hpMax(at,ap); var acur = (ap.currentHP===null||ap.currentHP===undefined) ? amax : ap.currentHP;
+      return acur>0 ? ap : null;
+    }).filter(Boolean)[0];
+    if(ally && rollDie(10)<=3){
+      arenaLog(esc(nome)+' tem Healer — curou a Condição de '+esc(pokeNome(ally))+'.');
+      ally.status=''; ally.statusTurns=0;
+    }
+  }
 }
 /* Aplica de verdade o efeito de um item de Vida ou Condição num Pokémon --
    usado tanto pela aba Cura da ficha (fora de batalha) quanto por "Usar
@@ -5971,7 +6379,7 @@ DT.setNatureza = function(tid,pid,el){
 DT.setHabilidade = function(tid,pid,el){
   if(SESSION.role!=='gm') return;
   var p = getPoke(tid,pid); if(!p) return;
-  var validas = habilidadesDaEspecie(p.especie);
+  var validas = habilidadesSelecionaveisDaEspecie(p.especie); /* mesma lista que o seletor mostra */
   p.habilidade = (el.value==='' || validas.indexOf(el.value)!==-1) ? el.value : '';
   mutate();
 };
@@ -6223,6 +6631,76 @@ DT.arenaRemoveTeam = function(teamId){
   SESSION.confirmRemoveArenaTeam = null;
   mutate();
 };
+/* Habilidades de entrada em campo (Intimidate, Download) -- disparam toda
+   vez que uma entrada NOVA nasce num Time (arenaSetEntry, arenaEnter,
+   arenaSwapIn), não quando uma entrada já existente só troca de Time. */
+function opposingAliveEntries(teamId){
+  return (STATE.arena.entries||[]).filter(function(e){
+    if(e.teamId===teamId || !e.revelado) return false;
+    var t = findTrainer(e.trainerId); var p = t && getPoke(e.trainerId, e.pokemonId);
+    if(!t || !p) return false;
+    var max = hpMax(t,p);
+    var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+    return cur>0;
+  }).map(function(e){ return { entry:e, trainer: findTrainer(e.trainerId), poke: getPoke(e.trainerId, e.pokemonId) }; });
+}
+function applyOnSwitchInAbility(trainer, poke, teamId){
+  var ability = poke.habilidade;
+  if(!ability || !trainer) return;
+  var nome = pokeNome(poke);
+  if(ability==='Intimidate'){
+    opposingAliveEntries(teamId).forEach(function(o){
+      var oAb = o.poke.habilidade;
+      if(INTIMIDATE_BLOCK[oAb]){
+        arenaLog(esc(nome)+' usou Intimidate, mas '+esc(pokeNome(o.poke))+' tem '+oAb+' e não é afetado.');
+        return;
+      }
+      if(INTIMIDATE_REVERSE[oAb]){
+        bumpStage(o.poke,'atk',1);
+        arenaLog(esc(nome)+' usou Intimidate — '+oAb+' de '+esc(pokeNome(o.poke))+' reverteu pra +1 Ataque.');
+        return;
+      }
+      bumpStage(o.poke,'atk',-1);
+      arenaLog(esc(nome)+' usou Intimidate — Ataque de '+esc(pokeNome(o.poke))+' caiu 1 estágio.');
+      if(oAb==='Rattled') bumpStage(o.poke,'spe',1);
+      if(oAb==='Defiant') bumpStage(o.poke,'atk',2);
+      if(oAb==='Competitive') bumpStage(o.poke,'spa',2);
+    });
+  }
+  if(ability==='Download'){
+    var opp = opposingAliveEntries(teamId);
+    if(opp.length){
+      var sumDef=0, sumSpd=0;
+      opp.forEach(function(o){ sumDef += effectiveStat(o.trainer,o.poke,'def'); sumSpd += effectiveStat(o.trainer,o.poke,'spd'); });
+      var stat = sumDef<=sumSpd ? 'atk' : 'spa';
+      bumpStage(poke, stat, 1);
+      arenaLog(esc(nome)+' usou Download — '+stageLblName(stat)+' subiu 1 estágio.');
+    }
+  }
+}
+/* Habilidades de saída de campo (Regenerator, Natural Cure) -- disparam
+   numa troca deliberada (arenaSwapIn) ou ao sair da Arena de vez
+   (arenaLeave); NÃO em fuga nem desmaio (Cap. 6.3: são "saídas
+   voluntárias pra um substituto", não "sumir da luta"). */
+function applyOnSwitchOutAbility(trainer, poke){
+  var ability = poke.habilidade;
+  poke.flashFireBoost = false;
+  if(!ability) return;
+  var nome = pokeNome(poke);
+  if(ability==='Regenerator'){
+    var max = hpMax(trainer, poke);
+    var cur = (poke.currentHP===null||poke.currentHP===undefined) ? max : poke.currentHP;
+    if(cur>0 && cur<max){
+      var cura = Math.max(1, Math.ceil(max/3));
+      poke.currentHP = clampInt(cur+cura, 0, max);
+      arenaLog(esc(nome)+' tem Regenerator — recuperou '+cura+' PV ao sair.');
+    }
+  }
+  if(ability==='Natural Cure' && (poke.status || poke.confuso)){
+    poke.status=''; poke.statusTurns=0; poke.confuso=false;
+    arenaLog(esc(nome)+' tem Natural Cure — a Condição sumiu ao sair.');
+  }
+}
 DT.arenaSetEntry = function(trainerId, pokemonId, teamId){
   if(!STATE.arena) return;
   var entry = STATE.arena.entries.find(function(e){ return e.trainerId===trainerId && e.pokemonId===pokemonId; });
@@ -6235,6 +6713,7 @@ DT.arenaSetEntry = function(trainerId, pokemonId, teamId){
        daqui em diante, mesmo se ele sair do Time depois). */
     if(p) p.arenaRevelado = true;
     STATE.arena.entries.push({id:uid(), teamId:teamId, trainerId:trainerId, pokemonId:pokemonId, revelado:true});
+    if(p) applyOnSwitchInAbility(findTrainer(trainerId), p, teamId);
   }
   mutate();
 };
@@ -6270,6 +6749,7 @@ DT.arenaEnter = function(trainerId, teamId){
     if(jaEmCampo) return;
     p.arenaRevelado = true;
     STATE.arena.entries.push({id:uid(), teamId:teamId, trainerId:trainerId, pokemonId:p.id, revelado:true});
+    applyOnSwitchInAbility(t, p, teamId);
     entrou++;
   });
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
@@ -6286,6 +6766,10 @@ DT.arenaLeave = function(trainerId){
   var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
   if(SESSION.role!=='gm' && !isOwner) return;
   var antes = STATE.arena.entries.length;
+  (STATE.arena.entries||[]).filter(function(e){ return e.trainerId===trainerId; }).forEach(function(e){
+    var p = getPoke(e.trainerId, e.pokemonId);
+    if(p) applyOnSwitchOutAbility(t, p);
+  });
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.trainerId!==trainerId; });
   if(STATE.arena.entries.length===antes) return; /* não tinha nenhum -- nada pra registrar */
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
@@ -6494,6 +6978,11 @@ DT.arenaSwapIn = function(newPokemonId){
   /* A troca é a última ação de quem estava em campo -- se ele tiver
      Queimadura/Veneno, o dano de fim de turno ainda bate nele antes de sair. */
   applyEndOfTurnStatusAndLog(oldEntry);
+  /* Regenerator/Natural Cure só disparam se ele saiu vivo -- não faz
+     sentido "curar ao sair" um Pokémon que acabou de desmaiar no próprio
+     dano de status que a troca provocou. */
+  var oldCurAfter = (oldP.currentHP===null||oldP.currentHP===undefined) ? hpMax(oldT,oldP) : oldP.currentHP;
+  if(oldCurAfter>0) applyOnSwitchOutAbility(oldT, oldP);
 
   var round = STATE.arena.round;
   var wasCurrent = round && currentRoundEntryId()===oldEntry.id;
@@ -6502,6 +6991,7 @@ DT.arenaSwapIn = function(newPokemonId){
   newP.arenaRevelado = true;
   var idx = STATE.arena.entries.indexOf(oldEntry);
   if(idx!==-1) STATE.arena.entries.splice(idx, 1, newEntry);
+  applyOnSwitchInAbility(oldT, newP, oldEntry.teamId);
 
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   var prefix = round ? ('Rodada '+round.number+' · ') : '';
@@ -8118,10 +8608,14 @@ function pokeCardHTML(t,p,editable,mode){
 
   /* Habilidade: restrita às que a Espécie de verdade pode ter (normais +
      oculta, campo hab do SPECIES_DEX, vindo da PokeAPI) -- só o Mestre
-     escolhe/troca; o efeito é só texto de referência (Cap. 25), o motor
-     da Arena ainda não simula habilidade nenhuma. */
+     escolhe/troca. O seletor prioriza as Habilidades com gatilho mecânico
+     de verdade (ABILITY_MECH_SET, ver perto de habilidadesDaEspecie) --
+     só cai pra lista completa se a Espécie não tiver NENHUMA mecânica
+     entre as reais dela; nesse caso continua só texto de referência
+     (Cap. 25), igual antes dessa leva. */
   var especieAtual = findSpeciesByName(p.especie);
-  var habsDisponiveis = (especieAtual && especieAtual.hab) || [];
+  var habsMecanicas = habilidadesMecanicasDaEspecie(p.especie);
+  var habsDisponiveis = habsMecanicas.length ? habsMecanicas : ((especieAtual && especieAtual.hab) || []);
   var habAtual = findAbilityByName(p.habilidade);
   var habilidadeRow = '<div class="field"><label>Habilidade</label>'+
     (canGM
@@ -8129,9 +8623,11 @@ function pokeCardHTML(t,p,editable,mode){
           ? '<select onchange="DT.setHabilidade(\''+t.id+'\',\''+did+'\', this)">'+
               '<option value=""'+(!p.habilidade?' selected':'')+'>— Nenhuma —</option>'+
               habsDisponiveis.map(function(h){
-                return '<option value="'+esc(h.n)+'"'+(h.n===p.habilidade?' selected':'')+'>'+esc(h.n)+(h.h?' (Oculta)':'')+'</option>';
+                var mecanica = habsMecanicas.length && ABILITY_MECH_SET[h.n];
+                return '<option value="'+esc(h.n)+'"'+(h.n===p.habilidade?' selected':'')+'>'+(mecanica?'⚙️ ':'')+esc(h.n)+(h.h?' (Oculta)':'')+'</option>';
               }).join('')+
-            '</select>'
+            '</select>'+
+            (!habsMecanicas.length ? '<div class="muted" style="font-size:.7rem; margin-top:2px;">Nenhuma Habilidade real dessa Espécie tem gatilho automático ainda — só texto de referência (Cap. 25).</div>' : '')
           : '<span class="muted">Defina a Espécie primeiro.</span>')
       : (p.habilidade ? '<span class="num">'+esc(p.habilidade)+'</span>' : '<span class="muted">Nenhuma</span>'))+
     (habAtual && habAtual.efeito ? '<div class="muted" style="font-size:.7rem; margin-top:2px;">'+esc(habAtual.efeito)+'</div>' : '')+

@@ -61,7 +61,7 @@ Clique no método (Nível/Evo/TM/Egg) e depois escolha o Movimento no menu que a
 - Espécie, Tipo 1/2, Atributos Naturais e Efetivos.
 - Vínculo e Maturidade.
 - Natureza — um dos 25 temperamentos oficiais (ex.: Adamant, Timid, Bold...). Cada Natureza dá +1 num Atributo Efetivo e -1 em outro (PV nunca entra nessa conta); 5 delas são neutras e não mudam nada. É só referência mecânica: aparece no card, mas quem ajusta é o Mestre.
-- Habilidade — restrita às habilidades reais daquela espécie (incluindo a Habilidade Oculta, quando existe). Mostra o nome oficial e o efeito descrito, só como referência de mesa — não tem gatilho automático em batalha.
+- Habilidade — restrita às habilidades reais daquela espécie (incluindo a Habilidade Oculta, quando existe). A maioria delas já tem efeito de verdade na Arena — aparece marcada com **⚙️** no seletor do Mestre (ex.: Static paralisa 30% das vezes quem te acerta de perto, Intimidate baixa o Ataque de quem entra contra você, Levitate te deixa imune a golpe de Terra). As que ainda não têm ⚙️ continuam só como referência de mesa, sem gatilho automático.
 - Condição (queimadura, veneno, sono, etc.) e Confuso — aparecem em destaque (um selo vermelho) no topo do card quando ativos, pra você não perder o que está rolando na batalha.
 
 Cada Pokémon mostra automaticamente o sprite (a imagem pixelada) da espécie assim que o Mestre define ela. Sem espécie definida ainda, aparece um "❔" no lugar — e enquanto isso, o seletor de Movimentos fica bloqueado (precisa da Espécie pra saber o que ele pode aprender).

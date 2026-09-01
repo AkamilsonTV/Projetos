@@ -41,8 +41,26 @@ Pra configurar um Pokémon:
 - **Vínculo**: controlado por um slider (0–25) — libera pontos de Atributo do Treinador pro Pokémon usar, conforme a tabela das Regras.
 - **Maturidade**: campo numérico livre — a regra definitiva de evolução ainda está em aberto.
 - **Natureza**: menu com as 25 Naturezas oficiais. Escolhida uma, o Atributo Efetivo que ela favorece ganha +1 e o que ela atrapalha perde -1 automaticamente (PV nunca é afetado); as 5 Naturezas neutras (Hardy, Docile, Serious, Bashful, Quirky) não mudam nada. Só você edita.
-- **Habilidade**: menu restrito às habilidades reais **daquela Espécie** (inclusive a Habilidade Oculta, quando ela existe) — muda sozinho se você trocar a Espécie e a Habilidade atual não existir mais nela. Mostra o efeito oficial (em inglês) como legenda, só de referência — não dispara nada sozinho em batalha, é você quem adjudica. Só você edita.
+- **Habilidade**: menu restrito às habilidades reais **daquela Espécie** (inclusive a Habilidade Oculta, quando ela existe) — muda sozinho se você trocar a Espécie e a Habilidade atual não existir mais nela. O seletor prioriza as marcadas com **⚙️** — essas têm gatilho automático de verdade no motor da Arena (ver seção "Habilidades com gatilho automático" abaixo); as sem ⚙️ mostram só o efeito oficial como legenda, de referência, sem disparar nada sozinhas — aí é você quem adjudica. Se a Espécie não tiver NENHUMA com ⚙️, o menu cai pra lista completa dela (sempre tem alguma opção pra escolher). Só você edita.
 - **Condição** (queimadura, veneno, sono, paralisia, etc.) e **Confuso**: você aplica durante a batalha; aparecem em destaque na ficha do Treinador assim que ativos, pra ele acompanhar.
+
+#### Habilidades com gatilho automático
+
+Das 373 Habilidades oficiais, **92 já fazem efeito de verdade sozinhas na Arena** (marcadas com ⚙️ no seletor) — sem você precisar aplicar nada na mão. Escolhidas pra cobrir pelo menos uma em 84,5% dos 1025 Pokémon, sem depender de sistemas que o jogo ainda não tem (clima, terreno, item equipado, PP). Tudo aparece no Registro quando dispara, então você vê acontecer em tempo real. Por categoria:
+
+- **Contra-ataque no contato**: Static/Poison Point/Flame Body/Effect Spore (30% de status em quem bateu), Rough Skin/Iron Barbs (dano fixo em quem bateu), Gooey/Tangling Hair (queda de Velocidade em quem bateu). "Contato" é golpe Físico, menos uma lista curada de golpes à distância (Terremoto e afins) — se algum golpe específico não fizer sentido, ajuste na mesa mesmo, o motor não trava sua decisão.
+- **Imune/absorve Tipo**: Levitate (Terra), Water Absorb/Volt Absorb (cura em vez de tomar dano), Sap Sipper/Storm Drain/Lightning Rod (ganha Estágio em vez de tomar dano), Flash Fire (Fogo), Wonder Guard (só toma golpe super efetivo), Soundproof (som). Scrappy/Tinted Lens furam imunidade/resistência do oponente. Mold Breaker/Teravolt/Turboblaze ignoram as do oponente.
+- **Sobrevive/reduz dano**: Sturdy (fica com 1 PV em vez de desmaiar, só do PV cheio), Shell Armor/Battle Armor (nunca sofre Crítico), Fluffy, Heatproof, Thick Fat.
+- **Bônus de dano de quem ataca**: Technician, Iron Fist/Strong Jaw, Sheer Force, Sniper, Adaptability, Overgrow/Blaze/Torrent/Swarm.
+- **Bônus fixo de Atributo** (aparece direto na ficha, não só em combate): Guts, Hustle, Huge Power/Pure Power, Defeatist, Protosynthesis/Quark Drive.
+- **Precisão/Crítico**: Compound Eyes, Hustle (o lado ruim dela), Wonder Skin, No Guard, Unaware, Serene Grace.
+- **Entrada em campo**: Intimidate (−1 Ataque em quem já está no time oposto, com bloqueio/reversão automáticos conforme a Habilidade de quem recebe), Download.
+- **Saída de campo** (troca, não fuga nem desmaio): Regenerator, Natural Cure.
+- **Fim do próprio turno**: Speed Boost, Shed Skin, Ice Body/Rain Dish, Healer (cura um aliado), Magic Guard (bloqueia dano de status), Poison Heal (vira cura).
+- **Ao desmaiar o oponente**: Moxie, Beast Boost. Aftermath (dano em quem desmaiou ela no contato).
+- **Condição espelhada**: Synchronize, Poison Touch (do lado de quem ataca), Shield Dust (bloqueia só o efeito colateral, não o dano), e as imunidades de Condição (Immunity, Limber, Insomnia, Vital Spirit, Water Veil, Magma Armor, Sweet Veil, Own Tempo, Leaf Guard).
+
+As outras ~280 Habilidades continuam só como texto de referência (nome + efeito oficial), sem sumir do banco de dados — se um dia a gente quiser automatizar mais alguma, os dados já estão lá.
 
 Você continua com um campo "nome" livre (com autocomplete, 847 movimentos oficiais) pra cada um dos 4 Movimentos, e as regras de sempre: digitar um nome reconhecido preenche Tipo, Categoria, Poder, Prioridade, Precisão e Efeito sozinho; Movimentos de dano fixo ou variável (Seismic Toss, Dragon Rage, etc.) ficam com Poder em branco — regra em aberto (Cap. 25), você adjudica na mesa. **Esse campo continua sem restrição nenhuma** (pode digitar qualquer um dos 847, mesmo que a espécie normalmente não aprendesse), pra você poder fazer exceções e homebrew quando quiser.
 
