@@ -5753,6 +5753,11 @@ function migrateState(){
      hora sempre. */
   if(!Array.isArray(STATE.arena.presentes)) STATE.arena.presentes = [];
   if(STATE.arena.solturaAberta===undefined) STATE.arena.solturaAberta = false;
+  /* Reação de Prioridade (Cap. 17.1-17.3): {entryId,trainerId,trainerNome,
+     pokeNome,moveIdx,moveName,prioridade,vsMoveName,vsAttackerEntryId} ou
+     null enquanto ninguém tem uma pergunta pendente. Calculado sozinho
+     (arenaCheckPriorityReaction), nunca escolhido à mão. */
+  if(STATE.arena.priorityPending===undefined) STATE.arena.priorityPending = null;
 }
 /* Fichas salvas antes do método Normal/TM/HM existir ganham 'normal' por
    padrão (sem mudar o Movimento que já estava escolhido). */
@@ -6623,11 +6628,15 @@ function computeInitiativeOrder(){
   return rows;
 }
 /* Pula entradas que já saíram da rodada (desmaiaram, ou o Mestre removeu da
-   Arena) enquanto esperavam a vez, sem travar o avanço do turno nelas. */
+   Arena) enquanto esperavam a vez, sem travar o avanço do turno nelas. Pula
+   também quem já "adiantou" a própria vez usando uma reação de Prioridade
+   nessa mesma Rodada (Cap. 17.1-17.3, entry.prioAgiuRodada) -- quando o
+   ponteiro normal chega nele, já agiu, não pergunta de novo. */
 function advanceRoundPastFainted(r){
   while(r.currentIdx < r.order.length){
     var e = (STATE.arena.entries||[]).find(function(x){ return x.id===r.order[r.currentIdx]; });
     if(!e){ r.currentIdx++; continue; }
+    if(e.prioAgiuRodada===r.number){ r.currentIdx++; continue; }
     var t = findTrainer(e.trainerId), p = t && getPoke(e.trainerId, e.pokemonId);
     if(!t || !p){ r.currentIdx++; continue; }
     var max = hpMax(t,p);
@@ -6644,6 +6653,76 @@ function currentRoundEntryId(){
 function isOwnArenaEntry(entryId){
   var e = (STATE.arena.entries||[]).find(function(x){ return x.id===entryId; });
   return !!(e && SESSION.role==='player' && SESSION.trainerId===e.trainerId);
+}
+
+/* =================== Prioridade (Cap. 17.1-17.3) ===================
+   Até aqui, a "janela de Prioridade" era 100% negociação ao vivo entre
+   Mestre e jogadores (o Mestre agindo fora de ordem por quem quisesse
+   declarar um Movimento de Prioridade). Isso automatiza a detecção: toda
+   vez que um Movimento resolve de vez, confere se alguém do lado OPOSTO
+   -- que ainda não agiu nessa Rodada -- tem, no próprio conjunto de 4, um
+   Movimento com Prioridade estritamente MAIOR (empate continua com quem
+   já estava agindo, Cap. 17.3) e com PP pra usar de verdade. Se tiver,
+   pergunta (Sim/Não) — aceitar já resolve o Movimento dele na hora, e
+   PODE abrir uma NOVA pergunta em cadeia (alguém com Prioridade ainda
+   maior reagindo à reação) — sempre termina, porque cada reação aceita
+   marca quem reagiu (entry.prioAgiuRodada) e nunca mais entra na lista de
+   quem "ainda não agiu" NESSA Rodada, encolhendo o grupo a cada reação. */
+
+/* "Ainda não agiu nessa Rodada" == o ponteiro da Rodada (currentIdx) ainda
+   não alcançou a posição dele na fila de Iniciativa, E ele não usou a
+   própria reação de Prioridade ainda nessa Rodada (prioAgiuRodada). */
+function arenaEntryAindaNaoAgiu(entry, round){
+  if(!round || !entry) return false;
+  if(entry.prioAgiuRodada===round.number) return false;
+  var idx = round.order.indexOf(entry.id);
+  return idx!==-1 && idx>=round.currentIdx;
+}
+/* Acha, entre quem ainda não agiu do(s) time(s) OPOSTO(S) ao de quem
+   atacou, o melhor candidato a reagir: maior Prioridade que exceda
+   usedPriority, com PP pra usar de verdade -- em empate de Prioridade
+   entre dois candidatos diferentes, fica o primeiro na fila de Iniciativa
+   (mais rápido). Devolve null se ninguém se qualifica. */
+function findBestPriorityReaction(attackerEntry, usedPriority){
+  var round = STATE.arena.round;
+  if(!round || STATE.arena.vencedor) return null;
+  var best = null;
+  round.order.forEach(function(eid){
+    if(eid===attackerEntry.id) return;
+    var e = findArenaEntry(eid);
+    if(!e || e.teamId===attackerEntry.teamId) return; /* só o lado OPOSTO reage -- Cap. 17.1, "o jogador fora da vez" */
+    if(!arenaEntryAindaNaoAgiu(e, round)) return;
+    var t = findTrainer(e.trainerId); var p = t && getPoke(e.trainerId, e.pokemonId);
+    if(!t || !p) return;
+    var max = hpMax(t,p); var cur = (p.currentHP===null||p.currentHP===undefined)?max:p.currentHP;
+    if(cur<=0) return;
+    var bestMove = null;
+    (p.moves||[]).forEach(function(m){
+      if(!m.nome) return;
+      if((m.pp||0)>0 && (m.ppAtual||0)<=0) return; /* sem PP não dá pra usar de verdade */
+      var prio = m.prioridade||0;
+      if(prio<=usedPriority) return; /* Cap. 17.3: empate ou menor continua com quem já agia */
+      if(!bestMove || prio>bestMove.prioridade) bestMove = { nome:m.nome, moveIdx:(p.moves||[]).indexOf(m), prioridade:prio };
+    });
+    if(bestMove && (!best || bestMove.prioridade>best.prioridade)){
+      best = { entryId:e.id, trainerId:e.trainerId, trainerNome:t.name, pokeNome:p.apelido||p.especie||'Pokémon',
+        moveIdx:bestMove.moveIdx, moveName:bestMove.nome, prioridade:bestMove.prioridade };
+    }
+  });
+  return best;
+}
+/* Depois que UM Movimento resolveu de vez (dano/efeito já aplicado, ação
+   de quem usou já avançada normalmente -- isso nunca muda), confere se
+   abriu uma reação de Prioridade pra alguém do lado oposto. Só popula
+   STATE.arena.priorityPending se ainda não tiver uma pergunta pendente
+   (nunca empilha 2 ao mesmo tempo). */
+function arenaCheckPriorityReaction(attackerEntry, usedMove){
+  if(STATE.arena.priorityPending) return;
+  var reaction = findBestPriorityReaction(attackerEntry, usedMove.prioridade||0);
+  if(!reaction) return;
+  reaction.vsMoveName = usedMove.nome;
+  reaction.vsAttackerEntryId = attackerEntry.id;
+  STATE.arena.priorityPending = reaction;
 }
 
 /* =================== FIM DE TURNO: STATUS + CONFUSÃO (Cap. 20/23) ===================
@@ -7823,6 +7902,7 @@ function arenaCheckVictory(){
    acaba aqui, sem abrir o menu. */
 DT.arenaSelectActor = function(entryId){
   if(STATE.arena && STATE.arena.vencedor) return; /* batalha já acabou (Cap. 25/59) -- ninguém age mais até o Mestre limpar */
+  if(STATE.arena && STATE.arena.priorityPending) return; /* Cap. 17.1-17.3: tem uma pergunta de Prioridade pendente -- ninguém mais age até ela ser respondida (DT.arenaPriorityAnswer) */
   var e = findArenaEntry(entryId);
   if(!e) return;
   var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
@@ -8366,6 +8446,7 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
     STATE.arena.log.push({ ts: Date.now(), text: prefixCarga+esc(nomeCarga)+' ('+esc(attTrainer.name)+') usou '+esc(move.nome)+' — '+esc(CHARGE_MOVE_MSG[move.nome]||'se prepara')+'... vai golpear no próximo turno.' });
     if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
     arenaAdvanceTurn(atkEntry.id);
+    arenaCheckPriorityReaction(atkEntry, move); /* Cap. 17.1-17.3: até carregar "usa" o turno com a Prioridade normal do Movimento (0, nos 16 de carga) */
     arenaResetActionState();
     mutate();
     return;
@@ -8421,9 +8502,94 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
      fila não muda — só o Mestre/quem estiver na vez mexe nela pelo
      "Próximo" — mas o status ainda é aplicado, porque ele agiu de verdade. */
   arenaAdvanceTurn(atkEntry.id);
+  arenaCheckPriorityReaction(atkEntry, move); /* Cap. 17.1-17.3: golpe resolvido de vez -- confere se abriu uma reação de Prioridade pro lado oposto */
 
   arenaResetActionState();
   mutate();
+};
+
+/* Responde a pergunta pendente de Prioridade (Cap. 17.1-17.3): só o dono do
+   Pokémon que reagiria (ou o Mestre) pode responder. "Não" só descarta a
+   pergunta -- não marca prioAgiuRodada, então ele continua elegível pra
+   agir na própria vez normal (ou reagir de novo, se outro golpe abrir uma
+   nova pergunta antes da vez dele chegar). "Sim" roda os mesmos testes de
+   Paralisia/Sono/Congelamento/Confusão de sempre (Cap. 20.4/21/22/23,
+   nessa ordem) e, se a ação não se perder aí, resolve o Movimento de
+   verdade contra o próprio Pokémon que atacou (alvo padrão pra Movimento
+   de alvo manual -- sem ele mais elegível, cai pro primeiro alvo elegível
+   que sobrar; sem nenhum, o golpe se perde sem efeito). Em qualquer um
+   desses casos (perdeu a ação, ou golpe se perde por falta de alvo),
+   prioAgiuRodada É marcado -- reagir é usar a única reação da Rodada,
+   mesmo que dê errado. */
+DT.arenaPriorityAnswer = function(escolha){
+  var pend = STATE.arena.priorityPending;
+  if(!pend) return;
+  var isGM = SESSION.role==='gm';
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===pend.trainerId;
+  if(!isGM && !isOwner) return;
+  STATE.arena.priorityPending = null;
+
+  var e = findArenaEntry(pend.entryId);
+  var t = e && findTrainer(e.trainerId);
+  var p = t && getPoke(e.trainerId, e.pokemonId);
+  var max = p && hpMax(t,p);
+  var cur = p ? ((p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP) : 0;
+  var nome = p ? (p.apelido||p.especie||'Pokémon') : pend.pokeNome;
+
+  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
+  var prefix = STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '';
+
+  if(escolha!=='sim' || !e || !t || !p || cur<=0){
+    STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(pend.trainerNome)+') não usou a Prioridade de '+esc(pend.moveName)+'.' });
+    if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+    mutate();
+    return;
+  }
+
+  var move = (p.moves||[])[pend.moveIdx];
+  if(!move || move.nome!==pend.moveName || ((move.pp||0)>0 && (move.ppAtual||0)<=0)){
+    e.prioAgiuRodada = STATE.arena.round.number; /* já tentou usar a reação -- não sobra outra chance nessa Rodada, mesmo sem PP/Movimento mais disponível */
+    STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(pend.trainerNome)+') não conseguiu mais reagir com '+esc(pend.moveName)+' -- Movimento ou PP mudou nesse meio-tempo.' });
+    if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+    mutate();
+    return;
+  }
+  e.prioAgiuRodada = STATE.arena.round.number; /* marca ANTES de resolver -- reagir é a única reação da Rodada mesmo que a ação se perca abaixo (Paralisia etc.) */
+
+  var statusCheck = arenaStatusActionPreCheck(e);
+  if(statusCheck && statusCheck.lostAction){
+    var statusLine;
+    if(statusCheck.tipo==='paralisia') statusLine = 'está Paralisado — 1d6 pra agir: '+statusCheck.d6+' — perde a ação';
+    else if(statusCheck.tipo==='congelamento') statusLine = 'está Congelado — 1d6 pra descongelar: '+statusCheck.d6+' — continua congelado';
+    else statusLine = statusCheck.turno===1 ? 'está Dormindo (1º turno, obrigatório) — perde a ação' : 'está Dormindo (turno '+statusCheck.turno+') — 1d6 pra acordar: '+statusCheck.d6+' — continua dormindo';
+    STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(pend.trainerNome)+') tentou reagir com Prioridade, mas '+esc(statusLine)+'.' });
+    if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+    mutate();
+    return;
+  }
+  var confCheck = arenaConfusionPreCheck(e);
+  if(confCheck && confCheck.lostAction){
+    STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(pend.trainerNome)+') tentou reagir com Prioridade, mas está Confuso e perdeu a ação'+(confCheck.magicGuard?' (Magic Guard bloqueou o PV do próprio golpe)':(confCheck.fainted?' — sofreu 1 PV e desmaiou!':' — sofreu 1 PV'))+'.' });
+    if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+    arenaCheckVictory(); /* o PV da própria Confusão pode ter sido o golpe final nele (raro, mas possível) */
+    mutate();
+    return;
+  }
+
+  var category = moveTargetCategory(move.nome);
+  var manualIds = null;
+  if(moveNeedsManualTarget(category)){
+    var eligibleNow = eligibleMoveTargets(e, category).map(function(x){ return x.id; });
+    if(eligibleNow.indexOf(pend.vsAttackerEntryId)!==-1) manualIds = [pend.vsAttackerEntryId]; /* alvo padrão: quem provocou a reação */
+    else if(eligibleNow.length) manualIds = [eligibleNow[0]]; /* sem ele mais elegível, cai pro 1º alvo elegível que sobrar */
+    else {
+      STATE.arena.log.push({ ts: Date.now(), text: prefix+esc(nome)+' ('+esc(pend.trainerNome)+') reagiu com '+esc(move.nome)+' — não sobrou alvo em campo, o golpe se perde.' });
+      if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+      mutate();
+      return;
+    }
+  }
+  DT.resolveArenaMove(e, move, category, manualIds);
 };
 
 /* ---- Turno/Iniciativa (Cap. 16): só o Mestre inicia ou recalcula a fila
@@ -8441,6 +8607,7 @@ DT.arenaStartRound = function(){
   };
   advanceRoundPastFainted(round);
   STATE.arena.round = round;
+  STATE.arena.priorityPending = null; /* defesa em profundidade -- nova Rodada não devia ter pergunta pendente da anterior */
   mutate();
 };
 DT.arenaNextTurn = function(){
@@ -8454,6 +8621,7 @@ DT.arenaNextTurn = function(){
 DT.arenaEndRound = function(){
   if(SESSION.role!=='gm') return;
   STATE.arena.round = null;
+  STATE.arena.priorityPending = null; /* sem Rodada ativa, não existe "quem ainda não agiu" pra perguntar */
   mutate();
 };
 DT.arenaClearLog = function(){
@@ -9045,6 +9213,32 @@ function arenaVictoryHTML(){
     (SESSION.role==='gm' ? '<button class="btn-sm" onclick="DT.arenaClearVictory()">Limpar e continuar</button>' : '<p class="muted" style="font-size:.8rem;">O Mestre decide o que vem a seguir.</p>')+
   '</div></div>';
 }
+/* Pergunta de Prioridade (Cap. 17.1-17.3): STATE.arena.priorityPending só é
+   preenchido sozinho por arenaCheckPriorityReaction (nunca à mão) -- enquanto
+   tiver alguém pendente, ninguém mais consegue abrir o menu de ação
+   (DT.arenaSelectActor recusa) até essa pergunta ser respondida
+   (DT.arenaPriorityAnswer). Visível pra mesa toda, igual o resto do estado
+   da Arena -- só quem controla esse Pokémon (dono ou Mestre) vê os botões
+   Sim/Não; o resto só acompanha esperando a resposta. */
+function arenaPriorityPromptHTML(){
+  var pend = STATE.arena && STATE.arena.priorityPending;
+  if(!pend) return '';
+  var isGM = SESSION.role==='gm';
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===pend.trainerId;
+  var sinalPrio = pend.prioridade>0 ? ('+'+pend.prioridade) : String(pend.prioridade);
+  var pergunta = 'Seu oponente usou '+esc(pend.vsMoveName)+', mas você possui '+esc(pend.moveName)+' que tem uma prioridade '+sinalPrio+'. Deseja usar '+esc(pend.moveName)+'?';
+  return '<div class="card" style="border-color:#3a7bd5;"><div class="card-body" style="text-align:center;">'+
+    '<p style="font-size:.95rem; margin:0 0 2px;">⚡ <strong>Reação de Prioridade</strong></p>'+
+    '<p class="muted" style="font-size:.76rem; margin:0 0 6px;">Pergunta pra '+esc(pend.trainerNome)+' ('+esc(pend.pokeNome)+')</p>'+
+    '<p style="font-size:.86rem; margin:0 0 10px;">'+pergunta+'</p>'+
+    ((isGM||isOwner)
+      ? '<div class="btn-row" style="justify-content:center;">'+
+          '<button class="btn-sm btn-primary" onclick="DT.arenaPriorityAnswer(\'sim\')">Sim, usar '+esc(pend.moveName)+'</button>'+
+          '<button class="btn-sm" onclick="DT.arenaPriorityAnswer(\'nao\')">Não</button>'+
+        '</div>'
+      : '<p class="muted" style="font-size:.8rem;">Aguardando resposta de '+esc(pend.trainerNome)+'.</p>')+
+  '</div></div>';
+}
 function arenaScreen(){
   var isGM = SESSION.role==='gm';
   var out = '<div class="btn-row" style="margin-bottom:14px;"><button class="btn-sm" onclick="DT.toggleArena()">← Voltar</button></div>';
@@ -9053,6 +9247,7 @@ function arenaScreen(){
   '</div></div>';
   out += arenaSpectatorHTML();
   out += arenaVictoryHTML();
+  out += arenaPriorityPromptHTML();
   out += arenaSolturaHTML(isGM);
   out += arenaInitiativeHTML();
   out += arenaTeamsHTML(isGM);
