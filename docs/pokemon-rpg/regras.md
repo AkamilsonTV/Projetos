@@ -222,8 +222,21 @@ Cada Movimento tem um **PP Máximo** oficial (de 1 a 40, dependendo do Movimento
 
 - **Custo normal: 1 PP por uso.** Se o alvo (mesmo você mesmo, num Movimento que mira em si próprio) tiver a Habilidade **Pressure**, custa **2 PP** em vez de 1.
 - **PV zerado é diferente de PP zerado**: um Movimento com PP Atual em 0 não pode mais ser escolhido — o jogo bloqueia e avisa. Não existe Struggle automático nesse sistema: se o Pokémon ficar sem PP em nenhum dos 4 Movimentos, é o Mestre quem decide o que acontece (pode narrar como Struggle mesmo, adjudicando o dano na mão — Cap. 25).
-- **PP Atual é editável a qualquer momento**, tanto pelo Mestre quanto pelo próprio Treinador (igual PV Atual) — pra corrigir um uso mal contado, ou simplesmente encher de novo (representa descansar, ir ao Centro Pokémon, ou usar um item tipo Ether/Elixir/PP Up, que ainda não têm mecânica própria — Cap. 25).
+- **PP Atual e PP Máximo só o Mestre edita direto na ficha** — igual os Estágios (Cap. 15.3), o Treinador só vê os números, pra evitar erro de contagem ou trapaça. A forma normal do jogador recuperar PP é usando um item de Recuperação de PP (8.6.1) ou descansando/indo ao Centro Pokémon fora de batalha, com o Mestre aplicando.
 - **Movimento sem PP cadastrado nunca trava**: se o nome digitado não bater com nenhum da base oficial (homebrew do Mestre), o PP fica em 0/0 e simplesmente não é controlado — nunca impede o Movimento de ser usado.
+
+### 8.6.1 Itens de Recuperação de PP
+
+Seis itens oficiais (categoria "Recuperação de PP" do catálogo, Cap. 25) recuperam ou aumentam PP automaticamente, sem o Mestre precisar calcular nada na mão:
+
+- **Ether**: recupera 10 PP de um Movimento escolhido.
+- **Max Ether**: enche o PP Atual desse Movimento até o Máximo.
+- **Elixir**: recupera 10 PP de cada um dos 4 Movimentos de uma vez.
+- **Max Elixir**: enche o PP Atual dos 4 Movimentos até o Máximo, de uma vez.
+- **PP Up**: aumenta o PP Máximo de um Movimento em 20% do valor original (mínimo +1), até um teto de +60% (equivalente a 3 usos) — o PP Atual sobe na mesma medida ganha no Máximo, sem forçar o Máximo cheio.
+- **PP Max**: aplica de uma vez o teto de +60% do PP Up num Movimento (equivalente a usar 3 PP Up de uma vez), com o mesmo ganho refletido no Atual.
+
+PP Up e PP Max sempre usam o PP Máximo **original** do Movimento (antes de qualquer PP Up já aplicado) como referência do teto — não empilha em cima de outro PP Up pra passar de +60%. Ether/PP Up/PP Max pedem escolher **um** dos 4 Movimentos do Pokémon; Elixir/Max Elixir afetam os 4 de uma vez. Usados pela aba **Cura** da ficha ou pelo menu **Usar Item** da Arena, igual aos demais itens de cura (Cap. 25) — consomem 1 unidade e alteram o PP de verdade, sem o Mestre precisar calcular nada.
 
 ## Capítulo 9 — Poder dos Movimentos
 
@@ -302,6 +315,22 @@ Se o ataque foi Crítico e tem efeito percentual, teste normalmente; se falhar, 
 ## Capítulo 15 — Estágios, Buffs e Debuffs
 
 Cada estágio = **+1 ou −1** no atributo (sem multiplicadores/divisões). Modificadores de estágio são aplicados diretamente ao atributo antes do cálculo final de dano. Precisão e Evasão seguem o mesmo conceito.
+
+### 15.1 Aplicação automática pelo Movimento
+
+Cada Movimento que altera Estágio nos jogos oficiais (Swords Dance, Growl, Close Combat, etc.) tem sua própria mudança de Estágio, direção e Chance — a Arena do site aplica automaticamente ao resolver o Movimento, com o mesmo 1d10 do Efeito Percentual (Cap. 14), rolado à parte do teste de Condição de status.
+
+- **Movimento em você mesmo** (ex.: Swords Dance) ou golpe de dano com efeito colateral **no próprio atacante** (ex.: Close Combat baixa Defesa/Def. Especial de quem usou, não de quem apanhou): o Estágio sempre muda em quem usou o Movimento.
+- **Golpe de dano com efeito colateral no defensor** (ex.: Growl, Icy Wind): o Estágio muda em quem foi atingido.
+- Uma queda de Estágio vinda de um **oponente** respeita as mesmas reações automáticas de Habilidade do Cap. 6.3: Clear Body/White Smoke/Full Metal Body/Hyper Cutter/Inner Focus/Own Tempo/Oblivious/Scrappy bloqueiam, Contrary reverte pra alta, e Defiant/Competitive ainda ganham +2 Ataque/Ataque Especial em cima da própria queda — igual já valia só pra Intimidate, agora vale pra qualquer Movimento que baixe Estágio de um oponente. Shield Dust bloqueia só o efeito colateral de um golpe que **o próprio Shield Dust sofreu de um oponente** — nunca bloqueia um Movimento que ele mesmo usa em si próprio.
+
+### 15.2 Estágios voltam a zero ao sair de campo
+
+Igual nos jogos oficiais: assim que um Pokémon sai do campo de batalha — desmaia, é trocado ou foge com sucesso — todos os Estágios dele (Ataque, Defesa, Ataque Especial, Defesa Especial, Velocidade, Precisão, Evasão) voltam a **0** automaticamente. Um Pokémon que volta a campo depois (de novo na Arena, ou reativado por um Reviver) começa sempre do zero, sem herdar buff/debuff de antes.
+
+### 15.3 Quem edita
+
+Os Estágios são geridos pelo sistema, igual o PP (Cap. 8.6) — **só o Mestre edita um Estágio direto na ficha**, pra ajuste manual ou correção. O Treinador só vê os números, sem poder mexer neles: toda mudança de Estágio durante a batalha acontece sozinha, pelo Movimento que a causou (15.1) ou pelo reset automático ao sair de campo (15.2).
 
 ## Capítulo 16 — Iniciativa e Turnos
 
@@ -390,10 +419,10 @@ Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano F
 
 - **Maturidade e Evolução**: estrutura existe (incluindo reinício após evolução), tabela definitiva de progressão das espécies ainda será construída.
 - **Cura e Recuperação**: Recover, Roost, Synthesis e outros ainda precisam ser adaptados.
-- **Regras específicas de Movimentos**: múltiplos acertos, recoil, drenagem, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5) e o PP (Cap. 8.6) já seguem o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano nem uma Condição de status simples (Helping Hand, Aromatherapy, buffs de estágio, etc.) e qualquer Movimento de campo (Stealth Rock, clima — Cap. 8.5). Não existe Struggle automático quando um Pokémon fica sem PP em nenhum Movimento — o Mestre adjudica.
+- **Regras específicas de Movimentos**: múltiplos acertos, recoil, drenagem, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5), o PP (Cap. 8.6) e a mudança de Estágio (Cap. 15.1) já seguem o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano, Condição de status nem mudança de Estágio (Helping Hand, Aromatherapy, etc.) e qualquer Movimento de campo (Stealth Rock, clima — Cap. 8.5). Não existe Struggle automático quando um Pokémon fica sem PP em nenhum Movimento — o Mestre adjudica.
 - **Captura**: sistema definitivo de Poké Balls ainda precisa ser desenvolvido.
 - **Habilidades**: 93 das 373 já têm gatilho mecânico automático (Cap. 6.3) — as outras ~280 continuam só texto de referência.
-- **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo). Existe um catálogo com os itens oficiais mais reconhecíveis dos jogos, organizado por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave) — o Mestre pode desligar uma categoria inteira pra mesa (sem apagar itens já dados). Quatro tipos já têm efeito de verdade, tanto fora de batalha (aba Cura da ficha) quanto na Arena: **Vida** (cura PV — quantidade fixa ou cura total), **Condição** (cura Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal), **Reviver** (só funciona em quem está desmaiado, Cap. 19) e **Vida + Condição** (cura os dois juntos numa unidade só, tipo Full Restore). Qualquer outro item (Pokébolas, itens de batalha/evolução, itens segurados, itens-chave, e os que recuperam PP — Ether, Elixir, PP Up, PP Max) continua só consumindo 1 unidade e registrando o uso, sem efeito mecânico — captura, evolução por item, slot de item equipado e buffs temporários de batalha ainda são regras em aberto.
+- **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo), organizada em cinco abas (Poções e Berries, Pokébolas, Itens de Missão, TM, Inventário Geral). Existe um catálogo com os itens oficiais mais reconhecíveis dos jogos — cada um com **descrição oficial** (traduzida da PokeAPI) que autocompleta sozinha ao digitar/escolher o nome — organizado por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave, Recuperação de PP, TMs — as 229 TMs vigentes de Scarlet/Violet) — o Mestre pode desligar uma categoria inteira pra mesa (sem apagar itens já dados). Cinco tipos já têm efeito de verdade, tanto fora de batalha (aba Cura da ficha) quanto na Arena: **Vida** (cura PV — quantidade fixa ou cura total), **Condição** (cura Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal), **Reviver** (só funciona em quem está desmaiado, Cap. 19), **Vida + Condição** (cura os dois juntos numa unidade só, tipo Full Restore) e **PP** (Ether/Max Ether/Elixir/Max Elixir/PP Up/PP Max, Cap. 8.6.1). Qualquer outro item (Pokébolas, itens de batalha/evolução, itens segurados, itens-chave, TMs) continua só consumindo 1 unidade e registrando o uso, sem efeito mecânico — captura, evolução por item, slot de item equipado, ensinar um Movimento por TM de verdade e buffs temporários de batalha ainda são regras em aberto.
 
 ## Referência Rápida
 
@@ -409,14 +438,14 @@ Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano F
 
 **Modificadores**: STAB +1 · Super Efetivo +2/fraqueza · Pouco Efetivo −2/resistência · Crítico +4 · Imunidade 0 · Dano mínimo 1
 
-**Estágios**: 1 estágio = ±1 no atributo
+**Estágios**: 1 estágio = ±1 no atributo · muda sozinho pelo Movimento que causa (Cap. 15.1), volta a 0 ao sair de campo (15.2) · só o Mestre edita à mão (15.3)
 
 **Movimentos**: máximo 4, aprendizado natural pelo Nível do Treinador
 
-**PP**: 1 por uso (2 se o alvo tiver Pressure) · 0 PP bloqueia o Movimento, sem Struggle automático
+**PP**: 1 por uso (2 se o alvo tiver Pressure) · 0 PP bloqueia o Movimento, sem Struggle automático · só o Mestre edita à mão · Ether/Max Ether/Elixir/Max Elixir/PP Up/PP Max recuperam/aumentam automaticamente (Cap. 8.6.1)
 
 **Condições**: Queimadura (−2 Atq, −1 PV/turno) · Veneno (−2 PV/turno) · Veneno Grave (1,2,3,4...) · Paralisia (remove Agilidade do Treinador, −10 Vel., 1–2 perde ação) · Sono (1 turno obrigatório, depois 5–6 acorda, máx. 3 turnos) · Congelamento (5–6 descongela) · Confusão (5–6 cura; senão 1–2 perde ação e sofre 1 PV)
 
 ---
 
-*Este documento acompanha o site "Diário de Treinador", a ferramenta de fichas do grupo. Os grandes blocos que ainda faltam são Maturidade/Evolução definitiva, Captura, Cura/Recuperação, PP e Itens/Habilidades — o núcleo de combate já está definido para batalhas completas.*
+*Este documento acompanha o site "Diário de Treinador", a ferramenta de fichas do grupo. Os grandes blocos que ainda faltam são Maturidade/Evolução definitiva e Captura — o núcleo de combate (incluindo PP, Estágios e os itens de cura) já está definido para batalhas completas.*

@@ -43,7 +43,6 @@ Funciona com mouse ou toque (celular).
 
 - **Apelido**.
 - **PV atual** (o número de Pontos de Vida que ele tem agora) — tem um botão **"curar"** que enche de volta até o máximo.
-- **Estágios** (±6): os bônus/penalidades temporários de batalha (Ataque, Defesa, Atq. Especial, Def. Especial, Velocidade, Precisão, Evasão).
 
 ### Escolhendo os Movimentos
 
@@ -56,7 +55,7 @@ Você mesmo escolhe os 4 Movimentos do seu Pokémon — mas só entre o que a es
 
 Clique no método (Nível/Evo/TM/Egg) e depois escolha o Movimento no menu que aparece — Tipo, Categoria, Poder, **PP**, Prioridade, Precisão e a Descrição são preenchidos sozinhos. Se a lista aparecer vazia, é porque a espécie não tem nada disponível ali (ou você ainda não subiu Nível suficiente, no caso do Nível). Não existe mais opção de HM — os jogos oficiais tiraram essa mecânica a partir da Geração 9.
 
-O **PP** aparece como "atual / máximo" — some 1 (ou 2, se o alvo tiver a Habilidade Pressure) cada vez que você usa aquele Movimento de verdade, tanto na Arena quanto contando na mão. Zerou, o Movimento fica bloqueado até alguém colocar PP nele de novo. O PV Atual dos seus Pokémon (esse já existia) e o PP Atual dos Movimentos são os dois únicos números que **você mesmo pode editar direto** na sua ficha, a qualquer momento — útil pra corrigir uma contagem errada ou representar um descanso/Centro Pokémon enchendo tudo de novo.
+O **PP** aparece como "atual / máximo" — some 1 (ou 2, se o alvo tiver a Habilidade Pressure) cada vez que você usa aquele Movimento de verdade, tanto na Arena quanto contando na mão. Zerou, o Movimento fica bloqueado até alguém colocar PP nele de novo. Diferente do PV Atual (que você continua editando direto), o **PP Atual e o PP Máximo agora só o Mestre edita** — pra recuperar PP, use um item de Recuperação de PP (ver Mochila/Cura abaixo) ou peça pro Mestre.
 
 ### O que só o Mestre edita (você só vê)
 
@@ -65,30 +64,42 @@ O **PP** aparece como "atual / máximo" — some 1 (ou 2, se o alvo tiver a Habi
 - Natureza — um dos 25 temperamentos oficiais (ex.: Adamant, Timid, Bold...). Cada Natureza dá +1 num Atributo Efetivo e -1 em outro (PV nunca entra nessa conta); 5 delas são neutras e não mudam nada. É só referência mecânica: aparece no card, mas quem ajusta é o Mestre.
 - Habilidade — restrita às habilidades reais daquela espécie (incluindo a Habilidade Oculta, quando existe). A maioria delas já tem efeito de verdade na Arena — aparece marcada com **⚙️** no seletor do Mestre (ex.: Static paralisa 30% das vezes quem te acerta de perto, Intimidate baixa o Ataque de quem entra contra você, Levitate te deixa imune a golpe de Terra). As que ainda não têm ⚙️ continuam só como referência de mesa, sem gatilho automático.
 - Condição (queimadura, veneno, sono, etc.) e Confuso — aparecem em destaque (um selo vermelho) no topo do card quando ativos, pra você não perder o que está rolando na batalha.
+- **Estágios** (±6): os bônus/penalidades temporários de batalha (Ataque, Defesa, Atq. Especial, Def. Especial, Velocidade, Precisão, Evasão) — agora mudam sozinhos, pelo próprio Movimento que causa (ex.: Swords Dance sobe o seu, Growl baixa o do alvo), e voltam a 0 automaticamente sempre que o Pokémon sai de campo (desmaia, é trocado ou foge). Só o Mestre ajusta um Estágio na mão, pra correção.
+- **PP Atual e PP Máximo** de cada Movimento (ver "Escolhendo os Movimentos" acima) — a forma de recuperar é usando um item de Recuperação de PP (Mochila/Cura abaixo) ou pedindo pro Mestre.
 
 Cada Pokémon mostra automaticamente o sprite (a imagem pixelada) da espécie assim que o Mestre define ela. Sem espécie definida ainda, aparece um "❔" no lugar — e enquanto isso, o seletor de Movimentos fica bloqueado (precisa da Espécie pra saber o que ele pode aprender).
 
 ## Mochila (itens)
 
-Na sua ficha, logo acima da Equipe/Banco, tem a seção **"🎒 Mochila"** — a lista de itens que você carrega (nome + quantidade). **Só o Mestre adiciona, remove ou muda a quantidade de um item** — você só vê o que tem. O jogo tem um catálogo com os itens oficiais de Pokémon, divididos por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave) — o Mestre pode desligar categorias inteiras pra mesa (elas somem do jogo). Cada item tem um tipo:
+Na sua ficha, logo acima da Equipe/Banco, tem a seção **"🎒 Mochila"** — os itens que você carrega, organizados em **cinco abas**, cada uma como uma tabela (Nome / Descrição / Quantidade):
+
+- **💊 Poções e Berries** — itens que curam o Pokémon (Poções, Curas de Status, Revives, Berries).
+- **⚪ Pokébolas**.
+- **🗝️ Itens de Missão** — os Itens-Chave.
+- **💿 TM** — as Fitas de Movimento (Cap. 8.4 das Regras); a TM em si só fica registrada aqui, ensinar o Movimento pra valer ainda é o Mestre quem faz na aba de Movimentos.
+- **🎒 Inventário Geral** — qualquer outro item (Itens de Batalha, de Evolução, Segurados etc.).
+
+Clique numa aba pra ver os itens daquela categoria. **Só o Mestre adiciona, remove ou muda a quantidade de um item** — você só vê o que tem, com a Descrição oficial de cada um (a mesma dos jogos, em inglês). Além da tabela, todo item tem um **tipo** que define o efeito dele, independente da aba onde aparece:
 
 - **💊 Vida** — cura uma quantidade fixa de PV, ou cura total (o Mestre decide qual das duas). **Não funciona em Pokémon desmaiado.**
 - **✨ Condição** — cura uma Condição específica (Queimadura, Veneno — que também cura Veneno Grave —, Paralisia, Sono, Congelamento ou Confusão) ou qualquer uma delas de uma vez (tipo um Full Heal). **Não funciona em Pokémon desmaiado.**
 - **💫 Reviver** — o único tipo que funciona em Pokémon desmaiado (ou o Centro Pokémon, narrativamente). Devolve PV (uma quantidade fixa ou o total, dependendo do item) e reativa o Pokémon.
 - **🔄 Vida + Condição** — cura PV e cura Condição/Confusão ao mesmo tempo (tipo um Full Restore). Mesma trava do tipo Vida: não funciona em desmaiado.
-- **📦 Outro** — itens catalogados (Pokébolas, itens de Batalha, de Evolução, Segurados, Chave etc.) que ainda não têm mecânica própria no sistema (Cap. 25); existem como registro do que você carrega, sem efeito automático por enquanto.
+- **🔋 PP** — Ether, Max Ether, Elixir, Max Elixir, PP Up e PP Max (Cap. 8.6.1 das Regras): recuperam ou aumentam o PP de um Movimento (ou dos 4 de uma vez, no caso de Elixir/Max Elixir) de um Pokémon que não esteja desmaiado.
+- **📦 Outro** — itens catalogados (Pokébolas, Itens de Batalha, de Evolução, Segurados, TMs etc.) que ainda não têm mecânica própria no sistema (Cap. 25); existem como registro do que você carrega, sem efeito automático por enquanto.
 
 Pokémon desmaiado só sai desse estado com um item **💫 Reviver** ou levando ele ao Centro Pokémon (fora de jogo/narrativo) — nenhum outro tipo de item cura ele.
 
 ## Cura
 
-Botão **"🩹 Cura"** na sua ficha, logo abaixo da Mochila. Abre um painel com quatro abas — **💊 Vida**, **✨ Condição**, **💫 Reviver** e **🔄 Vida + Condição** — listando só os itens daquele tipo que você ainda tem. O fluxo:
+Botão **"🩹 Cura"** na sua ficha, logo abaixo da Mochila. Abre um painel com cinco abas — **💊 Vida**, **✨ Condição**, **💫 Reviver**, **🔄 Vida + Condição** e **🔋 PP** — listando só os itens daquele tipo que você ainda tem. O fluxo:
 
 1. Escolha a aba certa pra sua necessidade.
 2. Clique no item que quer usar.
-3. Clique em qual dos seus Pokémon (Equipe ou Banco) vai receber. Nas abas Vida e Vida+Condição só aparecem Pokémon **não desmaiados**; na aba Reviver só aparecem os **desmaiados**; a aba Condição mostra todos, menos quem já está sem a Condição que o item cura.
+3. Clique em qual dos seus Pokémon (Equipe ou Banco) vai receber. Nas abas Vida e Vida+Condição só aparecem Pokémon **não desmaiados**; na aba Reviver só aparecem os **desmaiados**; a aba Condição mostra todos, menos quem já está sem a Condição que o item cura; a aba PP também exclui desmaiados.
+4. **Só na aba PP**, e só pros itens que afetam um Movimento por vez (Ether, Max Ether, PP Up, PP Max) — Elixir e Max Elixir pulam esse passo, afetando os 4 de uma vez: escolha qual dos 4 Movimentos do Pokémon recebe o item.
 
-A cura acontece na hora — de verdade, não é só um registro: PV sobe (ou vai pro máximo), a Condição/Confusão desaparece e/ou o Pokémon reanima, dependendo do item. Consome 1 unidade dele. Funciona fora de batalha, direto na sua ficha, a qualquer momento.
+A cura acontece na hora — de verdade, não é só um registro: PV sobe (ou vai pro máximo), a Condição/Confusão desaparece, o Pokémon reanima e/ou o PP do Movimento aumenta, dependendo do item. Consome 1 unidade dele. Funciona fora de batalha, direto na sua ficha, a qualquer momento.
 
 ## Arena (esboço — ainda em construção)
 
@@ -119,13 +130,13 @@ Não existe mais botão de "Usar" nem de "Atacar" separado — é tudo clicando 
      - Um Movimento **de área** (ex.: Earthquake) também resolve sozinho, acertando todo mundo daquela categoria de uma vez — pode incluir seus próprios aliados junto com os inimigos, dependendo do Movimento (igual nas batalhas em dupla dos jogos oficiais).
      - Um Movimento **de campo** (ex.: Stealth Rock) também resolve na hora, mas sem calcular dano nenhum — é uma mecânica ainda em aberto (Cap. 25), só fica registrado que foi usado.
      - Pra qualquer outro caso (**só aliado**, **você ou aliado**, **só inimigo**, ou **aliado ou inimigo**), o site pede um clique: só quem realmente pode ser alvo daquele Movimento fica destacado e clicável na Arena — clicar em alguém fora da lista não faz nada.
-   - **Usar Item** → a mochila aparece separada por tipo (💊 Vida, ✨ Condição, 💫 Reviver, 🔄 Vida + Condição, 📦 Outro), igual na aba Cura da ficha. Escolha o item e depois em quem usar (você mesmo ou um aliado em campo) — a lista de alvos já respeita a trava de desmaiado (Vida/Vida+Condição só em quem está de pé, Reviver só em quem está desmaiado). Itens de Vida, Condição, Reviver e Vida+Condição já fazem efeito de verdade na hora — PV sobe, Condição/Confusão some e/ou o Pokémon reanima — e o Log mostra o resultado. Itens de Outro tipo ainda não têm efeito mecânico (Cap. 25): só consomem 1 unidade e ficam registrados.
+   - **Usar Item** → a mochila aparece separada por tipo (💊 Vida, ✨ Condição, 💫 Reviver, 🔄 Vida + Condição, 🔋 PP, 📦 Outro), igual na aba Cura da ficha. Escolha o item e depois em quem usar (você mesmo ou um aliado em campo) — a lista de alvos já respeita a trava de desmaiado (Vida/Vida+Condição/PP só em quem está de pé, Reviver só em quem está desmaiado). Pra um item de PP que afeta um Movimento só (Ether, Max Ether, PP Up, PP Max), o site ainda pede pra escolher qual dos 4 Movimentos recebe. Itens de Vida, Condição, Reviver, Vida+Condição e PP já fazem efeito de verdade na hora — PV sobe, Condição/Confusão some, o Pokémon reanima e/ou o PP do Movimento aumenta — e o Log mostra o resultado. Itens de Outro tipo ainda não têm efeito mecânico (Cap. 25): só consomem 1 unidade e ficam registrados.
    - **Trocar de Pokémon** → não precisa arrastar nada: a sua **Equipe ativa**, lá embaixo, fica com os Pokémon disponíveis destacados — clique em qualquer um deles (vivo, e que ainda não esteja em campo em outro lugar) pra colocar ele no lugar do atual. O Pokémon que estava lutando volta a aparecer só na Equipe ativa (some do Time), e o novo entra revelado direto. Consome a ação inteira (Cap. 18) — o que entrou só age a partir do turno seguinte dele.
    - **Fugir** → tenta fugir da batalha. Se o Mestre tiver travado a fuga nessa batalha (🔒), nem rola dado — a fuga é bloqueada na hora e você pode escolher outra coisa. Sem trava, o site rola **1d10**: 1–3 e a fuga falha (seu Pokémon continua em campo, mas a ação já foi gasta); 4–10 e ele foge com sucesso, saindo da Arena de vez. Os dois casos ficam registrados no Log.
    - Cancele a qualquer momento clicando em **"Cancelar"** no menu.
 3. Quando a ação envolve dado (só no caso de **Atacar**), o sistema rola sozinho e mostra tudo num **quadro de dado no centro da tela**. Primeiro o **d6** do ataque gira e assenta; se o Movimento tiver um Efeito Percentual, **depois** disso o **1d10** gira e assenta também (um de cada vez, nunca os dois juntos) — e se o ataque foi Crítico e esse primeiro 1d10 falhou, ainda rola uma **segunda tentativa** de 1d10 (Cap. 14), também na sua vez. Só depois que os dois já rolaram é que aparece o resultado completo: se foi Crítico, quanto de dano saiu, e se alguma Condição de status foi aplicada — num Movimento de área, o quadro mostra o resultado de cada alvo atingido. O quadro some sozinho depois de alguns segundos, ou clique em **"Fechar"**/fora dele pra tirar na hora.
 
-Tudo isso segue as Regras à risca — Precisão (Cap. 10, incluindo os Movimentos 100% automáticos, que nunca erram), Crítico (Cap. 11), Dano (Cap. 12), Tipos (Cap. 13), Efeito Percentual (Cap. 14) e Alvo do Movimento (Cap. 8.5) — sem precisar rolar dado físico nem fazer conta na mão. Se o efeito aplicar uma Condição de status, ela já entra na ficha do Pokémon atingido e aparece com o selo/ícone de sempre; se ele já estiver com outra Condição, o quadro avisa que o efeito bateu mas não mudou nada (regra de nunca ter duas Condições ao mesmo tempo, Cap. 20).
+Tudo isso segue as Regras à risca — Precisão (Cap. 10, incluindo os Movimentos 100% automáticos, que nunca erram), Crítico (Cap. 11), Dano (Cap. 12), Tipos (Cap. 13), Efeito Percentual (Cap. 14) e Alvo do Movimento (Cap. 8.5) — sem precisar rolar dado físico nem fazer conta na mão. Se o efeito aplicar uma Condição de status, ela já entra na ficha do Pokémon atingido e aparece com o selo/ícone de sempre; se ele já estiver com outra Condição, o quadro avisa que o efeito bateu mas não mudou nada (regra de nunca ter duas Condições ao mesmo tempo, Cap. 20). Se o Movimento também mudar Estágio (Cap. 15.1) — Swords Dance, Growl, Close Combat e todo o resto que faz isso oficialmente — o site já aplica sozinho no card do Pokémon certo (o seu, num Movimento de auto-buff, ou o do alvo, numa queda), com as reações automáticas de Habilidade de sempre (Clear Body bloqueando, Contrary revertendo etc.); Estágio volta a 0 sozinho assim que o Pokémon sai de campo (desmaia, troca ou foge, Cap. 15.2).
 
 **Dano de fim de turno já é automático.** Assim que um Pokémon com Queimadura, Veneno ou Veneno Grave termina de agir (ataca, usa item, troca ou foge), o dano daquela Condição (Cap. 20: −1 PV Queimadura, −2 PV Veneno, crescente 1→2→3... no Veneno Grave) já é aplicado sozinho e aparece no Log — não precisa esperar o fim da rodada inteira nem o Mestre aplicar na mão. O que a Arena **não** faz sozinha: os testes de início de turno de Paralisia, Sono e Congelamento (Confusão já é automática, como descrito acima) — isso continua sendo o Mestre quem conduz na mesa, como sempre foi.
 

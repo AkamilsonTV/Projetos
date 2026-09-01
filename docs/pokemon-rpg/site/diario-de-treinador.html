@@ -1776,190 +1776,425 @@ var ABILITIES_DEX = [
    que ainda não tem regra definida (Pokébolas, Itens de Batalha, Itens de
    Evolução, itens Segurados sem slot de equipar, Itens-Chave) entra como
    'outro', só catalogado, sem efeito mecânico ainda. */
-var ITEM_CATEGORIAS = ['Poções','Curas de Status','Revives','Pokébolas','Itens de Batalha','Itens de Evolução','Berries','Itens Segurados','Itens-Chave'];
+var ITEM_CATEGORIAS = ['Poções','Curas de Status','Revives','Pokébolas','Itens de Batalha','Itens de Evolução','Berries','Itens Segurados','Itens-Chave','Recuperação de PP','TMs'];
 var ITEM_DEX = [
-  {nome:'Potion',categoria:'Poções',tipo:'vida',cura:5,condicaoAlvo:'',reviveFull:false},
-  {nome:'Super Potion',categoria:'Poções',tipo:'vida',cura:10,condicaoAlvo:'',reviveFull:false},
-  {nome:'Hyper Potion',categoria:'Poções',tipo:'vida',cura:18,condicaoAlvo:'',reviveFull:false},
-  {nome:'Max Potion',categoria:'Poções',tipo:'vida',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Fresh Water',categoria:'Poções',tipo:'vida',cura:6,condicaoAlvo:'',reviveFull:false},
-  {nome:'Soda Pop',categoria:'Poções',tipo:'vida',cura:10,condicaoAlvo:'',reviveFull:false},
-  {nome:'Lemonade',categoria:'Poções',tipo:'vida',cura:14,condicaoAlvo:'',reviveFull:false},
-  {nome:'Moomoo Milk',categoria:'Poções',tipo:'vida',cura:12,condicaoAlvo:'',reviveFull:false},
-  {nome:'Berry Juice',categoria:'Poções',tipo:'vida',cura:4,condicaoAlvo:'',reviveFull:false},
-  {nome:'Sweet Heart',categoria:'Poções',tipo:'vida',cura:6,condicaoAlvo:'',reviveFull:false},
-  {nome:'Energy Powder',categoria:'Poções',tipo:'vida',cura:8,condicaoAlvo:'',reviveFull:false},
-  {nome:'Energy Root',categoria:'Poções',tipo:'vida',cura:16,condicaoAlvo:'',reviveFull:false},
-  {nome:'Full Restore',categoria:'Poções',tipo:'ambos',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Revival Herb',categoria:'Poções',tipo:'ambos',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Antidote',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'veneno',reviveFull:false},
-  {nome:'Burn Heal',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'queimadura',reviveFull:false},
-  {nome:'Paralyze Heal',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'paralisia',reviveFull:false},
-  {nome:'Awakening',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'sono',reviveFull:false},
-  {nome:'Ice Heal',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'congelamento',reviveFull:false},
-  {nome:'Full Heal',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Lava Cookie',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Old Gateau',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Casteliacone',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Lumiose Galette',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Shalour Sable',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Big Malasada',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Pewter Crunchies',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Rage Candy Bar',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Revive',categoria:'Revives',tipo:'revive',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Max Revive',categoria:'Revives',tipo:'revive',cura:0,condicaoAlvo:'',reviveFull:true},
-  {nome:'Poké Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Great Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Ultra Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Master Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Premier Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Repeat Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Timer Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Nest Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Net Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Dive Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Luxury Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Heal Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Quick Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Dusk Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Cherish Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Fast Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Level Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Lure Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Heavy Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Love Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Friend Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Moon Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Sport Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Safari Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Dream Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Beast Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Park Ball',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'X Attack',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'X Defense',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'X Sp. Atk',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'X Sp. Def',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'X Speed',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'X Accuracy',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Dire Hit',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Guard Spec.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Poké Doll',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Fire Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Water Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Thunder Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Leaf Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Moon Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Sun Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Shiny Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Dusk Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Dawn Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Ice Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Oval Stone',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'King\'s Rock',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Metal Coat',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Dragon Scale',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Upgrade',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Protector',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Electirizer',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Magmarizer',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Reaper Cloth',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Deep Sea Tooth',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Deep Sea Scale',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Razor Claw',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Razor Fang',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Prism Scale',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Whipped Dream',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Sachet',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Strawberry Sweet',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Love Sweet',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Berry Sweet',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Clover Sweet',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Flower Sweet',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Star Sweet',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Ribbon Sweet',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Sweet Apple',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Tart Apple',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Cracked Pot',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Chipped Pot',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Galarica Cuff',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Galarica Wreath',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Auspicious Armor',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Malicious Armor',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Masterpiece Teacup',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Unremarkable Teacup',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Metal Alloy',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Black Augurite',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Peat Block',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Leader\'s Crest',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Cheri Berry',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'paralisia',reviveFull:false},
-  {nome:'Chesto Berry',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'sono',reviveFull:false},
-  {nome:'Pecha Berry',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'veneno',reviveFull:false},
-  {nome:'Rawst Berry',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'queimadura',reviveFull:false},
-  {nome:'Aspear Berry',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'congelamento',reviveFull:false},
-  {nome:'Persim Berry',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'confuso',reviveFull:false},
-  {nome:'Lum Berry',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Oran Berry',categoria:'Poções',tipo:'vida',cura:3,condicaoAlvo:'',reviveFull:false},
-  {nome:'Sitrus Berry',categoria:'Berries',tipo:'vida',cura:8,condicaoAlvo:'',reviveFull:false},
-  {nome:'Leppa Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Figy Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Wiki Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Mago Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Aguav Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Iapapa Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Salac Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Petaya Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Liechi Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Ganlon Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Apicot Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Starf Berry',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Leftovers',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Choice Band',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Choice Specs',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Choice Scarf',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Life Orb',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Focus Sash',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Focus Band',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Eviolite',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Assault Vest',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Rocky Helmet',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Black Sludge',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Shell Bell',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Quick Claw',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Muscle Band',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Wise Glasses',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Expert Belt',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Wide Lens',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Zoom Lens',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Scope Lens',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Air Balloon',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Safety Goggles',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Weakness Policy',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Mental Herb',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'White Herb',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Power Herb',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Red Card',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Eject Button',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Sticky Barb',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Iron Ball',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Lagging Tail',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Big Root',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Absorb Bulb',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Cell Battery',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Snowball',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Luminous Moss',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Bicycle',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Old Rod',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Good Rod',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Super Rod',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Town Map',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Exp. Share',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Poké Radar',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Escape Rope',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Repel',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Super Repel',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Max Repel',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Poké Flute',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
-  {nome:'Itemfinder',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false}
+  {nome:'Potion',descricao:'Restores 20 HP.',categoria:'Poções',tipo:'vida',cura:5,condicaoAlvo:'',reviveFull:false},
+  {nome:'Super Potion',descricao:'Restores 50 HP.',categoria:'Poções',tipo:'vida',cura:10,condicaoAlvo:'',reviveFull:false},
+  {nome:'Hyper Potion',descricao:'Restores 200 HP.',categoria:'Poções',tipo:'vida',cura:18,condicaoAlvo:'',reviveFull:false},
+  {nome:'Max Potion',descricao:'Restores HP to full.',categoria:'Poções',tipo:'vida',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Fresh Water',descricao:'Restores 50 HP.',categoria:'Poções',tipo:'vida',cura:6,condicaoAlvo:'',reviveFull:false},
+  {nome:'Soda Pop',descricao:'Restores 60 HP.',categoria:'Poções',tipo:'vida',cura:10,condicaoAlvo:'',reviveFull:false},
+  {nome:'Lemonade',descricao:'Restores 80 HP.',categoria:'Poções',tipo:'vida',cura:14,condicaoAlvo:'',reviveFull:false},
+  {nome:'Moomoo Milk',descricao:'Restores 100 HP.',categoria:'Poções',tipo:'vida',cura:12,condicaoAlvo:'',reviveFull:false},
+  {nome:'Berry Juice',descricao:'Restores 20 HP.',categoria:'Poções',tipo:'vida',cura:4,condicaoAlvo:'',reviveFull:false},
+  {nome:'Sweet Heart',descricao:'Restores 20 HP.',categoria:'Poções',tipo:'vida',cura:6,condicaoAlvo:'',reviveFull:false},
+  {nome:'Energy Powder',descricao:'Restores 50 HP, but lowers happiness.',categoria:'Poções',tipo:'vida',cura:8,condicaoAlvo:'',reviveFull:false},
+  {nome:'Energy Root',descricao:'Restores 200 HP, but lowers happiness.',categoria:'Poções',tipo:'vida',cura:16,condicaoAlvo:'',reviveFull:false},
+  {nome:'Full Restore',descricao:'Restores HP to full and cures any status ailment and confusion.',categoria:'Poções',tipo:'ambos',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Revival Herb',descricao:'Revives with full HP, but lowers happiness.',categoria:'Poções',tipo:'ambos',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Antidote',descricao:'Cures poison.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'veneno',reviveFull:false},
+  {nome:'Burn Heal',descricao:'Cures a burn.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'queimadura',reviveFull:false},
+  {nome:'Paralyze Heal',descricao:'Cures paralysis.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'paralisia',reviveFull:false},
+  {nome:'Awakening',descricao:'Cures sleep.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'sono',reviveFull:false},
+  {nome:'Ice Heal',descricao:'Cures freezing.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'congelamento',reviveFull:false},
+  {nome:'Full Heal',descricao:'Cures any status ailment and confusion.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Lava Cookie',descricao:'Cures any status ailment and confusion.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Old Gateau',descricao:'Cures any status ailment and confusion.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Casteliacone',descricao:'Cures any status ailment and confusion.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Lumiose Galette',descricao:'Cures all major status ailments and confusion.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Shalour Sable',descricao:'Cures any major status ailment and confusion.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Big Malasada',descricao:'Cures major status ailments and confusion.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Pewter Crunchies',descricao:'Pewter City’s famous crunchy snack. They can be used to heal all status conditions of a single Pokémon.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Rage Candy Bar',descricao:'HS: Traded for TM64. Gen II & Gen V: Acts as a Potion.',categoria:'Curas de Status',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Revive',descricao:'Revives with half HP.',categoria:'Revives',tipo:'revive',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Max Revive',descricao:'Revives with full HP.',categoria:'Revives',tipo:'revive',cura:0,condicaoAlvo:'',reviveFull:true},
+  {nome:'Poké Ball',descricao:'Tries to catch a wild Pokémon.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Great Ball',descricao:'Tries to catch a wild Pokémon.  Success rate is 1.5×.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Ultra Ball',descricao:'Tries to catch a wild Pokémon.  Success rate is 2×.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Master Ball',descricao:'Catches a wild Pokémon every time.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Premier Ball',descricao:'Tries to catch a wild Pokémon.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Repeat Ball',descricao:'Tries to catch a wild Pokémon.  Success rate is 3× for previously-caught Pokémon.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Timer Ball',descricao:'Tries to catch a wild Pokémon. Success rate increases by 0.1× (Gen V: 0.3×) every turn, to a max of 4×.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Nest Ball',descricao:'Tries to catch a wild Pokémon.  Success rate is 3.9× for level 1 Pokémon, and drops steadily to 1× at level 30.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Net Ball',descricao:'Tries to catch a wild Pokémon.  Success rate is 3× for water and bug Pokémon.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Dive Ball',descricao:'Tries to catch a wild Pokémon. Success rate is 3.5× when underwater, fishing, or surfing.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Luxury Ball',descricao:'Tries to catch a wild Pokémon.  Caught Pokémon start with 200 happiness.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Heal Ball',descricao:'Tries to catch a wild Pokémon.  Caught Pokémon are immediately healed.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Quick Ball',descricao:'Tries to catch a wild Pokémon. Success rate is 4× (Gen V: 5×), but only on the first turn.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Dusk Ball',descricao:'Tries to catch a wild Pokémon.  Success rate is 3.5× at night and in caves.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Cherish Ball',descricao:'Tries to catch a wild Pokémon.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Fast Ball',descricao:'4× effectiveness on Pokémon with 100 or greater base speed. (Gen II: Roaming or Fleeing Pokémon). Made from Wht Apricorn.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Level Ball',descricao:'Success rate based off of fraction target Pokémon is of user’s Pokémon. Made from Red Apricorn.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Lure Ball',descricao:'3× effectiveness while fishing. Made from Blu Apricorn.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Heavy Ball',descricao:'Has flat bonus or penalty to catch rate depending on weight class of target. Made from Blk Apricorn.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Love Ball',descricao:'8× effectiveness on opposite sex, same species targets of the Active Pokémon. Made from Pnk Apricorn.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Friend Ball',descricao:'Caught Pokémon start with 200 happiness. Made from Grn Apricorn.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Moon Ball',descricao:'4× effectiveness on familes of Pokémon with a Moon Stone evolution. Made from Ylw Apricorn.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Sport Ball',descricao:'Tries to catch a Pokémon in the Bug-Catching contest in National Park. (Gen II: Park Ball)',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Safari Ball',descricao:'Tries to catch a wild Pokémon in the Great Marsh or Safari Zone.  Success rate is 1.5×.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Dream Ball',descricao:'Catches Pokémon found in the Dream World.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Beast Ball',descricao:'Tries to catch a wild Pokémon.  Success rate is 5× for Ultra Beasts and 0.1× for all other Pokémon.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Park Ball',descricao:'Catches Pokémon in the Pal Park every time.',categoria:'Pokébolas',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'X Attack',descricao:'Raises Attack by one stage in battle.  Raises happiness.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'X Defense',descricao:'Raises Defense by one stage in battle.  Raises happiness.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'X Sp. Atk',descricao:'Raises Special Attack by one stage in battle.  Raises happiness.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'X Sp. Def',descricao:'Raises Special Defense by one stage in battle.  Raises happiness.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'X Speed',descricao:'Raises Speed by one stage in battle.  Raises happiness.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'X Accuracy',descricao:'Raises accuracy by one stage in battle.  Raises happiness.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Dire Hit',descricao:'Increases the chance of a critical hit in battle.  Raises happiness.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Guard Spec.',descricao:'Prevents stat changes in battle for five turns in battle.  Raises happiness.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Poké Doll',descricao:'Ends a wild battle.',categoria:'Itens de Batalha',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Fire Stone',descricao:'Evolves an Eevee into Flareon, a Growlithe into Arcanine, a Pansear into Simisear, or a Vulpix into Ninetales.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Water Stone',descricao:'Evolves an Eevee into Vaporeon, a Lombre into Ludicolo, a Panpour into Simipour, a Poliwhirl into Poliwrath, a Shellder into Cloyster, or a Staryu into Starmie.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Thunder Stone',descricao:'Evolves an Eelektrik into Eelektross, an Eevee into Jolteon, or a Pikachu into Raichu.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Leaf Stone',descricao:'Evolves an Exeggcute into Exeggutor, a Gloom into Vileplume, a Nuzleaf into Shiftry, a Pansage into Simisage, or a Weepinbell into Victreebel.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Moon Stone',descricao:'Evolves a Clefairy into Clefable, a Jigglypuff into Wigglytuff, a Munna into Musharna, a Nidorina into Nidoqueen, a Nidorino into Nidoking, or a Skitty into Delcatty.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Sun Stone',descricao:'Evolves a Cottonee into Whimsicott, a Gloom into Bellossom, a Petilil into Lilligant, or a Sunkern into Sunflora.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Shiny Stone',descricao:'Evolves a Minccino into Cinccino, a Roselia into Roserade, or a Togetic into Togekiss.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Dusk Stone',descricao:'Evolves a Lampent into Chandelure, a Misdreavus into Mismagius, or a Murkrow into Honchkrow.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Dawn Stone',descricao:'Evolves a male Kirlia into Gallade or a female Snorunt into Froslass.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Ice Stone',descricao:'Evolves an Alola Sandshrew into Alola Sandslash or an Alola Vulpix into Alola Ninetales.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Oval Stone',descricao:'Level-up during Day on a Happiny: Holder evolves into Chansey.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'King\'s Rock',descricao:'Held: Damaging moves gain a 10% chance to make their target flinch. Traded on a Poliwhirl: Holder evolves into Politoed. Traded on a Slowpoke: Holder evolves into Slowking.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Metal Coat',descricao:'Held: Steel-Type moves from holder do 20% more damage.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Dragon Scale',descricao:'Traded on a Seadra: Holder evolves into Kingdra.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Upgrade',descricao:'Traded on a Porygon: Holder evolves into Porygon2.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Protector',descricao:'Traded on a Rhydon: Holder evolves into Rhyperior.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Electirizer',descricao:'Traded on an Electabuzz: Holder evolves into Electivire.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Magmarizer',descricao:'Traded on a Magmar: Holder evolves into Magmortar.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Reaper Cloth',descricao:'Traded on a Dusclops: Holder evolves into Dusknoir.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Deep Sea Tooth',descricao:'Doubles Clamperl’s Special Attack. Traded on a Clamperl: Holder evolves into Huntail.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Deep Sea Scale',descricao:'Doubles Clamperl’s Special Defense. Traded on a Clamperl: Holder evolves into Gorebyss.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Razor Claw',descricao:'Held: Raises the holder’s critical hit ratio by one stage. Held by a Sneasel while levelling up at night: Holder evolves into Weavile.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Razor Fang',descricao:'Held: Damaging moves gain a 10% chance to make their target flinch. Held by a Gligar while levelling up: Holder evolves into Gliscor.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Prism Scale',descricao:'Traded on a Feebas: Holder evolves into Milotic.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Whipped Dream',descricao:'Traded on a Swirlix: Holder evolves into Slurpuff.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Sachet',descricao:'Traded on a Spritzee: Holder evolves into Aromatisse.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Strawberry Sweet',descricao:'A strawberry-shaped sweet. When a Milcery holds this, it will spin around happily.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Love Sweet',descricao:'A heart-shaped sweet. When a Milcery holds this, it spins around happily.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Berry Sweet',descricao:'A berry-shaped sweet. When a Milcery holds this, it spins around happily.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Clover Sweet',descricao:'A clover-shaped sweet. When a Milcery holds this, it spins around happily.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Flower Sweet',descricao:'A flower-shaped sweet. When a Milcery holds this, it spins around happily.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Star Sweet',descricao:'A star-shaped sweet. When a Milcery holds this, it spins around happily.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Ribbon Sweet',descricao:'A ribbon-shaped sweet. When a Milcery holds this, it spins around happily.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Sweet Apple',descricao:'A peculiar apple that can make a certain species of Pokémon evolve. It’s exceptionally sweet.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Tart Apple',descricao:'A peculiar apple that can make a certain species of Pokémon evolve. It’s exceptionally tart.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Cracked Pot',descricao:'A peculiar teapot that can make a certain species of Pokémon evolve. It may be cracked, but tea poured from it is delicious.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Chipped Pot',descricao:'A peculiar teapot that can make a certain species of Pokémon evolve. It may be chipped, but tea poured from it is delicious.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Galarica Cuff',descricao:'A cuff made from woven-together Galarica Twigs. Giving it to Galarian Slowpoke makes the Pokémon very happy.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Galarica Wreath',descricao:'A wreath made from woven-together Galarica Twigs. Placing it on the head of a Galarian Slowpoke makes the Pokémon very happy.',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Auspicious Armor',descricao:'',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Malicious Armor',descricao:'',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Masterpiece Teacup',descricao:'',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Unremarkable Teacup',descricao:'',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Metal Alloy',descricao:'',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Black Augurite',descricao:'',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Peat Block',descricao:'',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Leader\'s Crest',descricao:'',categoria:'Itens de Evolução',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Cheri Berry',descricao:'Held: Consumed when paralyzed to cure paralysis.',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'paralisia',reviveFull:false},
+  {nome:'Chesto Berry',descricao:'Held: Consumed when asleep to cure sleep.',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'sono',reviveFull:false},
+  {nome:'Pecha Berry',descricao:'Held: Consumed when poisoned to cure poison.',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'veneno',reviveFull:false},
+  {nome:'Rawst Berry',descricao:'Held: Consumed when burned to cure a burn.',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'queimadura',reviveFull:false},
+  {nome:'Aspear Berry',descricao:'Held: Consumed when frozen to cure frozen.',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'congelamento',reviveFull:false},
+  {nome:'Persim Berry',descricao:'Held: Consumed when confused to cure confusion.',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'confuso',reviveFull:false},
+  {nome:'Lum Berry',descricao:'Held: Consumed to cure any status condition or confusion.',categoria:'Berries',tipo:'condicao',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Oran Berry',descricao:'Held: Consumed at 1/2 max HP to recover 10 HP.',categoria:'Poções',tipo:'vida',cura:3,condicaoAlvo:'',reviveFull:false},
+  {nome:'Sitrus Berry',descricao:'Held: Consumed at 1/2 max HP to recover 1/4 max HP.',categoria:'Berries',tipo:'vida',cura:8,condicaoAlvo:'',reviveFull:false},
+  {nome:'Leppa Berry',descricao:'Held: Consumed when a move runs out of PP to restore its PP by 10.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Figy Berry',descricao:'Held: Consumed at 1/2 max HP to restore 1/8 max HP. Confuses Pokémon that dislike spicy flavor.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Wiki Berry',descricao:'Held: Consumed at 1/2 max HP to restore 1/8 max HP. Confuses Pokémon that dislike dry flavor.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Mago Berry',descricao:'Held: Consumed at 1/2 max HP to restore 1/8 max HP. Confuses Pokémon that dislike sweet flavor.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Aguav Berry',descricao:'Held: Consumed at 1/2 max HP to restore 1/8 max HP. Confuses Pokémon that dislike bitter flavor.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Iapapa Berry',descricao:'Held: Consumed at 1/2 max HP to restore 1/8 max HP. Confuses Pokémon that dislike sour flavor.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Salac Berry',descricao:'Held: Consumed at 1/4 max HP to boost Speed.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Petaya Berry',descricao:'Held: Consumed at 1/4 max HP to boost Special Attack.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Liechi Berry',descricao:'Held: Consumed at 1/4 max HP to boost Attack.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Ganlon Berry',descricao:'Held: Consumed at 1/4 max HP to boost Defense.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Apicot Berry',descricao:'Held: Consumed at 1/4 max HP to boost Special Defense.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Starf Berry',descricao:'Held: Consumed at 1/4 max HP to boost a random stat by two stages.',categoria:'Berries',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Leftovers',descricao:'Held: Restores 1/16 (6.25%) holder’s max HP at the end of each turn.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Choice Band',descricao:'Held: Increases Attack by 50%, but restricts the holder to only one move.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Choice Specs',descricao:'Held: Increases Special Attack by 50%, but restricts the holder to only one move.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Choice Scarf',descricao:'Held: Increases Speed by 50%, but restricts the holder to only one move.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Life Orb',descricao:'Held: Holder’s moves inflict 30% extra damage, but cost 10% max HP.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Focus Sash',descricao:'Held: Holder survives any single-hit attack at 1 HP if at max HP, then the item is consumed.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Focus Band',descricao:'Held: Holder has 10% chance to survive attacks or self-inflicted damage at 1 HP.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Eviolite',descricao:'Held: Holder has 1.5× Defense and Special Defense, as long as it’s not fully evolved.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Assault Vest',descricao:'Raises the holder’s Special Defense to 1.5×.  Prevents the holder from selecting a status move.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Rocky Helmet',descricao:'Held: When the holder is hit by a contact move, the attacking Pokémon takes 1/6 its max HP in damage.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Black Sludge',descricao:'Held: Poison-type holder recovers 1/16 (6.25%) max HP each turn. Non-Poison-Types take 1/8 (12.5%) max HP damage.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Shell Bell',descricao:'Held: Holder receives 1/8 of the damage it deals when attacking.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Quick Claw',descricao:'Held: Holder has a 3/16 (18.75%) chance to move first.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Muscle Band',descricao:'Held: Boosts the damage of physical moves used by the holder by 10%.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Wise Glasses',descricao:'Held: Boosts the damage of special moves used by the holder by 1/10 (10%).',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Expert Belt',descricao:'Held: Holder’s Super Effective moves do 20% extra damage.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Wide Lens',descricao:'Held: Provides a 1/10 (10%) boost in accuracy to the holder.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Zoom Lens',descricao:'Held: Provides a 1/5 (20%) boost in accuracy if the holder moves after the target.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Scope Lens',descricao:'Held: Raises the holder’s critical hit ratio by one stage.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Air Balloon',descricao:'Held: Grants immunity to Ground-type moves, Spikes, and Toxic Spikes. Consumed when the holder takes damage from a move.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Safety Goggles',descricao:'Held: Prevents damage from powder moves and the damage from Hail and Sandstorm.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Weakness Policy',descricao:'Held: When the holder is hit by a super effective move, its Attack and Special Attack raise by two stages.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Mental Herb',descricao:'Held: Consumed to cure infatuation. Gen V: Also removes Taunt, Encore, Torment, Disable, and Cursed Body.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'White Herb',descricao:'Held: Resets all lowered stats to normal at end of turn. Consumed after use.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Power Herb',descricao:'Held: Both turns of a two-turn charge move happen at once. Consumed upon use.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Red Card',descricao:'Held: When the holder takes damage from a move, the opponent switches out for another random party Pokémon. Consumed after use.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Eject Button',descricao:'Held: When the holder takes damage from a move, it switches out for a party Pokémon of the Trainer’s choice.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Sticky Barb',descricao:'Held: Holder takes 1/8 (12.5%) its max HP at the end of each turn. When the holder is hit by a contact move, the attacking Pokémon takes 1/8 its max HP in damage and receive the item if not holding one.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Iron Ball',descricao:'Held: Holder’s Speed is halved. Negates all Ground-type immunities, and makes Flying-types take neutral damage from Ground-type moves. Arena Trap. Spikes, and Toxic Spikes affect the holder.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Lagging Tail',descricao:'Held: Holder moves last in its priority bracket.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Big Root',descricao:'Held: Increases HP recovered from draining moves, Ingrain, and Aqua Ring by 3/10 (30%).',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Absorb Bulb',descricao:'Held: Raises the holder’s Special Attack by one stage when it takes Water-type damage.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Cell Battery',descricao:'Held: Raises the holder’s Attack by one stage when it takes Electric-type damage.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Snowball',descricao:'Held: If the holder is hit by a damaging Ice move, raises its Attack by one stage.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Luminous Moss',descricao:'Held: If the holder is hit by a damaging Water move, raises its Special Defense by one stage.',categoria:'Itens Segurados',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Bicycle',descricao:'Use for fast transit.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Old Rod',descricao:'Used to catch Pokémon in bodies of water.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Good Rod',descricao:'Used to catch Pokémon in bodies of water.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Super Rod',descricao:'Used to catch Pokémon in bodies of water.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Town Map',descricao:'Use to see the overworld map.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Exp. Share',descricao:'Held: Half the experience from a battle is split between Pokémon holding this item.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Poké Radar',descricao:'Use to track down rare or shiny Pokémon. 50 steps to recharge.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Escape Rope',descricao:'Transports user to the outside entrance of a cave.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Repel',descricao:'For 100 steps, prevents wild encounters of level lower than your party’s lead Pokémon.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Super Repel',descricao:'For 200 steps, prevents wild encounters of level lower than your party’s lead Pokémon.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Max Repel',descricao:'For 250 steps, prevents wild encounters of level lower than your party’s lead Pokémon.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Poké Flute',descricao:'Use to awaken sleeping Pokémon, including Snorlax on roads.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Itemfinder',descricao:'A device that senses hidden items. It vibrates when the player is near a hidden item.',categoria:'Itens-Chave',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false},
+  {nome:'Ether',descricao:'Restores 10 PP for one move.',categoria:'Recuperação de PP',tipo:'pp',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'Max Ether',descricao:'Restores PP to full for one move.',categoria:'Recuperação de PP',tipo:'pp',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:true,ppUp:false},
+  {nome:'Elixir',descricao:'Restores 10 PP for each move.',categoria:'Recuperação de PP',tipo:'pp',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'todos',ppFull:false,ppUp:false},
+  {nome:'Max Elixir',descricao:'Restores PP to full for each move.',categoria:'Recuperação de PP',tipo:'pp',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'todos',ppFull:true,ppUp:false},
+  {nome:'PP Up',descricao:'Raises a move’s max PP by 20%.',categoria:'Recuperação de PP',tipo:'pp',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:true},
+  {nome:'PP Max',descricao:'Raises a move’s max PP by 60%.',categoria:'Recuperação de PP',tipo:'pp',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:true,ppUp:true},
+  {nome:'TM001',descricao:'Teaches Take Down to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM002',descricao:'Teaches Charm to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM003',descricao:'Teaches Fake Tears to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM004',descricao:'Teaches Agility to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM005',descricao:'Teaches Mud-Slap to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM006',descricao:'Teaches Scary Face to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM007',descricao:'Teaches Protect to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM008',descricao:'Teaches Fire Fang to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM009',descricao:'Teaches Thunder Fang to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM010',descricao:'Teaches Ice Fang to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM011',descricao:'Teaches Water Pulse to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM012',descricao:'Teaches Low Kick to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM013',descricao:'Teaches Acid Spray to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM014',descricao:'Teaches Acrobatics to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM015',descricao:'Teaches Struggle Bug to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM016',descricao:'Teaches Psybeam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM017',descricao:'Teaches Confuse Ray to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM018',descricao:'Teaches Thief to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM019',descricao:'Teaches Disarming Voice to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM020',descricao:'Teaches Trailblaze to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM021',descricao:'Teaches Pounce to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM022',descricao:'Teaches Chilling Water to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM023',descricao:'Teaches Charge Beam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM024',descricao:'Teaches Fire Spin to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM025',descricao:'Teaches Facade to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM026',descricao:'Teaches Poison Tail to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM027',descricao:'Teaches Aerial Ace to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM028',descricao:'Teaches Bulldoze to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM029',descricao:'Teaches Hex to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM030',descricao:'Teaches Snarl to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM031',descricao:'Teaches Metal Claw to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM032',descricao:'Teaches Swift to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM033',descricao:'Teaches Magical Leaf to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM034',descricao:'Teaches Icy Wind to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM035',descricao:'Teaches Mud Shot to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM036',descricao:'Teaches Rock Tomb to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM037',descricao:'Teaches Draining Kiss to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM038',descricao:'Teaches Flame Charge to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM039',descricao:'Teaches Low Sweep to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM040',descricao:'Teaches Air Cutter to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM041',descricao:'Teaches Stored Power to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM042',descricao:'Teaches Night Shade to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM043',descricao:'Teaches Fling to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM044',descricao:'Teaches Dragon Tail to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM045',descricao:'Teaches Venoshock to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM046',descricao:'Teaches Avalanche to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM047',descricao:'Teaches Endure to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM048',descricao:'Teaches Volt Switch to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM049',descricao:'Teaches Sunny Day to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM050',descricao:'Teaches Rain Dance to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM051',descricao:'Teaches Sandstorm to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM052',descricao:'Teaches Snowscape to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM053',descricao:'Teaches Smart Strike to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM054',descricao:'Teaches Psyshock to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM055',descricao:'Teaches Dig to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM056',descricao:'Teaches Bullet Seed to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM057',descricao:'Teaches False Swipe to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM058',descricao:'Teaches Brick Break to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM059',descricao:'Teaches Zen Headbutt to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM060',descricao:'Teaches U-turn to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM061',descricao:'Teaches Shadow Claw to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM062',descricao:'Teaches Foul Play to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM063',descricao:'Teaches Psychic Fangs to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM064',descricao:'Teaches Bulk Up to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM065',descricao:'Teaches Air Slash to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM066',descricao:'Teaches Body Slam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM067',descricao:'Teaches Fire Punch to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM068',descricao:'Teaches Thunder Punch to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM069',descricao:'Teaches Ice Punch to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM070',descricao:'Teaches Sleep Talk to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM071',descricao:'Teaches Seed Bomb to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM072',descricao:'Teaches Electro Ball to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM073',descricao:'Teaches Drain Punch to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM074',descricao:'Teaches Reflect to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM075',descricao:'Teaches Light Screen to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM076',descricao:'Teaches Rock Blast to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM077',descricao:'Teaches Waterfall to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM078',descricao:'Teaches Dragon Claw to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM079',descricao:'Teaches Dazzling Gleam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM080',descricao:'Teaches Metronome to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM081',descricao:'Teaches Grass Knot to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM082',descricao:'Teaches Thunder Wave to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM083',descricao:'Teaches Poison Jab to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM084',descricao:'Teaches Stomping Tantrum to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM085',descricao:'Teaches Rest to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM086',descricao:'Teaches Rock Slide to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM087',descricao:'Teaches Taunt to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM088',descricao:'Teaches Swords Dance to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM089',descricao:'Teaches Body Press to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM090',descricao:'Teaches Spikes to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM091',descricao:'Teaches Toxic Spikes to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM092',descricao:'Teaches Imprison to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM093',descricao:'Teaches Flash Cannon to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM094',descricao:'Teaches Dark Pulse to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM095',descricao:'Teaches Leech Life to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM096',descricao:'Teaches Eerie Impulse to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM097',descricao:'Teaches Fly to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM098',descricao:'Teaches Skill Swap to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM099',descricao:'Teaches Iron Head to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM100',descricao:'Teaches Dragon Dance to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM101',descricao:'Teaches Power Gem to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM102',descricao:'Teaches Gunk Shot to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM103',descricao:'Teaches Substitute to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM104',descricao:'Teaches Iron Defense to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM105',descricao:'Teaches X-Scissor to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM106',descricao:'Teaches Drill Run to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM107',descricao:'Teaches Will-O-Wisp to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM108',descricao:'Teaches Crunch to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM109',descricao:'Teaches Trick to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM110',descricao:'Teaches Liquidation to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM111',descricao:'Teaches Giga Drain to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM112',descricao:'Teaches Aura Sphere to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM113',descricao:'Teaches Tailwind to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM114',descricao:'Teaches Shadow Ball to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM115',descricao:'Teaches Dragon Pulse to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM116',descricao:'Teaches Stealth Rock to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM117',descricao:'Teaches Hyper Voice to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM118',descricao:'Teaches Heat Wave to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM119',descricao:'Teaches Energy Ball to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM120',descricao:'Teaches Psychic to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM121',descricao:'Teaches Heavy Slam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM122',descricao:'Teaches Encore to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM123',descricao:'Teaches Surf to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM124',descricao:'Teaches Ice Spinner to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM125',descricao:'Teaches Flamethrower to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM126',descricao:'Teaches Thunderbolt to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM127',descricao:'Teaches Play Rough to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM128',descricao:'Teaches Amnesia to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM129',descricao:'Teaches Calm Mind to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM130',descricao:'Teaches Helping Hand to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM131',descricao:'Teaches Pollen Puff to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM132',descricao:'Teaches Baton Pass to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM133',descricao:'Teaches Earth Power to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM134',descricao:'Teaches Reversal to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM135',descricao:'Teaches Ice Beam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM136',descricao:'Teaches Electric Terrain to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM137',descricao:'Teaches Grassy Terrain to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM138',descricao:'Teaches Psychic Terrain to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM139',descricao:'Teaches Misty Terrain to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM140',descricao:'Teaches Nasty Plot to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM141',descricao:'Teaches Fire Blast to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM142',descricao:'Teaches Hydro Pump to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM143',descricao:'Teaches Blizzard to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM144',descricao:'Teaches Fire Pledge to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM145',descricao:'Teaches Water Pledge to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM146',descricao:'Teaches Grass Pledge to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM147',descricao:'Teaches Wild Charge to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM148',descricao:'Teaches Sludge Bomb to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM149',descricao:'Teaches Earthquake to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM150',descricao:'Teaches Stone Edge to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM151',descricao:'Teaches Phantom Force to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM152',descricao:'Teaches Giga Impact to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM153',descricao:'Teaches Blast Burn to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM154',descricao:'Teaches Hydro Cannon to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM155',descricao:'Teaches Frenzy Plant to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM156',descricao:'Teaches Outrage to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM157',descricao:'Teaches Overheat to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM158',descricao:'Teaches Focus Blast to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM159',descricao:'Teaches Leaf Storm to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM160',descricao:'Teaches Hurricane to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM161',descricao:'Teaches Trick Room to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM162',descricao:'Teaches Bug Buzz to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM163',descricao:'Teaches Hyper Beam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM164',descricao:'Teaches Brave Bird to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM165',descricao:'Teaches Flare Blitz to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM166',descricao:'Teaches Thunder to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM167',descricao:'Teaches Close Combat to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM168',descricao:'Teaches Solar Beam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM169',descricao:'Teaches Draco Meteor to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM170',descricao:'Teaches Steel Beam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM171',descricao:'Teaches Tera Blast to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM172',descricao:'Teaches Roar to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM173',descricao:'Teaches Charge to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM174',descricao:'Teaches Haze to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM175',descricao:'Teaches Toxic to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM176',descricao:'Teaches Sand Tomb to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM177',descricao:'Teaches Spite to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM178',descricao:'Teaches Gravity to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM179',descricao:'Teaches Smack Down to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM180',descricao:'Teaches Gyro Ball to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM181',descricao:'Teaches Knock Off to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM182',descricao:'Teaches Bug Bite to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM183',descricao:'Teaches Super Fang to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM184',descricao:'Teaches Vacuum Wave to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM185',descricao:'Teaches Lunge to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM186',descricao:'Teaches High Horsepower to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM187',descricao:'Teaches Icicle Spear to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM188',descricao:'Teaches Scald to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM189',descricao:'Teaches Heat Crash to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM190',descricao:'Teaches Solar Blade to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM191',descricao:'Teaches Uproar to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM192',descricao:'Teaches Focus Punch to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM193',descricao:'Teaches Weather Ball to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM194',descricao:'Teaches Grassy Glide to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM195',descricao:'Teaches Burning Jealousy to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM196',descricao:'Teaches Flip Turn to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM197',descricao:'Teaches Dual Wingbeat to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM198',descricao:'Teaches Poltergeist to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM199',descricao:'Teaches Lash Out to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM200',descricao:'Teaches Scale Shot to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM201',descricao:'Teaches Misty Explosion to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM202',descricao:'Teaches Pain Split to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM203',descricao:'Teaches Psych Up to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM204',descricao:'Teaches Double-Edge to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM205',descricao:'Teaches Endeavor to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM206',descricao:'Teaches Petal Blizzard to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM207',descricao:'Teaches Temper Flare to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM208',descricao:'Teaches Whirlpool to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM209',descricao:'Teaches Muddy Water to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM210',descricao:'Teaches Supercell Slam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM211',descricao:'Teaches Electroweb to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM212',descricao:'Teaches Triple Axel to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM213',descricao:'Teaches Coaching to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM214',descricao:'Teaches Sludge Wave to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM215',descricao:'Teaches Scorching Sands to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM216',descricao:'Teaches Feather Dance to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM217',descricao:'Teaches Future Sight to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM218',descricao:'Teaches Expanding Force to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM219',descricao:'Teaches Skitter Smack to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM220',descricao:'Teaches Meteor Beam to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM221',descricao:'Teaches Throat Chop to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM222',descricao:'Teaches Breaking Swipe to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM223',descricao:'Teaches Metal Sound to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM224',descricao:'Teaches Curse to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM225',descricao:'Teaches Hard Press to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM226',descricao:'Teaches Dragon Cheer to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM227',descricao:'Teaches Alluring Voice to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM228',descricao:'Teaches Psychic Noise to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false},
+  {nome:'TM229',descricao:'Teaches Upper Hand to a compatible Pokémon.',categoria:'TMs',tipo:'outro',cura:0,condicaoAlvo:'',reviveFull:false,ppAlvo:'um',ppFull:false,ppUp:false}
 ];
 
 /* Naturezas oficiais (25 -- 5 neutras, 20 com +1/−1 num par de Atributos
@@ -3241,6 +3476,181 @@ var MOVE_EFFECTS = {
   'Burning Jealousy':{ailment:'queimadura',chance:100},
   'Scorching Sands':{ailment:'queimadura',chance:30},
   'Freezing Glare':{ailment:'congelamento',chance:10}
+};
+
+var MOVE_STAT_EFFECTS = {
+  'Acid Armor':{changes:[{stat:'def',change:2}],chance:100},
+  'Agility':{changes:[{stat:'spe',change:2}],chance:100},
+  'Acid':{changes:[{stat:'spd',change:-1}],chance:10},
+  'Amnesia':{changes:[{stat:'spd',change:2}],chance:100},
+  'Acid Spray':{changes:[{stat:'spd',change:-2}],chance:100},
+  'Ancient Power':{changes:[{stat:'atk',change:1},{stat:'def',change:1},{stat:'spa',change:1},{stat:'spd',change:1},{stat:'spe',change:1}],chance:10,self:true},
+  'Apple Acid':{changes:[{stat:'spd',change:-1}],chance:100},
+  'Aromatic Mist':{changes:[{stat:'spd',change:1}],chance:100},
+  'Aqua Step':{changes:[{stat:'spe',change:1}],chance:100},
+  'Armor Cannon':{changes:[{stat:'def',change:-1},{stat:'spd',change:-1}],chance:100},
+  'Aura Wheel':{changes:[{stat:'spe',change:1}],chance:100,self:true},
+  'Autotomize':{changes:[{stat:'spe',change:2}],chance:100},
+  'Baby-Doll Eyes':{changes:[{stat:'atk',change:-1}],chance:100},
+  'Barrier':{changes:[{stat:'def',change:2}],chance:100},
+  'Aurora Beam':{changes:[{stat:'atk',change:-1}],chance:10},
+  'Breaking Swipe':{changes:[{stat:'atk',change:-1}],chance:100},
+  'Bulldoze':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Bulk Up':{changes:[{stat:'atk',change:1},{stat:'def',change:1}],chance:100},
+  'Bubble Beam':{changes:[{stat:'spe',change:-1}],chance:10},
+  'Bug Buzz':{changes:[{stat:'spd',change:-1}],chance:10},
+  'Bubble':{changes:[{stat:'spe',change:-1}],chance:10},
+  'Captivate':{changes:[{stat:'spa',change:-2}],chance:100},
+  'Charge':{changes:[{stat:'spd',change:1}],chance:100},
+  'Charm':{changes:[{stat:'atk',change:-2}],chance:100},
+  'Charge Beam':{changes:[{stat:'spa',change:1}],chance:70,self:true},
+  'Chilling Water':{changes:[{stat:'atk',change:-1}],chance:100},
+  'Calm Mind':{changes:[{stat:'spa',change:1},{stat:'spd',change:1}],chance:100},
+  'Clanging Scales':{changes:[{stat:'def',change:-1}],chance:100,self:true},
+  'Clangorous Soul':{changes:[{stat:'atk',change:1},{stat:'def',change:1},{stat:'spa',change:1},{stat:'spd',change:1},{stat:'spe',change:1}],chance:100},
+  'Close Combat':{changes:[{stat:'def',change:-1},{stat:'spd',change:-1}],chance:100,self:true},
+  'Coaching':{changes:[{stat:'atk',change:1},{stat:'def',change:1}],chance:100},
+  'Coil':{changes:[{stat:'atk',change:1},{stat:'def',change:1},{stat:'precisao',change:1}],chance:100},
+  'Constrict':{changes:[{stat:'spe',change:-1}],chance:10},
+  'Cosmic Power':{changes:[{stat:'def',change:1},{stat:'spd',change:1}],chance:100},
+  'Cotton Spore':{changes:[{stat:'spe',change:-2}],chance:100},
+  'Cotton Guard':{changes:[{stat:'def',change:3}],chance:100},
+  'Crunch':{changes:[{stat:'def',change:-1}],chance:20},
+  'Crush Claw':{changes:[{stat:'def',change:-1}],chance:50},
+  'Confide':{changes:[{stat:'spa',change:-1}],chance:100},
+  'Defog':{changes:[{stat:'evasao',change:-1}],chance:100},
+  'Defense Curl':{changes:[{stat:'def',change:1}],chance:100},
+  'Decorate':{changes:[{stat:'atk',change:2},{stat:'spa',change:2}],chance:100},
+  'Diamond Storm':{changes:[{stat:'def',change:2}],chance:50,self:true},
+  'Defend Order':{changes:[{stat:'def',change:1},{stat:'spd',change:1}],chance:100},
+  'Double Team':{changes:[{stat:'evasao',change:1}],chance:100},
+  'Draco Meteor':{changes:[{stat:'spa',change:-2}],chance:100,self:true},
+  'Dragon Ascent':{changes:[{stat:'def',change:-1},{stat:'spd',change:-1}],chance:100,self:true},
+  'Dragon Dance':{changes:[{stat:'atk',change:1},{stat:'spe',change:1}],chance:100},
+  'Earth Power':{changes:[{stat:'spd',change:-1}],chance:10},
+  'Drum Beating':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Electro Shot':{changes:[{stat:'spa',change:1}],chance:100},
+  'Energy Ball':{changes:[{stat:'spd',change:-1}],chance:10},
+  'Electroweb':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Eerie Impulse':{changes:[{stat:'spa',change:-2}],chance:100},
+  'Fake Tears':{changes:[{stat:'spd',change:-2}],chance:100},
+  'Feather Dance':{changes:[{stat:'atk',change:-2}],chance:100},
+  'Fiery Dance':{changes:[{stat:'spa',change:1}],chance:50,self:true},
+  'Fillet Away':{changes:[{stat:'atk',change:2},{stat:'spa',change:2},{stat:'spe',change:2}],chance:100},
+  'Fire Lash':{changes:[{stat:'def',change:-1}],chance:100},
+  'Flame Charge':{changes:[{stat:'spe',change:1}],chance:100,self:true},
+  'Flash':{changes:[{stat:'precisao',change:-1}],chance:100},
+  'Flatter':{changes:[{stat:'spa',change:1}],chance:100},
+  'Flash Cannon':{changes:[{stat:'spd',change:-1}],chance:10},
+  'Fleur Cannon':{changes:[{stat:'spa',change:-2}],chance:100,self:true},
+  'Focus Blast':{changes:[{stat:'spd',change:-1}],chance:10},
+  'Flower Shield':{changes:[{stat:'def',change:1}],chance:100},
+  'Geomancy':{changes:[{stat:'spa',change:2},{stat:'spd',change:2},{stat:'spe',change:2}],chance:100},
+  'Gear Up':{changes:[{stat:'atk',change:1},{stat:'spa',change:1}],chance:100},
+  'Growl':{changes:[{stat:'atk',change:-1}],chance:100},
+  'Growth':{changes:[{stat:'atk',change:1},{stat:'spa',change:1}],chance:100},
+  'Harden':{changes:[{stat:'def',change:1}],chance:100},
+  'Glaciate':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Hammer Arm':{changes:[{stat:'spe',change:-1}],chance:100,self:true},
+  'Grav Apple':{changes:[{stat:'def',change:-1}],chance:100},
+  'Howl':{changes:[{stat:'atk',change:1}],chance:100},
+  'Hone Claws':{changes:[{stat:'atk',change:1},{stat:'precisao',change:1}],chance:100},
+  'Hyperspace Fury':{changes:[{stat:'def',change:-1}],chance:100,self:true},
+  'Ice Hammer':{changes:[{stat:'spe',change:-1}],chance:100,self:true},
+  'Icy Wind':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Iron Tail':{changes:[{stat:'def',change:-1}],chance:30},
+  'Kinesis':{changes:[{stat:'precisao',change:-1}],chance:100},
+  'Iron Defense':{changes:[{stat:'def',change:2}],chance:100},
+  'Leaf Storm':{changes:[{stat:'spa',change:-2}],chance:100,self:true},
+  'Leaf Tornado':{changes:[{stat:'precisao',change:-1}],chance:50},
+  'Leer':{changes:[{stat:'def',change:-1}],chance:100},
+  'Liquidation':{changes:[{stat:'def',change:-1}],chance:20},
+  'Lumina Crash':{changes:[{stat:'spd',change:-2}],chance:100},
+  'Lunge':{changes:[{stat:'atk',change:-1}],chance:100},
+  'Luster Purge':{changes:[{stat:'spd',change:-1}],chance:50},
+  'Low Sweep':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Magnetic Flux':{changes:[{stat:'def',change:1},{stat:'spd',change:1}],chance:100},
+  'Meditate':{changes:[{stat:'atk',change:1}],chance:100},
+  'Make It Rain':{changes:[{stat:'spa',change:-1}],chance:100},
+  'Memento':{changes:[{stat:'atk',change:-2},{stat:'spa',change:-2}],chance:100},
+  'Metal Sound':{changes:[{stat:'spd',change:-2}],chance:100},
+  'Metal Claw':{changes:[{stat:'atk',change:1}],chance:10,self:true},
+  'Meteor Mash':{changes:[{stat:'atk',change:1}],chance:20,self:true},
+  'Mirror Shot':{changes:[{stat:'precisao',change:-1}],chance:30},
+  'Minimize':{changes:[{stat:'evasao',change:2}],chance:100},
+  'Mist Ball':{changes:[{stat:'spa',change:-1}],chance:50},
+  'Moonblast':{changes:[{stat:'spa',change:-1}],chance:30},
+  'Mud Shot':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Mud-Slap':{changes:[{stat:'precisao',change:-1}],chance:100},
+  'Mud Bomb':{changes:[{stat:'precisao',change:-1}],chance:30},
+  'Muddy Water':{changes:[{stat:'precisao',change:-1}],chance:30},
+  'Mystical Fire':{changes:[{stat:'spa',change:-1}],chance:100},
+  'No Retreat':{changes:[{stat:'atk',change:1},{stat:'def',change:1},{stat:'spa',change:1},{stat:'spd',change:1},{stat:'spe',change:1}],chance:100},
+  'Noble Roar':{changes:[{stat:'atk',change:-1},{stat:'spa',change:-1}],chance:100},
+  'Night Daze':{changes:[{stat:'precisao',change:-1}],chance:40},
+  'Overheat':{changes:[{stat:'spa',change:-2}],chance:100,self:true},
+  'Ominous Wind':{changes:[{stat:'atk',change:1},{stat:'def',change:1},{stat:'spa',change:1},{stat:'spd',change:1},{stat:'spe',change:1}],chance:10,self:true},
+  'Nasty Plot':{changes:[{stat:'spa',change:2}],chance:100},
+  'Octazooka':{changes:[{stat:'precisao',change:-1}],chance:50},
+  'Parting Shot':{changes:[{stat:'atk',change:-1},{stat:'spa',change:-1}],chance:100},
+  'Play Rough':{changes:[{stat:'atk',change:-1}],chance:10},
+  'Play Nice':{changes:[{stat:'atk',change:-1}],chance:100},
+  'Pounce':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Power-Up Punch':{changes:[{stat:'atk',change:1}],chance:100,self:true},
+  'Psycho Boost':{changes:[{stat:'spa',change:-2}],chance:100,self:true},
+  'Quiver Dance':{changes:[{stat:'spa',change:1},{stat:'spd',change:1},{stat:'spe',change:1}],chance:100},
+  'Psychic':{changes:[{stat:'spd',change:-1}],chance:10},
+  'Razor Shell':{changes:[{stat:'def',change:-1}],chance:50},
+  'Rapid Spin':{changes:[{stat:'spe',change:1}],chance:100,self:true},
+  'Rock Tomb':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Rock Polish':{changes:[{stat:'spe',change:2}],chance:100},
+  'Rock Smash':{changes:[{stat:'def',change:-1}],chance:50},
+  'Rototiller':{changes:[{stat:'atk',change:1},{stat:'spa',change:1}],chance:100},
+  'Sand Attack':{changes:[{stat:'precisao',change:-1}],chance:100},
+  'Scary Face':{changes:[{stat:'spe',change:-2}],chance:100},
+  'Seed Flare':{changes:[{stat:'spd',change:-2}],chance:40},
+  'Shadow Ball':{changes:[{stat:'spd',change:-1}],chance:20},
+  'Shadow Bone':{changes:[{stat:'def',change:-1}],chance:20},
+  'Shell Smash':{changes:[{stat:'def',change:-1},{stat:'spd',change:-1},{stat:'atk',change:2},{stat:'spa',change:2},{stat:'spe',change:2}],chance:100},
+  'Sharpen':{changes:[{stat:'atk',change:1}],chance:100},
+  'Screech':{changes:[{stat:'def',change:-2}],chance:100},
+  'Silver Wind':{changes:[{stat:'atk',change:1},{stat:'def',change:1},{stat:'spa',change:1},{stat:'spd',change:1},{stat:'spe',change:1}],chance:10,self:true},
+  'Silk Trap':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Skitter Smack':{changes:[{stat:'spa',change:-1}],chance:100},
+  'Smokescreen':{changes:[{stat:'precisao',change:-1}],chance:100},
+  'Snarl':{changes:[{stat:'spa',change:-1}],chance:100},
+  'Shift Gear':{changes:[{stat:'atk',change:1},{stat:'spe',change:2}],chance:100},
+  'Spicy Extract':{changes:[{stat:'atk',change:2},{stat:'def',change:-2}],chance:100},
+  'Spirit Break':{changes:[{stat:'spa',change:-1}],chance:100},
+  'Spin Out':{changes:[{stat:'spe',change:-2}],chance:100},
+  'Steel Wing':{changes:[{stat:'def',change:1}],chance:10,self:true},
+  'Stockpile':{changes:[{stat:'def',change:1},{stat:'spd',change:1}],chance:100},
+  'Strength Sap':{changes:[{stat:'atk',change:-1}],chance:100},
+  'Stuff Cheeks':{changes:[{stat:'def',change:2}],chance:100},
+  'Struggle Bug':{changes:[{stat:'spa',change:-1}],chance:100},
+  'String Shot':{changes:[{stat:'spe',change:-2}],chance:100},
+  'Superpower':{changes:[{stat:'atk',change:-1},{stat:'def',change:-1}],chance:100,self:true},
+  'Swagger':{changes:[{stat:'atk',change:2}],chance:100},
+  'Sweet Scent':{changes:[{stat:'evasao',change:-2}],chance:100},
+  'Syrup Bomb':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Swords Dance':{changes:[{stat:'atk',change:2}],chance:100},
+  'Tar Shot':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Tail Whip':{changes:[{stat:'def',change:-1}],chance:100},
+  'Tail Glow':{changes:[{stat:'spa',change:3}],chance:100},
+  'Tearful Look':{changes:[{stat:'atk',change:-1},{stat:'spa',change:-1}],chance:100},
+  'Tera Blast':{changes:[{stat:'atk',change:-1},{stat:'spa',change:-1}],chance:100},
+  'Tickle':{changes:[{stat:'atk',change:-1},{stat:'def',change:-1}],chance:100},
+  'Thunderous Kick':{changes:[{stat:'def',change:-1}],chance:100},
+  'Tidy Up':{changes:[{stat:'atk',change:1},{stat:'spe',change:1}],chance:100},
+  'Torch Song':{changes:[{stat:'spa',change:1}],chance:100},
+  'Toxic Thread':{changes:[{stat:'spe',change:-1}],chance:100},
+  'Trailblaze':{changes:[{stat:'spe',change:1}],chance:100},
+  'Trop Kick':{changes:[{stat:'atk',change:-1}],chance:100},
+  'Venom Drench':{changes:[{stat:'atk',change:-1},{stat:'spa',change:-1},{stat:'spe',change:-1}],chance:100},
+  'V-create':{changes:[{stat:'def',change:-1},{stat:'spd',change:-1},{stat:'spe',change:-1}],chance:100,self:true},
+  'Withdraw':{changes:[{stat:'def',change:1}],chance:100},
+  'Work Up':{changes:[{stat:'atk',change:1},{stat:'spa',change:1}],chance:100},
+  'Zippy Zap':{changes:[{stat:'evasao',change:1}],chance:100,self:true}
 };
 /* ---- Categoria de alvo de cada Movimento (self/aliado/inimigo/área) ----
    Gerada a partir do CSV oficial do PokeAPI (moves.csv target_id + move_targets.csv),
@@ -5118,21 +5528,29 @@ function newTrainer(name, pin){
   };
 }
 var CURA_CONDICAO_LABELS = { '':'Qualquer Condição', queimadura:'Queimadura', veneno:'Veneno/Veneno Grave', paralisia:'Paralisia', sono:'Sono', congelamento:'Congelamento', confuso:'Confusão' };
-var ITEM_TIPOS_VALIDOS = { vida:1, condicao:1, revive:1, ambos:1, outro:1 };
+var ITEM_TIPOS_VALIDOS = { vida:1, condicao:1, revive:1, ambos:1, pp:1, outro:1 };
 /* tipo: 'vida' (cura PV, só em quem NÃO está desmaiado -- Cap. 19: precisa
    de um item 'revive' ou do Centro Pokémon pra isso), 'condicao' (cura
    Condição/Confusão), 'revive' (só funciona em quem ESTÁ desmaiado -- volta
    com metade do PV máximo, ou o máximo inteiro se reviveFull), 'ambos'
-   (cura PV E Condição juntos, tipo Full Restore) ou 'outro' (sem efeito
-   mecânico ainda, Cap. 25). cura: vale pra 'vida'/'ambos' -- PV
+   (cura PV E Condição juntos, tipo Full Restore), 'pp' (recupera/aumenta
+   PP de Movimento, Cap. 8.6 -- Ether/Elixir/PP Up/PP Max) ou 'outro' (sem
+   efeito mecânico ainda, Cap. 25). cura: vale pra 'vida'/'ambos' -- PV
    restaurados, 0 = cura total. condicaoAlvo: vale pra 'condicao'/'ambos'
    -- '' cura qualquer Condição + Confusão (tipo Full Heal); um valor
    específico (queimadura/veneno/paralisia/sono/congelamento/confuso) cura
    só aquilo ('veneno' cura Veneno e Veneno Grave também). reviveFull: só
    vale pra 'revive' -- true = volta com o PV máximo cheio (Max Revive),
-   false = volta com metade (Revive comum). categoria: de qual categoria
-   do catálogo oficial (ITEM_DEX) esse item veio, '' se foi digitado à
-   mão (não afeta a mecânica, só serve pra o Mestre organizar/filtrar). */
+   false = volta com metade (Revive comum). ppAlvo: só vale pra 'pp' --
+   'um' (escolhe 1 dos 4 Movimentos, tipo Ether/PP Up) ou 'todos' (os 4 de
+   uma vez, tipo Elixir). ppFull: só vale pra 'pp' -- true = enche/aumenta
+   o máximo possível de uma vez (Max Ether/Elixir/PP Max), false = um
+   pouco de cada vez (+10 PP, ou +20% no caso de PP Up). ppUp: só vale pra
+   'pp' com ppAlvo:'um' -- true = aumenta o PP MÁXIMO do Movimento pra
+   sempre (PP Up/PP Max) em vez de só recarregar o Atual (Ether/Max
+   Ether). categoria: de qual categoria do catálogo oficial (ITEM_DEX)
+   esse item veio, '' se foi digitado à mão (não afeta a mecânica, só
+   serve pra o Mestre organizar/filtrar). */
 function newItem(nome, quantidade, tipo, extra){
   extra = extra || {};
   return {
@@ -5143,7 +5561,11 @@ function newItem(nome, quantidade, tipo, extra){
     cura: clampInt(extra.cura, 0, 999),
     condicaoAlvo: CURA_CONDICAO_LABELS.hasOwnProperty(extra.condicaoAlvo) ? extra.condicaoAlvo : '',
     reviveFull: !!extra.reviveFull,
-    categoria: (extra.categoria||'').trim()
+    ppAlvo: extra.ppAlvo==='todos' ? 'todos' : 'um',
+    ppFull: !!extra.ppFull,
+    ppUp: !!extra.ppUp,
+    categoria: (extra.categoria||'').trim(),
+    descricao: (extra.descricao||'').trim()
   };
 }
 /* Garante que fichas salvas antes de um campo existir ganhem o valor padrão dele (sem apagar nada). */
@@ -5166,7 +5588,14 @@ function migrateState(){
       if(typeof it.cura !== 'number') it.cura = 0;
       if(!CURA_CONDICAO_LABELS.hasOwnProperty(it.condicaoAlvo)) it.condicaoAlvo = '';
       if(typeof it.reviveFull !== 'boolean') it.reviveFull = false;
+      if(it.ppAlvo!=='um' && it.ppAlvo!=='todos') it.ppAlvo = 'um';
+      if(typeof it.ppFull !== 'boolean') it.ppFull = false;
+      if(typeof it.ppUp !== 'boolean') it.ppUp = false;
       if(typeof it.categoria !== 'string') it.categoria = '';
+      if(typeof it.descricao !== 'string'){
+        var catDesc = findItemByName(it.nome);
+        it.descricao = catDesc ? (catDesc.descricao||'') : '';
+      }
     });
     (t.pokemons||[]).concat(t.banco||[]).forEach(function(p){
       migratePokemonMoves(p);
@@ -5242,6 +5671,11 @@ function migratePokemonMoves(p){
     } else if(typeof m.ppAtual !== 'number'){
       m.ppAtual = m.pp; /* pp já existia mas ppAtual não -- corrupção pontual, começa cheio */
     }
+    /* ppBase (teto original, pra calcular o limite de PP Up/PP Max --
+       +60% no máximo) -- ficha de antes desse campo existir assume que o
+       pp atual JÁ É o original (nenhum PP Up pôde ter sido usado antes
+       do item existir). */
+    if(typeof m.ppBase !== 'number') m.ppBase = m.pp;
   });
 }
 function newPokemon(){
@@ -5251,10 +5685,10 @@ function newPokemon(){
     vinculo:0, maturidade:0, currentHP:null,
     status:"", statusTurns:0, confuso:false, arenaRevelado:false, natureza:"", habilidade:"", flashFireBoost:false,
     estagios:{atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0},
-    moves:[{nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
-           {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
-           {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
-           {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"}]
+    moves:[{nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
+           {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
+           {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
+           {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"}]
   };
 }
 
@@ -5380,6 +5814,13 @@ function typeModifier(moveTipo, defTipo1, defTipo2){
 function bumpStage(poke, stat, delta){
   if(!poke.estagios) poke.estagios = {atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0};
   poke.estagios[stat] = clampInt((poke.estagios[stat]||0)+delta, -6, 6);
+}
+/* Cap. 15.1: Estágio zera sozinho sempre que o Pokémon sai de campo --
+   desmaiou, foi trocado, fugiu -- igual no jogo oficial. Chamado em todo
+   ponto onde isso acontece de verdade (arenaSwapIn, arenaLeave,
+   arenaFlee, e todo caminho que zera o PV dele). */
+function resetStages(poke){
+  poke.estagios = {atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0};
 }
 function arenaLog(text){
   if(!STATE.arena) return;
@@ -5589,21 +6030,53 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
     result.efeito = { ailment: fx.ailment, chance: chance, d10a: d10a, d10b: d10b, sucesso: success };
   }
 
+  /* Estágio por Movimento (Cap. 15.1) -- dado oficial (stat_changes da
+     PokeAPI): Swords Dance, Growl e companhia mudam Estágio sozinhos, sem
+     o Mestre digitar nada. Chance 100 = sempre que o golpe acerta (a
+     maioria dos casos -- é o próprio efeito principal do Movimento, não
+     um "efeito colateral"); só rola 1d10 quando é mesmo uma chance (ex.:
+     Aurora Beam, 10%) -- rolagem própria, separada da de Ailment (Cap.
+     14), porque nenhum Movimento do jogo tem as duas rolando ao mesmo
+     tempo de verdade. */
+  var statFx = MOVE_STAT_EFFECTS[move.nome];
+  if(statFx && !tm.immune){
+    var statChance = (attAbility==='Serene Grace') ? Math.min(100, statFx.chance*2) : statFx.chance;
+    var statSuccess;
+    var statD10a = null, statD10b = null;
+    if(statChance>=100){
+      statSuccess = true;
+    } else {
+      var statD10Threshold = statChance/10;
+      statD10a = forcedRoll ? forcedRoll.estagioD10a : rollDie(10);
+      statSuccess = statD10a <= statD10Threshold;
+      if(!statSuccess && crit){
+        statD10b = forcedRoll ? (forcedRoll.estagioD10b!==undefined ? forcedRoll.estagioD10b : rollDie(10)) : rollDie(10);
+        statSuccess = statD10b <= statD10Threshold;
+      }
+    }
+    result.estagioEfeito = { changes: statFx.changes, chance: statChance, d10a: statD10a, d10b: statD10b, sucesso: statSuccess, self: !!statFx.self };
+  }
+
   return result;
 }
 /* Aplica o resultado num Pokémon-alvo: desconta PV (Cap. 19: 0 PV = Desmaio)
    e aplica status, respeitando o Cap. 20 (nunca duas Condições Principais ao
    mesmo tempo — Confusão é a exceção e não briga com nenhuma delas). Devolve
    um resumo pro relatório visual (fainted/statusApplied). */
-function applyAttackResult(defTrainer, defPoke, result){
+function applyAttackResult(defTrainer, defPoke, result, attPoke){
   var info = { fainted:false, statusApplied:null };
   if(!result.hit) return info;
   if(result.dano){
     var max = hpMax(defTrainer, defPoke);
     var cur = (defPoke.currentHP===null || defPoke.currentHP===undefined) ? max : defPoke.currentHP;
     defPoke.currentHP = clampInt(cur - result.dano, 0, max);
-    if(defPoke.currentHP<=0) info.fainted = true;
+    if(defPoke.currentHP<=0){ info.fainted = true; resetStages(defPoke); }
   }
+  /* Shield Dust só bloqueia efeito colateral vindo de um golpe de OUTRO
+     Pokémon -- nunca o próprio (ex.: usar Rest nela mesma continua
+     fazendo ela dormir de propósito). */
+  var fromOpponent = attPoke && defPoke!==attPoke;
+  var shieldDustBlocks = fromOpponent && defPoke.habilidade==='Shield Dust';
   /* Absorção de Tipo (Water/Volt Absorb, Sap Sipper, Storm Drain/
      Lightning Rod, Flash Fire) -- computada em resolveAttack
      (result.abilityAbsorb), aplicada aqui de verdade. */
@@ -5617,7 +6090,7 @@ function applyAttackResult(defTrainer, defPoke, result){
     if(ab.stage) bumpStage(defPoke, ab.stage, 1);
     if(ab.fireBoost) defPoke.flashFireBoost = true;
   }
-  if(result.efeito && result.efeito.sucesso && defPoke.habilidade!=='Shield Dust'){
+  if(result.efeito && result.efeito.sucesso && !shieldDustBlocks){
     if(result.efeito.ailment==='confuso'){
       if(!defPoke.confuso && !abilityBlocksStatus(defPoke,'confuso')){ defPoke.confuso = true; info.statusApplied = 'confuso'; }
     } else if(!defPoke.status){
@@ -5626,6 +6099,40 @@ function applyAttackResult(defTrainer, defPoke, result){
         defPoke.status = result.efeito.ailment;
         defPoke.statusTurns = 0;
         info.statusApplied = result.efeito.ailment;
+      }
+    }
+  }
+  /* Estágio por Movimento (Cap. 15.1). result.estagioEfeito.self (Close
+     Combat, Superpower, Meteor Mash e companhia -- categoria "damage-raise"
+     da PokeAPI) sempre muda quem USOU o golpe, nunca o alvo do dano, e
+     nunca é bloqueável (é o próprio golpe mexendo nele mesmo -- Clear
+     Body/Defiant não têm o que fazer aqui). Nos outros casos (o alvo de
+     verdade do Movimento, resolvido pela categoria de alvo normal --
+     Growl, Swords Dance em si mesmo, etc.): Clear Body/White Smoke/Full
+     Metal Body/Hyper Cutter/Inner Focus/Own Tempo/Oblivious/Scrappy
+     bloqueiam uma QUEDA vinda de golpe alheio; Contrary/Guard Dog
+     invertem o sinal; Defiant/Competitive somam +2 Atq/AEsp uma vez só,
+     se alguma queda de fato passou. */
+  if(result.estagioEfeito && result.estagioEfeito.sucesso){
+    if(result.estagioEfeito.self){
+      if(attPoke) result.estagioEfeito.changes.forEach(function(c){ bumpStage(attPoke, c.stat, c.change); });
+    } else if(!shieldDustBlocks){
+      var defAb = defPoke.habilidade;
+      var algumaQuedaPassou = false;
+      result.estagioEfeito.changes.forEach(function(c){
+        var delta = c.change;
+        if(delta<0 && fromOpponent){
+          if(INTIMIDATE_BLOCK[defAb]) return; /* bloqueado, nem conta pro Defiant/Competitive */
+          if(INTIMIDATE_REVERSE[defAb]){ bumpStage(defPoke, c.stat, -delta); return; }
+          bumpStage(defPoke, c.stat, delta);
+          algumaQuedaPassou = true;
+        } else {
+          bumpStage(defPoke, c.stat, delta);
+        }
+      });
+      if(algumaQuedaPassou){
+        if(defAb==='Defiant') bumpStage(defPoke,'atk',2);
+        if(defAb==='Competitive') bumpStage(defPoke,'spa',2);
       }
     }
   }
@@ -5743,6 +6250,7 @@ function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPok
     if((defAbility==='Rough Skin' || defAbility==='Iron Barbs')){
       var dmg1 = Math.max(1, Math.ceil(attMax/8));
       attPoke.currentHP = clampInt(((attPoke.currentHP===null||attPoke.currentHP===undefined)?attMax:attPoke.currentHP)-dmg1, 0, attMax);
+      if(attPoke.currentHP<=0) resetStages(attPoke);
       arenaLog(esc(defNome)+' tem '+defAbility+' — '+esc(attNome)+' sofreu '+dmg1+' de dano no contato.');
     }
     if(defAbility==='Gooey' || defAbility==='Tangling Hair'){
@@ -5773,6 +6281,7 @@ function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPok
   if(info.fainted && contact && (defAbility==='Aftermath')){
     var dmg2 = Math.max(1, Math.ceil(attMax/4));
     attPoke.currentHP = clampInt(((attPoke.currentHP===null||attPoke.currentHP===undefined)?attMax:attPoke.currentHP)-dmg2, 0, attMax);
+    if(attPoke.currentHP<=0) resetStages(attPoke);
     arenaLog(esc(defNome)+' tem Aftermath — '+esc(attNome)+' sofreu '+dmg2+' de dano ao desmaiar ele no contato.');
   }
   if(info.statusApplied && SYNCHRONIZE_AILMENTS[info.statusApplied] && defAbility==='Synchronize' && !attPoke.status && attAbility!=='Shield Dust'){
@@ -5800,10 +6309,12 @@ function resolveMoveUse(attTrainer, attPoke, move, targets){
       forced = {
         d6: result.d6,
         efeitoD10a: result.efeito ? result.efeito.d10a : undefined,
-        efeitoD10b: (result.efeito && result.efeito.d10b!==null && result.efeito.d10b!==undefined) ? result.efeito.d10b : undefined
+        efeitoD10b: (result.efeito && result.efeito.d10b!==null && result.efeito.d10b!==undefined) ? result.efeito.d10b : undefined,
+        estagioD10a: result.estagioEfeito ? result.estagioEfeito.d10a : undefined,
+        estagioD10b: (result.estagioEfeito && result.estagioEfeito.d10b!==null && result.estagioEfeito.d10b!==undefined) ? result.estagioEfeito.d10b : undefined
       };
     }
-    var info = applyAttackResult(tgt.trainer, tgt.poke, result);
+    var info = applyAttackResult(tgt.trainer, tgt.poke, result, attPoke);
     applyAbilityHooksAfterHit(attTrainer, attPoke, move, tgt.trainer, tgt.poke, result, info);
     return { entry: tgt.entry, trainer: tgt.trainer, poke: tgt.poke, result: result, info: info };
   });
@@ -5960,6 +6471,7 @@ function applyEndOfTurnStatusAndLog(entry){
       var novoHP = clampInt(cur-dano, 0, max);
       p.currentHP = novoHP;
       var fainted = novoHP<=0;
+      if(fainted) resetStages(p);
       arenaLog(esc(nome)+' ('+esc(t.name)+') sofreu <strong>'+dano+'</strong> de dano por '+esc(ailmentLabel(p.status))+(fainted?' — 😵 Desmaiou!':''));
     }
   }
@@ -6023,8 +6535,45 @@ function curaCondicaoAlvo(alvo, poke){
   }
   return { curouStatus:curouStatus, curouConfuso:curouConfuso };
 }
-function applyItemCure(item, trainer, poke){
+/* PP (Cap. 8.6) -- Ether/Max Ether/PP Up/PP Max mexem num Movimento só
+   (moveIdx obrigatório); Elixir/Max Elixir mexem nos 4 de uma vez.
+   ppUp aumenta o Máximo (ppBase até +60%, PP Up soma 20% dele por vez,
+   PP Max vai direto pro teto); sem ppUp só recarrega o Atual (+10, ou
+   cheio se ppFull). */
+function curaPPUm(item, mv){
+  if(!mv || !mv.nome || !mv.pp) return { ganho:0, bloqueado:'sem_movimento' };
+  if(item.ppUp){
+    var base = mv.ppBase || mv.pp;
+    var teto = Math.round(base*1.6);
+    if(mv.pp>=teto) return { ganho:0, bloqueado:'pp_maximo' };
+    var novoMax = item.ppFull ? teto : Math.min(teto, mv.pp + Math.max(1, Math.round(base*0.2)));
+    var ganhoMax = novoMax - mv.pp;
+    mv.pp = novoMax;
+    mv.ppAtual = clampInt((mv.ppAtual||0) + ganhoMax, 0, mv.pp); /* PP Up também enche o Atual na mesma medida, igual no jogo oficial */
+    return { ganho: ganhoMax };
+  }
+  var antes = mv.ppAtual||0;
+  mv.ppAtual = item.ppFull ? mv.pp : Math.min(mv.pp, antes+10);
+  return { ganho: mv.ppAtual-antes };
+}
+function applyItemCure(item, trainer, poke, moveIdx){
   if(!item || !trainer || !poke) return { tipo:'outro' };
+  if(item.tipo==='pp'){
+    if(item.ppAlvo==='todos'){
+      var totalGanho = 0, algumMovimento = false;
+      (poke.moves||[]).forEach(function(m){
+        if(!m.nome || !m.pp) return;
+        algumMovimento = true;
+        totalGanho += curaPPUm(item, m).ganho;
+      });
+      if(!algumMovimento) return { tipo:'pp', bloqueado:'sem_movimento' };
+      return { tipo:'pp', quantidade: totalGanho };
+    }
+    var mv = (poke.moves||[])[moveIdx];
+    var r = curaPPUm(item, mv);
+    if(r.bloqueado) return { tipo:'pp', bloqueado:r.bloqueado, quantidade:0 };
+    return { tipo:'pp', quantidade: r.ganho, nomeMovimento: mv.nome };
+  }
   var max = hpMax(trainer, poke);
   var cur = (poke.currentHP===null||poke.currentHP===undefined) ? max : poke.currentHP;
   var desmaiado = cur<=0;
@@ -6058,7 +6607,13 @@ function applyItemCure(item, trainer, poke){
 function describeItemCureResult(result){
   if(result.bloqueado==='desmaiado') return 'não fez efeito — está desmaiado, só reviver (ou o Centro Pokémon) resolve isso.';
   if(result.bloqueado==='nao_desmaiado') return 'não fez efeito — só funciona em quem está desmaiado.';
+  if(result.bloqueado==='sem_movimento') return 'não fez efeito — esse Pokémon não tem nenhum Movimento com PP cadastrado ainda.';
+  if(result.bloqueado==='pp_maximo') return 'não fez efeito — esse Movimento já está no PP Máximo mais alto possível (+60%).';
   if(result.tipo==='vida') return result.quantidade>0 ? ('curou '+result.quantidade+' PV.') : 'já estava com PV cheio.';
+  if(result.tipo==='pp'){
+    if(result.nomeMovimento) return result.quantidade>0 ? ('recuperou '+result.quantidade+' PP em '+result.nomeMovimento+'.') : (result.nomeMovimento+' já estava com PP cheio.');
+    return result.quantidade>0 ? ('recuperou PP em todos os Movimentos ('+result.quantidade+' no total).') : 'todos os Movimentos já estavam com PP cheio.';
+  }
   if(result.tipo==='revive') return 'reviveu com '+result.quantidade+' PV!';
   if(result.tipo==='condicao') return (result.curouStatus||result.curouConfuso) ? 'curou a Condição.' : 'não havia Condição pra curar.';
   if(result.tipo==='ambos'){
@@ -6108,6 +6663,7 @@ function arenaConfusionPreCheck(entry){
     p.currentHP = novoHP;
     result.dano = 1;
     result.fainted = novoHP<=0;
+    if(result.fainted) resetStages(p);
   }
   return result;
 }
@@ -6355,7 +6911,7 @@ function applyMoveData(mv, found){
   mv.nome = found.name; mv.tipo = found.tipo; mv.categoria = found.categoria;
   mv.poder = found.poder===null ? 0 : found.poder;
   mv.precisao = found.precisao; mv.prioridade = found.prioridade;
-  mv.pp = found.pp||0; mv.ppAtual = found.pp||0; /* PP oficial (Cap. 8.6) -- troca de Movimento sempre enche o PP de novo */
+  mv.pp = found.pp||0; mv.ppBase = found.pp||0; mv.ppAtual = found.pp||0; /* PP oficial (Cap. 8.6) -- troca de Movimento sempre enche o PP de novo. ppBase é o teto original (nunca muda sozinho) usado pra calcular o limite de PP Up (+60% no máximo). */
   mv.efeito = found.efeito + (found.poder===null && found.categoria!=='Status' ? ' (poder/dano variável — veja Cap. 25 das regras)' : '');
 }
 DT.setPokeField = function(tid,pid,field,el){
@@ -6425,6 +6981,7 @@ DT.toggleConfuso = function(tid,pid){
   mutate();
 };
 DT.setStage = function(tid,pid,stat,el){
+  if(SESSION.role!=='gm') return; /* Estágio é automático agora (Cap. 15.1) -- só o Mestre ajusta à mão */
   var p = getPoke(tid,pid); if(!p) return;
   p.estagios[stat] = clampInt(el.value,-6,6);
   mutate();
@@ -6440,12 +6997,16 @@ DT.setMove = function(tid,pid,idx,field,el){
     var found = findMoveByName(val);
     if(found){ applyMoveData(p.moves[idx], found); SESSION.notice = 'Preenchido com os dados oficiais de '+found.name+'.'; }
   }
-  if(field==='pp' && p.moves[idx].ppAtual>val) p.moves[idx].ppAtual = val; /* nunca deixa o Atual passar do Máximo que acabou de mudar */
+  if(field==='pp'){
+    if(p.moves[idx].ppAtual>val) p.moves[idx].ppAtual = val; /* nunca deixa o Atual passar do Máximo que acabou de mudar */
+    p.moves[idx].ppBase = val; /* o Mestre editou o Máximo à mão -- essa é a nova base pra calcular PP Up daqui pra frente */
+  }
   mutate();
 };
 /* PP Atual (Cap. 8.6) -- gasto/recuperado durante o jogo, editável tanto
    pelo Mestre quanto pelo próprio Treinador (mesmo padrão de PV Atual). */
 DT.setMovePP = function(tid,pid,idx,el){
+  if(SESSION.role!=='gm') return; /* PP é automático agora (Cap. 8.6) -- só o Mestre ajusta à mão; o jogador só recupera com item */
   var p = getPoke(tid,pid); if(!p) return;
   var m = p.moves[idx]; if(!m) return;
   m.ppAtual = clampInt(el.value, 0, m.pp||0);
@@ -6456,7 +7017,7 @@ DT.setMovePP = function(tid,pid,idx,el){
    espécie realmente pode aprender — ver movePickOptions/officialLevelCeiling. */
 DT.setMoveMethod = function(tid,pid,idx,metodo){
   var p = getPoke(tid,pid); if(!p) return;
-  p.moves[idx] = {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:metodo};
+  p.moves[idx] = {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:metodo};
   mutate();
 };
 DT.setMoveSelect = function(tid,pid,idx,el){
@@ -6464,7 +7025,7 @@ DT.setMoveSelect = function(tid,pid,idx,el){
   var metodo = p.moves[idx].metodo || 'normal';
   var name = el.value;
   if(!name){
-    p.moves[idx] = {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:metodo};
+    p.moves[idx] = {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:metodo};
     mutate();
     return;
   }
@@ -6743,6 +7304,9 @@ DT.arenaSetEntry = function(trainerId, pokemonId, teamId){
 };
 DT.arenaRemoveEntry = function(entryId){
   if(!STATE.arena) return;
+  var e = findArenaEntry(entryId);
+  var p = e && getPoke(e.trainerId, e.pokemonId);
+  if(p) resetStages(p); /* saiu de campo -- Cap. 15.1 */
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.id!==entryId; });
   mutate();
 };
@@ -6792,7 +7356,7 @@ DT.arenaLeave = function(trainerId){
   var antes = STATE.arena.entries.length;
   (STATE.arena.entries||[]).filter(function(e){ return e.trainerId===trainerId; }).forEach(function(e){
     var p = getPoke(e.trainerId, e.pokemonId);
-    if(p) applyOnSwitchOutAbility(t, p);
+    if(p){ applyOnSwitchOutAbility(t, p); resetStages(p); }
   });
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.trainerId!==trainerId; });
   if(STATE.arena.entries.length===antes) return; /* não tinha nenhum -- nada pra registrar */
@@ -6816,6 +7380,7 @@ function arenaResetActionState(){
   SESSION.arenaMoveIdx = null;
   SESSION.arenaAttackTarget = null;
   SESSION.arenaItemIdx = null;
+  SESSION.arenaItemTargetId = null;
 }
 /* Selecionar um Pokémon pra agir: revela sozinho se preciso, testa
    Confusão (Cap. 23) antes de mais nada — se perder a ação, o turno já
@@ -6955,13 +7520,25 @@ DT.arenaSelectTarget = function(entryId){
     if(!item2) return;
     var eligibleIds2 = eligibleItemTargets(atkEntry, item2).map(function(e){ return e.id; });
     if(eligibleIds2.indexOf(entryId)===-1) return;
+    if(item2.tipo==='pp' && item2.ppAlvo==='um'){
+      /* falta escolher o Movimento ainda -- ver DT.arenaPickItemMove */
+      SESSION.arenaItemTargetId = entryId;
+      render();
+      return;
+    }
     DT.resolveItemUse(atkEntry, SESSION.arenaItemIdx, entryId);
     return;
   }
 };
+/* PP 'um': último passo, depois de já ter escolhido item + Pokémon. */
+DT.arenaPickItemMove = function(moveIdx){
+  var atkEntry = findArenaEntry(SESSION.arenaAttacker);
+  if(!atkEntry || SESSION.arenaItemIdx===null || SESSION.arenaItemIdx===undefined || !SESSION.arenaItemTargetId) return;
+  DT.resolveItemUse(atkEntry, SESSION.arenaItemIdx, SESSION.arenaItemTargetId, moveIdx);
+};
 /* Vida e Condição já curam de verdade (applyItemCure); item tipo 'outro'
    continua só consumindo e registrando o uso, sem efeito (Cap. 25). */
-DT.resolveItemUse = function(atkEntry, itemIdx, targetEntryId){
+DT.resolveItemUse = function(atkEntry, itemIdx, targetEntryId, moveIdx){
   var attTrainer = findTrainer(atkEntry.trainerId);
   if(!attTrainer) return;
   var item = (attTrainer.itens||[])[itemIdx];
@@ -6971,7 +7548,7 @@ DT.resolveItemUse = function(atkEntry, itemIdx, targetEntryId){
   var targetPoke = targetTrainer && getPoke(targetEntry.trainerId, targetEntry.pokemonId);
   if(!targetEntry || !targetTrainer || !targetPoke) return;
 
-  var result = applyItemCure(item, targetTrainer, targetPoke);
+  var result = applyItemCure(item, targetTrainer, targetPoke, moveIdx);
   /* Se o item nem valia pro alvo (Vida/Ambos num desmaiado, Revive em
      quem não desmaiou), a unidade não é gasta -- só falha, sem
      consumir o item por engano. */
@@ -7016,6 +7593,7 @@ DT.arenaSwapIn = function(newPokemonId){
      dano de status que a troca provocou. */
   var oldCurAfter = (oldP.currentHP===null||oldP.currentHP===undefined) ? hpMax(oldT,oldP) : oldP.currentHP;
   if(oldCurAfter>0) applyOnSwitchOutAbility(oldT, oldP);
+  resetStages(oldP); /* saiu de campo -- Cap. 15.1 (idempotente se já zerou ao desmaiar acima) */
 
   var round = STATE.arena.round;
   var wasCurrent = round && currentRoundEntryId()===oldEntry.id;
@@ -7072,6 +7650,7 @@ DT.arenaFlee = function(){
     return;
   }
 
+  if(p) resetStages(p); /* saiu de campo -- Cap. 15.1 */
   var round = STATE.arena.round;
   var wasCurrent = round && currentRoundEntryId()===e.id;
   STATE.arena.entries = STATE.arena.entries.filter(function(x){ return x.id!==e.id; });
@@ -7219,7 +7798,7 @@ DT.removeTrainerGM = function(id){
    ainda é regra em aberto) — só o Mestre define o que cada Treinador tem;
    o Treinador vê e, na Arena, pode usar (Cap. 25: sem efeito mecânico
    ainda, só consome e registra). ---- */
-DT.addItem = function(tid, nomeEl, qtyEl, tipoEl, curaEl, condicaoEl, reviveFullEl){
+DT.addItem = function(tid, nomeEl, qtyEl, tipoEl, curaEl, condicaoEl, reviveFullEl, descricaoEl, ppAlvoEl, ppFullEl, ppUpEl){
   if(SESSION.role!=='gm') return;
   var t = findTrainer(tid); if(!t) return;
   var nome = (nomeEl.value||'').trim();
@@ -7229,18 +7808,29 @@ DT.addItem = function(tid, nomeEl, qtyEl, tipoEl, curaEl, condicaoEl, reviveFull
   var cura = curaEl ? curaEl.value : 0;
   var condicaoAlvo = condicaoEl ? condicaoEl.value : '';
   var reviveFull = reviveFullEl ? !!reviveFullEl.checked : false;
+  var descricao = descricaoEl ? (descricaoEl.value||'').trim() : '';
+  var ppAlvo = ppAlvoEl ? ppAlvoEl.value : 'um';
+  var ppFull = ppFullEl ? !!ppFullEl.checked : false;
+  var ppUp = ppUpEl ? !!ppUpEl.checked : false;
   /* Se o nome bater com o catálogo oficial (ITEM_DEX), guarda a categoria
      dele -- não muda o tipo/cura escolhidos à mão nos campos, só marca de
-     onde esse item "é" pra fins de organização. */
+     onde esse item "é" pra fins de organização. Descrição em branco
+     também puxa a oficial do catálogo, se bater. */
   var catalogado = findItemByName(nome);
   var categoria = catalogado ? catalogado.categoria : '';
+  if(!descricao && catalogado) descricao = catalogado.descricao||'';
   if(!Array.isArray(t.itens)) t.itens = [];
   var existing = t.itens.find(function(i){ return i.nome.toLowerCase()===nome.toLowerCase(); });
   if(existing){ existing.quantidade = clampInt(existing.quantidade+qtd, 0, 999); }
-  else { t.itens.push(newItem(nome, qtd, tipo, {cura:cura, condicaoAlvo:condicaoAlvo, reviveFull:reviveFull, categoria:categoria})); }
+  else {
+    t.itens.push(newItem(nome, qtd, tipo, {cura:cura, condicaoAlvo:condicaoAlvo, reviveFull:reviveFull, categoria:categoria, ppAlvo:ppAlvo, ppFull:ppFull, ppUp:ppUp, descricao:descricao}));
+  }
   nomeEl.value = ''; qtyEl.value = '1';
   if(curaEl) curaEl.value = '0';
   if(reviveFullEl) reviveFullEl.checked = false;
+  if(descricaoEl) descricaoEl.value = '';
+  if(ppFullEl) ppFullEl.checked = false;
+  if(ppUpEl) ppUpEl.checked = false;
   mutate();
 };
 /* Digitou (ou escolheu do autocomplete) um nome que bate com o catálogo
@@ -7260,10 +7850,18 @@ DT.autofillNewItem = function(tid, nameEl){
   var curaEl = document.getElementById('newItemCura_'+tid);
   var condicaoEl = document.getElementById('newItemCondicao_'+tid);
   var reviveFullEl = document.getElementById('newItemReviveFull_'+tid);
+  var descricaoEl = document.getElementById('newItemDescricao_'+tid);
+  var ppAlvoEl = document.getElementById('newItemPPAlvo_'+tid);
+  var ppFullEl = document.getElementById('newItemPPFull_'+tid);
+  var ppUpEl = document.getElementById('newItemPPUp_'+tid);
   if(tipoEl) tipoEl.value = found.tipo;
   if(curaEl) curaEl.value = String(found.cura);
   if(condicaoEl) condicaoEl.value = found.condicaoAlvo;
   if(reviveFullEl) reviveFullEl.checked = found.reviveFull;
+  if(descricaoEl) descricaoEl.value = found.descricao||'';
+  if(ppAlvoEl) ppAlvoEl.value = found.ppAlvo||'um';
+  if(ppFullEl) ppFullEl.checked = !!found.ppFull;
+  if(ppUpEl) ppUpEl.checked = !!found.ppUp;
   SESSION.notice = 'Preenchido com os dados oficiais de '+found.nome+' ('+found.categoria+').';
   render();
 };
@@ -7302,23 +7900,37 @@ DT.toggleCura = function(tid){
   SESSION.curaOpenFor = (SESSION.curaOpenFor===tid) ? null : tid;
   SESSION.curaTab = 'vida';
   SESSION.curaItemId = null;
+  SESSION.curaPokeId = null;
   render();
 };
 DT.curaSetTab = function(tab){
   if(!ITEM_TIPOS_VALIDOS.hasOwnProperty(tab) || tab==='outro') return;
   SESSION.curaTab = tab;
   SESSION.curaItemId = null;
+  SESSION.curaPokeId = null;
   render();
 };
 DT.curaPickItem = function(itemId){
   SESSION.curaItemId = itemId;
+  SESSION.curaPokeId = null;
   render();
 };
 DT.curaCancelPick = function(){
   SESSION.curaItemId = null;
+  SESSION.curaPokeId = null;
   render();
 };
-DT.curaApply = function(tid, pokemonId){
+/* Só usado pro tipo 'pp' com ppAlvo:'um' -- escolheu o Pokémon, mas ainda
+   falta escolher QUAL dos 4 Movimentos recebe (ver curaHTML). */
+DT.curaPickPoke = function(pokemonId){
+  SESSION.curaPokeId = pokemonId;
+  render();
+};
+DT.curaBackToPoke = function(){
+  SESSION.curaPokeId = null;
+  render();
+};
+DT.curaApply = function(tid, pokemonId, moveIdx){
   var t = findTrainer(tid); if(!t) return;
   var isOwner = SESSION.role==='player' && SESSION.trainerId===tid;
   if(SESSION.role!=='gm' && !isOwner) return;
@@ -7327,14 +7939,14 @@ DT.curaApply = function(tid, pokemonId){
   var p = getPoke(tid, pokemonId);
   if(!p) return;
 
-  var result = applyItemCure(item, t, p);
+  var result = applyItemCure(item, t, p, moveIdx);
   if(!result.bloqueado) item.quantidade = Math.max(0, item.quantidade-1);
   var nome = p.apelido || p.especie || 'Pokémon';
   SESSION.notice = t.name+' usou '+item.nome+' em '+nome+' — '+describeItemCureResult(result);
   /* Se ficou bloqueado (alvo errado pro tipo do item -- ex.: Revive em quem
      não desmaiou), não volta pra lista: deixa escolher outro Pokémon sem
      precisar clicar no item de novo. */
-  if(!result.bloqueado) SESSION.curaItemId = null;
+  if(!result.bloqueado){ SESSION.curaItemId = null; SESSION.curaPokeId = null; }
   mutate();
 };
 
@@ -7881,7 +8493,7 @@ function arenaActionPanelHTML(){
       var itemBtn = function(it, i){
         return '<button class="btn-sm" onclick="DT.arenaPickItem('+i+')">'+esc(it.nome)+'<br><span class="muted" style="font-size:.66rem;">x'+it.quantidade+' · '+esc(itemCuraDetailText(it))+'</span></button>';
       };
-      var groups = ['vida','condicao','revive','ambos','outro'].map(function(tipo){
+      var groups = ['vida','condicao','revive','ambos','pp','outro'].map(function(tipo){
         var btns = (attTrainer.itens||[]).map(function(it,i){ return (it.quantidade>0 && it.tipo===tipo) ? itemBtn(it,i) : ''; }).join('');
         if(!btns) return '';
         return '<p class="muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; margin:8px 0 4px;">'+ITEM_TIPO_LABELS[tipo]+'</p>'+
@@ -7895,6 +8507,26 @@ function arenaActionPanelHTML(){
     }
     var item = (attTrainer.itens||[])[SESSION.arenaItemIdx];
     if(!item){ SESSION.arenaItemIdx=null; return arenaActionPanelHTML(); }
+    /* PP 'um' (Ether/Max Ether/PP Up/PP Max): depois de escolher QUEM
+       recebe, ainda falta escolher QUAL dos 4 Movimentos -- só resolve
+       de vez com DT.arenaPickItemMove. */
+    if(item.tipo==='pp' && item.ppAlvo==='um' && SESSION.arenaItemTargetId){
+      var targetEntry = findArenaEntry(SESSION.arenaItemTargetId);
+      var targetPoke = targetEntry && getPoke(targetEntry.trainerId, targetEntry.pokemonId);
+      if(!targetPoke){ SESSION.arenaItemTargetId=null; return arenaActionPanelHTML(); }
+      var targetNome = targetPoke.apelido || targetPoke.especie || 'Pokémon';
+      var moveBtns2 = (targetPoke.moves||[]).map(function(m, i){
+        if(!m.nome || !m.pp) return '';
+        var teto = item.ppUp ? Math.round((m.ppBase||m.pp)*1.6) : m.pp;
+        var cheio = item.ppUp ? m.pp>=teto : (m.ppAtual||0)>=m.pp;
+        return '<button class="btn-sm" '+(cheio?'disabled':'')+' onclick="DT.arenaPickItemMove('+i+')">'+esc(m.nome)+' <span class="muted">('+(item.ppUp?(m.pp+'/'+teto+' máx.'):((m.ppAtual||0)+'/'+m.pp))+')</span></button>';
+      }).join('');
+      return '<div class="card arena-attack-panel"><div class="card-body">'+
+        '<p><strong>🎒 '+esc(name)+'</strong> vai usar <strong>'+esc(item.nome)+'</strong> em <strong>'+esc(targetNome)+'</strong> — em qual Movimento?</p>'+
+        '<div class="btn-row" style="flex-wrap:wrap;">'+(moveBtns2 || '<span class="muted">Esse Pokémon não tem nenhum Movimento com PP cadastrado.</span>')+'</div>'+
+        cancelBtn+
+      '</div></div>';
+    }
     var alvoTxt = item.tipo==='revive' ? 'quem estiver desmaiado' : 'você mesmo ou um aliado';
     return '<div class="card arena-attack-panel"><div class="card-body">'+
       '<p><strong>🎒 '+esc(name)+'</strong> vai usar <strong>'+esc(item.nome)+'</strong> — clique em '+alvoTxt+' ali em cima.</p>'+
@@ -8403,7 +9035,7 @@ function trainerSheetHTML(t, mode){
 /* Mochila do Treinador: o Mestre adiciona/remove/ajusta quantidade; o
    Treinador só vê. Quais itens existem e o que fazem em batalha ainda é
    regra em aberto (Cap. 25) — por enquanto é só o inventário em si. */
-var ITEM_TIPO_LABELS = { vida:'💊 Vida', condicao:'✨ Condição', revive:'💫 Reviver', ambos:'🔄 Vida + Condição', outro:'📦 Outro' };
+var ITEM_TIPO_LABELS = { vida:'💊 Vida', condicao:'✨ Condição', revive:'💫 Reviver', ambos:'🔄 Vida + Condição', pp:'🔋 PP', outro:'📦 Outro' };
 /* Texto curto do que um item de cura faz, pros botões de escolha (Cura da
    ficha e "Usar Item" na Arena) -- não confundir com describeItemCureResult,
    que é o RESULTADO depois de já ter usado. */
@@ -8412,30 +9044,75 @@ function itemCuraDetailText(it){
   if(it.tipo==='condicao') return 'cura '+CURA_CONDICAO_LABELS[it.condicaoAlvo];
   if(it.tipo==='revive') return it.reviveFull ? 'revive com PV cheio' : 'revive com metade do PV';
   if(it.tipo==='ambos') return (it.cura>0 ? ('cura '+it.cura+' PV') : 'cura total')+' + '+CURA_CONDICAO_LABELS[it.condicaoAlvo];
+  if(it.tipo==='pp'){
+    var alvoTxt = it.ppAlvo==='todos' ? 'todos os Movimentos' : '1 Movimento';
+    if(it.ppUp) return (it.ppFull?'PP Máximo no teto':'+20% de PP Máximo')+' de '+alvoTxt;
+    return (it.ppFull?'PP cheio':'+10 PP')+' em '+alvoTxt;
+  }
   return 'sem efeito ainda';
 }
+/* =================== MOCHILA: 5 ABAS, CADA UMA UMA TABELA DE VERDADE ===================
+   Reorganização da Mochila em 5 abas fixas (Poções e Berries / Pokébolas /
+   Itens de Missão / TM / Inventário Geral) -- cada uma agrupa uma ou mais
+   categorias do catálogo oficial (ITEM_DEX.categoria); tudo que não bate
+   com nenhuma (categoria em branco, digitado à mão, ou Itens de Batalha/
+   Evolução/Segurados/Recuperação de PP) cai no "Inventário Geral", que é
+   o catch-all. Só reorganiza a APRESENTAÇÃO -- o toggle de categoria do
+   Mestre (ITEM_CATEGORIAS/DT.toggleItemCategoria) continua granular,
+   nas 11 categorias de sempre. */
+var MOCHILA_TABS = ['pocoes','pokebolas','missao','tm','geral'];
+var MOCHILA_TAB_LABELS = { pocoes:'💊 Poções e Berries', pokebolas:'⚪ Pokébolas', missao:'🗝️ Itens de Missão', tm:'💿 TM', geral:'🎒 Inventário Geral' };
+var MOCHILA_TAB_CATEGORIAS = {
+  pocoes: { 'Poções':1, 'Curas de Status':1, 'Revives':1, 'Berries':1 },
+  pokebolas: { 'Pokébolas':1 },
+  missao: { 'Itens-Chave':1 },
+  tm: { 'TMs':1 }
+};
+function mochilaTabForItem(it){
+  for(var k=0;k<MOCHILA_TABS.length-1;k++){ // "geral" (o último) é sempre o catch-all, não tem categoria própria
+    var tab = MOCHILA_TABS[k];
+    if(MOCHILA_TAB_CATEGORIAS[tab][it.categoria]) return tab;
+  }
+  return 'geral';
+}
+DT.setMochilaTab = function(tid, tab){
+  if(MOCHILA_TABS.indexOf(tab)===-1) return;
+  if(!SESSION.mochilaTab) SESSION.mochilaTab = {};
+  SESSION.mochilaTab[tid] = tab;
+  render();
+};
 function inventoryHTML(t, canGM){
   var itens = t.itens||[];
   var out = '<h3 style="font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); margin-bottom:8px;">🎒 Mochila</h3>';
-  if(itens.length===0){
-    out += '<p class="muted" style="font-size:.82rem;">'+(canGM ? 'Nenhum item ainda — adicione abaixo.' : 'Nenhum item ainda.')+'</p>';
+  var activeTab = (SESSION.mochilaTab && SESSION.mochilaTab[t.id]) || 'pocoes';
+  if(MOCHILA_TABS.indexOf(activeTab)===-1) activeTab = 'pocoes';
+  out += '<div class="btn-row" style="margin-bottom:8px; flex-wrap:wrap;">'+
+    MOCHILA_TABS.map(function(k){
+      return '<button class="btn-sm'+(activeTab===k?' btn-primary':'')+'" onclick="DT.setMochilaTab(\''+t.id+'\',\''+k+'\')">'+MOCHILA_TAB_LABELS[k]+'</button>';
+    }).join('')+
+  '</div>';
+  var itensDaAba = itens.filter(function(it){ return mochilaTabForItem(it)===activeTab; });
+  if(itensDaAba.length===0){
+    out += '<p class="muted" style="font-size:.82rem;">'+(canGM ? 'Nenhum item aqui ainda — adicione abaixo (a categoria escolhe a aba sozinha).' : 'Nenhum item aqui ainda.')+'</p>';
   } else {
-    out += '<div class="inventory-list">'+itens.map(function(it){
-      var detail = it.tipo==='outro' ? '' : itemCuraDetailText(it);
-      return '<div class="inventory-row">'+
-        '<span class="inventory-name">'+esc(it.nome)+' <span class="tag" style="font-size:.6rem;">'+ITEM_TIPO_LABELS[it.tipo]+(detail?' · '+esc(detail):'')+'</span></span>'+
-        (canGM
-          ? '<input type="number" min="0" max="999" value="'+it.quantidade+'" onchange="DT.setItemQty(\''+t.id+'\',\''+it.id+'\', this)" style="width:64px;">'+
-            '<button class="btn-ghost btn-sm" onclick="DT.removeItem(\''+t.id+'\',\''+it.id+'\')">✕</button>'
-          : '<span class="tag">x'+it.quantidade+'</span>')+
-      '</div>';
-    }).join('')+'</div>';
+    out += '<div class="table-scroll"><table class="stat-table inventory-table"><thead><tr><th>Nome</th><th>Descrição</th><th>Quantidade</th>'+(canGM?'<th></th>':'')+'</tr></thead><tbody>'+
+      itensDaAba.map(function(it){
+        return '<tr><td>'+esc(it.nome)+'</td>'+
+          '<td class="muted" style="font-size:.72rem;">'+esc(it.descricao||'—')+'</td>'+
+          '<td class="num">'+(canGM
+            ? '<input type="number" min="0" max="999" value="'+it.quantidade+'" onchange="DT.setItemQty(\''+t.id+'\',\''+it.id+'\', this)" style="width:64px;">'
+            : String(it.quantidade))+'</td>'+
+          (canGM ? '<td><button class="btn-ghost btn-sm" onclick="DT.removeItem(\''+t.id+'\',\''+it.id+'\')">✕</button></td>' : '')+
+        '</tr>';
+      }).join('')+
+    '</tbody></table></div>';
   }
   if(canGM){
     out += '<div class="btn-row" style="margin-top:8px; flex-wrap:wrap;">'+
       '<input type="text" placeholder="Nome do item" id="newItemName_'+t.id+'" list="newItemNameList_'+t.id+'" onchange="DT.autofillNewItem(\''+t.id+'\', this)" style="flex:1; min-width:120px;">'+
       itemDatalist('newItemNameList_'+t.id)+
       '<input type="number" min="1" max="999" value="1" id="newItemQty_'+t.id+'" style="width:64px;" title="Quantidade">'+
+      '<input type="text" placeholder="Descrição (preenche sozinha se o nome bater com o catálogo)" id="newItemDescricao_'+t.id+'" style="flex:2; min-width:160px;">'+
       '<select id="newItemTipo_'+t.id+'" title="Tipo do item">'+
         Object.keys(ITEM_TIPO_LABELS).map(function(k){ return '<option value="'+k+'">'+ITEM_TIPO_LABELS[k]+'</option>'; }).join('')+
       '</select>'+
@@ -8444,7 +9121,12 @@ function inventoryHTML(t, canGM){
         Object.keys(CURA_CONDICAO_LABELS).map(function(k){ return '<option value="'+k+'">'+esc(CURA_CONDICAO_LABELS[k])+'</option>'; }).join('')+
       '</select>'+
       '<label style="display:flex; align-items:center; gap:4px; font-size:.72rem;" title="Só vale se Tipo = Reviver"><input type="checkbox" id="newItemReviveFull_'+t.id+'"> PV cheio ao reviver</label>'+
-      '<button class="btn-sm" onclick="DT.addItem(\''+t.id+'\', document.getElementById(\'newItemName_'+t.id+'\'), document.getElementById(\'newItemQty_'+t.id+'\'), document.getElementById(\'newItemTipo_'+t.id+'\'), document.getElementById(\'newItemCura_'+t.id+'\'), document.getElementById(\'newItemCondicao_'+t.id+'\'), document.getElementById(\'newItemReviveFull_'+t.id+'\'))">+ Adicionar</button>'+
+      '<select id="newItemPPAlvo_'+t.id+'" title="Só vale se Tipo = PP -- em quantos Movimentos mexe">'+
+        '<option value="um">PP: 1 Movimento</option><option value="todos">PP: todos os Movimentos</option>'+
+      '</select>'+
+      '<label style="display:flex; align-items:center; gap:4px; font-size:.72rem;" title="Só vale se Tipo = PP"><input type="checkbox" id="newItemPPFull_'+t.id+'"> PP cheio de uma vez</label>'+
+      '<label style="display:flex; align-items:center; gap:4px; font-size:.72rem;" title="Só vale se Tipo = PP -- aumenta o Máximo pra sempre, em vez de só recarregar"><input type="checkbox" id="newItemPPUp_'+t.id+'"> aumenta o PP Máximo</label>'+
+      '<button class="btn-sm" onclick="DT.addItem(\''+t.id+'\', document.getElementById(\'newItemName_'+t.id+'\'), document.getElementById(\'newItemQty_'+t.id+'\'), document.getElementById(\'newItemTipo_'+t.id+'\'), document.getElementById(\'newItemCura_'+t.id+'\'), document.getElementById(\'newItemCondicao_'+t.id+'\'), document.getElementById(\'newItemReviveFull_'+t.id+'\'), document.getElementById(\'newItemDescricao_'+t.id+'\'), document.getElementById(\'newItemPPAlvo_'+t.id+'\'), document.getElementById(\'newItemPPFull_'+t.id+'\'), document.getElementById(\'newItemPPUp_'+t.id+'\'))">+ Adicionar</button>'+
     '</div>';
   }
   return out;
@@ -8459,7 +9141,7 @@ function curaHTML(t, mode){
   var toggleBtn = '<button class="btn-sm" onclick="DT.toggleCura(\''+t.id+'\')">🩹 '+(open?'Fechar Cura':'Cura')+'</button>';
   if(!open) return '<div style="margin:10px 0;">'+toggleBtn+'</div>';
 
-  var CURA_TABS = ['vida','condicao','revive','ambos'];
+  var CURA_TABS = ['vida','condicao','revive','ambos','pp'];
   var tab = CURA_TABS.indexOf(SESSION.curaTab)!==-1 ? SESSION.curaTab : 'vida';
   var tabs = '<div class="btn-row" style="margin:10px 0 8px; flex-wrap:wrap;">'+
     CURA_TABS.map(function(k){
@@ -8469,24 +9151,44 @@ function curaHTML(t, mode){
 
   var itensDoTipo = (t.itens||[]).filter(function(it){ return it.tipo===tab && it.quantidade>0; });
   var item = SESSION.curaItemId ? (t.itens||[]).find(function(it){ return it.id===SESSION.curaItemId; }) : null;
+  var pokeParaMovimento = (item && item.tipo==='pp' && item.ppAlvo==='um' && SESSION.curaPokeId) ? getPoke(t.id, SESSION.curaPokeId) : null;
   var body;
-  if(item){
-    /* Reviver só mira em quem está desmaiado; qualquer outro tipo só em
-       quem NÃO está (Cap. 19) -- mesma regra da Arena (eligibleItemTargets),
-       aplicada aqui na ficha inteira (Equipe + Banco) em vez de só quem
-       está em campo. */
+  if(pokeParaMovimento){
+    /* Passo 3 (só Ether/Max Ether/PP Up/PP Max): qual dos 4 Movimentos recebe. */
+    var pNome = pokeParaMovimento.apelido || pokeParaMovimento.especie || 'Pokémon';
+    var moveBtns = (pokeParaMovimento.moves||[]).map(function(m, idx){
+      if(!m.nome || !m.pp) return '';
+      var teto = item.ppUp ? Math.round((m.ppBase||m.pp)*1.6) : m.pp;
+      var cheio = item.ppUp ? m.pp>=teto : (m.ppAtual||0)>=m.pp;
+      return '<button class="btn-sm" '+(cheio?'disabled':'')+' onclick="DT.curaApply(\''+t.id+'\',\''+pokeParaMovimento.id+'\','+idx+')">'+esc(m.nome)+' <span class="muted">('+(item.ppUp?(m.pp+'/'+teto+' máx.'):((m.ppAtual||0)+'/'+m.pp))+')</span></button>';
+    }).join('');
+    body = '<p style="font-size:.8rem;">Usar <strong>'+esc(item.nome)+'</strong> em qual Movimento de <strong>'+esc(pNome)+'</strong>?</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap;">'+(moveBtns || '<span class="muted">Esse Pokémon não tem nenhum Movimento com PP cadastrado.</span>')+'</div>'+
+      '<div class="btn-row" style="margin-top:6px;">'+
+        '<button class="btn-ghost btn-sm" onclick="DT.curaBackToPoke()">‹ Trocar Pokémon</button>'+
+        '<button class="btn-ghost btn-sm" onclick="DT.curaCancelPick()">Cancelar</button>'+
+      '</div>';
+  } else if(item){
+    /* Reviver só mira em quem está desmaiado; PP funciona em qualquer um
+       (mesmo desmaiado -- é possível recarregar PP fora de combate);
+       qualquer outro tipo só em quem NÃO está desmaiado (Cap. 19) --
+       mesma regra da Arena (eligibleItemTargets), aplicada aqui na ficha
+       inteira (Equipe + Banco) em vez de só quem está em campo. */
     var wantsFainted = item.tipo==='revive';
     var mons = (t.pokemons||[]).concat(t.banco||[]).filter(function(p){
       if(!p.especie) return false;
+      if(item.tipo==='pp') return true;
       var max = hpMax(t,p);
       var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
       var fainted = cur<=0;
       return wantsFainted ? fainted : !fainted;
     });
+    var irParaMovimento = item.tipo==='pp' && item.ppAlvo==='um';
     var pokeBtns = mons.map(function(p){
       var max = hpMax(t,p);
       var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
-      return '<button class="btn-sm" onclick="DT.curaApply(\''+t.id+'\',\''+p.id+'\')">'+esc(p.apelido||p.especie)+' <span class="muted">('+cur+'/'+max+')</span></button>';
+      var onclick = irParaMovimento ? "DT.curaPickPoke('"+p.id+"')" : "DT.curaApply('"+t.id+"','"+p.id+"')";
+      return '<button class="btn-sm" onclick="'+onclick+'">'+esc(p.apelido||p.especie)+' <span class="muted">('+cur+'/'+max+')</span></button>';
     }).join('');
     var semAlvo = wantsFainted ? 'Nenhum Pokémon desmaiado agora.' : 'Nenhum Pokémon disponível (todos desmaiados, ou a ficha está vazia).';
     body = '<p style="font-size:.8rem;">Usar <strong>'+esc(item.nome)+'</strong> em qual Pokémon?</p>'+
@@ -8695,10 +9397,13 @@ function pokeCardHTML(t,p,editable,mode){
 
   var stageFields = STAGE_STATS.concat(['precisao','evasao']);
   var stageLbl = {atk:'Atq',def:'Def',spa:'AEsp',spd:'DEsp',spe:'Vel',precisao:'Prec',evasao:'Evas'};
+  /* Estágio (Cap. 15.1) é automático agora -- Movimento/Habilidade mudam
+     sozinhos, e zera sozinho ao sair de campo. Só o Mestre ainda edita à
+     mão (pra corrigir ou adjudicar algo fora do motor); o Treinador só vê. */
   var stages = '<div class="field"><label>Estágios (±6)</label><div class="stage-grid">'+
     stageFields.map(function(s){
       return '<div class="stage-field"><label>'+stageLbl[s]+'</label>'+
-        (editable ? '<input type="number" min="-6" max="6" value="'+(p.estagios[s]||0)+'" onchange="DT.setStage(\''+t.id+'\',\''+did+'\',\''+s+'\', this)">' : '<div class="num" style="text-align:center;">'+(p.estagios[s]||0)+'</div>')+
+        (canGM ? '<input type="number" min="-6" max="6" value="'+(p.estagios[s]||0)+'" onchange="DT.setStage(\''+t.id+'\',\''+did+'\',\''+s+'\', this)">' : '<div class="num" style="text-align:center;">'+(p.estagios[s]||0)+'</div>')+
       '</div>';
     }).join('')+
   '</div></div>';
@@ -8761,7 +9466,7 @@ function pokeCardHTML(t,p,editable,mode){
         '<td>'+(m.tipo?typeBadge(m.tipo):'')+'</td>'+
         '<td>'+esc(m.categoria||'')+'</td>'+
         '<td class="num">'+(m.nome?(m.poder||0):'')+'</td>'+
-        '<td class="num">'+(m.nome ? ('<input type="number" min="0" max="'+(m.pp||0)+'" value="'+(m.ppAtual||0)+'" style="width:38px;text-align:center;" onchange="DT.setMovePP(\''+t.id+'\',\''+did+'\','+idx+', this)"> / '+(m.pp||0)) : '')+'</td>'+
+        '<td class="num">'+(m.nome ? ((m.ppAtual||0)+' / '+(m.pp||0)) : '')+'</td>'+
         '<td class="num">'+(m.nome?(m.prioridade||0):'')+'</td>'+
         '<td class="num">'+(m.precisao?esc(m.precisao):'')+'</td>'+
       '</tr>'+
