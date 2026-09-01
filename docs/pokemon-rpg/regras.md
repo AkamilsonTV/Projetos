@@ -132,7 +132,7 @@ Cada Pokémon tem uma Natureza oficial (25 no total — 5 delas neutras). Aqui e
 
 Cada Pokémon tem uma Habilidade oficial da própria espécie (normal ou oculta). Só o Mestre escolhe/muda, restrito às Habilidades que aquela espécie realmente pode ter.
 
-Das 373 Habilidades oficiais, **92 têm gatilho automático de verdade** no motor de batalha — escolhidas pra cobrir pelo menos uma Habilidade mecânica em 84,5% de todos os 1025 Pokémon, sem inventar sistemas que o jogo ainda não tem (clima, terreno, item equipado, PP, flinch, golpes de hit múltiplo). O seletor do Mestre prioriza essas 92 sempre que a espécie tiver alguma entre as reais dela; só cai pra lista completa (aí sim, só texto de referência, sem efeito automático) quando a espécie não tem nenhuma — nenhuma Habilidade real de nenhuma espécie foi excluída do jogo, só do automatismo.
+Das 373 Habilidades oficiais, **93 têm gatilho automático de verdade** no motor de batalha — escolhidas pra cobrir pelo menos uma Habilidade mecânica em 85,6% de todos os 1025 Pokémon, sem inventar sistemas que o jogo ainda não tem (clima, terreno, item equipado, flinch, golpes de hit múltiplo). O seletor do Mestre prioriza essas 93 sempre que a espécie tiver alguma entre as reais dela; só cai pra lista completa (aí sim, só texto de referência, sem efeito automático) quando a espécie não tem nenhuma — nenhuma Habilidade real de nenhuma espécie foi excluída do jogo, só do automatismo.
 
 O que cada categoria de gatilho faz (todas convertidas/equilibradas pro nosso sistema, com valores fixos pequenos em vez das porcentagens/multiplicadores oficiais):
 
@@ -147,8 +147,9 @@ O que cada categoria de gatilho faz (todas convertidas/equilibradas pro nosso si
 - **Fim do próprio turno**: Speed Boost (+1 Velocidade), Shed Skin (30% de curar a própria Condição), Ice Body/Rain Dish (cura 1/16 do PV Máximo), Healer (30% de curar a Condição de um aliado), Magic Guard (bloqueia o dano de status por turno) e Poison Heal (vira cura em vez do dano de Veneno).
 - **Ao desmaiar o oponente**: Moxie (+1 Ataque), Beast Boost (+1 no Atributo mais alto). Aftermath (dano em quem desmaiou ela no contato).
 - **Condição espelhada**: Synchronize (a Condição que um golpe aplicou nela também pega em quem atacou), Poison Touch (Habilidade de quem ataca — 30% de envenenar no contato), Shield Dust (bloqueia o efeito colateral do próprio golpe que ela sofreu, sem bloquear o dano), Immunity/Limber/Insomnia/Vital Spirit/Water Veil/Magma Armor/Sweet Veil/Own Tempo/Leaf Guard (nunca pegam a Condição correspondente).
+- **Custo de PP**: Pressure — quem tem ela custa 2 PP em vez de 1 pra quem usar um Movimento nela (ver Cap. 8.6).
 
-Sem exceção: nenhuma dessas 92 dá algum efeito além do listado acima (sem clima, sem item, sem PP) — é conversão homebrew pro nosso sistema, pensada pra ficar equilibrada com o resto do jogo, não uma cópia 1:1 do jogo oficial.
+Sem exceção: nenhuma dessas 93 dá algum efeito além do listado acima (sem clima, sem item) — é conversão homebrew pro nosso sistema, pensada pra ficar equilibrada com o resto do jogo, não uma cópia 1:1 do jogo oficial.
 
 ## Capítulo 7 — Pontos de Vida
 
@@ -214,6 +215,15 @@ Cada Movimento tem uma lógica própria de quem ele pode atingir — a mesma dos
 Um Movimento de Área pode ser: todos os inimigos, todos os aliados (sem contar você), você e seus aliados, todo mundo menos você, ou literalmente todo mundo em campo — depende do Movimento específico, seguindo o mesmo dado oficial de Tipo/Poder/Precisão.
 
 **Rolagem de um Movimento de Área**: a Precisão/Crítico (1d6, Cap. 10/11) e o Efeito Percentual (1d10, Cap. 14) são **uma rolagem só pro uso inteiro**, valendo igual pra todos os alvos atingidos — só o Dano (Cap. 12/13) é calculado de novo pra cada um, porque depende do Tipo e dos Atributos de cada defensor. Isso é uma simplificação deliberada pra esse sistema (o Cap. 25 já lista "múltiplos alvos" como mecânica sem regra própria) — sem isso, seria uma rolagem inteira repetida pra cada Pokémon atingido, toda vez.
+
+### 8.6 PP (Pontos de Poder)
+
+Cada Movimento tem um **PP Máximo** oficial (de 1 a 40, dependendo do Movimento — vem direto do jogo original) e um **PP Atual**, que começa igual ao Máximo e some conforme o Movimento é usado. Escolher/trocar um Movimento sempre enche o PP dele de novo.
+
+- **Custo normal: 1 PP por uso.** Se o alvo (mesmo você mesmo, num Movimento que mira em si próprio) tiver a Habilidade **Pressure**, custa **2 PP** em vez de 1.
+- **PV zerado é diferente de PP zerado**: um Movimento com PP Atual em 0 não pode mais ser escolhido — o jogo bloqueia e avisa. Não existe Struggle automático nesse sistema: se o Pokémon ficar sem PP em nenhum dos 4 Movimentos, é o Mestre quem decide o que acontece (pode narrar como Struggle mesmo, adjudicando o dano na mão — Cap. 25).
+- **PP Atual é editável a qualquer momento**, tanto pelo Mestre quanto pelo próprio Treinador (igual PV Atual) — pra corrigir um uso mal contado, ou simplesmente encher de novo (representa descansar, ir ao Centro Pokémon, ou usar um item tipo Ether/Elixir/PP Up, que ainda não têm mecânica própria — Cap. 25).
+- **Movimento sem PP cadastrado nunca trava**: se o nome digitado não bater com nenhum da base oficial (homebrew do Mestre), o PP fica em 0/0 e simplesmente não é controlado — nunca impede o Movimento de ser usado.
 
 ## Capítulo 9 — Poder dos Movimentos
 
@@ -380,11 +390,10 @@ Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano F
 
 - **Maturidade e Evolução**: estrutura existe (incluindo reinício após evolução), tabela definitiva de progressão das espécies ainda será construída.
 - **Cura e Recuperação**: Recover, Roost, Synthesis e outros ainda precisam ser adaptados.
-- **PP**: ainda será decidido se existirá e como será simplificado.
-- **Regras específicas de Movimentos**: múltiplos acertos, recoil, drenagem, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5) já segue o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano nem uma Condição de status simples (Helping Hand, Aromatherapy, buffs de estágio, etc.) e qualquer Movimento de campo (Stealth Rock, clima — Cap. 8.5).
+- **Regras específicas de Movimentos**: múltiplos acertos, recoil, drenagem, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5) e o PP (Cap. 8.6) já seguem o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano nem uma Condição de status simples (Helping Hand, Aromatherapy, buffs de estágio, etc.) e qualquer Movimento de campo (Stealth Rock, clima — Cap. 8.5). Não existe Struggle automático quando um Pokémon fica sem PP em nenhum Movimento — o Mestre adjudica.
 - **Captura**: sistema definitivo de Poké Balls ainda precisa ser desenvolvido.
-- **Habilidades**: reservadas para desenvolvimento posterior.
-- **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo). Existe um catálogo com os itens oficiais mais reconhecíveis dos jogos, organizado por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave) — o Mestre pode desligar uma categoria inteira pra mesa (sem apagar itens já dados). Quatro tipos já têm efeito de verdade, tanto fora de batalha (aba Cura da ficha) quanto na Arena: **Vida** (cura PV — quantidade fixa ou cura total), **Condição** (cura Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal), **Reviver** (só funciona em quem está desmaiado, Cap. 19) e **Vida + Condição** (cura os dois juntos numa unidade só, tipo Full Restore). Qualquer outro item (Pokébolas, itens de batalha/evolução, itens segurados, itens-chave) continua só consumindo 1 unidade e registrando o uso, sem efeito mecânico — captura, evolução por item, slot de item equipado e buffs temporários de batalha ainda são regras em aberto.
+- **Habilidades**: 93 das 373 já têm gatilho mecânico automático (Cap. 6.3) — as outras ~280 continuam só texto de referência.
+- **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo). Existe um catálogo com os itens oficiais mais reconhecíveis dos jogos, organizado por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave) — o Mestre pode desligar uma categoria inteira pra mesa (sem apagar itens já dados). Quatro tipos já têm efeito de verdade, tanto fora de batalha (aba Cura da ficha) quanto na Arena: **Vida** (cura PV — quantidade fixa ou cura total), **Condição** (cura Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal), **Reviver** (só funciona em quem está desmaiado, Cap. 19) e **Vida + Condição** (cura os dois juntos numa unidade só, tipo Full Restore). Qualquer outro item (Pokébolas, itens de batalha/evolução, itens segurados, itens-chave, e os que recuperam PP — Ether, Elixir, PP Up, PP Max) continua só consumindo 1 unidade e registrando o uso, sem efeito mecânico — captura, evolução por item, slot de item equipado e buffs temporários de batalha ainda são regras em aberto.
 
 ## Referência Rápida
 
@@ -403,6 +412,8 @@ Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano F
 **Estágios**: 1 estágio = ±1 no atributo
 
 **Movimentos**: máximo 4, aprendizado natural pelo Nível do Treinador
+
+**PP**: 1 por uso (2 se o alvo tiver Pressure) · 0 PP bloqueia o Movimento, sem Struggle automático
 
 **Condições**: Queimadura (−2 Atq, −1 PV/turno) · Veneno (−2 PV/turno) · Veneno Grave (1,2,3,4...) · Paralisia (remove Agilidade do Treinador, −10 Vel., 1–2 perde ação) · Sono (1 turno obrigatório, depois 5–6 acorda, máx. 3 turnos) · Congelamento (5–6 descongela) · Confusão (5–6 cura; senão 1–2 perde ação e sofre 1 PV)
 

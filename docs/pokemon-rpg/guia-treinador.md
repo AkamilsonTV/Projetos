@@ -54,7 +54,9 @@ Você mesmo escolhe os 4 Movimentos do seu Pokémon — mas só entre o que a es
 - **TM**: os Movimentos que a espécie pode aprender por Fita de Movimento, sem depender de Nível.
 - **Egg**: os Movimentos que a espécie pode aprender por Breeding.
 
-Clique no método (Nível/Evo/TM/Egg) e depois escolha o Movimento no menu que aparece — Tipo, Categoria, Poder, Prioridade, Precisão e a Descrição são preenchidos sozinhos. Se a lista aparecer vazia, é porque a espécie não tem nada disponível ali (ou você ainda não subiu Nível suficiente, no caso do Nível). Não existe mais opção de HM — os jogos oficiais tiraram essa mecânica a partir da Geração 9.
+Clique no método (Nível/Evo/TM/Egg) e depois escolha o Movimento no menu que aparece — Tipo, Categoria, Poder, **PP**, Prioridade, Precisão e a Descrição são preenchidos sozinhos. Se a lista aparecer vazia, é porque a espécie não tem nada disponível ali (ou você ainda não subiu Nível suficiente, no caso do Nível). Não existe mais opção de HM — os jogos oficiais tiraram essa mecânica a partir da Geração 9.
+
+O **PP** aparece como "atual / máximo" — some 1 (ou 2, se o alvo tiver a Habilidade Pressure) cada vez que você usa aquele Movimento de verdade, tanto na Arena quanto contando na mão. Zerou, o Movimento fica bloqueado até alguém colocar PP nele de novo. O PV Atual dos seus Pokémon (esse já existia) e o PP Atual dos Movimentos são os dois únicos números que **você mesmo pode editar direto** na sua ficha, a qualquer momento — útil pra corrigir uma contagem errada ou representar um descanso/Centro Pokémon enchendo tudo de novo.
 
 ### O que só o Mestre edita (você só vê)
 
@@ -112,7 +114,7 @@ Não existe mais botão de "Usar" nem de "Atacar" separado — é tudo clicando 
 1. **Clique no seu Pokémon.** Ele já está visível pra mesa inteira desde que entrou no Time — clicar pra agir não muda nada nessa parte, só abre o menu.
    - Se ele estiver **Confuso**, o site já rola os dois 1d6 da Confusão (Cap. 23) nessa hora, antes de qualquer outra coisa: primeiro o 1d6 pra ver se a Confusão termina (5–6 termina); se continuar, um segundo 1d6 pra ver se ele perde a ação (1–2 perde e sofre 1 PV; 3–6 age normalmente). Um aviso na tela mostra os dois resultados. Se ele perder a ação, o turno já passa sozinho e o menu nem abre.
 2. Se a ação seguir, abre um menu com quatro opções: **Atacar**, **Usar Item**, **Trocar de Pokémon**, **Fugir**.
-   - **Atacar** → escolha um dos Movimentos do seu Pokémon — cada um já mostra **quem pode ser alvo** dele ("Alvo: em você mesmo", "só aliado", "aliado ou inimigo" etc.) e a Prioridade, se tiver. A lógica de cada Movimento é respeitada de verdade — o site não deixa escolher qualquer coisa:
+   - **Atacar** → escolha um dos Movimentos do seu Pokémon — cada um já mostra **quem pode ser alvo** dele ("Alvo: em você mesmo", "só aliado", "aliado ou inimigo" etc.) e a Prioridade, se tiver. Sem PP, o Movimento fica bloqueado (custa 1, ou 2 se o alvo tiver a Habilidade Pressure — Cap. 8.6) — some sozinho assim que o Movimento é usado de verdade. A lógica de cada Movimento é respeitada de verdade — o site não deixa escolher qualquer coisa:
      - Um Movimento **em você mesmo** (ex.: Swords Dance) resolve na hora, sem precisar clicar em ninguém.
      - Um Movimento **de área** (ex.: Earthquake) também resolve sozinho, acertando todo mundo daquela categoria de uma vez — pode incluir seus próprios aliados junto com os inimigos, dependendo do Movimento (igual nas batalhas em dupla dos jogos oficiais).
      - Um Movimento **de campo** (ex.: Stealth Rock) também resolve na hora, mas sem calcular dano nenhum — é uma mecânica ainda em aberto (Cap. 25), só fica registrado que foi usado.

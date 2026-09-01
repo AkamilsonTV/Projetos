@@ -46,7 +46,7 @@ Pra configurar um Pokémon:
 
 #### Habilidades com gatilho automático
 
-Das 373 Habilidades oficiais, **92 já fazem efeito de verdade sozinhas na Arena** (marcadas com ⚙️ no seletor) — sem você precisar aplicar nada na mão. Escolhidas pra cobrir pelo menos uma em 84,5% dos 1025 Pokémon, sem depender de sistemas que o jogo ainda não tem (clima, terreno, item equipado, PP). Tudo aparece no Registro quando dispara, então você vê acontecer em tempo real. Por categoria:
+Das 373 Habilidades oficiais, **93 já fazem efeito de verdade sozinhas na Arena** (marcadas com ⚙️ no seletor) — sem você precisar aplicar nada na mão. Escolhidas pra cobrir pelo menos uma em 85,6% dos 1025 Pokémon, sem depender de sistemas que o jogo ainda não tem (clima, terreno, item equipado). Tudo aparece no Registro quando dispara, então você vê acontecer em tempo real. Por categoria:
 
 - **Contra-ataque no contato**: Static/Poison Point/Flame Body/Effect Spore (30% de status em quem bateu), Rough Skin/Iron Barbs (dano fixo em quem bateu), Gooey/Tangling Hair (queda de Velocidade em quem bateu). "Contato" é golpe Físico, menos uma lista curada de golpes à distância (Terremoto e afins) — se algum golpe específico não fizer sentido, ajuste na mesa mesmo, o motor não trava sua decisão.
 - **Imune/absorve Tipo**: Levitate (Terra), Water Absorb/Volt Absorb (cura em vez de tomar dano), Sap Sipper/Storm Drain/Lightning Rod (ganha Estágio em vez de tomar dano), Flash Fire (Fogo), Wonder Guard (só toma golpe super efetivo), Soundproof (som). Scrappy/Tinted Lens furam imunidade/resistência do oponente. Mold Breaker/Teravolt/Turboblaze ignoram as do oponente.
@@ -59,10 +59,17 @@ Das 373 Habilidades oficiais, **92 já fazem efeito de verdade sozinhas na Arena
 - **Fim do próprio turno**: Speed Boost, Shed Skin, Ice Body/Rain Dish, Healer (cura um aliado), Magic Guard (bloqueia dano de status), Poison Heal (vira cura).
 - **Ao desmaiar o oponente**: Moxie, Beast Boost. Aftermath (dano em quem desmaiou ela no contato).
 - **Condição espelhada**: Synchronize, Poison Touch (do lado de quem ataca), Shield Dust (bloqueia só o efeito colateral, não o dano), e as imunidades de Condição (Immunity, Limber, Insomnia, Vital Spirit, Water Veil, Magma Armor, Sweet Veil, Own Tempo, Leaf Guard).
+- **Custo de PP**: Pressure — quem usa um Movimento nela (mesmo ela mesma, num Movimento em si mesma) gasta 2 PP em vez de 1 (ver seção de PP acima).
 
 As outras ~280 Habilidades continuam só como texto de referência (nome + efeito oficial), sem sumir do banco de dados — se um dia a gente quiser automatizar mais alguma, os dados já estão lá.
 
-Você continua com um campo "nome" livre (com autocomplete, 847 movimentos oficiais) pra cada um dos 4 Movimentos, e as regras de sempre: digitar um nome reconhecido preenche Tipo, Categoria, Poder, Prioridade, Precisão e Efeito sozinho; Movimentos de dano fixo ou variável (Seismic Toss, Dragon Rage, etc.) ficam com Poder em branco — regra em aberto (Cap. 25), você adjudica na mesa. **Esse campo continua sem restrição nenhuma** (pode digitar qualquer um dos 847, mesmo que a espécie normalmente não aprendesse), pra você poder fazer exceções e homebrew quando quiser.
+Você continua com um campo "nome" livre (com autocomplete, 847 movimentos oficiais) pra cada um dos 4 Movimentos, e as regras de sempre: digitar um nome reconhecido preenche Tipo, Categoria, Poder, **PP**, Prioridade, Precisão e Efeito sozinho; Movimentos de dano fixo ou variável (Seismic Toss, Dragon Rage, etc.) ficam com Poder em branco — regra em aberto (Cap. 25), você adjudica na mesa. **Esse campo continua sem restrição nenhuma** (pode digitar qualquer um dos 847, mesmo que a espécie normalmente não aprendesse), pra você poder fazer exceções e homebrew quando quiser.
+
+#### PP (Cap. 8.6)
+
+Cada Movimento tem um campo **PP** (dois números lado a lado: Atual / Máximo). O Máximo vem preenchido sozinho junto com o resto quando você digita um nome reconhecido — mas continua **editável na mão**, igual Poder e Precisão, se quiser fugir do oficial. O Atual também é editável direto (por você ou pelo próprio Treinador, igual PV Atual) — útil pra corrigir uma conta ou simplesmente encher de novo (representa um descanso, o Centro Pokémon, ou um item tipo Ether/Elixir/PP Up, que ainda não têm mecânica própria — Cap. 25).
+
+Na Arena, usar o Movimento de verdade (Atacar → escolher ele → resolver) desconta **1 PP**, ou **2 PP** se o alvo (mesmo o próprio usuário, num Movimento que mira nele mesmo) tiver a Habilidade **Pressure**. Zerou o PP, o Movimento fica bloqueado até alguém colocar de novo — não existe Struggle automático, se um Pokémon ficar sem PP em nenhum dos 4 é você quem decide o que acontece. Um Movimento cujo nome não bateu com a base oficial (homebrew puro) nunca é bloqueado por PP — fica em 0/0 e simplesmente não é controlado.
 
 ### O que o Treinador escolhe sozinho
 
