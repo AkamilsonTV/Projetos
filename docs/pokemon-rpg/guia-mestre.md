@@ -40,6 +40,8 @@ Pra configurar um Pokémon:
 - O sprite (imagem pixelada) do Pokémon aparece automaticamente no card assim que a Espécie é reconhecida.
 - **Vínculo**: controlado por um slider (0–25) — libera pontos de Atributo do Treinador pro Pokémon usar, conforme a tabela das Regras.
 - **Maturidade**: campo numérico livre — a regra definitiva de evolução ainda está em aberto.
+- **Natureza**: menu com as 25 Naturezas oficiais. Escolhida uma, o Atributo Efetivo que ela favorece ganha +1 e o que ela atrapalha perde -1 automaticamente (PV nunca é afetado); as 5 Naturezas neutras (Hardy, Docile, Serious, Bashful, Quirky) não mudam nada. Só você edita.
+- **Habilidade**: menu restrito às habilidades reais **daquela Espécie** (inclusive a Habilidade Oculta, quando ela existe) — muda sozinho se você trocar a Espécie e a Habilidade atual não existir mais nela. Mostra o efeito oficial (em inglês) como legenda, só de referência — não dispara nada sozinho em batalha, é você quem adjudica. Só você edita.
 - **Condição** (queimadura, veneno, sono, paralisia, etc.) e **Confuso**: você aplica durante a batalha; aparecem em destaque na ficha do Treinador assim que ativos, pra ele acompanhar.
 
 Você continua com um campo "nome" livre (com autocomplete, 847 movimentos oficiais) pra cada um dos 4 Movimentos, e as regras de sempre: digitar um nome reconhecido preenche Tipo, Categoria, Poder, Prioridade, Precisão e Efeito sozinho; Movimentos de dano fixo ou variável (Seismic Toss, Dragon Rage, etc.) ficam com Poder em branco — regra em aberto (Cap. 25), você adjudica na mesa. **Esse campo continua sem restrição nenhuma** (pode digitar qualquer um dos 847, mesmo que a espécie normalmente não aprendesse), pra você poder fazer exceções e homebrew quando quiser.
@@ -58,18 +60,26 @@ Mesmo mecanismo de arrastar (⠿) que o Treinador tem: mover entre os 6 slots da
 
 Logo acima da Equipe/Banco, cada ficha tem a seção **"🎒 Mochila"**. **Só você adiciona, remove e muda a quantidade** de um item — o Treinador só vê o que tem (nome + quantidade, mais o tipo e o que ele cura), sem poder editar. Pra adicionar, preencha:
 
-- **Nome** e **Quantidade**.
-- **Tipo**: 📦 Outro (padrão, sem efeito ainda — Cap. 25), 💊 Vida ou ✨ Condição.
-- **PV (0=total)**: só importa se o Tipo for Vida — quanto PV aquele item cura; deixe **0** pra cura total (tipo um Full Restore).
-- **Condição curada**: só importa se o Tipo for Condição — escolha "Qualquer Condição" (cura status + Confusão de uma vez, tipo Full Heal) ou uma específica (Veneno cura Veneno Grave também).
+- **Nome**: tem autocomplete com o catálogo oficial (ver "Categorias de Itens" abaixo, ~180 itens de todo o jogo). Escolher um nome da lista **preenche Tipo, PV, Condição curada, Reviver total e Categoria sozinho**, já convertidos pro nosso sistema — você pode continuar editando à mão depois se quiser fugir do oficial. Digitar um nome que não bate com nada do catálogo funciona normal, só fica sem categoria.
+- **Quantidade**.
+- **Tipo**: 💊 Vida, ✨ Condição, 💫 Reviver, 🔄 Vida + Condição ou 📦 Outro (sem efeito mecânico ainda — Cap. 25).
+- **PV (0=total)**: importa se o Tipo for Vida, Reviver ou Vida+Condição — quanto PV aquele item cura; deixe **0** pra cura total (tipo Full Restore/Max Revive).
+- **Condição curada**: importa se o Tipo for Condição ou Vida+Condição — escolha "Qualquer Condição" (cura status + Confusão de uma vez, tipo Full Heal) ou uma específica (Veneno cura Veneno Grave também).
+- **Reviver Pokémon desmaiado**: checkbox que só aparece pro tipo Reviver — marca se aquele item funciona em Pokémon desmaiado (é a regra do tipo Reviver por padrão) — os outros tipos (Vida, Condição, Vida+Condição) **nunca** funcionam em desmaiado, só Reviver (ou o Centro Pokémon, narrativamente).
 
 Clique **"+ Adicionar"**. Se já existir um item com esse nome (não diferencia maiúscula/minúscula) na Mochila daquele Treinador, a quantidade soma em vez de duplicar a linha — o tipo/cura da linha existente não muda. O campo de quantidade de cada linha já existente é editável direto (número de 0 a 999), e o **✕** remove o item inteiro.
 
 Esses itens aparecem na Arena — cada Treinador vê a própria Mochila (com quantidade), e você, como Mestre, vê a de todo mundo (uma por Treinador, dentro da fonte de cada um).
 
+### Categorias de Itens
+
+No seu Painel do Mestre ("Mesa"), logo abaixo da contagem de Treinadores, tem o card **"🎒 Categorias de Itens"**. Ele lista as 9 categorias do catálogo oficial — Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave — cada uma com um interruptor. **Desligar uma categoria some ela do autocomplete de nome ao adicionar item pra mesa inteira** (os itens que já foram adicionados na Mochila de alguém continuam lá normalmente, só some da sugestão pra novos itens). Use isso pra simplificar a mesa — por exemplo, desligar Pokébolas e Itens-Chave se sua campanha não usa captura.
+
+Só Poções, Curas de Status, Revives e as Berries que curam PV/Condição têm efeito mecânico de verdade hoje (Cap. 25); o resto (Pokébolas, Itens de Batalha, Itens de Evolução, Itens Segurados, Itens-Chave, e as Berries de batalha tipo Salac/Liechi) está catalogado mas ainda sem regra própria — fica registrado na Mochila, sem efeito automático.
+
 ### Cura (fora de batalha)
 
-Cada ficha (incluindo pela sua visão de Mestre) também tem o botão **"🩹 Cura"**, logo abaixo da Mochila — abre as abas Vida/Condição pra usar um item de cura num Pokémon daquele Treinador sem precisar estar na Arena. Funciona igual pro Treinador usar na própria ficha: escolhe a aba, o item, o Pokémon, e a cura acontece na hora (PV sobe ou Condição/Confusão some), consumindo 1 unidade. Itens tipo Outro não aparecem aqui — ainda não têm efeito (Cap. 25).
+Cada ficha (incluindo pela sua visão de Mestre) também tem o botão **"🩹 Cura"**, logo abaixo da Mochila — abre as abas 💊 Vida / ✨ Condição / 💫 Reviver / 🔄 Vida + Condição pra usar um item de cura num Pokémon daquele Treinador sem precisar estar na Arena. Funciona igual pro Treinador usar na própria ficha: escolhe a aba, o item, o Pokémon (a lista de Pokémon já respeita a trava de desmaiado — Reviver só mostra quem está desmaiado, as outras três só mostram quem não está), e a cura acontece na hora (PV sobe, Condição/Confusão some e/ou o Pokémon reanima), consumindo 1 unidade. Itens tipo Outro não aparecem aqui — ainda não têm efeito (Cap. 25).
 
 ## Arena (esboço — ainda em construção)
 
@@ -101,7 +111,7 @@ Não existe mais botão de "Usar" nem de "Atacar"/"Agir" separado — é tudo cl
      - **Em você mesmo** ou **de área** → resolve na hora, sem pedir clique nenhum. Um Movimento de área (Earthquake, Discharge, etc.) atinge sozinho todo mundo daquela categoria — pode incluir aliados do próprio atacante junto com os inimigos, dependendo do Movimento, igual nas batalhas em dupla dos jogos oficiais.
      - **De campo** (Stealth Rock, clima) → também resolve na hora, mas sem calcular dano — é uma mecânica ainda em aberto (Cap. 25), só fica um registro de que foi usado.
      - Qualquer outra categoria → pede um clique no alvo, mas **só quem realmente é elegível fica destacado e clicável** na Arena (um clique fora da lista de elegíveis não faz nada, nem em você mesmo com um Movimento estritamente de inimigo). Se não sobrar ninguém elegível no momento (ex.: Helping Hand sem nenhum aliado vivo em campo), aparece um aviso e a ação é cancelada sozinha.
-   - **Usar Item** → a Mochila aparece separada por tipo (💊 Vida, ✨ Condição, 📦 Outro) e depois pede em quem usar (o próprio Pokémon ou um aliado em campo). Itens de Vida e Condição já curam de verdade na hora — PV sobe ou vai pro máximo, Condição/Confusão some — e o Registro mostra quanto curou. Itens tipo Outro continuam sem efeito mecânico (Cap. 25): só descontam 1 unidade e ficam registrados.
+   - **Usar Item** → a Mochila aparece separada por tipo (💊 Vida, ✨ Condição, 💫 Reviver, 🔄 Vida + Condição, 📦 Outro) e depois pede em quem usar (o próprio Pokémon ou um aliado em campo) — a lista de alvos já respeita a trava de desmaiado (Reviver só em quem está desmaiado; os outros três tipos com efeito, só em quem não está). Itens de Vida, Condição, Reviver e Vida+Condição já fazem efeito de verdade na hora — PV sobe ou vai pro máximo, Condição/Confusão some e/ou o Pokémon reanima — e o Registro mostra o resultado. Itens tipo Outro continuam sem efeito mecânico (Cap. 25): só descontam 1 unidade e ficam registrados.
    - **Trocar de Pokémon** → nada de arrastar aqui: a **Equipe ativa** daquele Treinador, lá embaixo, destaca os Pokémon disponíveis — clique em qualquer um (vivo, e que não esteja em campo em outro lugar) pra colocar no lugar do atual. O que estava lutando sai da Arena de vez (some do Time, volta a aparecer só na Equipe ativa dele) e o escolhido entra revelado. Consome a ação inteira (Cap. 18) — o que entrou só age a partir do turno seguinte dele. Se o que saiu tiver Queimadura/Veneno, o dano de fim de turno ainda bate nele antes de sair (é a última ação dele em campo).
    - **Fugir** → tenta fugir da batalha. Se a **🔒 Trava de Fuga** estiver ligada, bloqueia na hora, sem dado nenhum — quem estava tentando pode escolher outra coisa. Sem trava, rola **1d10** na hora: 1–3 e não consegue (a ação é gasta, ele continua em campo); 4–10 e foge com sucesso, saindo da Arena de vez. Os dois casos ficam registrados no Registro.
    - Cancele a qualquer momento com **"Cancelar"** no menu.

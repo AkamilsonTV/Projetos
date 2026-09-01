@@ -124,6 +124,14 @@ Os seis Atributos Naturais (HP, Ataque, Defesa, Ataque Especial, Defesa Especial
 
 Sem arredondamento (49 vale 4, 50 vale 5).
 
+### 6.2 Natureza
+
+Cada Pokémon tem uma Natureza oficial (25 no total — 5 delas neutras). Aqui ela vira um ajuste fixo, não porcentagem: **+1 num Atributo Efetivo e −1 em outro** (nunca em PV) — as 5 neutras (Hardy, Docile, Serious, Bashful, Quirky) não fazem nada. Só o Mestre escolhe/muda a Natureza de um Pokémon.
+
+### 6.3 Habilidade
+
+Cada Pokémon tem uma Habilidade oficial da própria espécie (normal ou oculta) — puramente de referência por enquanto (Cap. 25): o efeito dela não é simulado automaticamente em batalha, só fica anotado na ficha pro Mestre aplicar na mesa quando fizer sentido. Só o Mestre escolhe/muda, restrito às Habilidades que aquela espécie realmente pode ter.
+
 ## Capítulo 7 — Pontos de Vida
 
 ```
@@ -303,6 +311,8 @@ Tentar fugir da batalha também consome a ação inteira. Se algum Movimento, Ha
 
 Ao chegar a **0 PV**, o Pokémon Desmaia e não pode continuar lutando. Se o Treinador tiver outro Pokémon capaz de lutar, ele entra. Sem Pokémon capazes de lutar de um lado, a batalha termina.
 
+Um Pokémon desmaiado só volta a lutar com um item de **Reviver** (volta com metade do PV máximo, ou o máximo inteiro se for um Reviver "cheio") ou no Centro Pokémon, fora de batalha — qualquer outro item de cura de PV não faz efeito nele enquanto estiver desmaiado.
+
 ## Capítulo 20 — Condições de Status
 
 Um Pokémon nunca tem duas Condições Principais simultâneas. **Confusão** é exceção e coexiste com qualquer uma delas.
@@ -356,7 +366,7 @@ Na Arena do site, os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano F
 - **Regras específicas de Movimentos**: múltiplos acertos, recoil, drenagem, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5) já segue o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano nem uma Condição de status simples (Helping Hand, Aromatherapy, buffs de estágio, etc.) e qualquer Movimento de campo (Stealth Rock, clima — Cap. 8.5).
 - **Captura**: sistema definitivo de Poké Balls ainda precisa ser desenvolvido.
 - **Habilidades**: reservadas para desenvolvimento posterior.
-- **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo). Itens de **Vida** (curam PV — quantidade fixa ou cura total) e de **Condição** (curam Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal) já têm efeito de verdade — tanto fora de batalha (aba Cura da ficha) quanto na Arena. Qualquer outro item continua só consumindo 1 unidade e registrando o uso, sem efeito mecânico nenhum — o que esses outros itens fazem ainda será definido.
+- **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo). Existe um catálogo com os itens oficiais mais reconhecíveis dos jogos, organizado por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave) — o Mestre pode desligar uma categoria inteira pra mesa (sem apagar itens já dados). Quatro tipos já têm efeito de verdade, tanto fora de batalha (aba Cura da ficha) quanto na Arena: **Vida** (cura PV — quantidade fixa ou cura total), **Condição** (cura Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal), **Reviver** (só funciona em quem está desmaiado, Cap. 19) e **Vida + Condição** (cura os dois juntos numa unidade só, tipo Full Restore). Qualquer outro item (Pokébolas, itens de batalha/evolução, itens segurados, itens-chave) continua só consumindo 1 unidade e registrando o uso, sem efeito mecânico — captura, evolução por item, slot de item equipado e buffs temporários de batalha ainda são regras em aberto.
 
 ## Referência Rápida
 

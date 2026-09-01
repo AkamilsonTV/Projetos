@@ -60,27 +60,33 @@ Clique no método (Nível/Evo/TM/Egg) e depois escolha o Movimento no menu que a
 
 - Espécie, Tipo 1/2, Atributos Naturais e Efetivos.
 - Vínculo e Maturidade.
+- Natureza — um dos 25 temperamentos oficiais (ex.: Adamant, Timid, Bold...). Cada Natureza dá +1 num Atributo Efetivo e -1 em outro (PV nunca entra nessa conta); 5 delas são neutras e não mudam nada. É só referência mecânica: aparece no card, mas quem ajusta é o Mestre.
+- Habilidade — restrita às habilidades reais daquela espécie (incluindo a Habilidade Oculta, quando existe). Mostra o nome oficial e o efeito descrito, só como referência de mesa — não tem gatilho automático em batalha.
 - Condição (queimadura, veneno, sono, etc.) e Confuso — aparecem em destaque (um selo vermelho) no topo do card quando ativos, pra você não perder o que está rolando na batalha.
 
 Cada Pokémon mostra automaticamente o sprite (a imagem pixelada) da espécie assim que o Mestre define ela. Sem espécie definida ainda, aparece um "❔" no lugar — e enquanto isso, o seletor de Movimentos fica bloqueado (precisa da Espécie pra saber o que ele pode aprender).
 
 ## Mochila (itens)
 
-Na sua ficha, logo acima da Equipe/Banco, tem a seção **"🎒 Mochila"** — a lista de itens que você carrega (nome + quantidade). **Só o Mestre adiciona, remove ou muda a quantidade de um item** — você só vê o que tem. Cada item tem um tipo, que o Mestre define ao criar:
+Na sua ficha, logo acima da Equipe/Banco, tem a seção **"🎒 Mochila"** — a lista de itens que você carrega (nome + quantidade). **Só o Mestre adiciona, remove ou muda a quantidade de um item** — você só vê o que tem. O jogo tem um catálogo com os itens oficiais de Pokémon, divididos por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave) — o Mestre pode desligar categorias inteiras pra mesa (elas somem do jogo). Cada item tem um tipo:
 
-- **💊 Vida** — cura uma quantidade fixa de PV, ou cura total (o Mestre decide qual das duas).
-- **✨ Condição** — cura uma Condição específica (Queimadura, Veneno — que também cura Veneno Grave —, Paralisia, Sono, Congelamento ou Confusão) ou qualquer uma delas de uma vez (tipo um Full Heal).
-- **📦 Outro** — sem efeito mecânico ainda (Cap. 25); só existe como registro de que você carrega ele.
+- **💊 Vida** — cura uma quantidade fixa de PV, ou cura total (o Mestre decide qual das duas). **Não funciona em Pokémon desmaiado.**
+- **✨ Condição** — cura uma Condição específica (Queimadura, Veneno — que também cura Veneno Grave —, Paralisia, Sono, Congelamento ou Confusão) ou qualquer uma delas de uma vez (tipo um Full Heal). **Não funciona em Pokémon desmaiado.**
+- **💫 Reviver** — o único tipo que funciona em Pokémon desmaiado (ou o Centro Pokémon, narrativamente). Devolve PV (uma quantidade fixa ou o total, dependendo do item) e reativa o Pokémon.
+- **🔄 Vida + Condição** — cura PV e cura Condição/Confusão ao mesmo tempo (tipo um Full Restore). Mesma trava do tipo Vida: não funciona em desmaiado.
+- **📦 Outro** — itens catalogados (Pokébolas, itens de Batalha, de Evolução, Segurados, Chave etc.) que ainda não têm mecânica própria no sistema (Cap. 25); existem como registro do que você carrega, sem efeito automático por enquanto.
+
+Pokémon desmaiado só sai desse estado com um item **💫 Reviver** ou levando ele ao Centro Pokémon (fora de jogo/narrativo) — nenhum outro tipo de item cura ele.
 
 ## Cura
 
-Botão **"🩹 Cura"** na sua ficha, logo abaixo da Mochila. Abre um painel com duas abas — **💊 Vida** e **✨ Condição** — listando só os itens daquele tipo que você ainda tem. O fluxo:
+Botão **"🩹 Cura"** na sua ficha, logo abaixo da Mochila. Abre um painel com quatro abas — **💊 Vida**, **✨ Condição**, **💫 Reviver** e **🔄 Vida + Condição** — listando só os itens daquele tipo que você ainda tem. O fluxo:
 
 1. Escolha a aba certa pra sua necessidade.
 2. Clique no item que quer usar.
-3. Clique em qual dos seus Pokémon (Equipe ou Banco) vai receber.
+3. Clique em qual dos seus Pokémon (Equipe ou Banco) vai receber. Nas abas Vida e Vida+Condição só aparecem Pokémon **não desmaiados**; na aba Reviver só aparecem os **desmaiados**; a aba Condição mostra todos, menos quem já está sem a Condição que o item cura.
 
-A cura acontece na hora — de verdade, não é só um registro: PV sobe (ou vai pro máximo) e/ou a Condição/Confusão desaparece, dependendo do item. Consome 1 unidade dele. Funciona fora de batalha, direto na sua ficha, a qualquer momento.
+A cura acontece na hora — de verdade, não é só um registro: PV sobe (ou vai pro máximo), a Condição/Confusão desaparece e/ou o Pokémon reanima, dependendo do item. Consome 1 unidade dele. Funciona fora de batalha, direto na sua ficha, a qualquer momento.
 
 ## Arena (esboço — ainda em construção)
 
@@ -111,7 +117,7 @@ Não existe mais botão de "Usar" nem de "Atacar" separado — é tudo clicando 
      - Um Movimento **de área** (ex.: Earthquake) também resolve sozinho, acertando todo mundo daquela categoria de uma vez — pode incluir seus próprios aliados junto com os inimigos, dependendo do Movimento (igual nas batalhas em dupla dos jogos oficiais).
      - Um Movimento **de campo** (ex.: Stealth Rock) também resolve na hora, mas sem calcular dano nenhum — é uma mecânica ainda em aberto (Cap. 25), só fica registrado que foi usado.
      - Pra qualquer outro caso (**só aliado**, **você ou aliado**, **só inimigo**, ou **aliado ou inimigo**), o site pede um clique: só quem realmente pode ser alvo daquele Movimento fica destacado e clicável na Arena — clicar em alguém fora da lista não faz nada.
-   - **Usar Item** → a mochila aparece separada por tipo (💊 Vida, ✨ Condição, 📦 Outro), igual na aba Cura da ficha. Escolha o item e depois em quem usar (você mesmo ou um aliado em campo). Itens de Vida e Condição já curam de verdade na hora — PV sobe, Condição/Confusão some — e o Log mostra quanto curou. Itens de Outro tipo ainda não têm efeito mecânico (Cap. 25): só consomem 1 unidade e ficam registrados.
+   - **Usar Item** → a mochila aparece separada por tipo (💊 Vida, ✨ Condição, 💫 Reviver, 🔄 Vida + Condição, 📦 Outro), igual na aba Cura da ficha. Escolha o item e depois em quem usar (você mesmo ou um aliado em campo) — a lista de alvos já respeita a trava de desmaiado (Vida/Vida+Condição só em quem está de pé, Reviver só em quem está desmaiado). Itens de Vida, Condição, Reviver e Vida+Condição já fazem efeito de verdade na hora — PV sobe, Condição/Confusão some e/ou o Pokémon reanima — e o Log mostra o resultado. Itens de Outro tipo ainda não têm efeito mecânico (Cap. 25): só consomem 1 unidade e ficam registrados.
    - **Trocar de Pokémon** → não precisa arrastar nada: a sua **Equipe ativa**, lá embaixo, fica com os Pokémon disponíveis destacados — clique em qualquer um deles (vivo, e que ainda não esteja em campo em outro lugar) pra colocar ele no lugar do atual. O Pokémon que estava lutando volta a aparecer só na Equipe ativa (some do Time), e o novo entra revelado direto. Consome a ação inteira (Cap. 18) — o que entrou só age a partir do turno seguinte dele.
    - **Fugir** → tenta fugir da batalha. Se o Mestre tiver travado a fuga nessa batalha (🔒), nem rola dado — a fuga é bloqueada na hora e você pode escolher outra coisa. Sem trava, o site rola **1d10**: 1–3 e a fuga falha (seu Pokémon continua em campo, mas a ação já foi gasta); 4–10 e ele foge com sucesso, saindo da Arena de vez. Os dois casos ficam registrados no Log.
    - Cancele a qualquer momento clicando em **"Cancelar"** no menu.
