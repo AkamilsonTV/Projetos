@@ -248,8 +248,8 @@
   .arena-team.drop-hover{ outline:2px solid var(--accent); outline-offset:-2px; background:var(--accent-soft); }
   .arena-team-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:var(--surface-2); border-bottom:2px solid var(--line); }
   .arena-team-head input[type=text]{ font-weight:700; padding:4px 6px; }
-  .arena-team-body{ display:flex; flex-wrap:wrap; gap:12px; padding:12px; min-height:96px; }
-  .arena-slot, .arena-slot-hidden{ width:78px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; position:relative; }
+  .arena-team-body{ display:flex; flex-wrap:wrap; gap:16px; padding:12px; min-height:96px; }
+  .arena-slot, .arena-slot-hidden{ width:84px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:3px; position:relative; padding-top:4px; }
   .arena-info-btn{ position:absolute; top:-6px; right:-6px; width:20px; height:20px; padding:0; border-radius:50%; background:var(--surface); border:1px solid var(--line); font-size:.66rem; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); }
   .arena-info-btn:hover{ border-color:var(--accent); }
   .arena-pokeball{ width:40px; height:40px; opacity:.85; }
@@ -277,6 +277,14 @@
   .arena-slot-waiting{ opacity:.55; }
   .arena-slot-turn{ position:relative; }
   .arena-turn-badge{ position:absolute; top:-8px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--accent-ink); font-size:.6rem; font-weight:700; padding:1px 6px; border-radius:var(--radius-pill); white-space:nowrap; }
+  /* "😵 Escolher próximo" (Cap. 25/59) é texto comprido demais pra flutuar
+     igual o "▶ Turno" (position:absolute, pensado pra um rótulo curto) --
+     tentar encaixar do mesmo jeito acabava cobrindo o PV/a sprite por
+     baixo (reportado pelo usuário, print em anexo). Em vez de flutuar,
+     esse aqui entra NO FLUXO normal do card, no topo (antes até do PV),
+     empurrando o resto pra baixo -- largura cheia, quebra linha se
+     precisar, sem sobrepor nada. */
+  .arena-fainted-banner{ display:block; width:100%; background:#7a1f1f; color:#fff; font-size:.6rem; font-weight:700; line-height:1.25; padding:2px 4px; border-radius:var(--radius-sm); white-space:normal; }
   @keyframes arena-target-pulse{ 0%,100%{ outline-color:var(--accent); } 50%{ outline-color:transparent; } }
   .arena-attack-panel{ margin-top:14px; }
   .arena-attack-panel .btn-row{ margin-top:8px; margin-bottom:10px; }
@@ -344,6 +352,13 @@
   .arena-action-overlay-body{ padding:14px 16px; overflow-y:auto; }
   .arena-action-overlay-section{ margin-bottom:14px; }
   .arena-action-overlay-section > p.muted{ margin:0 0 6px; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; }
+  /* Quem está em campo, lado a lado, um bloco por Time (arenaActionBattlefieldHTML) --
+     cada Time vira uma coluna própria; com 2+ Times, ficam lado a lado
+     enquanto couber na largura do popup, e empilham (quebram linha) num
+     popup mais estreito (celular) em vez de espremer os cards. */
+  .arena-action-battlefield{ display:flex; flex-wrap:wrap; gap:16px; }
+  .arena-action-team-col{ flex:1 1 160px; min-width:150px; }
+  .arena-action-team-col > p.muted{ margin:0 0 6px; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; }
 
   /* ---- Iniciativa/Turno (Cap. 16) ---- */
   .arena-initiative-list{ margin:0; padding-left:0; list-style:none; display:flex; flex-direction:column; gap:4px; }
@@ -9781,22 +9796,46 @@ function arenaLogHTML(){
     '<div class="arena-log-resize-handle" onpointerdown="DT.arenaLogResizeStart(event)"></div>'+
   '</div>';
 }
+/* "De cara" o popup de Ação mostra quem está em campo, lado a lado,
+   setorizado por Time -- um bloco por Time (arena-action-team-col), cada
+   um com os próprios Pokémon desenhados por arenaEntryHTML (o mesmo card
+   de sempre, com PV/Condição/Estágio/carga e o gatilho 📊 de sempre pra
+   abrir o painel de Atributos -- nada disso é refeito aqui, só reaprovei-
+   tado). Times sem ninguém em campo nem aparecem. Vazio (ninguém em
+   campo ainda) devolve string vazia, sem seção nenhuma. */
+function arenaActionBattlefieldHTML(){
+  var teams = STATE.arena.teams || [];
+  var cols = teams.map(function(team){
+    var teamEntries = (STATE.arena.entries||[]).filter(function(e){ return e.teamId===team.id; });
+    if(!teamEntries.length) return '';
+    return '<div class="arena-action-team-col">'+
+      '<p class="muted">'+esc(team.nome)+'</p>'+
+      '<div class="arena-team-body" style="padding:0; min-height:0;">'+teamEntries.map(arenaEntryHTML).join('')+'</div>'+
+    '</div>';
+  }).join('');
+  if(!cols) return '';
+  return '<div class="arena-action-overlay-section arena-action-battlefield">'+cols+'</div>';
+}
 /* Popup da ação em andamento (Cap. 18): some se ninguém estiver agindo.
    Antes era um card fixo lá embaixo da página -- clicar num Pokémon,
    escolher o Movimento e ainda ter que rolar a tela até o alvo lá em cima
    (de novo até a Equipe ativa, no caso de Trocar) era o ponto exato do
    pedido "ficaria muito mais apresentável". Agora é um popup só, maior,
-   parado no centro da tela: o Pokémon que age SEMPRE aparece no topo
-   (selfBlock, via arenaEntryHTML -- o mesmo card que já existe no campo de
-   batalha, chamado de novo aqui dentro, então a lógica de clique/elegibi-
-   lidade não é duplicada em lugar nenhum) e, ao escolher um Movimento/Item
-   que precise de alvo manual, os alvos elegíveis (aliados e/ou
-   adversários, conforme a categoria) já aparecem logo abaixo, dentro do
-   MESMO popup -- clicar neles dispara exatamente o mesmo DT.arenaSelect-
-   Target/DT.arenaPickItem de sempre. Trocar funciona igual, reaproveitando
-   arenaSourceTilesRowHTML (fatorada de arenaTrainerSourceHTML) pros tiles
-   da Equipe ativa. Um self/campo/área continua resolvendo na hora, sem
-   pedir clique nenhum. */
+   parado no centro da tela: de cara já mostra quem está em campo, lado a
+   lado, setorizado por Time (arenaActionBattlefieldHTML -- mesmo card de
+   sempre, arenaEntryHTML, chamado de novo aqui dentro, então a lógica de
+   clique/elegibilidade/quem fica clicável não é duplicada em lugar
+   nenhum; pra ver os Atributos de qualquer um, o gatilho de sempre é o
+   mesmo -- 📊 no canto do card, arenaEntryHTML já embute isso sozinho,
+   não precisa de nada a mais aqui). Ao escolher um Movimento/Item que
+   precise de alvo manual, é só clicar em quem já está ali no campo
+   (fica destacado sozinho, igual sempre foi na Arena) -- clicar dispara
+   exatamente o mesmo DT.arenaSelectTarget/DT.arenaPickItem de sempre.
+   Trocar funciona parecido, mas com um bloco à parte pros candidatos da
+   Equipe ativa (arenaSourceTilesRowHTML, fatorada de
+   arenaTrainerSourceHTML) -- esses não estão em campo, então não fazem
+   parte do "lado a lado" dos Times. Um self/campo/área continua
+   resolvendo na hora, sem pedir clique nenhum. */
 function arenaActionPanelHTML(){
   if(!SESSION.arenaAttacker) return '';
   var atkEntry = findArenaEntry(SESSION.arenaAttacker);
@@ -9810,35 +9849,18 @@ function arenaActionPanelHTML(){
   var cancelBtn = canCancel ? '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelAction()">Cancelar</button>' : '';
   var closeBtn = canCancel ? '<button type="button" class="arena-action-overlay-close" title="Cancelar" onclick="DT.arenaCancelAction()">✕</button>' : '';
 
-  /* "Seu Pokémon": sempre visível no topo do popup -- mesmo card de
-     sempre (HP/Condição/Estágio/carga já embutidos), sem nada refeito. */
-  var selfBlock = '<div class="arena-action-overlay-section">'+
-    '<p class="muted">Seu Pokémon</p>'+
-    '<div class="arena-team-body" style="padding:0; min-height:0;">'+arenaEntryHTML(atkEntry)+'</div>'+
-  '</div>';
-  /* Grade de alvos elegíveis pra um Movimento/Item que precisa de clique
-     manual -- entries já filtradas (revelado + vivo + categoria certa)
-     por eligibleMoveTargets/eligibleItemTargets, cada uma desenhada com
-     arenaEntryHTML (mesmo onclick="DT.arenaSelectTarget(...)"/
-     "DT.arenaPickItem(...)" que ela já gera sozinha quando elegível). */
-  function targetsBlockHTML(eligible){
-    if(!eligible || !eligible.length) return '';
-    /* Categorias tipo "ally-or-self" incluem o próprio atacante como alvo
-       válido -- mas ele já aparece (e já fica clicável sozinho, pela
-       mesma lógica de targetable) lá em cima no selfBlock; tirar ele
-       daqui evita mostrar o mesmo card duas vezes no popup. */
-    var others = eligible.filter(function(e){ return e.id!==atkEntry.id; });
-    if(!others.length) return '';
-    return '<div class="arena-action-overlay-section">'+
-      '<p class="muted">Alvos elegíveis</p>'+
-      '<div class="arena-team-body" style="padding:0; min-height:0;">'+others.map(arenaEntryHTML).join('')+'</div>'+
-    '</div>';
-  }
+  /* Quem está em campo, lado a lado, um bloco por Time -- SEMPRE visível
+     no topo do popup, em qualquer passo (menu, escolhendo Movimento/Item/
+     alvo, Trocar). O próprio atacante e os alvos elegíveis (se houver
+     algum passo pedindo um) aparecem juntos aqui, cada um já com a classe
+     certa (arena-slot-attacking/-targetable/etc.) que arenaEntryHTML
+     calcula sozinha -- não tem "grade de alvos" separada. */
+  var battlefield = arenaActionBattlefieldHTML();
 
   var body = '';
 
   if(SESSION.arenaAction==='menu' || !SESSION.arenaAction){
-    body = selfBlock+
+    body = battlefield+
       '<div class="arena-action-overlay-section">'+
       '<p>O que <strong>'+esc(name)+'</strong> vai fazer?</p>'+
       '<div class="btn-row" style="flex-wrap:wrap;">'+
@@ -9856,7 +9878,7 @@ function arenaActionPanelHTML(){
         var detail = [m.tipo||'?', m.categoria||'', m.poder?('Poder '+m.poder):'', m.prioridade ? ('Prioridade '+(m.prioridade>0?'+':'')+m.prioridade) : '', 'Alvo: '+(MOVE_TARGET_LABELS[cat]||cat)].filter(Boolean).join(' · ');
         return '<button class="btn-sm" onclick="DT.arenaPickMove('+i+')">'+esc(m.nome)+'<br><span class="muted" style="font-size:.66rem;">'+esc(detail)+'</span></button>';
       }).join('');
-      body = selfBlock+
+      body = battlefield+
         '<div class="arena-action-overlay-section">'+
         '<p><strong>⚔️ '+esc(name)+'</strong> vai atacar — escolha o Movimento:</p>'+
         '<div class="btn-row" style="flex-wrap:wrap;">'+(moveBtns || '<span class="muted">Esse Pokémon não tem Movimentos definidos.</span>')+'</div>'+
@@ -9866,10 +9888,9 @@ function arenaActionPanelHTML(){
       var move = (attPoke.moves||[])[SESSION.arenaMoveIdx];
       if(!move){ SESSION.arenaMoveIdx=null; return arenaActionPanelHTML(); }
       var category = moveTargetCategory(move.nome);
-      var targets = moveNeedsManualTarget(category) ? eligibleMoveTargets(atkEntry, category) : null;
-      body = selfBlock+targetsBlockHTML(targets)+
+      body = battlefield+
         '<div class="arena-action-overlay-section">'+
-        '<p><strong>⚔️ '+esc(name)+'</strong> vai usar <strong>'+esc(move.nome)+'</strong> — clique no alvo abaixo ('+esc(MOVE_TARGET_LABELS[category]||'alvo')+').</p>'+
+        '<p><strong>⚔️ '+esc(name)+'</strong> vai usar <strong>'+esc(move.nome)+'</strong> — clique no alvo ali em cima ('+esc(MOVE_TARGET_LABELS[category]||'alvo')+').</p>'+
         cancelBtn+
         '</div>';
     }
@@ -9884,7 +9905,7 @@ function arenaActionPanelHTML(){
         return '<p class="muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; margin:8px 0 4px;">'+ITEM_TIPO_LABELS[tipo]+'</p>'+
           '<div class="btn-row" style="flex-wrap:wrap;">'+btns+'</div>';
       }).join('');
-      body = selfBlock+
+      body = battlefield+
         '<div class="arena-action-overlay-section">'+
         '<p><strong>🎒 '+esc(name)+'</strong> vai usar um item — escolha na mochila de '+esc(attTrainer.name)+':</p>'+
         (groups || '<span class="muted">A mochila está vazia.</span>')+
@@ -9907,7 +9928,7 @@ function arenaActionPanelHTML(){
           var cheio = item.ppUp ? m.pp>=teto : (m.ppAtual||0)>=m.pp;
           return '<button class="btn-sm" '+(cheio?'disabled':'')+' onclick="DT.arenaPickItemMove('+i+')">'+esc(m.nome)+' <span class="muted">('+(item.ppUp?(m.pp+'/'+teto+' máx.'):((m.ppAtual||0)+'/'+m.pp))+')</span></button>';
         }).join('');
-        body = selfBlock+
+        body = battlefield+
           '<div class="arena-action-overlay-section">'+
           '<p><strong>🎒 '+esc(name)+'</strong> vai usar <strong>'+esc(item.nome)+'</strong> em <strong>'+esc(targetNome)+'</strong> — em qual Movimento?</p>'+
           '<div class="btn-row" style="flex-wrap:wrap;">'+(moveBtns2 || '<span class="muted">Esse Pokémon não tem nenhum Movimento com PP cadastrado.</span>')+'</div>'+
@@ -9915,10 +9936,9 @@ function arenaActionPanelHTML(){
           '</div>';
       } else {
         var alvoTxt = item.tipo==='revive' ? 'quem estiver desmaiado' : 'você mesmo ou um aliado';
-        var itemTargets = eligibleItemTargets(atkEntry, item);
-        body = selfBlock+targetsBlockHTML(itemTargets)+
+        body = battlefield+
           '<div class="arena-action-overlay-section">'+
-          '<p><strong>🎒 '+esc(name)+'</strong> vai usar <strong>'+esc(item.nome)+'</strong> — clique em '+alvoTxt+' abaixo.</p>'+
+          '<p><strong>🎒 '+esc(name)+'</strong> vai usar <strong>'+esc(item.nome)+'</strong> — clique em '+alvoTxt+' ali em cima.</p>'+
           cancelBtn+
           '</div>';
       }
@@ -9928,7 +9948,7 @@ function arenaActionPanelHTML(){
     var swapTiles = hasSwapCandidate
       ? ('<div class="arena-action-overlay-section"><p class="muted">Equipe ativa de '+esc(attTrainer.name)+'</p>'+arenaSourceTilesRowHTML(attTrainer)+'</div>')
       : '';
-    body = selfBlock+swapTiles+
+    body = battlefield+swapTiles+
       '<div class="arena-action-overlay-section">'+
       '<p>🔁 '+(forced
         ? '<strong>'+esc(name)+'</strong> usou um Movimento que troca de campo depois de agir — '
@@ -10092,12 +10112,12 @@ function arenaEntryHTML(e){
   var statsBtn = '<button type="button" class="arena-info-btn" title="Ver atributos" onclick="event.stopPropagation();DT.arenaStatsShow(\''+e.id+'\')">📊</button>';
 
   return '<div class="'+slotClass+'"'+slotClick+'>'+
+    (faintedSwappable ? '<div class="arena-fainted-banner">😵 Escolher próximo</div>' : '')+
     statsBtn+
     '<div class="arena-hp-label">'+cur+'/'+max+'</div>'+
     '<div class="hp-bar'+hpBarTier(pct)+'" style="width:100%;"><i style="width:'+pct+'%"></i></div>'+
     sprite+
     (isTurnNow ? '<div class="arena-turn-badge">▶ Turno</div>' : '')+
-    (faintedSwappable ? '<div class="arena-turn-badge" style="background:#7a1f1f;">😵 Escolher próximo</div>' : '')+
     '<div class="arena-slot-name">'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</div>'+
     '<span class="muted" style="font-size:.62rem;">'+esc(t.name)+'</span>'+
     (icons ? '<div class="arena-icons">'+icons+'</div>' : '')+
