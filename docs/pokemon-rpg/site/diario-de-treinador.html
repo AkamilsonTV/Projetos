@@ -4,6 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Diário de Treinador</title>
+<!-- App instalável (PWA): "Instalar app" no Chrome/Edge/etc. transforma essa
+     mesma página numa janela própria, com ícone e tudo -- pra PC, Mac e
+     Linux. Não é uma cópia: continua carregando o site AO VIVO, então toda
+     atualização publicada aqui já aparece sozinha na próxima vez que abrir
+     (ou já na hora, com o site aberto -- Firestore sincroniza em tempo real
+     do jeito de sempre). Caminhos relativos de propósito, pra funcionar
+     igual em qualquer domínio/subpasta onde isso for publicado. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-favicon.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#EE6C2F">
+<!-- Registro do Service Worker: precisa ficar numa tag script COM atributo
+     (esse "defer") e ANTES da tag script pura do app lá embaixo -- o
+     harness de teste em Node extrai o JS do app pegando tudo entre a 1ª
+     tag script "pura" (sem atributo) e o último fechamento dela no
+     arquivo; uma tag script com atributo não bate nessa "1ª tag pura",
+     então fica de fora da extração e nunca quebra o teste. Só existe pra
+     habilitar "Instalar app" no navegador -- sw.js não guarda cache
+     nenhum de propósito (ver comentário lá dentro), então o app instalado
+     nunca serve nada velho. -->
+<script defer>
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){ /* navegador sem suporte, ou bloqueado -- o site funciona normal do mesmo jeito */ });
+    });
+  }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">

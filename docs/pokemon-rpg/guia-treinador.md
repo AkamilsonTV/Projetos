@@ -163,6 +163,10 @@ Um card **"📜 Rolagens da Arena"** guarda uma linha por ataque já resolvido (
 
 O botão **☀️/🌙** no topo troca entre os dois temas. O site sempre abre no tema **claro** por padrão — a escolha de usar o escuro é sua, fica salva só no seu aparelho, e não segue a configuração do celular/computador.
 
+## Instalar como app
+
+No Chrome ou Edge (PC, Mac, Linux ou Android), clique no ícone de instalação na barra de endereço (ou no menu **⋮ → Instalar app**) pra abrir o Diário numa janela própria, com ícone de Pokébola e sem a barra do navegador — igual um programa instalado de verdade. Continua sendo o site ao vivo: qualquer atualização (Movimento corrigido, regra nova) já aparece sozinha, sem precisar reinstalar nada, e os dados continuam sincronizando em tempo real do jeito de sempre.
+
 ## Regras e guias
 
 O botão **"📖 Regras"** no topo abre esta área, com três abas: **Regras** (o livro de regras completo), **Guia do Treinador** (este aqui) e **Guia do Mestre**. Um botão **"← Voltar"** leva de volta pra onde você estava.

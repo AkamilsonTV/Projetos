@@ -72,6 +72,18 @@ Pronto — depois disso, qualquer pessoa que abrir o site (em qualquer aparelho)
 3. Em **Branch**, selecione `claude/pokemon-rpg-rules-5bdoj9` e a pasta **`/docs`** → **Save**.
 4. Espere alguns minutos; o GitHub mostra o link do site no topo dessa mesma página (algo como `https://<seu-usuário>.github.io/<repositório>/`). O Diário de Treinador fica em `.../pokemon-rpg/site/diario-de-treinador.html` dentro desse link.
 
+## Instalar como app (PC, Mac, Linux, Android)
+
+O site já é um **PWA** (Progressive Web App) — dá pra "instalar" ele como se fosse um programa de verdade, com janela própria, ícone na área de trabalho/barra de tarefas e sem a barra de endereço do navegador, sem precisar baixar nem instalar nada separado:
+
+1. Abra o link do Diário de Treinador (o de `.../pokemon-rpg/site/diario-de-treinador.html`) no **Chrome** ou **Edge**.
+2. Clique no ícone de instalação que aparece do lado direito da barra de endereço (um monitor com uma setinha) — ou no menu **⋮ → Salvar e compartilhar → Instalar app "Diário de Treinador"**.
+3. Pronto — abre uma janela própria, com a Pokébola como ícone, e um atalho fica salvo (Menu Iniciar/Launchpad/gaveta de apps, dependendo do sistema).
+
+**Ele sempre mostra a versão mais nova do site — não é uma cópia.** A "instalação" só cria um atalho que abre a mesma página ao vivo, então qualquer atualização publicada aqui (Movimento corrigido, regra nova, o que for) já aparece sozinha na próxima vez que abrir o app — e os dados do jogo continuam sincronizando em tempo real pelo Firebase do jeito de sempre, exatamente como no navegador comum. Não tem passo de "atualizar o app": não existe uma versão separada pra atualizar.
+
+Tecnicamente, isso é um `manifest.webmanifest` (nome, ícone, cor do tema) + um Service Worker mínimo (`sw.js`, só existe pra habilitar o botão "Instalar" — não guarda cache de nada, então nunca serve uma versão velha) — os dois arquivos moram do lado do `diario-de-treinador.html`, dentro de `pokemon-rpg/site/`.
+
 ## Sincronização entre aparelhos
 
 Sim: os dados do jogo (fichas, PINs, Vínculo, Nível, batalhas etc.) ficam salvos no Firebase, não no navegador — então editar no celular aparece no PC e vice-versa, em tempo real. Só duas coisas ficam presas a cada aparelho, por conveniência, e nunca afetam os dados do jogo: se você está logado (pra não pedir PIN toda hora) e quais fichas estão abertas/fechadas na tela.
