@@ -5641,11 +5641,13 @@ var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', e
   arenaAttacker:null, arenaAction:null, arenaMoveIdx:null, arenaAttackTarget:null, arenaItemIdx:null, arenaConfusionCheck:null,
   arenaForcedSwitch:false,
   /* Painel flutuante de atributos (Cap. 15.1): puramente local, nunca
-     sincroniza -- cada viewer abre/arrasta o próprio, sem afetar os
-     outros. arenaStatsFor = id da entrada da Arena sendo mostrada (null =
-     fechado); arenaStatsPos = {x,y} da última posição arrastada (null =
-     usa a posição padrão do CSS). */
-  arenaStatsFor:null, arenaStatsPos:null,
+     sincroniza -- cada viewer abre/arrasta os próprios, sem afetar os
+     outros. Dá pra abrir MAIS DE UM ao mesmo tempo (Pokémon diferentes):
+     arenaStatsOpen = array de entryId da Arena abertos (vazio/ausente =
+     nenhum); arenaStatsPos = mapa entryId->{x,y} com a última posição
+     arrastada de cada um (sem entrada no mapa = usa a posição padrão em
+     cascata, ver arenaStatsPanelHTML). */
+  arenaStatsOpen:[], arenaStatsPos:null,
   /* Janela do Registro (histórico de rolagens, Cap. 17 em diante): mesma
      ideia -- só local, cada viewer arrasta (arenaLogPos={x,y}) e
      redimensiona (arenaLogSize={w,h}) a própria janela sem afetar os
@@ -8248,31 +8250,42 @@ DT.arenaClearVictory = function(){
   mutate();
 };
 /* Painel flutuante de atributos (Cap. 15.1) -- puramente local (SESSION,
-   nunca sincroniza): cada viewer abre/fecha/arrasta o seu, sem afetar os
-   outros. Só abre pra quem já enxerga essa entrada de verdade (mesma
-   regra de canSeeReal do card -- dono, Mestre, ou já revelada); pra
-   qualquer outra, não faz nada (defesa em profundidade -- o botão que
-   chama isso já nem aparece nesse caso). */
+   nunca sincroniza): cada viewer abre/fecha/arrasta os seus, sem afetar os
+   outros. Dá pra ter VÁRIOS abertos ao mesmo tempo (de Pokémon
+   diferentes) -- SESSION.arenaStatsOpen é um array de entryId (não mais
+   um único "for"), e SESSION.arenaStatsPos virou um mapa entryId->{x,y}
+   (cada painel guarda a própria posição arrastada). Só abre pra quem já
+   enxerga essa entrada de verdade (mesma regra de canSeeReal do card --
+   dono, Mestre, ou já revelada); pra qualquer outra, não faz nada (defesa
+   em profundidade -- o botão que chama isso já nem aparece nesse caso).
+   Reabrir uma entrada já aberta é um no-op (não duplica o painel). */
 DT.arenaStatsShow = function(entryId){
   var e = findArenaEntry(entryId);
   if(!e) return;
   var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
   var isGM = SESSION.role==='gm';
   if(!isGM && !isOwner && !e.revelado) return;
-  SESSION.arenaStatsFor = entryId;
+  if(!Array.isArray(SESSION.arenaStatsOpen)) SESSION.arenaStatsOpen = [];
+  if(SESSION.arenaStatsOpen.indexOf(entryId)===-1) SESSION.arenaStatsOpen.push(entryId);
   render();
 };
-DT.arenaStatsClose = function(){
-  SESSION.arenaStatsFor = null;
+/* Fecha só o painel dessa entrada -- os outros abertos continuam. */
+DT.arenaStatsClose = function(entryId){
+  if(!Array.isArray(SESSION.arenaStatsOpen)) return;
+  var idx = SESSION.arenaStatsOpen.indexOf(entryId);
+  if(idx===-1) return;
+  SESSION.arenaStatsOpen.splice(idx,1);
   render();
 };
 /* Arrastar o painel pela barra do topo -- engine própria e mais simples
    que DRAG (Equipe/Time): só um elemento, sem ghost nem drop target,
    mexe direto no style.left/top do próprio painel enquanto arrasta (fora
    do ciclo de render(), senão a posição resetava a cada frame) e só
-   grava a posição final em SESSION.arenaStatsPos no soltar -- daí em
-   diante um render() normal já nasce na posição certa. */
-var STATS_DRAG = null; /* {panelEl, pointerId, offX, offY} */
+   grava a posição final em SESSION.arenaStatsPos[entryId] no soltar --
+   daí em diante um render() normal já nasce na posição certa. Cada
+   painel carrega o próprio entryId em data-entry-id pra saber em qual
+   chave do mapa gravar. */
+var STATS_DRAG = null; /* {panelEl, entryId, pointerId, offX, offY} */
 DT._statsDragMove = function(evt){
   if(!STATS_DRAG) return;
   var x = clampInt(evt.clientX - STATS_DRAG.offX, 0, window.innerWidth - STATS_DRAG.panelEl.offsetWidth);
@@ -8290,7 +8303,10 @@ DT._statsDragEnd = function(evt){
   head.removeEventListener('pointercancel', DT._statsDragEnd);
   try{ head.releasePointerCapture(STATS_DRAG.pointerId); }catch(err){}
   head.classList.remove('arena-stats-dragging');
-  if(STATS_DRAG.lastX!==undefined) SESSION.arenaStatsPos = { x: STATS_DRAG.lastX, y: STATS_DRAG.lastY };
+  if(STATS_DRAG.lastX!==undefined){
+    if(!SESSION.arenaStatsPos) SESSION.arenaStatsPos = {};
+    SESSION.arenaStatsPos[STATS_DRAG.entryId] = { x: STATS_DRAG.lastX, y: STATS_DRAG.lastY };
+  }
   STATS_DRAG = null;
 };
 DT.arenaStatsDragStart = function(evt){
@@ -8301,7 +8317,7 @@ DT.arenaStatsDragStart = function(evt){
   evt.preventDefault();
   try{ head.setPointerCapture(evt.pointerId); }catch(err){}
   var rect = panel.getBoundingClientRect();
-  STATS_DRAG = { panelEl:panel, headEl:head, pointerId:evt.pointerId, offX: evt.clientX-rect.left, offY: evt.clientY-rect.top };
+  STATS_DRAG = { panelEl:panel, headEl:head, entryId: panel.getAttribute('data-entry-id'), pointerId:evt.pointerId, offX: evt.clientX-rect.left, offY: evt.clientY-rect.top };
   head.classList.add('arena-stats-dragging');
   head.addEventListener('pointermove', DT._statsDragMove);
   head.addEventListener('pointerup', DT._statsDragEnd);
@@ -9932,19 +9948,29 @@ function arenaEntryHTML(e){
     controls+
   '</div>';
 }
-/* Painel flutuante de atributos (Cap. 15.1): mostra o "preview" do Pokémon
-   escolhido em SESSION.arenaStatsFor -- Tipo, PV, Condição, Habilidade,
-   Natureza e a tabela Atributo/Estágio/Efetivo, tudo lido com o mesmo
-   effectiveStat() que a própria batalha usa (não é um valor calculado à
-   parte -- é literalmente o número real). Refaz a mesma checagem de
-   visibilidade de DT.arenaStatsShow porque ela pode ter mudado entre abrir
-   o painel e este render (ex.: era o dono/Mestre e trocou de sessão, ou a
-   entrada nem existe mais). Posição vem de SESSION.arenaStatsPos (puramente
-   local, nunca sincroniza) -- sem posição salva ainda, usa a âncora padrão
-   do CSS (perto do topo direito). */
+/* Painel flutuante de atributos (Cap. 15.1): mostra o "preview" de CADA
+   Pokémon aberto em SESSION.arenaStatsOpen (dá pra ter vários ao mesmo
+   tempo, de Pokémon diferentes, cada um fechável na própria vez) -- Tipo,
+   PV, Condição, Habilidade, Natureza e a tabela Atributo/Estágio/Efetivo,
+   tudo lido com o mesmo effectiveStat() que a própria batalha usa (não é
+   um valor calculado à parte -- é literalmente o número real). */
 function arenaStatsPanelHTML(){
-  if(!SESSION.arenaStatsFor) return '';
-  var e = findArenaEntry(SESSION.arenaStatsFor);
+  var openIds = SESSION.arenaStatsOpen || [];
+  return openIds.map(function(entryId, idx){ return arenaStatsOnePanelHTML(entryId, idx); }).join('');
+}
+/* Um painel individual (entryId), na posição idx dentro de
+   SESSION.arenaStatsOpen -- idx só entra na conta quando ESSE painel
+   ainda não tem posição arrastada salva (SESSION.arenaStatsPos[entryId]),
+   pra abrir em cascata (cada um um pouco mais embaixo/esquerda do
+   anterior) em vez de nascer todo mundo empilhado exatamente no mesmo
+   canto. Refaz a mesma checagem de visibilidade de DT.arenaStatsShow
+   porque ela pode ter mudado entre abrir o painel e este render (ex.: era
+   o dono/Mestre e trocou de sessão, ou a entrada nem existe mais/desmaiou
+   e saiu da Arena) -- nesse caso o painel simplesmente não renderiza mais
+   (continua "aberto" em arenaStatsOpen, mas invisível até a condição
+   voltar a valer, sem precisar fechar/reabrir na mão). */
+function arenaStatsOnePanelHTML(entryId, idx){
+  var e = findArenaEntry(entryId);
   if(!e) return '';
   var t = findTrainer(e.trainerId);
   var p = t && getPoke(e.trainerId, e.pokemonId);
@@ -9982,14 +10008,20 @@ function arenaStatsPanelHTML(){
     return '<li><span>'+esc(m.nome)+'</span><span class="muted">'+(m.ppAtual||0)+'/'+(m.pp||0)+' PP</span></li>';
   }).join('');
 
-  var posStyle = SESSION.arenaStatsPos ? ' style="left:'+SESSION.arenaStatsPos.x+'px; top:'+SESSION.arenaStatsPos.y+'px; right:auto;"' : '';
+  var savedPos = SESSION.arenaStatsPos && SESSION.arenaStatsPos[entryId];
+  var posStyle = savedPos
+    ? ' style="left:'+savedPos.x+'px; top:'+savedPos.y+'px; right:auto;"'
+    /* sem posição salva: cascata a partir da âncora padrão (perto do topo
+       direito), pra vários painéis abertos ao mesmo tempo não nascerem
+       exatamente empilhados um em cima do outro. */
+    : ' style="top:'+(70+idx*36)+'px; right:'+(16+idx*20)+'px;"';
 
-  return '<div class="arena-stats-panel"'+posStyle+'>'+
+  return '<div class="arena-stats-panel" data-entry-id="'+esc(entryId)+'"'+posStyle+'>'+
     '<div class="arena-stats-head" onpointerdown="DT.arenaStatsDragStart(event)">'+
       sprite+
       '<div class="arena-stats-head-name"><strong>'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</strong>'+
         '<span class="muted" style="font-size:.66rem;">'+esc(t.name)+'</span></div>'+
-      '<button type="button" class="arena-stats-close" title="Fechar" onclick="DT.arenaStatsClose()">✕</button>'+
+      '<button type="button" class="arena-stats-close" title="Fechar" onclick="DT.arenaStatsClose(\''+entryId+'\')">✕</button>'+
     '</div>'+
     '<div class="arena-stats-body">'+
       typeTags(p)+
