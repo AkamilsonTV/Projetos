@@ -7848,6 +7848,19 @@ DT.arenaLeave = function(trainerId){
   });
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.trainerId!==trainerId; });
   STATE.arena.presentes = (STATE.arena.presentes||[]).filter(function(pr){ return pr.trainerId!==trainerId; });
+  /* arenaRevelado zera pra TODOS os Pokémon desse Treinador ao sair de vez
+     (Cap. 55): dentro de UMA MESMA batalha, "revelado fica revelado" fazia
+     sentido (evita a sprite sumir de novo só porque trocou e voltou) -- mas
+     sem resetar nunca, essa marca vaza pra fora da batalha: um Pokémon que
+     lutou uma vez ficava com nome/sprite público pra sempre em QUALQUER
+     Soltura futura, mesmo semanas depois, matando a graça da revelação
+     simultânea de novo (é exatamente o "Nessa área também precisa ficar em
+     segredo até o Mestre revelar" reportado -- a Equipe ativa inteira já
+     aparecia destravada antes mesmo da nova Soltura acontecer). "Sair da
+     Arena" é o limite natural de "essa participação acabou" no site --
+     dali pra frente, o time inteiro (Equipe ativa e Banco) volta a
+     precisar ser revelado de novo na próxima batalha. */
+  (t.pokemons||[]).concat(t.banco||[]).forEach(function(p){ p.arenaRevelado = false; });
   if(STATE.arena.entries.length===antes && !eraPresente) return; /* não tinha nenhum nem tava presente -- nada pra registrar */
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' saiu da Arena, retirando todo o Time.' });
