@@ -179,7 +179,7 @@ Assim que um Pokémon vai a 0 PV — por dano direto, recuo, dano de status por 
 
 ### Registro (histórico de rolagens)
 
-O card **"📜 Rolagens da Arena"** guarda as últimas 40 linhas de ataque (Movimento, dados, resultado) — dá pra rolar a lista e ver o que já rolou na batalha, ou clicar **"Limpar"** (só o Mestre) pra zerar entre uma batalha e outra. A rolagem mais nova só aparece ali quando o dado dela termina de girar no quadro central — não estraga o suspense pra quem está olhando o Registro em vez do quadro.
+A janela **"📜 Rolagens da Arena"** guarda as últimas 40 linhas de ataque (Movimento, dados, resultado) — dá pra rolar a lista e ver o que já rolou na batalha, ou clicar **"Limpar"** (só o Mestre) pra zerar entre uma batalha e outra. A rolagem mais nova só aparece ali quando o dado dela termina de girar no quadro central — não estraga o suspense pra quem está olhando o Registro em vez do quadro. É uma janela flutuante, igual ao painel de atributos: arraste pela barra do topo pra reposicionar, puxe o cantinho ⌟ no rodapé pra redimensionar — cada pessoa na mesa acomoda a própria janela onde quiser, sem mexer na dos outros.
 
 ## Tema claro/escuro
 

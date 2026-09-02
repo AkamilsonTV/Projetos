@@ -331,8 +331,20 @@
   .arena-initiative-current{ border-color:var(--accent) !important; background:var(--accent-soft) !important; font-weight:700; }
   .arena-initiative-fainted{ opacity:.55; text-decoration:line-through; }
 
-  /* ---- Registro/log de rolagens da Arena ---- */
-  .arena-log{ max-height:260px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+  /* ---- Registro/log de rolagens da Arena: janela flutuante, arrastável
+     pela barra do topo (mesmo motor da .arena-stats-panel) e redimensionável
+     puxando o cantinho ⌟ no rodapé -- cada viewer guarda a própria posição
+     e tamanho em SESSION (arenaLogPos/arenaLogSize), sem sincronizar. Sem
+     nada salvo ainda, ancora no canto inferior esquerdo com o tamanho
+     padrão do CSS. ---- */
+  .arena-log-panel{ position:fixed; left:16px; bottom:16px; width:320px; height:240px; min-width:220px; min-height:120px; max-width:calc(100vw - 24px); max-height:calc(100vh - 24px); background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); box-shadow:0 12px 32px rgba(0,0,0,.28); z-index:140; display:flex; flex-direction:column; }
+  .arena-log-head{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--line); cursor:grab; touch-action:none; background:var(--surface-2); border-radius:var(--radius) var(--radius) 0 0; }
+  .arena-log-head.arena-log-dragging{ cursor:grabbing; }
+  .arena-log-head h2{ flex:1; margin:0; font-size:.86rem; }
+  .arena-log-body{ flex:1; overflow-y:auto; padding:8px 10px; }
+  .arena-log-resize-handle{ position:absolute; right:0; bottom:0; width:18px; height:18px; cursor:nwse-resize; touch-action:none; }
+  .arena-log-resize-handle::after{ content:''; position:absolute; right:4px; bottom:4px; width:8px; height:8px; border-right:2px solid var(--ink-dim); border-bottom:2px solid var(--ink-dim); opacity:.55; }
+  .arena-log{ max-height:none; display:flex; flex-direction:column; gap:6px; }
   .arena-log-line{ font-size:.76rem; line-height:1.4; padding:6px 8px; border-radius:var(--radius-sm); background:var(--surface-2); border:1px solid var(--line); }
 
   .hp-row{ display:flex; align-items:center; gap:10px; }
@@ -5634,6 +5646,11 @@ var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', e
      fechado); arenaStatsPos = {x,y} da última posição arrastada (null =
      usa a posição padrão do CSS). */
   arenaStatsFor:null, arenaStatsPos:null,
+  /* Janela do Registro (histórico de rolagens, Cap. 17 em diante): mesma
+     ideia -- só local, cada viewer arrasta (arenaLogPos={x,y}) e
+     redimensiona (arenaLogSize={w,h}) a própria janela sem afetar os
+     outros. Sem nada salvo ainda, usa a âncora/tamanho padrão do CSS. */
+  arenaLogPos:null, arenaLogSize:null,
   showRollOverlay:false };
 try{
   var savedSession = JSON.parse(localStorage.getItem('dt_session')||'null');
@@ -8290,6 +8307,90 @@ DT.arenaStatsDragStart = function(evt){
   head.addEventListener('pointerup', DT._statsDragEnd);
   head.addEventListener('pointercancel', DT._statsDragEnd);
 };
+/* Janela do Registro (Cap. 17 em diante) -- puramente local (SESSION,
+   nunca sincroniza): cada viewer arrasta e redimensiona a própria janela,
+   sem afetar os outros. Mesmo motor de arrastar da .arena-stats-panel
+   (offset do ponteiro em relação ao canto do painel, mexe direto no
+   style.left/top fora do ciclo de render() e só grava a posição final em
+   SESSION no soltar); redimensionar é um motor irmão (LOG_RESIZE), que
+   além disso PINA o painel em left/top explícitos assim que o resize
+   começa -- sem isso, um painel ainda ancorado pelo bottom/right padrão
+   do CSS teria a borda oposta se deslocando sozinha enquanto cresce, e o
+   cálculo de largura/altura máxima ficaria errado. */
+var LOG_DRAG = null; /* {panelEl, headEl, pointerId, offX, offY} */
+DT._logDragMove = function(evt){
+  if(!LOG_DRAG) return;
+  var x = clampInt(evt.clientX - LOG_DRAG.offX, 0, window.innerWidth - LOG_DRAG.panelEl.offsetWidth);
+  var y = clampInt(evt.clientY - LOG_DRAG.offY, 0, window.innerHeight - 40);
+  LOG_DRAG.panelEl.style.left = x+'px';
+  LOG_DRAG.panelEl.style.top = y+'px';
+  LOG_DRAG.panelEl.style.right = 'auto';
+  LOG_DRAG.panelEl.style.bottom = 'auto';
+  LOG_DRAG.lastX = x; LOG_DRAG.lastY = y;
+};
+DT._logDragEnd = function(evt){
+  if(!LOG_DRAG) return;
+  var head = LOG_DRAG.headEl;
+  head.removeEventListener('pointermove', DT._logDragMove);
+  head.removeEventListener('pointerup', DT._logDragEnd);
+  head.removeEventListener('pointercancel', DT._logDragEnd);
+  try{ head.releasePointerCapture(LOG_DRAG.pointerId); }catch(err){}
+  head.classList.remove('arena-log-dragging');
+  if(LOG_DRAG.lastX!==undefined) SESSION.arenaLogPos = { x: LOG_DRAG.lastX, y: LOG_DRAG.lastY };
+  LOG_DRAG = null;
+};
+DT.arenaLogDragStart = function(evt){
+  if(LOG_DRAG || LOG_RESIZE) return;
+  var head = evt.currentTarget;
+  var panel = head.closest('.arena-log-panel');
+  if(!panel) return;
+  evt.preventDefault();
+  try{ head.setPointerCapture(evt.pointerId); }catch(err){}
+  var rect = panel.getBoundingClientRect();
+  LOG_DRAG = { panelEl:panel, headEl:head, pointerId:evt.pointerId, offX: evt.clientX-rect.left, offY: evt.clientY-rect.top };
+  head.classList.add('arena-log-dragging');
+  head.addEventListener('pointermove', DT._logDragMove);
+  head.addEventListener('pointerup', DT._logDragEnd);
+  head.addEventListener('pointercancel', DT._logDragEnd);
+};
+var LOG_RESIZE = null; /* {panelEl, handleEl, pointerId, startW, startH, startX, startY, left, top} */
+DT._logResizeMove = function(evt){
+  if(!LOG_RESIZE) return;
+  var w = clampInt(LOG_RESIZE.startW + (evt.clientX - LOG_RESIZE.startX), 220, window.innerWidth - LOG_RESIZE.left - 8);
+  var h = clampInt(LOG_RESIZE.startH + (evt.clientY - LOG_RESIZE.startY), 120, window.innerHeight - LOG_RESIZE.top - 8);
+  LOG_RESIZE.panelEl.style.width = w+'px';
+  LOG_RESIZE.panelEl.style.height = h+'px';
+  LOG_RESIZE.lastW = w; LOG_RESIZE.lastH = h;
+};
+DT._logResizeEnd = function(evt){
+  if(!LOG_RESIZE) return;
+  var handle = LOG_RESIZE.handleEl;
+  handle.removeEventListener('pointermove', DT._logResizeMove);
+  handle.removeEventListener('pointerup', DT._logResizeEnd);
+  handle.removeEventListener('pointercancel', DT._logResizeEnd);
+  try{ handle.releasePointerCapture(LOG_RESIZE.pointerId); }catch(err){}
+  if(LOG_RESIZE.lastW!==undefined) SESSION.arenaLogSize = { w: LOG_RESIZE.lastW, h: LOG_RESIZE.lastH };
+  LOG_RESIZE = null;
+};
+DT.arenaLogResizeStart = function(evt){
+  if(LOG_RESIZE || LOG_DRAG) return;
+  var handle = evt.currentTarget;
+  var panel = handle.closest('.arena-log-panel');
+  if(!panel) return;
+  evt.preventDefault();
+  evt.stopPropagation(); /* não deixa o pointerdown borbulhar pro drag da barra do topo */
+  try{ handle.setPointerCapture(evt.pointerId); }catch(err){}
+  var rect = panel.getBoundingClientRect();
+  panel.style.left = rect.left+'px';
+  panel.style.top = rect.top+'px';
+  panel.style.right = 'auto';
+  panel.style.bottom = 'auto';
+  SESSION.arenaLogPos = { x: rect.left, y: rect.top }; /* pina a posição -- crescer não pode mais deslocar a borda oposta */
+  LOG_RESIZE = { panelEl:panel, handleEl:handle, pointerId:evt.pointerId, startW:rect.width, startH:rect.height, startX:evt.clientX, startY:evt.clientY, left:rect.left, top:rect.top };
+  handle.addEventListener('pointermove', DT._logResizeMove);
+  handle.addEventListener('pointerup', DT._logResizeEnd);
+  handle.addEventListener('pointercancel', DT._logResizeEnd);
+};
 DT.arenaChooseAction = function(kind){
   if(!SESSION.arenaAttacker) return;
   if(kind==='atacar'){ SESSION.arenaAction = 'move'; SESSION.arenaMoveIdx = null; render(); return; }
@@ -9531,7 +9632,11 @@ function arenaInitiativeHTML(){
 }
 /* Registro corrido das rolagens já feitas na Arena — fica visível pra todo
    mundo (só entra ali um ataque entre dois Pokémon já revelados, então não
-   vaza nada que já não estivesse público no overlay). */
+   vaza nada que já não estivesse público no overlay). Janela flutuante,
+   arrastável pela barra do topo e redimensionável pelo cantinho ⌟ (ver
+   DT.arenaLogDragStart/arenaLogResizeStart) -- posição e tamanho só
+   locais (SESSION.arenaLogPos/arenaLogSize), cada viewer com a própria,
+   nunca sincroniza. */
 function arenaLogHTML(){
   var log = STATE.arena.log || [];
   /* Enquanto o dado daquela rolagem ainda está "rolando" no overlay, some
@@ -9541,14 +9646,19 @@ function arenaLogHTML(){
   if(DICE_ROLL_ANIM && log.length>0 && log[log.length-1].ts===DICE_ROLL_ANIM.ts) log = log.slice(0,-1);
   if(log.length===0) return '';
   var isGM = SESSION.role==='gm';
-  var out = '<div class="card"><div class="card-head"><span class="index">Histórico</span><h2>📜 Rolagens da Arena</h2>'+
-    (isGM ? '<button class="btn-ghost btn-sm" onclick="DT.arenaClearLog()">Limpar</button>' : '')+
-  '</div><div class="card-body">';
-  out += '<div class="arena-log">'+log.slice().reverse().map(function(entry){
-    return '<div class="arena-log-line">'+entry.text+'</div>';
-  }).join('')+'</div>';
-  out += '</div></div>';
-  return out;
+  var posStyle = SESSION.arenaLogPos ? ('left:'+SESSION.arenaLogPos.x+'px; top:'+SESSION.arenaLogPos.y+'px; right:auto; bottom:auto;') : '';
+  var sizeStyle = SESSION.arenaLogSize ? ('width:'+SESSION.arenaLogSize.w+'px; height:'+SESSION.arenaLogSize.h+'px;') : '';
+  var styleAttr = (posStyle||sizeStyle) ? (' style="'+posStyle+sizeStyle+'"') : '';
+  return '<div class="arena-log-panel"'+styleAttr+'>'+
+    '<div class="arena-log-head" onpointerdown="DT.arenaLogDragStart(event)">'+
+      '<h2>📜 Rolagens da Arena</h2>'+
+      (isGM ? '<button class="btn-ghost btn-sm" onclick="event.stopPropagation();DT.arenaClearLog()">Limpar</button>' : '')+
+    '</div>'+
+    '<div class="arena-log-body"><div class="arena-log">'+log.slice().reverse().map(function(entry){
+      return '<div class="arena-log-line">'+entry.text+'</div>';
+    }).join('')+'</div></div>'+
+    '<div class="arena-log-resize-handle" onpointerdown="DT.arenaLogResizeStart(event)"></div>'+
+  '</div>';
 }
 /* Painel da ação em andamento: some se ninguém estiver agindo. Primeiro
    mostra os Movimentos do Pokémon (a lógica de alvo de cada um já aparece

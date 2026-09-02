@@ -157,7 +157,7 @@ Assim que um dos seus Pokémon vai a 0 PV, o site já confere o que fazer, na ho
 
 ### Registro (histórico de rolagens)
 
-Um card **"📜 Rolagens da Arena"** guarda uma linha por ataque já resolvido (as últimas 40), com o Movimento usado, os dados que saíram e o resultado — dá pra rolar a lista pra cima e ver o que já aconteceu na batalha. A rolagem mais nova só aparece ali depois que o dado dela termina de girar no quadro central (não estraga a surpresa).
+A janela **"📜 Rolagens da Arena"** guarda uma linha por ataque já resolvido (as últimas 40), com o Movimento usado, os dados que saíram e o resultado — dá pra rolar a lista pra cima e ver o que já aconteceu na batalha. A rolagem mais nova só aparece ali depois que o dado dela termina de girar no quadro central (não estraga a surpresa). É uma janela flutuante: arraste pela barra do topo pra colocar onde quiser na tela, e puxe o cantinho ⌟ no rodapé pra deixar maior ou menor — cada um vê e ajusta a própria, sem afetar o resto da mesa (a posição/tamanho não é salvo entre sessões, só dura enquanto a página estiver aberta).
 
 ## Tema claro/escuro
 
