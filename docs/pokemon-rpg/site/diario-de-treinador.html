@@ -79,7 +79,7 @@
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
 
   #app{ min-height:100vh; }
-  .shell{ max-width:960px; margin:0 auto; padding:0 18px 80px; }
+  .shell{ max-width:1056px; margin:0 auto; padding:0 18px 80px; } /* +0.5pol (48px) de cada lado -- menu/ficha bugava de tão apertado */
 
   .topbar{
     display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -249,7 +249,7 @@
   .arena-team-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:var(--surface-2); border-bottom:2px solid var(--line); }
   .arena-team-head input[type=text]{ font-weight:700; padding:4px 6px; }
   .arena-team-body{ display:flex; flex-wrap:wrap; gap:16px; padding:12px; min-height:96px; }
-  .arena-slot, .arena-slot-hidden{ width:84px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:3px; position:relative; padding-top:4px; }
+  .arena-slot, .arena-slot-hidden{ width:84px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; position:relative; padding-top:4px; }
   .arena-info-btn{ position:absolute; top:-6px; right:-6px; width:20px; height:20px; padding:0; border-radius:50%; background:var(--surface); border:1px solid var(--line); font-size:.66rem; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); }
   .arena-info-btn:hover{ border-color:var(--accent); }
   .arena-pokeball{ width:40px; height:40px; opacity:.85; }
@@ -276,7 +276,11 @@
   .arena-slot-target-picked{ border-radius:var(--radius-sm); outline:2px solid var(--danger); outline-offset:3px; }
   .arena-slot-waiting{ opacity:.55; }
   .arena-slot-turn{ position:relative; }
-  .arena-turn-badge{ position:absolute; top:-8px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--accent-ink); font-size:.6rem; font-weight:700; padding:1px 6px; border-radius:var(--radius-pill); white-space:nowrap; }
+  /* Era position:absolute (top:-8px) flutuando por cima do card -- ficava
+     colado/sobrepondo o PV logo abaixo dele (reportado: "TURNO tá muito
+     perto do HP"). Agora é a 1ª coisa no fluxo normal do card, empurrando
+     PV/barra/sprite pra baixo, igual o .arena-fainted-banner já fazia. */
+  .arena-turn-badge{ display:block; width:100%; background:var(--accent); color:var(--accent-ink); font-size:.62rem; font-weight:700; padding:2px 6px; border-radius:var(--radius-sm); white-space:nowrap; margin-bottom:3px; }
   /* "😵 Escolher próximo" (Cap. 25/59) é texto comprido demais pra flutuar
      igual o "▶ Turno" (position:absolute, pensado pra um rótulo curto) --
      tentar encaixar do mesmo jeito acabava cobrindo o PV/a sprite por
@@ -332,6 +336,14 @@
      reagiria, o mesmo popup mostra só "Verificando prioridade, aguarde." */
   .priority-overlay{ position:fixed; inset:0; background:rgba(20,14,8,.55); display:flex; align-items:center; justify-content:center; z-index:190; padding:20px; animation:dice-fade-in .15s ease-out; }
   .priority-overlay-card{ background:var(--surface); border:2px solid var(--accent-2); border-radius:var(--radius); padding:22px 26px; max-width:380px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
+
+  /* Notificação de combate como popup (além da faixa de sempre no topo) --
+     z-index acima até do quadro de dado (200), porque é um aviso que
+     precisa interromper o que o jogador está olhando (ex.: "sem PP" no
+     meio de escolher um Movimento). */
+  .arena-error-overlay{ position:fixed; inset:0; background:rgba(20,14,8,.45); display:flex; align-items:center; justify-content:center; z-index:210; padding:20px; animation:dice-fade-in .15s ease-out; }
+  .arena-error-overlay-card{ background:var(--surface); border:2px solid var(--danger); border-radius:var(--radius); padding:20px 24px; max-width:380px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
+  .arena-error-overlay-text{ font-size:.88rem; margin-bottom:12px; }
 
   /* ---- Popup de Ação (Atacar/Item/Trocar/Fugir): antes ficava num card
      fixo lá embaixo da página (precisava rolar a tela até ele, e de novo
@@ -392,6 +404,10 @@
   .hp-row input[type=number]{ width:70px; }
   .hp-bar{ flex:1; height:8px; background:var(--surface-3); border-radius:4px; overflow:hidden; border:1px solid var(--line); }
   .hp-bar > i{ display:block; height:100%; background:var(--good); transition:width .3s ease; }
+  /* Barra de vida mais "cheia" no card da Arena (pedido: mais visível,
+     esvaziando junto com o PV) -- mais alta que a genérica do .hp-row
+     (usada na ficha, fora da Arena, onde 8px já é o bastante). */
+  .arena-slot .hp-bar, .arena-slot-hidden .hp-bar{ height:12px; margin:2px 0; border-width:2px; }
   .hp-bar.mid > i{ background:#E0A526; }
   .hp-bar.low > i{ background:var(--danger); }
   .arena-hp-label{ font-size:.62rem; font-variant-numeric:tabular-nums; color:var(--muted); text-align:center; margin-bottom:2px; }
@@ -7578,9 +7594,18 @@ DT.setCurrentHP = function(tid,pid,el){
   p.currentHP = clampInt(el.value,0,max);
   mutate();
 };
+/* Botão "curar" da ficha (só o Mestre vê, ver pokeCardHTML) -- diferente
+   dos itens de Cura (que têm um efeito específico cada), esse é o reset
+   completo de mesa: PV cheio, Condição/Confusão removidas e PP de TODOS
+   os Movimentos de volta ao máximo (m.pp já reflete qualquer PP Up
+   aplicado, não precisa mexer em ppBase). */
 DT.healFull = function(tid,pid){
   var t=findTrainer(tid); var p=getPoke(tid,pid); if(!p||!t) return;
   p.currentHP = hpMax(t,p);
+  p.status = '';
+  p.statusTurns = 0;
+  p.confuso = false;
+  (p.moves||[]).forEach(function(m){ if(m && m.nome) m.ppAtual = m.pp||0; });
   mutate();
 };
 DT.setStatus = function(tid,pid,el){
@@ -9666,6 +9691,22 @@ function arenaVictoryHTML(){
     (SESSION.role==='gm' ? '<button class="btn-sm" onclick="DT.arenaClearVictory()">Limpar e continuar</button>' : '<p class="muted" style="font-size:.8rem;">O Mestre decide o que vem a seguir.</p>')+
   '</div></div>';
 }
+/* Notificação de combate (SESSION.error) também como popup, chamativo,
+   além da faixa de sempre no topo (banners(), ver wrap()) -- "sem PP",
+   "sem alvo válido agora", "ainda não é a vez desse Pokémon" etc. eram
+   fáceis de passar batido lá em cima, no meio do combate. Mesmo texto,
+   mesmo DT.dismiss() fecha os dois juntos (a faixa some sozinha porque
+   ela também olha SESSION.error). Só dentro da Arena -- fora dela, erros
+   de cadastro/login continuam só na faixa de sempre. */
+function arenaErrorPopupHTML(){
+  if(!SESSION.error) return '';
+  return '<div class="arena-error-overlay" onclick="DT.dismiss()">'+
+    '<div class="arena-error-overlay-card" onclick="event.stopPropagation()">'+
+      '<div class="arena-error-overlay-text">⚠️ '+esc(SESSION.error)+'</div>'+
+      '<button class="btn-sm" onclick="DT.dismiss()">Fechar</button>'+
+    '</div>'+
+  '</div>';
+}
 /* Pergunta de Prioridade (Cap. 17.1-17.3): STATE.arena.priorityPending só é
    preenchido sozinho por arenaMaybePausePriority (nunca à mão) -- enquanto
    tiver alguém pendente, ninguém mais consegue abrir o menu de ação
@@ -9707,6 +9748,7 @@ function arenaScreen(){
   '</div></div>';
   out += arenaSpectatorHTML();
   out += arenaVictoryHTML();
+  out += arenaErrorPopupHTML();
   out += arenaPriorityPromptHTML();
   out += arenaSolturaHTML(isGM);
   out += arenaInitiativeHTML();
@@ -10198,12 +10240,12 @@ function arenaEntryHTML(e){
   var statsBtn = '<button type="button" class="arena-info-btn" title="Ver atributos" onclick="event.stopPropagation();DT.arenaStatsShow(\''+e.id+'\')">📊</button>';
 
   return '<div class="'+slotClass+'"'+slotClick+'>'+
+    (isTurnNow ? '<div class="arena-turn-badge">▶ Turno</div>' : '')+
     (faintedSwappable ? '<div class="arena-fainted-banner">😵 Escolher próximo</div>' : '')+
     statsBtn+
     '<div class="arena-hp-label">'+cur+'/'+max+'</div>'+
     '<div class="hp-bar'+hpBarTier(pct)+'" style="width:100%;"><i style="width:'+pct+'%"></i></div>'+
     sprite+
-    (isTurnNow ? '<div class="arena-turn-badge">▶ Turno</div>' : '')+
     '<div class="arena-slot-name">'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</div>'+
     '<span class="muted" style="font-size:.62rem;">'+esc(t.name)+'</span>'+
     (icons ? '<div class="arena-icons">'+icons+'</div>' : '')+
@@ -10977,7 +11019,7 @@ function pokeCardHTML(t,p,editable,mode){
     (editable ? '<input type="number" min="0" max="'+max+'" value="'+cur+'" onchange="DT.setCurrentHP(\''+t.id+'\',\''+p.id+'\', this)">' : '<span class="num">'+cur+'</span>')+
     '<span class="muted">/ '+max+' PV</span>'+
     '<div class="hp-bar'+hpBarTier(pct)+'"><i style="width:'+pct+'%"></i></div>'+
-    (editable ? '<button class="btn-ghost btn-sm" onclick="DT.healFull(\''+t.id+'\',\''+p.id+'\')">curar</button>' : '')+
+    (canGM ? '<button class="btn-ghost btn-sm" title="Restaura PV cheio, remove Condição/Confusão e enche o PP de todos os Movimentos" onclick="DT.healFull(\''+t.id+'\',\''+p.id+'\')">curar</button>' : '')+
   '</div>';
 
   if(!expanded){
