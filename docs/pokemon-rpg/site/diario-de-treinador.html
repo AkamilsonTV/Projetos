@@ -344,6 +344,12 @@
      resolve a mesma lógica de "quem fica clicável" sozinha, então não tem
      nada duplicado: chamar a função de novo aqui dentro já basta. */
   .arena-action-overlay{ position:fixed; inset:0; background:rgba(20,14,8,.55); display:flex; align-items:center; justify-content:center; z-index:180; padding:16px; animation:dice-fade-in .15s ease-out; }
+  /* Rolagem em cima (arenaResolving, .dice-overlay já é o mesmo fundo
+     escuro por cima, z-index 200 > 180): sem isso os dois fundos
+     semitransparentes empilhados escureciam demais e ainda piscavam
+     (esse popup de baixo não entra/sai de novo, então não roda o
+     dice-fade-in de novo -- só o de cima). */
+  .arena-action-overlay-resolving{ background:transparent; animation:none; }
   .arena-action-overlay-card{ background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); max-width:560px; width:100%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
   .arena-action-overlay-head{ display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); flex-shrink:0; }
   .arena-action-overlay-head h2{ flex:1; margin:0; font-size:1rem; }
@@ -5675,6 +5681,18 @@ var stateDocRef = null;
 var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', expanded:{}, confirmRemovePoke:null, confirmRemoveTrainer:null,
   arenaAttacker:null, arenaAction:null, arenaMoveIdx:null, arenaAttackTarget:null, arenaItemIdx:null, arenaConfusionCheck:null,
   arenaForcedSwitch:false,
+  /* Cap. 18/dado: enquanto um ataque de verdade já rolou o dado mas a
+     animação (#diceOverlay) ainda não assentou, arenaResolving fica true
+     -- o popup de Ação (arenaActionPanelHTML) continua ABERTO, mas
+     congelado (sem menu/botão/alvo clicável -- ver os "if(SESSION.
+     arenaResolving) return;" nas funções DT.arena*), só pra manter o
+     MESMO fundo escurecido embaixo do quadro de dado, em vez de fechar
+     instantaneamente e o quadro de dado abrir do zero por cima (dois
+     popups trocando de lugar, cada um com o próprio fade-in, dava a
+     sensação de "outra janela" -- reportado como "tem que aparecer na
+     mesma camada"). Zera sozinho quando a rolagem assenta (fim de
+     startDiceRollAnimation). */
+  arenaResolving:false,
   /* Painel flutuante de atributos (Cap. 15.1): puramente local, nunca
      sincroniza -- cada viewer abre/arrasta os próprios, sem afetar os
      outros. Dá pra abrir MAIS DE UM ao mesmo tempo (Pokémon diferentes):
@@ -8105,6 +8123,7 @@ function arenaResetActionState(){
   SESSION.arenaItemIdx = null;
   SESSION.arenaItemTargetId = null;
   SESSION.arenaForcedSwitch = false;
+  SESSION.arenaResolving = false;
 }
 /* Quem dá pra escolher pra trocar no lugar de quem está em campo agora:
    outro Pokémon vivo da Equipe ativa DESSE Treinador, que ainda não seja
@@ -8162,6 +8181,7 @@ function arenaCheckVictory(){
    Confusão (Cap. 23) antes de mais nada — se perder a ação, o turno já
    acaba aqui, sem abrir o menu. */
 DT.arenaSelectActor = function(entryId){
+  if(SESSION.arenaResolving) return; /* um ataque de verdade ainda está rolando o dado -- congela qualquer ação nova até assentar */
   if(STATE.arena && STATE.arena.vencedor) return; /* batalha já acabou (Cap. 25/59) -- ninguém age mais até o Mestre limpar */
   if(STATE.arena && STATE.arena.priorityPending) return; /* Cap. 17.1-17.3: tem uma pergunta de Prioridade pendente -- ninguém mais age até ela ser respondida (DT.arenaPriorityAnswer) */
   var e = findArenaEntry(entryId);
@@ -8306,6 +8326,7 @@ DT.arenaSelectActor = function(entryId){
   mutate();
 };
 DT.arenaCancelAction = function(){
+  if(SESSION.arenaResolving) return; /* nada pra cancelar -- a rolagem já aconteceu de verdade, só falta a animação assentar */
   arenaResetActionState();
   render();
 };
@@ -8316,6 +8337,7 @@ DT.arenaCancelAction = function(){
    aqui -- é o outro Time que já venceu, arenaCheckVictory cuida disso
    sozinho assim que ele caiu. */
 DT.arenaSelectFainted = function(entryId){
+  if(SESSION.arenaResolving) return;
   if(STATE.arena && STATE.arena.vencedor) return;
   var e = findArenaEntry(entryId);
   if(!e) return;
@@ -8500,6 +8522,7 @@ DT.arenaLogResizeStart = function(evt){
   handle.addEventListener('pointercancel', DT._logResizeEnd);
 };
 DT.arenaChooseAction = function(kind){
+  if(SESSION.arenaResolving) return;
   if(!SESSION.arenaAttacker) return;
   if(kind==='atacar'){ SESSION.arenaAction = 'move'; SESSION.arenaMoveIdx = null; render(); return; }
   if(kind==='item'){ SESSION.arenaAction = 'item'; SESSION.arenaItemIdx = null; render(); return; }
@@ -8507,6 +8530,7 @@ DT.arenaChooseAction = function(kind){
   if(kind==='fugir'){ DT.arenaFlee(); return; }
 };
 DT.arenaPickMove = function(moveIdx){
+  if(SESSION.arenaResolving) return;
   var atkEntry = findArenaEntry(SESSION.arenaAttacker);
   if(!atkEntry) return;
   var attTrainer = findTrainer(atkEntry.trainerId);
@@ -8548,6 +8572,7 @@ DT.arenaPickMove = function(moveIdx){
   DT.resolveArenaMove(atkEntry, move, category, null);
 };
 DT.arenaPickItem = function(itemIdx){
+  if(SESSION.arenaResolving) return;
   var atkEntry = findArenaEntry(SESSION.arenaAttacker);
   if(!atkEntry) return;
   var attTrainer = findTrainer(atkEntry.trainerId);
@@ -8566,6 +8591,7 @@ DT.arenaPickItem = function(itemIdx){
   render();
 };
 DT.arenaSelectTarget = function(entryId){
+  if(SESSION.arenaResolving) return;
   if(!SESSION.arenaAttacker) return;
   var atkEntry = findArenaEntry(SESSION.arenaAttacker);
   if(!atkEntry) return;
@@ -8606,6 +8632,7 @@ DT.arenaSelectTarget = function(entryId){
 };
 /* PP 'um': último passo, depois de já ter escolhido item + Pokémon. */
 DT.arenaPickItemMove = function(moveIdx){
+  if(SESSION.arenaResolving) return;
   var atkEntry = findArenaEntry(SESSION.arenaAttacker);
   if(!atkEntry || SESSION.arenaItemIdx===null || SESSION.arenaItemIdx===undefined || !SESSION.arenaItemTargetId) return;
   DT.resolveItemUse(atkEntry, SESSION.arenaItemIdx, SESSION.arenaItemTargetId, moveIdx);
@@ -8650,6 +8677,7 @@ DT.resolveItemUse = function(atkEntry, itemIdx, targetEntryId, moveIdx){
    Rodada, por Velocidade Efetiva, contra quem ainda não agiu (Cap. 16
    revisado, arenaInsertIntoActiveRound). */
 DT.arenaSwapIn = function(newPokemonId){
+  if(SESSION.arenaResolving) return;
   var oldEntry = findArenaEntry(SESSION.arenaAttacker);
   if(!oldEntry) return;
   var oldT = findTrainer(oldEntry.trainerId);
@@ -8709,6 +8737,7 @@ DT.arenaSwapIn = function(newPokemonId){
    campo, o turno passa normalmente); 4-10 foge com sucesso e sai da
    Arena de vez. */
 DT.arenaFlee = function(){
+  if(SESSION.arenaResolving) return;
   var e = findArenaEntry(SESSION.arenaAttacker);
   if(!e) return;
   var t = findTrainer(e.trainerId);
@@ -8890,7 +8919,15 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
      "Próximo" — mas o status ainda é aplicado, porque ele agiu de verdade. */
   arenaAdvanceTurn(atkEntry.id);
 
-  arenaResetActionState();
+  /* Não fecha o popup de Ação agora -- STATE.arena.lastRoll acabou de ser
+     setado lá em cima, então o #diceOverlay vai abrir por cima dele já
+     no próximo render(). SESSION.arenaResolving deixa o popup ABERTO (só
+     congelado -- ver os guards "if(SESSION.arenaResolving) return;" nas
+     DT.arena*) até a animação do dado assentar, pra tudo ficar na MESMA
+     janela/camada em vez de um popup fechar e outro abrir do zero por
+     cima (startDiceRollAnimation chama arenaResetActionState() de verdade
+     quando a rolagem termina). */
+  SESSION.arenaResolving = true;
   mutate();
 };
 
@@ -9254,6 +9291,18 @@ function diceStagesFor(lr){
   }
   return stages;
 }
+/* Chamado sempre que a rolagem assenta pra valer -- seja pelo fim natural
+   da animação (abaixo) ou por um dispensar manual no meio do caminho
+   (DT.dismissRoll, clique no fundo do quadro de dado). Centraliza a
+   limpeza pra não duplicar em dois lugares: para o timer, zera
+   DICE_ROLL_ANIM e, se o popup de Ação ficou aberto/congelado esperando
+   (SESSION.arenaResolving, ver DT.resolveArenaMove), fecha ele agora --
+   quem chama decide se/quando faz o render() depois. */
+function arenaFinishRoll(){
+  if(diceAnimTimer){ clearInterval(diceAnimTimer); diceAnimTimer = null; }
+  DICE_ROLL_ANIM = null;
+  if(SESSION.arenaResolving) arenaResetActionState();
+}
 function startDiceRollAnimation(lr){
   var stages = diceStagesFor(lr);
   DICE_ROLL_ANIM = { ts: lr.ts, stages: stages, stageIdx: 0, stageStart: Date.now() };
@@ -9263,12 +9312,13 @@ function startDiceRollAnimation(lr){
     if(Date.now()-DICE_ROLL_ANIM.stageStart >= DICE_STAGE_MS){
       DICE_ROLL_ANIM.stageIdx++;
       if(DICE_ROLL_ANIM.stageIdx>=DICE_ROLL_ANIM.stages.length){
-        clearInterval(diceAnimTimer); diceAnimTimer = null;
-        DICE_ROLL_ANIM = null;
+        arenaFinishRoll();
         /* render() completo (não só o overlay) só nesse instante final — é o
            que revela a rolagem no Registro (arenaLogHTML esconde a entrada
            mais nova enquanto a animação dela ainda roda, senão o resultado
-           "vazava" no Registro antes do dado terminar de rolar na tela). */
+           "vazava" no Registro antes do dado terminar de rolar na tela) e
+           fecha o popup de Ação congelado (arenaFinishRoll acima), se
+           tinha um esperando. */
         render();
         return;
       }
@@ -9506,8 +9556,18 @@ function diceOverlayHTML(){
 DT.dismissRoll = function(){
   SESSION.showRollOverlay = false;
   if(rollHideTimer){ clearTimeout(rollHideTimer); rollHideTimer = null; }
-  if(diceAnimTimer){ clearInterval(diceAnimTimer); diceAnimTimer = null; }
-  DICE_ROLL_ANIM = null;
+  var wasResolving = SESSION.arenaResolving;
+  arenaFinishRoll();
+  if(wasResolving){
+    /* Fechou o quadro de dado na unha (clique no fundo) antes da animação
+       assentar sozinha -- sem isso o popup de Ação congelado (arenaResolving)
+       ficaria aberto pra sempre, porque só startDiceRollAnimation chama
+       arenaFinishRoll() no fim normal. Precisa de render() completo aqui
+       (não só o overlay), senão o popup congelado não se atualiza pra
+       fechado na tela. */
+    render();
+    return;
+  }
   renderDiceOverlay();
 };
 function legalFooter(){
@@ -9844,6 +9904,24 @@ function arenaActionPanelHTML(){
   var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
   if(!attPoke) return '';
   var name = attPoke.apelido || attPoke.especie || 'Pokémon';
+
+  /* Rolagem de verdade já saiu (SESSION.arenaResolving, setado no fim de
+     DT.resolveArenaMove) e o #diceOverlay está subindo por cima AGORA,
+     nesse mesmo render() -- mantém o MESMO popup na tela (fundo, card,
+     título), só que congelado: sem menu, sem Cancelar/✕, sem alvo
+     clicável (arenaEntryHTML já reforça isso sozinha). Fecha de verdade
+     quando a animação assentar (startDiceRollAnimation chama
+     arenaResetActionState() nesse instante). */
+  if(SESSION.arenaResolving){
+    return '<div class="arena-action-overlay arena-action-overlay-resolving"><div class="arena-action-overlay-card">'+
+      '<div class="arena-action-overlay-head"><h2>⚔️ Ação</h2></div>'+
+      '<div class="arena-action-overlay-body">'+
+        arenaActionBattlefieldHTML()+
+        '<div class="arena-action-overlay-section"><p class="muted">🎲 Resolvendo…</p></div>'+
+      '</div>'+
+    '</div></div>';
+  }
+
   var forced = SESSION.arenaAction==='trocar' && !!SESSION.arenaForcedSwitch;
   var canCancel = !forced; /* troca forçada (desmaiou, ainda sobra alguém) não tem como cancelar -- precisa escolher */
   var cancelBtn = canCancel ? '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelAction()">Cancelar</button>' : '';
@@ -10095,10 +10173,18 @@ function arenaEntryHTML(e){
   }
   if(isTurnNow) slotClass += ' arena-slot-turn';
 
+  /* Rolagem de verdade ainda resolvendo (SESSION.arenaResolving, ver
+     DT.resolveArenaMove): o popup de Ação continua na tela mas congelado,
+     então nenhum card pode parecer clicável -- reforça por cima de
+     qualquer classe/onclick que a lógica acima já tenha calculado (defesa
+     em profundidade além dos "if(SESSION.arenaResolving) return;" nas
+     DT.arena*). */
+  if(SESSION.arenaResolving) slotClick = '';
+
   /* Enquanto o card inteiro é o alvo do clique (agir ou escolher alvo),
      some com o ✕ — senão o clique podia acabar caindo nele (que bloqueia a
      propagação) em vez de disparar a ação do card. */
-  var controls = (canControl && !targetable && actingNow!==e.id)
+  var controls = (canControl && !targetable && actingNow!==e.id && !SESSION.arenaResolving)
     ? '<div class="btn-row" style="gap:4px; margin-top:4px; justify-content:center; flex-wrap:wrap;">'+
         '<button class="btn-ghost btn-sm" onclick="event.stopPropagation();DT.arenaRemoveEntry(\''+e.id+'\')">✕</button>'+
       '</div>'
