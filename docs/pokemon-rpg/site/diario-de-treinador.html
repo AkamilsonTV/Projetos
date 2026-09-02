@@ -6704,6 +6704,59 @@ function advanceRoundPastFainted(r){
     if(cur<=0){ r.currentIdx++; continue; }
     break;
   }
+  /* Cap. 16 (revisado): antes disso, quando TODO MUNDO já tinha agido
+     numa Rodada, a fila ficava parada até o Mestre clicar "🔁
+     Recalcular" de novo pra abrir a próxima -- "recalcular o turno toda
+     hora". Agora, assim que a Rodada corrente esgota (currentIdx chegou
+     no fim), o site já calcula a PRÓXIMA sozinho, no mesmo critério de
+     sempre (Velocidade Efetiva -> Natural -> 1d6 em empate, só entre
+     quem ainda está em campo e vivo) -- só precisa "▶️ Iniciar Rodada"
+     uma vez, no começo da batalha; daí em diante a fila se resolve
+     sozinha, rodada após rodada. Só dispara pra Rodada que É a corrente
+     de verdade (r===STATE.arena.round) -- uma chamada com uma Rodada
+     ainda local/não publicada (ex.: dentro do próprio DT.arenaStartRound,
+     montando a 1ª Rodada antes de gravar em STATE.arena.round) não deve
+     encadear sozinha. A recursão pra dentro da Rodada nova só faz o
+     pulo-de-desmaiado normal nela (nunca encontra ninguém já marcado
+     numa Rodada que acabou de nascer, então não recua em cascata). */
+  if(r.currentIdx>=r.order.length && STATE.arena.round===r && !STATE.arena.vencedor){
+    var nextOrder = computeInitiativeOrder();
+    if(nextOrder.length){
+      var next = { number: r.number+1, order: nextOrder.map(function(x){ return x.entryId; }), meta: nextOrder, currentIdx:0 };
+      advanceRoundPastFainted(next);
+      STATE.arena.round = next;
+      arenaLog('🔁 Rodada '+next.number+' começou automaticamente — ordem de Iniciativa recalculada.');
+    }
+  }
+}
+/* Cap. 16 (revisado): quando um Pokémon NOVO entra em campo com uma
+   Rodada de Iniciativa já em andamento (substituição forçada por
+   desmaio -- Cap. 59, DT.arenaSwapIn fora da própria vez -- ou o Mestre
+   metendo alguém de surpresa na Arena, DT.arenaSetEntry), ele também
+   entra no cálculo dessa MESMA Rodada -- comparando a própria
+   Velocidade Efetiva só contra quem AINDA NÃO AGIU (a partir do índice
+   atual, currentIdx, pra frente): se for mais rápido que algum deles,
+   "pula a frente" e age antes -- inclusive antes de quem estava prestes
+   a agir agora (currentIdx), se for mais rápido; nunca pula quem já
+   agiu (índices antes de currentIdx nunca são tocados). Sem Rodada
+   ativa, não faz nada -- a próxima Rodada (manual ou automática) já vai
+   incluir ele do zero, normal. */
+function arenaInsertIntoActiveRound(entryId){
+  var r = STATE.arena.round;
+  if(!r) return;
+  var e = findArenaEntry(entryId);
+  if(!e) return;
+  var t = findTrainer(e.trainerId), p = t && getPoke(e.trainerId, e.pokemonId);
+  if(!t || !p) return;
+  var velEfetiva = velocidadeEfetivaParaIniciativa(t,p);
+  var meta = { entryId:e.id, velEfetiva:velEfetiva, velNatural:(p.natural.spe||0), tiebreak:0 };
+  var insertAt = r.order.length;
+  for(var i=Math.max(r.currentIdx,0); i<r.order.length; i++){
+    var mi = r.meta[i];
+    if(!mi || velEfetiva>mi.velEfetiva){ insertAt = i; break; }
+  }
+  r.order.splice(insertAt, 0, entryId);
+  r.meta.splice(insertAt, 0, meta);
 }
 function currentRoundEntryId(){
   var r = STATE.arena.round;
@@ -7810,8 +7863,12 @@ DT.arenaSetEntry = function(trainerId, pokemonId, teamId){
        mesmo, arenaRevelado, pra também abrir a sprite dele na Equipe ativa
        daqui em diante, mesmo se ele sair do Time depois). */
     if(p) p.arenaRevelado = true;
-    STATE.arena.entries.push({id:uid(), teamId:teamId, trainerId:trainerId, pokemonId:pokemonId, revelado:true});
+    var newEntry = {id:uid(), teamId:teamId, trainerId:trainerId, pokemonId:pokemonId, revelado:true};
+    STATE.arena.entries.push(newEntry);
     if(p) applyOnSwitchInAbility(findTrainer(trainerId), p, teamId);
+    /* Cap. 16 (revisado): entrar de surpresa com uma Rodada já em
+       andamento também entra no cálculo dela -- não só na próxima. */
+    arenaInsertIntoActiveRound(newEntry.id);
   }
   mutate();
 };
@@ -8549,8 +8606,14 @@ DT.resolveItemUse = function(atkEntry, itemIdx, targetEntryId, moveIdx){
 /* Troca (Cap. 18): clique direto num Pokémon da Equipe ativa do mesmo
    Treinador (nada de arrastar) -- o que estava em campo sai da Arena e
    volta a aparecer só na Equipe ativa dele; o escolhido entra revelado
-   no lugar, no mesmo Time. Consome a ação inteira -- o que entrou só
-   age a partir do turno seguinte. */
+   no lugar, no mesmo Time. Se essa troca É a própria vez de quem estava
+   em campo (wasCurrent, Cap. 18 normal -- escolheu Trocar como ação),
+   consome a ação inteira: o que entrou só age a partir da próxima
+   Rodada, igual sempre foi. Mas se NÃO é a vez de ninguém (reposição
+   forçada por desmaio no meio da Rodada, fora de ordem, Cap. 59), o
+   recém-chegado entra "de surpresa" -- some no cálculo dessa MESMA
+   Rodada, por Velocidade Efetiva, contra quem ainda não agiu (Cap. 16
+   revisado, arenaInsertIntoActiveRound). */
 DT.arenaSwapIn = function(newPokemonId){
   var oldEntry = findArenaEntry(SESSION.arenaAttacker);
   if(!oldEntry) return;
@@ -8594,6 +8657,11 @@ DT.arenaSwapIn = function(newPokemonId){
   if(wasCurrent && round){
     round.currentIdx++;
     advanceRoundPastFainted(round);
+  } else if(!wasCurrent && round){
+    /* reposição fora da própria vez (desmaiou no meio da Rodada) -- o
+       recém-chegado ainda pode agir NESSA Rodada, por Velocidade
+       Efetiva, contra quem ainda não jogou. */
+    arenaInsertIntoActiveRound(newEntry.id);
   }
   arenaCheckVictory(); /* o dano de status ao sair (Queimadura/Veneno) pode ter sido o golpe final nele -- Cap. 25/59 */
   arenaResetActionState();
@@ -9599,21 +9667,26 @@ function arenaSpectatorHTML(){
   if(!toggle && !list) return '';
   return '<div class="btn-row" style="margin-bottom:14px; align-items:center; flex-wrap:wrap; gap:10px;">'+toggle+list+'</div>';
 }
-/* Fila de iniciativa (Cap. 16): quem age primeiro numa rodada, por
+/* Fila de iniciativa (Cap. 16, revisado): quem age primeiro, por
    Velocidade Efetiva -> Natural -> 1d6 em caso de empate. Só o Mestre
-   inicia/recalcula; "Próximo" já pode ser clicado por quem estiver com a
-   vez (Mestre ou o dono do Pokémon atual), sem depender do Mestre a cada
-   turno. */
+   clica "▶️ Iniciar Batalha" -- UMA vez, no começo -- e a partir daí a
+   fila se resolve sozinha, Rodada após Rodada, sem precisar recalcular
+   na mão toda hora (advanceRoundPastFainted já abre a próxima assim que
+   a corrente esgota). "🔁 Recalcular" continua disponível pro Mestre
+   forçar um recálculo manual da Rodada corrente do zero (ex.: depois de
+   editar Atributos/Velocidade na mão) -- opcional, não obrigatório mais.
+   "Próximo" já pode ser clicado por quem estiver com a vez (Mestre ou o
+   dono do Pokémon atual), sem depender do Mestre a cada turno. */
 function arenaInitiativeHTML(){
   var isGM = SESSION.role==='gm';
   var r = STATE.arena.round;
   var out = '<div class="card"><div class="card-head"><span class="index">Cap. 16</span><h2>🎯 Iniciativa</h2>'+
-    (isGM ? '<button class="btn-sm" onclick="DT.arenaStartRound()">'+(r?'🔁 Recalcular':'▶️ Iniciar Rodada')+'</button>' : '')+
+    (isGM ? '<button class="btn-sm" onclick="DT.arenaStartRound()">'+(r?'🔁 Recalcular':'▶️ Iniciar Batalha')+'</button>' : '')+
   '</div><div class="card-body">';
   if(!r){
     out += '<p class="muted">Nenhuma rodada em andamento. '+(isGM
-      ? 'Clique em "Iniciar Rodada" pra calcular quem age primeiro (Velocidade Efetiva, depois Natural, depois 1d6 em caso de empate) entre quem já está em campo.'
-      : 'Aguarde o Mestre iniciar a rodada.')+'</p>';
+      ? 'Clique em "Iniciar Batalha" pra calcular quem age primeiro (Velocidade Efetiva, depois Natural, depois 1d6 em caso de empate) entre quem já está em campo -- só precisa clicar essa vez: a partir daí, cada Rodada nova é calculada sozinha assim que a anterior termina.'
+      : 'Aguarde o Mestre iniciar a batalha.')+'</p>';
   } else if(r.order.length===0){
     out += '<p class="muted">Ninguém em campo pra calcular iniciativa ainda — use "Usar" nos Pokémon primeiro.</p>';
   } else {
@@ -9637,7 +9710,14 @@ function arenaInitiativeHTML(){
     }).join('')+'</ol>';
     var curId = currentRoundEntryId();
     if(!curId){
-      out += '<p class="muted" style="margin-top:8px;">Todo mundo já agiu nessa rodada. '+(isGM?'Clique em "Recalcular" pra abrir a próxima.':'Aguarde o Mestre abrir a próxima rodada.')+'</p>';
+      /* Isso só aparece quando não sobrou ninguém elegível pra calcular
+         uma próxima Rodada sozinha (a batalha já foi vencida, ou ninguém
+         mais está em campo) -- em qualquer outro caso, a próxima Rodada
+         já foi aberta automaticamente (advanceRoundPastFainted), nunca
+         fica parado esperando alguém clicar em nada. */
+      out += '<p class="muted" style="margin-top:8px;">'+(STATE.arena.vencedor
+        ? 'A batalha já terminou.'
+        : 'Ninguém elegível em campo pra calcular a próxima Rodada.'+(isGM?' Clique em "Recalcular" quando tiver alguém de novo.':''))+'</p>';
     } else if(isGM || isOwnArenaEntry(curId)){
       out += '<div class="btn-row" style="margin-top:8px;"><button class="btn-sm" onclick="DT.arenaNextTurn()">⏭️ Próximo</button>'+
         (isGM ? ' <button class="btn-ghost btn-sm" onclick="DT.arenaEndRound()">Encerrar</button>' : '')+'</div>';
@@ -9668,7 +9748,12 @@ function arenaLogHTML(){
   return '<div class="arena-log-panel"'+styleAttr+'>'+
     '<div class="arena-log-head" onpointerdown="DT.arenaLogDragStart(event)">'+
       '<h2>📜 Rolagens da Arena</h2>'+
-      (isGM ? '<button class="btn-ghost btn-sm" onclick="event.stopPropagation();DT.arenaClearLog()">Limpar</button>' : '')+
+      /* onpointerdown="event.stopPropagation()" além do onclick -- senão
+         DT.arenaLogDragStart roda primeiro no pointerdown (captura o
+         ponteiro na barra), e o "click" sintetizado pelo navegador acaba
+         disparando na barra em vez de no botão (mesmo bug do ✕ do painel
+         de atributos: o onclick nunca chega a rodar). */
+      (isGM ? '<button class="btn-ghost btn-sm" onpointerdown="event.stopPropagation()" onclick="DT.arenaClearLog()">Limpar</button>' : '')+
     '</div>'+
     '<div class="arena-log-body"><div class="arena-log">'+log.slice().reverse().map(function(entry){
       return '<div class="arena-log-line">'+entry.text+'</div>';
@@ -10016,12 +10101,19 @@ function arenaStatsOnePanelHTML(entryId, idx){
        exatamente empilhados um em cima do outro. */
     : ' style="top:'+(70+idx*36)+'px; right:'+(16+idx*20)+'px;"';
 
+  /* O botão ✕ precisa parar o pointerdown ANTES dele borbulhar pra barra
+     do topo (onpointerdown="event.stopPropagation()", não só no onclick):
+     senão DT.arenaStatsDragStart roda primeiro (chama preventDefault +
+     setPointerCapture na barra), e isso desvia o mousedown/mouseup pra
+     barra também -- o "click" sintetizado pelo navegador acaba disparando
+     na barra, não no botão, e o onclick do ✕ nunca chega a rodar (era
+     exatamente o bug relatado: "clico e ela não fecha"). */
   return '<div class="arena-stats-panel" data-entry-id="'+esc(entryId)+'"'+posStyle+'>'+
     '<div class="arena-stats-head" onpointerdown="DT.arenaStatsDragStart(event)">'+
       sprite+
       '<div class="arena-stats-head-name"><strong>'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</strong>'+
         '<span class="muted" style="font-size:.66rem;">'+esc(t.name)+'</span></div>'+
-      '<button type="button" class="arena-stats-close" title="Fechar" onclick="DT.arenaStatsClose(\''+entryId+'\')">✕</button>'+
+      '<button type="button" class="arena-stats-close" title="Fechar" onpointerdown="event.stopPropagation()" onclick="DT.arenaStatsClose(\''+entryId+'\')">✕</button>'+
     '</div>'+
     '<div class="arena-stats-body">'+
       typeTags(p)+
