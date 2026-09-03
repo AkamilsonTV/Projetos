@@ -409,6 +409,46 @@
   .hp-bar.low > i{ background:var(--danger); }
   .arena-hp-label{ font-size:.62rem; font-variant-numeric:tabular-nums; color:var(--muted); text-align:center; margin-bottom:2px; }
 
+  /* Palco de batalha (cena visual, pedido do usuário a partir de uma imagem
+     de referência estilo Pokémon Sword/Shield): um "estádio" simples
+     desenhado só em CSS (sem imagem nenhuma) -- céu em degradê no topo,
+     campo escuro embaixo com dois "holofotes" circulares (um por Time),
+     as sprites oficiais já usadas no resto do site em pé sobre uma
+     plataforma elíptica. Cores fixas (não seguem --surface/--ink do tema
+     claro/escuro do site) de propósito -- uma arena de batalha "parece"
+     arena em qualquer tema, igual no jogo oficial. Time mais perto de
+     quem está vendo (o próprio, se for jogador) fica embaixo/maior; o
+     resto fica em cima/menor, sugerindo profundidade. */
+  .battle-stage{
+    position:relative; border-radius:var(--radius-lg); overflow:hidden; margin-bottom:16px;
+    background:linear-gradient(180deg, #9fd8f0 0%, #6fb8dd 38%, #1c3a5e 40%, #142c48 100%);
+    padding:14px 10px 18px; border:2px solid var(--line); box-shadow:var(--shadow);
+  }
+  .battle-stage::before, .battle-stage::after{
+    content:''; position:absolute; left:50%; width:280px; height:120px; border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(120,220,255,.35) 0%, rgba(120,220,255,0) 70%);
+    transform:translateX(-50%); pointer-events:none;
+  }
+  .battle-stage::before{ top:6px; }
+  .battle-stage::after{ bottom:-10px; }
+  .battle-stage-row{ position:relative; display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 0; }
+  .battle-stage-team-label{ font-size:.66rem; font-weight:700; letter-spacing:.04em; color:#eaf6ff; text-shadow:0 1px 3px rgba(0,0,0,.5); text-transform:uppercase; }
+  .battle-stage-mons{ display:flex; flex-wrap:wrap; justify-content:center; gap:18px; }
+  .battle-stage-row-far .battle-stage-mons{ opacity:.88; }
+  .battle-stage-row-far .battle-stage-sprite{ width:52px; height:52px; }
+  .battle-stage-row-near .battle-stage-sprite{ width:78px; height:78px; }
+  .battle-stage-mon{ position:relative; display:flex; flex-direction:column; align-items:center; width:92px; }
+  .battle-stage-platform{
+    position:absolute; bottom:20px; left:50%; width:64px; height:18px; transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(150,235,255,.65) 0%, rgba(150,235,255,0) 72%);
+    border-radius:50%;
+  }
+  .battle-stage-sprite{ position:relative; z-index:1; image-rendering:pixelated; filter:drop-shadow(0 6px 4px rgba(0,0,0,.35)); }
+  .battle-stage-sprite.battle-stage-fainted{ filter:grayscale(1) opacity(.55) drop-shadow(0 6px 4px rgba(0,0,0,.35)); transform:rotate(90deg); }
+  .battle-stage-tag{ margin-top:4px; width:88px; text-align:center; }
+  .battle-stage-name{ font-size:.66rem; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .battle-stage-tag .hp-bar{ height:6px; border-color:rgba(255,255,255,.5); }
+
   .moves-list{ display:flex; flex-direction:column; gap:6px; }
   .move-row{ display:grid; grid-template-columns: 1.3fr .8fr .8fr .5fr .6fr .5fr; gap:6px; align-items:center; font-size:.76rem; margin-bottom:4px; }
   .move-row.move-row2{ grid-template-columns: 1fr 1.6fr; margin-bottom:10px; }
@@ -9654,6 +9694,8 @@ function arenaScreen(){
   out += arenaErrorPopupHTML();
   out += arenaSolturaHTML(isGM);
   out += arenaInitiativeHTML();
+  var meuEntryArena = SESSION.role==='player' ? (STATE.arena.entries||[]).find(function(e){ return e.trainerId===SESSION.trainerId; }) : null;
+  out += battleStageHTML(meuEntryArena ? meuEntryArena.teamId : null);
   out += arenaTeamsHTML(isGM);
   out += arenaActionPanelHTML();
   out += arenaSourceHTML();
@@ -10006,6 +10048,61 @@ function arenaActionPanelHTML(){
     '<div class="arena-action-overlay-head"><h2>⚔️ Ação</h2>'+closeBtn+'</div>'+
     '<div class="arena-action-overlay-body">'+body+'</div>'+
   '</div></div>';
+}
+/* =================== PALCO DE BATALHA (cena visual, estilo estádio) ===================
+   Pedido do usuário: uma referência visual de "arena de verdade" (imagem
+   mandada, estilo Pokémon Sword/Shield -- estádio com Times enfileirados)
+   pra acompanhar a batalha em vez de só ler cards. Fica só como um resumo
+   visual no TOPO, acima dos cards de sempre (Times/mini-cards) -- nenhum
+   controle/botão existente sai do lugar, essa cena não reage a clique
+   nenhum, só mostra. Uma função só, reaproveitada tanto na Arena do RPG
+   (arenaScreen, acima de arenaTeamsHTML) quanto na Área PVP
+   (pvpBattleHTML, acima dos mini-cards atuais) -- lê STATE.arena.teams/
+   entries direto, então funciona idêntica nos dois lugares (a Área PVP já
+   aponta STATE.arena pra dentro da sala via withArenaContext). Sem
+   estádio de verdade nem imagem nenhuma -- é tudo desenhado em CSS
+   (gradientes + as sprites oficiais que o site já usa em todo canto),
+   "mesmo que seja simples" como o usuário pediu. */
+function battleStageMonHTML(t, p){
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null||p.currentHP===undefined) ? max : Math.max(0,p.currentHP);
+  var pct = max>0 ? Math.round(cur/max*100) : 0;
+  var fainted = cur<=0;
+  var spNum = pokeSpeciesNum(p);
+  var spriteHTML = spNum
+    ? '<img class="battle-stage-sprite'+(fainted?' battle-stage-fainted':'')+'" src="'+spriteUrl(spNum)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">'
+    : '<div class="poke-sprite-placeholder">❔</div>';
+  return '<div class="battle-stage-mon">'+
+    spriteHTML+
+    '<div class="battle-stage-platform"></div>'+
+    '<div class="battle-stage-tag">'+
+      '<div class="battle-stage-name">'+esc(p.apelido||p.especie||'?')+(fainted?' 😵':'')+'</div>'+
+      '<div class="hp-bar'+hpBarTier(pct)+'"><i style="width:'+pct+'%"></i></div>'+
+    '</div>'+
+  '</div>';
+}
+function battleStageHTML(meuTeamId){
+  var teams = (STATE.arena && STATE.arena.teams) || [];
+  if(teams.length<1) return '';
+  var entries = (STATE.arena.entries||[]).filter(function(e){ return e.revelado; });
+  if(!entries.length) return '';
+  var rows = teams.map(function(team){
+    var teamEntries = entries.filter(function(e){ return e.teamId===team.id; });
+    if(!teamEntries.length) return '';
+    var mons = teamEntries.map(function(e){
+      var t = findTrainer(e.trainerId);
+      var p = t && getPoke(e.trainerId, e.pokemonId);
+      return (t && p) ? battleStageMonHTML(t, p) : '';
+    }).join('');
+    if(!mons) return '';
+    var perto = meuTeamId ? team.id===meuTeamId : false;
+    return '<div class="battle-stage-row'+(perto?' battle-stage-row-near':' battle-stage-row-far')+'">'+
+      '<span class="battle-stage-team-label">'+esc(team.nome)+'</span>'+
+      '<div class="battle-stage-mons">'+mons+'</div>'+
+    '</div>';
+  }).join('');
+  if(!rows) return '';
+  return '<div class="battle-stage">'+rows+'</div>';
 }
 function arenaTeamsHTML(isGM){
   var teams = (STATE.arena && STATE.arena.teams) || [];
@@ -11741,7 +11838,7 @@ function pvpTeamPickHTML(sala, t){
 }
 function pvpBattleHTML(sala, t){
   var myVid = pvpVirtualId(sala, t.id);
-  var meEntry, oppEntry, meT, meP, oppT, oppP;
+  var meEntry, oppEntry, meT, meP, oppT, oppP, stageHTML;
   withArenaContext(sala, function(){
     meEntry = (sala.entries||[]).find(function(e){ return e.trainerId===myVid; });
     oppEntry = (sala.entries||[]).find(function(e){ return e.trainerId!==myVid; });
@@ -11749,6 +11846,7 @@ function pvpBattleHTML(sala, t){
     meP = (meT && meEntry) ? getPoke(meEntry.trainerId, meEntry.pokemonId) : null;
     oppT = oppEntry && findTrainer(oppEntry.trainerId);
     oppP = (oppT && oppEntry) ? getPoke(oppEntry.trainerId, oppEntry.pokemonId) : null;
+    stageHTML = battleStageHTML(meEntry ? meEntry.teamId : null);
   });
   if(!meEntry || !meT || !meP) return '<div class="card"><div class="card-body"><p class="muted">Você não está em campo nessa batalha.</p></div></div>';
 
@@ -11808,6 +11906,7 @@ function pvpBattleHTML(sala, t){
   }
 
   return '<div class="card"><div class="card-head"><span class="index">'+esc(sala.nome)+'</span><h2>⚔️ Batalha em andamento</h2></div><div class="card-body">'+
+      (stageHTML||'')+
       '<div class="grid-2">'+meCard+oppCard+'</div>'+
     '</div></div>'+
     vencedorHTML+
