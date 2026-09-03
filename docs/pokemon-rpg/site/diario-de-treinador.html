@@ -11195,6 +11195,13 @@ function withArenaContext(arenaObj, fn){
   STATE.arena = arenaObj;
   try { return fn(); } finally { STATE.arena = backup; }
 }
+/* Nível fixo da Área PVP = o teto de Nível de Treinador do próprio RPG
+   (attrBudget/officialLevelCeiling já travam em 16, Cap. 2.2/8.2) --
+   pedido do usuário ("os pokémon do PVP tem que estar todos no nível
+   máximo do RPG, ou seja 16"). Usado só pra achar o teto de Nível
+   oficial dos Movimentos aprendidos por Nível (movePickOptions) -- o
+   Movimento por TM/Evolução/Egg nunca teve teto de Nível nenhum. */
+var PVP_LEVEL = 16;
 /* "Treinador" fictício com os 6 Atributos sempre no máximo (5/5), usado só
    pra PRÉ-VISUALIZAR PV/Atributo Efetivo de uma ficha de PVP fora de
    qualquer sala (a ficha em si não pertence a Treinador nenhum -- vira
@@ -11357,15 +11364,42 @@ DT.pvpSetHabilidade = function(pid, el){
   p.habilidade = (el.value==='' || validas.indexOf(el.value)!==-1) ? el.value : '';
   mutate();
 };
-DT.pvpSetMoveField = function(pid, idx, field, el){
+/* Movimento restrito ao que a espécie realmente pode aprender (Cap. 8.5),
+   igual o seletor "Learnset" do próprio Treinador no RPG (movePickOptions/
+   officialLevelCeiling) -- nunca um nome digitado à mão, então nunca dá
+   pra um Charizard aparecer com Hydro Pump. DT.pvpSetMoveMethod troca só
+   o MÉTODO (Nível/Evo/TM/Egg) do slot, limpando a escolha (mesmo Movimento
+   pode não existir no método novo); DT.pvpSetMoveSelect escolhe de fato um
+   Movimento dentro das opções que movePickOptions já filtrou pro método +
+   teto de Nível (PVP_LEVEL) daquele slot -- nunca aceita nada fora dessa
+   lista, porque a opção nem existe no <select> renderizado. */
+DT.pvpSetMoveMethod = function(pid, idx, metodo){
+  if(SESSION.role!=='player') return;
+  var p = pvpGetFicha(SESSION.trainerId, pid); if(!p || p.emBatalha) return;
+  if(!(p.moves||[])[idx]) return;
+  p.moves[idx] = {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:metodo};
+  mutate();
+};
+DT.pvpSetMoveSelect = function(pid, idx, el){
   if(SESSION.role!=='player') return;
   var p = pvpGetFicha(SESSION.trainerId, pid); if(!p || p.emBatalha) return;
   var mv = (p.moves||[])[idx]; if(!mv) return;
-  mv[field] = el.value;
-  if(field==='nome'){
-    var found = findMoveByName(el.value);
-    if(found) applyMoveData(mv, found);
+  var metodo = mv.metodo || 'normal';
+  var name = el.value;
+  if(!name){
+    p.moves[idx] = {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:metodo};
+    mutate();
+    return;
   }
+  var lsp = LEARNSETS[pokeSpeciesNum(p)];
+  var ceiling = officialLevelCeiling(PVP_LEVEL);
+  var permitido = movePickOptions(lsp, metodo, ceiling).some(function(o){ return o.name===name; });
+  if(!permitido) return; /* nunca deveria acontecer (a opção nem existe no <select>) -- defesa em profundidade */
+  var found = findMoveByName(name);
+  if(!found) return;
+  var novo = {metodo:metodo};
+  applyMoveData(novo, found);
+  p.moves[idx] = novo;
   mutate();
 };
 
@@ -11554,19 +11588,56 @@ function pvpFichaCardHTML(p){
           '</select>'
         : '<span class="muted">Defina a Espécie primeiro.</span>'))+
   '</div>';
-  var movesHeader = '<div class="move-labels"><span>Nome</span><span>Tipo</span><span>Categoria</span><span>Poder</span><span>PP</span><span>Prior.</span></div>';
-  var moveRows = (p.moves||[]).map(function(m, idx){
-    return '<div class="move-row">'+
-      '<input type="text" placeholder="nome (ex: Flamethrower)" list="movesDexList" '+(locked?'disabled':'')+' value="'+esc(m.nome)+'" onchange="DT.pvpSetMoveField(\''+did+'\','+idx+',\'nome\', this)">'+
-      '<span class="num">'+esc(m.tipo)+'</span>'+
-      '<span class="num">'+esc(m.categoria)+'</span>'+
-      '<span class="num">'+(m.poder||0)+'</span>'+
-      '<span class="num">'+(m.ppAtual||0)+' / '+(m.pp||0)+'</span>'+
-      '<span class="num">'+(m.prioridade||0)+'</span>'+
-    '</div>'+
-    (m.efeito ? '<div class="muted" style="font-size:.72rem; margin:2px 0 6px;">'+esc(m.efeito)+'</div>' : '');
-  }).join('');
-  var movesBlock = '<div><label style="font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); display:block; margin-bottom:4px;">Movimentos</label>'+movesHeader+'<div class="moves-list">'+moveRows+'</div></div>';
+  var movesLabel = '<label style="font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); display:block; margin-bottom:4px;">Movimentos — restritos ao que essa Espécie realmente aprende (Nível '+PVP_LEVEL+', o teto do RPG)</label>';
+  var speciesNumForMoves = pokeSpeciesNum(p);
+  var lsForMoves = speciesNumForMoves ? LEARNSETS[speciesNumForMoves] : null;
+  var ceilingForMoves = officialLevelCeiling(PVP_LEVEL);
+  var moveBlocks = (p.moves||[]).map(function(m, idx){
+    var metodo = m.metodo || 'normal';
+    if(locked){
+      var lockedRow = '<tr>'+
+        '<td>'+(m.nome?esc(m.nome):'<span class="muted">(vazio)</span>')+'</td>'+
+        '<td>'+(m.tipo?typeBadge(m.tipo):'')+'</td>'+
+        '<td>'+esc(m.categoria||'')+'</td>'+
+        '<td class="num">'+(m.nome?(m.poder||0):'')+'</td>'+
+        '<td class="num">'+(m.nome ? ((m.ppAtual||0)+' / '+(m.pp||0)) : '')+'</td>'+
+        '<td class="num">'+(m.nome?(m.prioridade||0):'')+'</td>'+
+      '</tr>';
+      return '<div class="table-scroll"><table class="stat-table moves-table"><thead><tr><th>Movimento</th><th>Tipo</th><th>Categoria</th><th>Poder</th><th>PP</th><th>Prioridade</th></tr></thead><tbody>'+lockedRow+'</tbody></table></div>';
+    }
+    var opts = movePickOptions(lsForMoves, metodo, ceilingForMoves);
+    var methodBtns = [['normal','Nível'],['evo','Evo'],['tm','TM'],['egg','Egg']].map(function(pair){
+      return '<button type="button" class="btn-sm'+(metodo===pair[0]?' btn-primary':'')+'" onclick="DT.pvpSetMoveMethod(\''+did+'\','+idx+',\''+pair[0]+'\')">'+pair[1]+'</button>';
+    }).join('');
+    var pickerHTML;
+    if(!lsForMoves){
+      pickerHTML = '<span class="muted" style="font-size:.72rem;">defina a Espécie primeiro</span>';
+    } else if(opts.length===0){
+      pickerHTML = '<span class="muted" style="font-size:.72rem;">nada disponível'+(metodo==='normal'?' até o Nível '+PVP_LEVEL:'')+'</span>';
+    } else {
+      pickerHTML = '<select onchange="DT.pvpSetMoveSelect(\''+did+'\','+idx+', this)">'+
+        '<option value="">— escolher —</option>'+
+        opts.map(function(o){ return '<option value="'+esc(o.name)+'"'+(o.name===m.nome?' selected':'')+'>'+esc(o.label)+'</option>'; }).join('')+
+      '</select>';
+    }
+    var learnsetBar = '<div class="learnset-bar">'+
+      '<span class="learnset-label">Learnset</span>'+
+      '<div class="btn-row" style="gap:4px;">'+methodBtns+'</div>'+
+      pickerHTML+
+    '</div>';
+    var row = '<tr>'+
+      '<td>'+(m.nome?esc(m.nome):'<span class="muted">(vazio)</span>')+'</td>'+
+      '<td>'+(m.tipo?typeBadge(m.tipo):'')+'</td>'+
+      '<td>'+esc(m.categoria||'')+'</td>'+
+      '<td class="num">'+(m.nome?(m.poder||0):'')+'</td>'+
+      '<td class="num">'+(m.nome ? ((m.ppAtual||0)+' / '+(m.pp||0)) : '')+'</td>'+
+      '<td class="num">'+(m.nome?(m.prioridade||0):'')+'</td>'+
+    '</tr>'+
+    (m.efeito ? '<tr class="move-desc-row"><td colspan="6">'+esc(m.efeito)+'</td></tr>' : '');
+    var table = '<div class="table-scroll"><table class="stat-table moves-table"><thead><tr><th>Movimento</th><th>Tipo</th><th>Categoria</th><th>Poder</th><th>PP</th><th>Prioridade</th></tr></thead><tbody>'+row+'</tbody></table></div>';
+    return learnsetBar+table;
+  }).join('<hr class="rule" style="margin:10px 0;">');
+  var movesBlock = '<div>'+movesLabel+moveBlocks+'</div>';
   return '<div class="poke-card">'+head+'<div class="poke-body">'+apelidoField+speciesField+statTable+naturezaRow+habilidadeRow+movesBlock+'</div></div>';
 }
 function pvpFichasHTML(t){
