@@ -10085,6 +10085,40 @@ function startDiceRollAnimation(lr){
     renderDiceOverlay();
   }, 90);
 }
+/* Pedido do usuário: "O dado tá rolando no site todo. Tem que rolar só
+   na tela da arena quando a luta for lá... para não atrapalhar a
+   navegação dos demais jogadores no restante do site. E o ideal é rodar
+   só pra quem tá participando do combate e do mestre." -- bug real: o
+   quadro de dado (#diceOverlay) é um <div> IRMÃO de #app (fora do HTML
+   trocado por screenHTML()), sempre presente na página não importa a
+   tela -- e SESSION.showRollOverlay nunca checava SESSION.showArena nem
+   quem está vendo, só se existia uma rolagem nova em STATE.arena.lastRoll
+   (que é global, a MESMA pra todo mundo conectado -- Firestore sincroniza
+   um STATE só). Resultado: qualquer rolagem de qualquer batalha da Arena
+   aparecia por cima de QUALQUER tela (Ficha, Regras, Início...) de
+   QUALQUER pessoa conectada, participando ou não. Essa função decide se
+   ESSA sessão (nesse instante) tem o direito de ver o quadro: só na tela
+   da Arena (SESSION.showArena), e só o Mestre ou quem tem pelo menos um
+   Pokémon de verdade em campo (STATE.arena.entries) -- nunca um jogador
+   só de passagem/espectador. De propósito só usada na hora de DESENHAR
+   (diceOverlayHTML), NUNCA em checkArenaRoll/startDiceRollAnimation: o
+   temporizador que faz o dado "assentar" também é o que libera de novo o
+   popup de Ação (SESSION.arenaResolving, via arenaFinishRoll/
+   arenaResetActionState) de quem ACABOU de agir -- gatear a entrada
+   travaria essa liberação pra sempre pra quem resolveu a própria ação
+   sem SESSION.showArena/participação setados exatamente como essa função
+   exige (achado testando: quebrava o fluxo de Ação inteiro). Só o
+   DESENHO final (diceOverlayHTML) precisa checar quem está olhando --
+   deixar o cronômetro interno rodando à toa numa aba que nunca vai
+   mostrar nada é inofensivo, é só o de sempre continuando igual. */
+function arenaDiceViewerAllowed(){
+  if(!SESSION.showArena) return false;
+  if(SESSION.role==='gm') return true;
+  if(SESSION.role==='player' && SESSION.trainerId){
+    return (STATE.arena && STATE.arena.entries || []).some(function(e){ return e.trainerId===SESSION.trainerId; });
+  }
+  return false;
+}
 function checkArenaRoll(){
   /* Bug real achado pelo usuário ("Arena impactando o PVP"): resolver uma
      Rodada de PVP passa por withArenaContext, que aponta STATE.arena pra
@@ -10323,6 +10357,12 @@ function rollLogLine(lr){
 }
 function diceOverlayHTML(){
   if(!SESSION.showRollOverlay) return '';
+  /* Checa nascer de novo (não só na hora de INICIAR, ver checkArenaRoll):
+     cobre quem estava vendo a animação e navegou pra outra tela/deixou de
+     participar NO MEIO da rolagem -- o timer de animação (startDiceRollAnimation)
+     não sabe nada de tela, só de tempo, então sem isso o quadro continuaria
+     desenhando por cima de onde a pessoa foi parar. */
+  if(!arenaDiceViewerAllowed()) return '';
   var lr = STATE.arena && STATE.arena.lastRoll;
   if(!lr) return '';
   var anim = (DICE_ROLL_ANIM && DICE_ROLL_ANIM.ts===lr.ts) ? DICE_ROLL_ANIM : null;
@@ -12424,8 +12464,24 @@ function pvpRenderDiceOverlay(){
   var el = document.getElementById('pvpDiceOverlay');
   if(el) el.innerHTML = pvpDiceOverlayHTML();
 }
+/* Pedido do usuário: "só na tela do pvp quando a luta for lá" -- mesmo
+   bug do quadro de dado da Arena (ver arenaDiceViewerAllowed): quem
+   tinha uma batalha de PVP em andamento via o próprio quadro 3D em
+   QUALQUER tela (Ficha, Regras, até a Arena), porque nada aqui checava
+   SESSION.showPvp -- só se havia rolagem nova na fila da PRÓPRIA sala do
+   jogador (pvpSalaDoJogador já restringe por quem já era: nunca vazava
+   pra quem não estava na batalha, então esse lado -- "só quem tá
+   participando" -- já estava certo; só faltava restringir a TELA). De
+   propósito só checado aqui no DESENHO (nunca em pvpCheckRoll/
+   pvpAdvanceDiceQueue): a fila (PVP_DICE_ANIM/PENDING) é só encenação
+   cosmética client-side (a resolução de verdade já é síncrona e instantânea,
+   ver o comentário no README) -- gatear a entrada só faria a fila
+   acumular rolagens não vistas à toa (inofensivo, mas sem necessidade
+   nenhuma); o quadro em si (o que aparece na tela) é resolvido igual ao
+   da Arena, só na hora de desenhar. */
 function pvpDiceOverlayHTML(){
   if(!SESSION.showPvpRollOverlay || !PVP_DICE_ANIM) return '';
+  if(!SESSION.showPvp) return '';
   var anim = PVP_DICE_ANIM;
   var roll = anim.roll;
   var curStage = anim.stages[anim.stageIdx]; /* 'd6' | 'd10a' | 'd10b' | undefined (assentou de vez) */
