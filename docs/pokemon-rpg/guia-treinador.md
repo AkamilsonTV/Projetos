@@ -166,6 +166,18 @@ Assim que um dos seus Pokémon vai a 0 PV, o site já confere o que fazer, na ho
 
 A janela **"📜 Rolagens da Arena"** guarda uma linha por ataque já resolvido (as últimas 40), com o Movimento usado, os dados que saíram e o resultado — dá pra rolar a lista pra cima e ver o que já aconteceu na batalha. A rolagem mais nova só aparece ali depois que o dado dela termina de girar no quadro central (não estraga a surpresa). É uma janela flutuante: arraste pela barra do topo pra colocar onde quiser na tela, e puxe o cantinho ⌟ no rodapé pra deixar maior ou menor — cada um vê e ajusta a própria, sem afetar o resto da mesa (a posição/tamanho não é salvo entre sessões, só dura enquanto a página estiver aberta).
 
+## Área PVP (combates rápidos, sem Mestre)
+
+O botão **"⚔️ PVP"** no topo abre um modo à parte da Arena — combates rápidos, direto com outro Treinador cadastrado, sem precisar do Mestre pra nada. As regras de tipo/dano/status/Habilidade são exatamente as mesmas da Arena normal (qualquer correção nelas vale pros dois lugares).
+
+- **Fichas de PVP são separadas do seu Time do RPG.** Em "🎴 Fichas de PVP" você monta quantos Pokémon quiser (até 20), escolhendo só **Espécie**, **Movimentos**, **Natureza** e **Habilidade** — nível é sempre o máximo, seus Atributos já entram travados no topo, então não tem Vínculo nem ponto de Atributo pra mexer. Clique numa ficha pra expandir e editar; "+ Nova Ficha" cria outra.
+- **Lobby**: crie uma sala (nome opcional) ou entre numa que já esteja aberta. Cada sala é só você e mais um oponente.
+- **Montar o time**: dentro da sala, escolha até 6 das suas fichas de PVP (com troca durante a batalha, igual a Equipe ativa da Arena) e clique **"✓ Pronto"**. Assim que os dois jogadores estiverem prontos, a batalha começa sozinha — ninguém precisa clicar em nada pra "iniciar".
+- **Sua vez**: escolha um Movimento (ou troque de Pokémon) a cada Rodada. Assim que os dois jogadores escolherem, a Rodada inteira resolve sozinha na hora — sem esperar ninguém avançar passo a passo.
+- **Desmaiou?** Escolha o próximo da sua lista, igual na Arena normal.
+- **🏳️ Desistir**: a qualquer momento, encerra a batalha na hora e declara o outro jogador vencedor — sem precisar terminar de verdade.
+- **Fim de batalha**: o Time vencedor é anunciado e **todos os Pokémon envolvidos (dos dois lados) são curados automaticamente** — PV, Condição, Confusão e PP de volta ao máximo — prontos pra outra batalha na hora.
+
 ## Tema claro/escuro
 
 O botão **☀️/🌙** no topo troca entre os dois temas. O site sempre abre no tema **claro** por padrão — a escolha de usar o escuro é sua, fica salva só no seu aparelho, e não segue a configuração do celular/computador.

@@ -198,6 +198,10 @@ Assim que um Pokémon vai a 0 PV — por dano direto, recuo, dano de status por 
 
 A janela **"📜 Rolagens da Arena"** guarda as últimas 40 linhas de ataque (Movimento, dados, resultado) — dá pra rolar a lista e ver o que já rolou na batalha, ou clicar **"Limpar"** (só o Mestre) pra zerar entre uma batalha e outra. A rolagem mais nova só aparece ali quando o dado dela termina de girar no quadro central — não estraga o suspense pra quem está olhando o Registro em vez do quadro. É uma janela flutuante, igual ao painel de atributos: arraste pela barra do topo pra reposicionar, puxe o cantinho ⌟ no rodapé pra redimensionar — cada pessoa na mesa acomoda a própria janela onde quiser, sem mexer na dos outros.
 
+## Área PVP (você não participa disso)
+
+O botão **"⚔️ PVP"** abre um modo à parte, pensado pra combates rápidos entre dois Treinadores — funciona sozinho, sem Mestre nenhum: os próprios jogadores montam fichas de PVP (Espécie/Movimentos/Natureza/Habilidade, sempre no nível máximo), criam/entram numa sala, montam o time e batalham, com o turno passando sozinho a cada Rodada. Você não precisa (e não consegue) controlar nada por lá — é só entrar com sua conta de Mestre pra ficha do RPG e a Arena normal continuarem do jeito de sempre. As regras de combate são as mesmas dos dois lados (qualquer correção que valer pra Arena vale pro PVP também, automaticamente).
+
 ## Tema claro/escuro
 
 Botão **☀️/🌙** no topo. O site sempre abre claro por padrão; a escolha de tema é individual (fica salva só no seu aparelho) e não segue o sistema operacional.

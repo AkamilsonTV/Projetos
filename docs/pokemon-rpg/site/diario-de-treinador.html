@@ -5685,7 +5685,7 @@ var CATEGORY_OPTS = ["Físico","Especial","Status"];
 var BATTLES_PER_LEVEL = 4;
 
 /* =================== ESTADO (sincronizado via Firestore) =================== */
-var STATE = { gmPin: null, trainers: [], arena: {teams:[], entries:[]} };
+var STATE = { gmPin: null, trainers: [], arena: {teams:[], entries:[]}, pvp: {fichas:{}, salas:{}} };
 var firestoreReady = false;
 var db = null;
 var stateDocRef = null;
@@ -5727,7 +5727,7 @@ try{
 }catch(e){}
 
 function persistSession(){ try{ localStorage.setItem('dt_session', JSON.stringify({role:SESSION.role, trainerId:SESSION.trainerId})); }catch(e){} }
-function clearSession(){ SESSION.role=null; SESSION.trainerId=null; SESSION.screen='home'; SESSION.showRules=false; SESSION.showArena=false; try{ localStorage.removeItem('dt_session'); }catch(e){} }
+function clearSession(){ SESSION.role=null; SESSION.trainerId=null; SESSION.screen='home'; SESSION.showRules=false; SESSION.showArena=false; SESSION.showPvp=false; try{ localStorage.removeItem('dt_session'); }catch(e){} }
 
 /* =================== TEMA (escolha do jogador, não segue o sistema) ===================
    Aplicado logo no carregamento, antes do primeiro render, pra não "piscar"
@@ -5746,7 +5746,19 @@ applyTheme(CURRENT_THEME);
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function clampInt(n,min,max){ n=parseInt(n,10); if(isNaN(n)) n=min; return Math.max(min,Math.min(max,n)); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
-function findTrainer(id){ for(var i=0;i<STATE.trainers.length;i++){ if(STATE.trainers[i].id===id) return STATE.trainers[i]; } return null; }
+/* Cap. PVP: além dos Treinadores de verdade (STATE.trainers), reconhece
+   "treinadores virtuais" temporários -- um por Treinador de verdade
+   dentro de CADA sala de PVP (STATE.arena.virtuais, só existe enquanto
+   STATE.arena estiver apontando pra essa sala via withArenaContext). É o
+   que permite reaproveitar o motor de combate inteiro (resolveAttack,
+   arenaQueueAction, arenaResolveNextStep, etc.) sem copiar nem uma linha
+   dele: pra esse motor, um treinador virtual de PVP é só mais um
+   Treinador qualquer. */
+function findTrainer(id){
+  for(var i=0;i<STATE.trainers.length;i++){ if(STATE.trainers[i].id===id) return STATE.trainers[i]; }
+  if(STATE.arena && STATE.arena.virtuais && STATE.arena.virtuais[id]) return STATE.arena.virtuais[id];
+  return null;
+}
 function byNameCI(name){ name=(name||"").trim().toLowerCase(); for(var i=0;i<STATE.trainers.length;i++){ if(STATE.trainers[i].name.trim().toLowerCase()===name) return STATE.trainers[i]; } return null; }
 
 function newTrainer(name, pin){
@@ -5841,6 +5853,32 @@ function migrateState(){
       if(typeof p.flashFireBoost !== 'boolean') p.flashFireBoost = false; /* Flash Fire (Cap. 6.3) -- flag de batalha, nunca precisa persistir marcado entre sessões */
       if(p.carregando===undefined) p.carregando = null; /* Movimento de carga (Cap. 25) -- flag de batalha, mesmo caso do Flash Fire acima */
     });
+  });
+  /* Cap. PVP: fichas (Pokémon de PVP, um "box" por Treinador, independente
+     do Time do RPG) e salas (batalhas rápidas em paralelo, sem Mestre) --
+     vive dentro do mesmo STATE sincronizado, só numa chave separada. */
+  if(!STATE.pvp || typeof STATE.pvp!=='object') STATE.pvp = { fichas:{}, salas:{} };
+  if(!STATE.pvp.fichas || typeof STATE.pvp.fichas!=='object') STATE.pvp.fichas = {};
+  if(!STATE.pvp.salas || typeof STATE.pvp.salas!=='object') STATE.pvp.salas = {};
+  Object.keys(STATE.pvp.fichas).forEach(function(tid){
+    (STATE.pvp.fichas[tid]||[]).forEach(function(p){
+      migratePokemonMoves(p);
+      p.vinculo = 25; /* PVP: nível fixo, sempre no máximo -- nunca editável */
+      if(typeof p.natureza !== 'string') p.natureza = '';
+      if(typeof p.habilidade !== 'string') p.habilidade = '';
+      if(p.emBatalha===undefined) p.emBatalha = null;
+    });
+  });
+  Object.keys(STATE.pvp.salas).forEach(function(sid){
+    var s = STATE.pvp.salas[sid];
+    if(!Array.isArray(s.jogadores)) s.jogadores = [];
+    if(!Array.isArray(s.entries)) s.entries = [];
+    if(!Array.isArray(s.teams)) s.teams = [];
+    if(!Array.isArray(s.log)) s.log = [];
+    if(!s.virtuais || typeof s.virtuais!=='object') s.virtuais = {};
+    if(s.vencedor===undefined) s.vencedor = null;
+    if(s.fugaTravada===undefined) s.fugaTravada = true;
+    if(s.round===undefined) s.round = null;
   });
   if(!STATE.arena || typeof STATE.arena!=='object') STATE.arena = {teams:[], entries:[]};
   if(!Array.isArray(STATE.arena.teams)) STATE.arena.teams = [];
@@ -9244,6 +9282,7 @@ function topbar(rightHTML){
     '<div class="who">'+(rightHTML||'')+
       '<button class="btn-ghost btn-sm" onclick="DT.toggleTheme()" title="Trocar tema">'+(CURRENT_THEME==='dark' ? '☀️' : '🌙')+'</button>'+
       '<button class="btn-ghost btn-sm" onclick="DT.toggleArena()">🏟️ Arena</button>'+
+      '<button class="btn-ghost btn-sm" onclick="DT.togglePvp()">⚔️ PVP</button>'+
       '<button class="btn-ghost btn-sm" onclick="DT.toggleRules()">📖 Regras</button>'+
     '</div>'+
   '</div>';
@@ -9264,6 +9303,10 @@ function screenHTML(){
   if(SESSION.showArena){
     var arenaRight = SESSION.role==='gm' ? gmTopRight() : (SESSION.role==='player' ? playerTopRight() : '');
     return wrap(arenaScreen(), arenaRight);
+  }
+  if(SESSION.showPvp){
+    var pvpRight = SESSION.role==='gm' ? gmTopRight() : (SESSION.role==='player' ? playerTopRight() : '');
+    return wrap(pvpScreen(), pvpRight);
   }
   if(!FIREBASE_CONFIGURED) return wrap(setupScreen(), '');
   if(!firestoreReady) return wrap('<div class="center-stage"><p class="lede">Carregando…</p></div>', '');
@@ -11125,6 +11168,586 @@ function pokeCardHTML(t,p,editable,mode){
     stages+
     movesBlock+
   '</div></div>';
+}
+
+/* =================== ÁREA PVP ===================
+   Combates rápidos, times completos (até 6, com troca), sem Mestre --
+   qualquer Treinador cadastrado pode entrar, montar fichas de PVP
+   independentes do Time do RPG (nível fixo, Atributos sempre no máximo --
+   só escolhe Espécie/Movimentos/Natureza/Habilidade) e batalhar numa
+   sala. Várias salas rodam em paralelo, cada uma isolada.
+
+   O MOTOR de combate (dano, Tipos, status, Habilidades, Iniciativa, Cap.
+   86 inteiro) NÃO é copiado nem reescrito aqui -- é o mesmo código da
+   Arena do RPG, chamado de verdade, através de withArenaContext: como o
+   site inteiro roda em JS de thread única e cada ação é síncrona do
+   início ao fim (sem await no meio), dá pra apontar STATE.arena
+   temporariamente pra dentro da sala de PVP, chamar as MESMAS funções
+   (arenaLog, arenaQueueAction, arenaResolveNextStep, arenaCheckVictory,
+   applyEndOfTurnStatusAndLog, eligibleMoveTargets, DT.resolveArenaMove,
+   DT.arenaSwapInResolved...) sem mudar uma linha delas, e devolver o
+   ponteiro pro normal antes do próximo mutate() salvar. Assim, qualquer
+   ajuste futuro nas regras de combate do RPG vale pra Área PVP também,
+   automaticamente -- não existem duas cópias do motor pra manter em dia,
+   só uma. */
+function withArenaContext(arenaObj, fn){
+  var backup = STATE.arena;
+  STATE.arena = arenaObj;
+  try { return fn(); } finally { STATE.arena = backup; }
+}
+/* "Treinador" fictício com os 6 Atributos sempre no máximo (5/5), usado só
+   pra PRÉ-VISUALIZAR PV/Atributo Efetivo de uma ficha de PVP fora de
+   qualquer sala (a ficha em si não pertence a Treinador nenhum -- vira
+   "de alguém" só quando entra numa sala, via sala.virtuais). Resposta do
+   usuário ("Nível fixo, Atributos no máximo"): o jogador nunca escolhe
+   Vínculo/Atributo, só Espécie/Movimentos/Natureza/Habilidade. */
+function pvpMaxTrainer(){
+  return { id:'__pvp_max__', attrPoints:{vigor:5,vontade:5,resistencia:5,mental:5,foco:5,agilidade:5} };
+}
+function pvpFichaList(trainerId){
+  if(!STATE.pvp.fichas[trainerId]) STATE.pvp.fichas[trainerId] = [];
+  return STATE.pvp.fichas[trainerId];
+}
+function pvpGetFicha(trainerId, pid){
+  return pvpFichaList(trainerId).find(function(p){ return p.id===pid; }) || null;
+}
+function newPvpSala(nome, criadorId, criadorNome){
+  return {
+    id: uid(), nome: (nome||'Sala').trim().slice(0,40) || 'Sala', criador: criadorId, criadorNome: criadorNome, criadoEm: Date.now(),
+    status: 'aberta', /* aberta -> em_batalha -> finalizada */
+    jogadores: [], /* {trainerId, nome, teamId, pronto, timeEscolhido:[fichaIds], desistiu} */
+    teams: [], entries: [], round: null, log: [], vencedor: null, fugaTravada: true, virtuais: {}
+  };
+}
+function pvpSalaDoJogador(trainerId){
+  var salas = STATE.pvp.salas||{};
+  var ids = Object.keys(salas);
+  for(var i=0;i<ids.length;i++){
+    if(salas[ids[i]].jogadores.some(function(j){ return j.trainerId===trainerId; })) return salas[ids[i]];
+  }
+  return null;
+}
+/* Id do "treinador virtual" desse Treinador de verdade DENTRO dessa sala
+   específica -- nunca bate com um id de STATE.trainers de verdade (prefixo
+   'pvp_'), e é único por sala (2 salas nunca compartilham o mesmo
+   treinador virtual, mesmo que sejam o mesmo Treinador de verdade em
+   ambas -- é o que permite "várias salas em paralelo" sem uma bagunçar a
+   outra). */
+function pvpVirtualId(sala, trainerId){ return 'pvp_'+trainerId+'_'+sala.id; }
+function pvpIsOwnerEntry(sala, entry){ return SESSION.role==='player' && !!entry && entry.trainerId===pvpVirtualId(sala, SESSION.trainerId); }
+/* Roda UM passo de resolução de cada vez até a Rodada sair de
+   'resolving' (terminou e já abriu a próxima seleção sozinha, ou a
+   batalha acabou) -- ninguém precisa clicar "Avançar": assim que os dois
+   jogadores escolherem a ação (arenaQueueAction, reaproveitado sem
+   mudança nenhuma, já vira 'resolving' sozinho), essa função resolve a
+   Rodada inteira de uma vez. O teto (guard) é só rede de segurança contra
+   um bug de estado nunca fechar 'resolving' -- não deveria disparar na
+   prática. */
+function pvpDriveResolution(sala){
+  var guard = 0;
+  while(sala.round && sala.round.phase==='resolving' && guard<500){
+    arenaResolveNextStep(sala.round);
+    guard++;
+  }
+}
+/* Cura tudo (PV, Condição, Confusão, PP, Estágios) de quem participou --
+   pedido do usuário ("após o término do combate, todos os Pokémon são
+   curados") -- e libera as fichas (emBatalha=null) pra poder entrar numa
+   sala nova. Como sala.virtuais[...].pokemons guarda REFERÊNCIA direta pra
+   ficha de verdade (STATE.pvp.fichas[trainerId]), curar aqui já cura a
+   ficha real do jogador -- não existe cópia/instantâneo pra sincronizar
+   depois. */
+function pvpHealAll(sala){
+  Object.keys(sala.virtuais||{}).forEach(function(vid){
+    (sala.virtuais[vid].pokemons||[]).forEach(function(p){
+      p.currentHP = null; p.status=''; p.statusTurns=0; p.confuso=false; p.flashFireBoost=false; p.carregando=null;
+      resetStages(p);
+      (p.moves||[]).forEach(function(m){ m.ppAtual = m.pp; });
+      p.emBatalha = null;
+    });
+  });
+}
+function pvpFinishBattle(sala){
+  sala.status = 'finalizada';
+  pvpHealAll(sala);
+  arenaLog('🏁 Batalha encerrada — todos os Pokémon envolvidos foram curados.');
+}
+/* Assim que os dois jogadores estiverem prontos com pelo menos 1 Pokémon
+   escolhido, a batalha começa sozinha -- sem Mestre nenhum decidindo
+   quando "iniciar". Cada jogador vira um Time (A/B) e um treinador
+   virtual só dessa sala; a ficha escolhida entra em campo (a 1ª da
+   lista), o resto fica disponível pra trocar (Cap. 86, DT.arenaSwapIn*,
+   reaproveitado sem mudança nenhuma). */
+function pvpTryStartBattle(sala){
+  if(sala.status!=='aberta') return;
+  if(sala.jogadores.length<2) return;
+  if(!sala.jogadores.every(function(j){ return j.pronto && j.timeEscolhido.length>0; })) return;
+  sala.teams = [ {id:'A', nome: sala.jogadores[0].nome}, {id:'B', nome: sala.jogadores[1].nome} ];
+  sala.virtuais = {};
+  sala.entries = [];
+  sala.jogadores.forEach(function(j, idx){
+    j.teamId = sala.teams[idx].id;
+    var fichas = j.timeEscolhido.map(function(pid){ return pvpGetFicha(j.trainerId, pid); }).filter(Boolean);
+    if(!fichas.length) return;
+    fichas.forEach(function(p){
+      p.emBatalha = sala.id;
+      p.currentHP = null; p.status=''; p.statusTurns=0; p.confuso=false; p.flashFireBoost=false; p.carregando=null;
+      resetStages(p);
+      (p.moves||[]).forEach(function(m){ m.ppAtual = m.pp; });
+    });
+    var vid = pvpVirtualId(sala, j.trainerId);
+    sala.virtuais[vid] = { id:vid, name:j.nome, attrPoints:{vigor:5,vontade:5,resistencia:5,mental:5,foco:5,agilidade:5}, pokemons: fichas, banco: [] };
+    sala.entries.push({ id: uid(), teamId: j.teamId, trainerId: vid, pokemonId: fichas[0].id, revelado:true, pendingSwitchOut:false });
+  });
+  sala.status = 'em_batalha';
+  withArenaContext(sala, function(){
+    var order = computeInitiativeOrder();
+    sala.round = arenaBuildSelectingRound(1, order);
+    arenaLog('⚔️ A batalha começou — Rodada 1!');
+    pvpDriveResolution(sala);
+    if(sala.vencedor) pvpFinishBattle(sala);
+  });
+}
+
+/* ---- Fichas de PVP: CRUD livre do próprio jogador (sem Mestre nenhum
+   por trás) -- Espécie/Movimento reaproveitam applySpeciesData/
+   applyMoveData de sempre (mesma base oficial da PokeAPI que o RPG usa),
+   só que quem edita é o próprio Treinador, e o Vínculo fica travado em
+   25 (máximo) pra sempre, nunca aparece um campo pra editar. ---- */
+DT.togglePvp = function(){ SESSION.showPvp = !SESSION.showPvp; render(); };
+DT.pvpAddFicha = function(){
+  if(SESSION.role!=='player') return;
+  var list = pvpFichaList(SESSION.trainerId);
+  if(list.length>=20){ SESSION.error = 'Máximo de 20 fichas de PVP por Treinador.'; render(); return; }
+  var p = newPokemon();
+  p.vinculo = 25;
+  p.emBatalha = null;
+  list.push(p);
+  mutate();
+};
+DT.pvpRemoveFicha = function(pid){
+  if(SESSION.role!=='player') return;
+  var f = pvpGetFicha(SESSION.trainerId, pid);
+  if(!f) return;
+  if(f.emBatalha){ SESSION.error = 'Essa ficha está numa batalha em andamento — espere terminar.'; render(); return; }
+  STATE.pvp.fichas[SESSION.trainerId] = pvpFichaList(SESSION.trainerId).filter(function(p){ return p.id!==pid; });
+  mutate();
+};
+DT.pvpSetFichaField = function(pid, field, el){
+  if(SESSION.role!=='player') return;
+  var p = pvpGetFicha(SESSION.trainerId, pid); if(!p || p.emBatalha) return;
+  p[field] = el.value;
+  if(field==='especie'){
+    var sp = findSpeciesByName(el.value);
+    if(sp){ applySpeciesData(p, sp); SESSION.notice = 'Preenchido com os dados oficiais de '+sp.name+' (#'+sp.num+'): Tipo e Atributos Naturais.'; }
+    if(p.habilidade && habilidadesDaEspecie(p.especie).indexOf(p.habilidade)===-1) p.habilidade = '';
+  }
+  mutate();
+};
+DT.pvpSetNatureza = function(pid, el){
+  if(SESSION.role!=='player') return;
+  var p = pvpGetFicha(SESSION.trainerId, pid); if(!p || p.emBatalha) return;
+  p.natureza = (el.value==='' || findNatureByName(el.value)) ? el.value : '';
+  mutate();
+};
+DT.pvpSetHabilidade = function(pid, el){
+  if(SESSION.role!=='player') return;
+  var p = pvpGetFicha(SESSION.trainerId, pid); if(!p || p.emBatalha) return;
+  var validas = habilidadesSelecionaveisDaEspecie(p.especie);
+  p.habilidade = (el.value==='' || validas.indexOf(el.value)!==-1) ? el.value : '';
+  mutate();
+};
+DT.pvpSetMoveField = function(pid, idx, field, el){
+  if(SESSION.role!=='player') return;
+  var p = pvpGetFicha(SESSION.trainerId, pid); if(!p || p.emBatalha) return;
+  var mv = (p.moves||[])[idx]; if(!mv) return;
+  mv[field] = el.value;
+  if(field==='nome'){
+    var found = findMoveByName(el.value);
+    if(found) applyMoveData(mv, found);
+  }
+  mutate();
+};
+
+/* ---- Lobby: criar/entrar/sair de sala ---- */
+DT.pvpCriarSala = function(){
+  if(SESSION.role!=='player') return;
+  var t = findTrainer(SESSION.trainerId); if(!t) return;
+  if(pvpSalaDoJogador(t.id)){ SESSION.error = 'Você já está numa sala de PVP.'; render(); return; }
+  var nomeEl = document.getElementById('pvpNovaSalaNome');
+  var nome = (nomeEl && nomeEl.value) ? nomeEl.value.trim() : '';
+  var sala = newPvpSala(nome || ('Sala de '+t.name), t.id, t.name);
+  sala.jogadores.push({ trainerId:t.id, nome:t.name, teamId:null, pronto:false, timeEscolhido:[], desistiu:false });
+  STATE.pvp.salas[sala.id] = sala;
+  mutate();
+};
+DT.pvpEntrarSala = function(salaId){
+  if(SESSION.role!=='player') return;
+  var t = findTrainer(SESSION.trainerId); if(!t) return;
+  if(pvpSalaDoJogador(t.id)){ SESSION.error = 'Você já está numa sala de PVP.'; render(); return; }
+  var sala = STATE.pvp.salas[salaId];
+  if(!sala || sala.status!=='aberta' || sala.jogadores.length>=2) return;
+  sala.jogadores.push({ trainerId:t.id, nome:t.name, teamId:null, pronto:false, timeEscolhido:[], desistiu:false });
+  mutate();
+};
+DT.pvpSairDaSala = function(salaId){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala) return;
+  var jogador = sala.jogadores.find(function(j){ return j.trainerId===SESSION.trainerId; });
+  if(!jogador) return;
+  if(sala.status==='em_batalha' && !sala.vencedor){
+    /* Sair no meio da batalha sem clicar "Desistir" também conta como
+       desistência -- ninguém fica esperando o outro lado pra sempre. */
+    DT.pvpDesistir(salaId);
+    sala = STATE.pvp.salas[salaId];
+    if(!sala) return;
+  }
+  sala.jogadores = sala.jogadores.filter(function(j){ return j.trainerId!==SESSION.trainerId; });
+  if(!sala.jogadores.length){ delete STATE.pvp.salas[salaId]; }
+  mutate();
+};
+DT.pvpToggleFichaNoTime = function(salaId, pid){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala || sala.status!=='aberta') return;
+  var jogador = sala.jogadores.find(function(j){ return j.trainerId===SESSION.trainerId; });
+  if(!jogador || jogador.pronto) return;
+  var idx = jogador.timeEscolhido.indexOf(pid);
+  if(idx!==-1){ jogador.timeEscolhido.splice(idx,1); mutate(); return; }
+  if(jogador.timeEscolhido.length>=6){ SESSION.error = 'Máximo de 6 Pokémon por time (Cap. resposta do usuário: Time completo até 6, com troca).'; render(); return; }
+  var ficha = pvpGetFicha(SESSION.trainerId, pid);
+  if(!ficha || !ficha.especie){ SESSION.error = 'Essa ficha ainda não tem Espécie definida.'; render(); return; }
+  if(ficha.emBatalha){ SESSION.error = 'Essa ficha já está em outra batalha agora.'; render(); return; }
+  jogador.timeEscolhido.push(pid);
+  mutate();
+};
+DT.pvpFicarPronto = function(salaId){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala || sala.status!=='aberta') return;
+  var jogador = sala.jogadores.find(function(j){ return j.trainerId===SESSION.trainerId; });
+  if(!jogador || !jogador.timeEscolhido.length) return;
+  jogador.pronto = true;
+  pvpTryStartBattle(sala);
+  mutate();
+};
+DT.pvpDesfazerPronto = function(salaId){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala || sala.status!=='aberta') return;
+  var jogador = sala.jogadores.find(function(j){ return j.trainerId===SESSION.trainerId; });
+  if(!jogador) return;
+  jogador.pronto = false;
+  mutate();
+};
+
+/* ---- Batalha: agir (Atacar/Trocar), Desistir ---- */
+DT.pvpAtacar = function(salaId, entryId, moveIdx){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala || sala.status!=='em_batalha' || sala.vencedor) return;
+  withArenaContext(sala, function(){
+    var round = sala.round; if(!round || round.phase!=='selecting') return;
+    var e = findArenaEntry(entryId); if(!e || !pvpIsOwnerEntry(sala,e)) return;
+    var t = findTrainer(e.trainerId), p = t && getPoke(e.trainerId, e.pokemonId);
+    if(!t || !p) return;
+    var move = (p.moves||[])[moveIdx]; if(!move || !move.nome) return;
+    if((move.pp||0)>0 && (move.ppAtual||0)<=0) return; /* sem PP -- botão já vem desabilitado, mas confere de novo */
+    var category = moveTargetCategory(move.nome);
+    arenaQueueAction(e.id, { kind:'atacar', moveIdx:moveIdx, category:category });
+    pvpDriveResolution(sala);
+    if(sala.vencedor) pvpFinishBattle(sala);
+  });
+  mutate();
+};
+DT.pvpTrocarEscolher = function(salaId, entryId, newPokemonId){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala || sala.status!=='em_batalha' || sala.vencedor) return;
+  withArenaContext(sala, function(){
+    var round = sala.round; if(!round || round.phase!=='selecting') return;
+    var e = findArenaEntry(entryId); if(!e || !pvpIsOwnerEntry(sala,e)) return;
+    arenaQueueAction(e.id, { kind:'trocar', newPokemonId: newPokemonId });
+    pvpDriveResolution(sala);
+    if(sala.vencedor) pvpFinishBattle(sala);
+  });
+  mutate();
+};
+/* Troca FORA da fila da Rodada -- quem acabou de desmaiar, ou tem um
+   convite de troca livre pendente (U-turn etc., entry.pendingSwitchOut),
+   reaproveitando DT.arenaSwapInResolved sem mudança nenhuma. */
+DT.pvpTrocarForcado = function(salaId, entryId, newPokemonId){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala || sala.status!=='em_batalha' || sala.vencedor) return;
+  withArenaContext(sala, function(){
+    var e = findArenaEntry(entryId); if(!e || !pvpIsOwnerEntry(sala,e)) return;
+    DT.arenaSwapInResolved(e, newPokemonId);
+    arenaCheckVictory();
+    if(sala.vencedor) pvpFinishBattle(sala);
+  });
+  mutate();
+};
+DT.pvpDesistir = function(salaId){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala || sala.status!=='em_batalha' || sala.vencedor) return;
+  var jogador = sala.jogadores.find(function(j){ return j.trainerId===SESSION.trainerId; });
+  if(!jogador || jogador.desistiu) return;
+  jogador.desistiu = true;
+  withArenaContext(sala, function(){
+    var vencedorTeam = (sala.teams||[]).find(function(tm){ return tm.id!==jogador.teamId; });
+    sala.vencedor = vencedorTeam ? vencedorTeam.id : ((sala.teams||[])[0] && sala.teams[0].id) || null;
+    arenaLog('🏳️ '+esc(jogador.nome)+' desistiu — '+esc(vencedorTeam?vencedorTeam.nome:'o outro lado')+' venceu.');
+    pvpFinishBattle(sala);
+  });
+  mutate();
+};
+
+/* ---- Telas ---- */
+function pvpFichaCardHTML(p){
+  var expanded = !!SESSION.expanded[p.id];
+  var maxT = pvpMaxTrainer();
+  var max = hpMax(maxT, p);
+  var locked = !!p.emBatalha;
+  var spNum = pokeSpeciesNum(p);
+  var spriteHTML = spNum
+    ? '<img class="poke-sprite" src="'+spriteUrl(spNum)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
+    : '<div class="poke-sprite-placeholder">❔</div>';
+  var head = '<div class="poke-head">'+
+    '<div class="identity" onclick="DT.toggleExpand(\''+p.id+'\')" style="cursor:pointer; flex:1;">'+
+      spriteHTML+
+      '<div style="min-width:0;">'+
+        '<div class="nick">'+(p.apelido?esc(p.apelido):(p.especie?esc(p.especie):'Ficha sem nome'))+(locked?' <span class="badge status-bad">Em batalha</span>':'')+'</div>'+
+        '<div class="species">'+(p.especie?esc(p.especie)+' · ':'')+typeTags(p)+'</div>'+
+      '</div>'+
+    '</div>'+
+    (locked ? '' : '<button class="btn-ghost btn-sm" onclick="DT.pvpRemoveFicha(\''+p.id+'\')">✕</button>')+
+  '</div>';
+  if(!expanded){
+    return '<div class="poke-card">'+head+'<div class="poke-body"><span class="muted" style="font-size:.78rem;">PV máx.: '+max+'</span></div></div>';
+  }
+  var did = p.id;
+  var apelidoField = '<div class="field" style="margin-bottom:10px;"><label>Apelido</label><input type="text" '+(locked?'disabled':'')+' value="'+esc(p.apelido)+'" onchange="DT.pvpSetFichaField(\''+did+'\',\'apelido\', this)"></div>';
+  var speciesField = '<div class="grid-2">'+
+    '<div class="field"><label>Espécie</label><input type="text" list="speciesDexList" '+(locked?'disabled':'')+' placeholder="ex: Charizard" value="'+esc(p.especie)+'" onchange="DT.pvpSetFichaField(\''+did+'\',\'especie\', this)"></div>'+
+    '<div class="field"><label>Nível fixo — Atributos no máximo</label><span class="num">PV máx. '+max+'</span></div>'+
+  '</div>';
+  var statRows = STAT_ORDER.filter(function(s){ return s!=='hp'; }).map(function(stat){
+    var eff = effectiveStat(maxT, p, stat);
+    return '<tr><td>'+STAT_LABELS[stat]+'</td><td class="num">'+p.natural[stat]+'</td><td class="num eff">'+eff+'</td></tr>';
+  }).join('');
+  var statTable = '<div class="table-scroll"><table class="stat-table"><thead><tr><th>Stat</th><th>Natural</th><th>Efetivo</th></tr></thead><tbody>'+
+    '<tr><td>PV</td><td class="num">'+p.natural.hp+'</td><td class="num eff">'+max+'</td></tr>'+statRows+
+  '</tbody></table></div>';
+  var naturezaAtual = findNatureByName(p.natureza);
+  var naturezaRow = '<div class="field"><label>Natureza</label>'+
+    (locked ? (naturezaAtual?esc(naturezaAtual.nome):'<span class="muted">Nenhuma</span>') :
+      '<select onchange="DT.pvpSetNatureza(\''+did+'\', this)">'+
+        '<option value=""'+(!p.natureza?' selected':'')+'>— Nenhuma —</option>'+
+        NATURES_DEX.map(function(n){
+          var detalhe = n.mais ? ('+'+NATURE_STAT_ABBR[n.mais]+' / −'+NATURE_STAT_ABBR[n.menos]) : 'neutra';
+          return '<option value="'+n.nome+'"'+(n.nome===p.natureza?' selected':'')+'>'+n.nome+' ('+detalhe+')</option>';
+        }).join('')+
+      '</select>')+
+  '</div>';
+  var habsSelecionaveis = habilidadesSelecionaveisDaEspecie(p.especie);
+  var habilidadeRow = '<div class="field"><label>Habilidade</label>'+
+    (locked ? (p.habilidade?esc(p.habilidade):'<span class="muted">Nenhuma</span>') :
+      (habsSelecionaveis.length
+        ? '<select onchange="DT.pvpSetHabilidade(\''+did+'\', this)">'+
+            '<option value=""'+(!p.habilidade?' selected':'')+'>— Nenhuma —</option>'+
+            habsSelecionaveis.map(function(h){ return '<option value="'+esc(h)+'"'+(h===p.habilidade?' selected':'')+'>'+esc(h)+'</option>'; }).join('')+
+          '</select>'
+        : '<span class="muted">Defina a Espécie primeiro.</span>'))+
+  '</div>';
+  var movesHeader = '<div class="move-labels"><span>Nome</span><span>Tipo</span><span>Categoria</span><span>Poder</span><span>PP</span><span>Prior.</span></div>';
+  var moveRows = (p.moves||[]).map(function(m, idx){
+    return '<div class="move-row">'+
+      '<input type="text" placeholder="nome (ex: Flamethrower)" list="movesDexList" '+(locked?'disabled':'')+' value="'+esc(m.nome)+'" onchange="DT.pvpSetMoveField(\''+did+'\','+idx+',\'nome\', this)">'+
+      '<span class="num">'+esc(m.tipo)+'</span>'+
+      '<span class="num">'+esc(m.categoria)+'</span>'+
+      '<span class="num">'+(m.poder||0)+'</span>'+
+      '<span class="num">'+(m.ppAtual||0)+' / '+(m.pp||0)+'</span>'+
+      '<span class="num">'+(m.prioridade||0)+'</span>'+
+    '</div>'+
+    (m.efeito ? '<div class="muted" style="font-size:.72rem; margin:2px 0 6px;">'+esc(m.efeito)+'</div>' : '');
+  }).join('');
+  var movesBlock = '<div><label style="font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); display:block; margin-bottom:4px;">Movimentos</label>'+movesHeader+'<div class="moves-list">'+moveRows+'</div></div>';
+  return '<div class="poke-card">'+head+'<div class="poke-body">'+apelidoField+speciesField+statTable+naturezaRow+habilidadeRow+movesBlock+'</div></div>';
+}
+function pvpFichasHTML(t){
+  var fichas = pvpFichaList(t.id);
+  var cards = fichas.map(pvpFichaCardHTML).join('') || '<p class="muted" style="font-size:.82rem;">Nenhuma ficha de PVP ainda — crie uma abaixo.</p>';
+  return '<div class="card"><div class="card-head"><span class="index">Suas fichas de PVP</span><h2>🎴 Fichas de PVP</h2></div><div class="card-body">'+
+    '<p class="muted" style="font-size:.8rem;">Independentes do seu Time do RPG. Nível fixo, Atributos sempre no máximo — escolha só Espécie, Movimentos, Natureza e Habilidade.</p>'+
+    cards+
+    '<div class="btn-row" style="margin-top:10px;"><button class="btn-sm btn-primary" onclick="DT.pvpAddFicha()">+ Nova Ficha</button></div>'+
+  '</div></div>';
+}
+function pvpLobbyHTML(t){
+  var salas = STATE.pvp.salas||{};
+  var abertas = Object.keys(salas).map(function(id){ return salas[id]; }).filter(function(s){ return s.status==='aberta' && s.jogadores.length<2; });
+  var rows = abertas.map(function(s){
+    return '<div class="btn-row" style="justify-content:space-between; align-items:center; margin-bottom:6px;">'+
+      '<span>'+esc(s.nome)+' <span class="muted" style="font-size:.75rem;">— '+s.jogadores.length+'/2, criada por '+esc(s.criadorNome)+'</span></span>'+
+      '<button class="btn-sm btn-primary" onclick="DT.pvpEntrarSala(\''+s.id+'\')">Entrar</button>'+
+    '</div>';
+  }).join('') || '<p class="muted" style="font-size:.82rem;">Nenhuma sala aberta agora — crie uma.</p>';
+  return '<div class="card"><div class="card-head"><span class="index">Salas de PVP</span><h2>🏟️ Lobby</h2></div><div class="card-body">'+
+    rows+
+    '<div class="btn-row" style="margin-top:10px;">'+
+      '<input type="text" id="pvpNovaSalaNome" placeholder="Nome da sala (opcional)" style="flex:1;">'+
+      '<button class="btn-sm btn-primary" onclick="DT.pvpCriarSala()">+ Criar Sala</button>'+
+    '</div>'+
+  '</div></div>';
+}
+function pvpMiniCardHTML(t,p,label){
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null||p.currentHP===undefined) ? max : Math.max(0,p.currentHP);
+  var pct = max>0 ? Math.round(cur/max*100) : 0;
+  var spNum = pokeSpeciesNum(p);
+  var spriteHTML = spNum
+    ? '<img class="poke-sprite" src="'+spriteUrl(spNum)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
+    : '<div class="poke-sprite-placeholder">❔</div>';
+  return '<div class="poke-card"><div class="poke-head">'+
+    '<div class="identity">'+spriteHTML+
+      '<div style="min-width:0;">'+
+        '<div class="nick">'+esc(label)+': '+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+(cur<=0?' <span class="badge status-bad">Desmaiado</span>':'')+(p.status?'<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>':'')+(p.confuso?'<span class="badge status-bad">Confuso</span>':'')+'</div>'+
+        '<div class="species">'+esc(p.especie||'')+' · '+typeTags(p)+'</div>'+
+      '</div>'+
+    '</div>'+
+  '</div><div class="poke-body">'+
+    '<div class="hp-row"><span class="num">'+cur+'</span><span class="muted">/ '+max+' PV</span><div class="hp-bar'+hpBarTier(pct)+'"><i style="width:'+pct+'%"></i></div></div>'+
+  '</div></div>';
+}
+function pvpLogHTML(sala){
+  var entries = (sala.log||[]).slice(-10).slice().reverse();
+  var rows = entries.map(function(l){ return '<div style="font-size:.78rem; padding:3px 0; border-bottom:1px solid var(--line);">'+l.text+'</div>'; }).join('') || '<p class="muted" style="font-size:.8rem;">Nada ainda.</p>';
+  return '<div class="card"><div class="card-head"><span class="index">Registro</span><h2>📜 Últimos eventos</h2></div><div class="card-body">'+rows+'</div></div>';
+}
+function pvpTeamPickHTML(sala, t){
+  var jogador = sala.jogadores.find(function(j){ return j.trainerId===t.id; });
+  if(!jogador) return '';
+  var fichas = pvpFichaList(t.id);
+  var rows = fichas.map(function(p){
+    var escolhido = jogador.timeEscolhido.indexOf(p.id)!==-1;
+    var bloqueada = !!p.emBatalha && !escolhido;
+    return '<div class="btn-row" style="justify-content:space-between; align-items:center; margin-bottom:4px;">'+
+      '<span>'+(p.apelido?esc(p.apelido):(p.especie?esc(p.especie):'(sem espécie)'))+(bloqueada?' <span class="muted" style="font-size:.72rem;">(em outra batalha)</span>':'')+'</span>'+
+      '<button class="btn-sm'+(escolhido?' btn-primary':'')+'" '+((jogador.pronto||bloqueada)?'disabled':'')+' onclick="DT.pvpToggleFichaNoTime(\''+sala.id+'\',\''+p.id+'\')">'+(escolhido?'✓ No time':'Escolher')+'</button>'+
+    '</div>';
+  }).join('') || '<p class="muted" style="font-size:.82rem;">Você ainda não tem nenhuma ficha de PVP — volte pro Lobby e crie uma primeiro.</p>';
+  var outros = sala.jogadores.filter(function(j){ return j.trainerId!==t.id; }).map(function(j){
+    return '<p class="muted" style="font-size:.8rem;">'+esc(j.nome)+': '+j.timeEscolhido.length+' Pokémon escolhido(s)'+(j.pronto?' — ✓ pronto':' — ainda escolhendo')+'</p>';
+  }).join('');
+  return '<div class="card"><div class="card-head"><span class="index">'+esc(sala.nome)+'</span><h2>🎽 Monte seu time (até 6, com troca)</h2></div><div class="card-body">'+
+    rows+
+    outros+
+    (sala.jogadores.length<2 ? '<p class="muted" style="font-size:.82rem;">Esperando outro jogador entrar na sala…</p>' : '')+
+    '<div class="btn-row" style="margin-top:10px;">'+
+      (jogador.pronto
+        ? '<button class="btn-sm" onclick="DT.pvpDesfazerPronto(\''+sala.id+'\')">Desfazer prontidão</button>'
+        : '<button class="btn-sm btn-primary" '+(jogador.timeEscolhido.length?'':'disabled')+' onclick="DT.pvpFicarPronto(\''+sala.id+'\')">✓ Pronto</button>')+
+      '<button class="btn-ghost btn-sm" onclick="DT.pvpSairDaSala(\''+sala.id+'\')">Sair da sala</button>'+
+    '</div>'+
+  '</div></div>';
+}
+function pvpBattleHTML(sala, t){
+  var myVid = pvpVirtualId(sala, t.id);
+  var meEntry, oppEntry, meT, meP, oppT, oppP;
+  withArenaContext(sala, function(){
+    meEntry = (sala.entries||[]).find(function(e){ return e.trainerId===myVid; });
+    oppEntry = (sala.entries||[]).find(function(e){ return e.trainerId!==myVid; });
+    meT = meEntry && findTrainer(meEntry.trainerId);
+    meP = (meT && meEntry) ? getPoke(meEntry.trainerId, meEntry.pokemonId) : null;
+    oppT = oppEntry && findTrainer(oppEntry.trainerId);
+    oppP = (oppT && oppEntry) ? getPoke(oppEntry.trainerId, oppEntry.pokemonId) : null;
+  });
+  if(!meEntry || !meT || !meP) return '<div class="card"><div class="card-body"><p class="muted">Você não está em campo nessa batalha.</p></div></div>';
+
+  var meFainted = (meP.currentHP!==null && meP.currentHP!==undefined) ? meP.currentHP<=0 : false;
+  var precisaTrocar = meFainted || !!meEntry.pendingSwitchOut;
+  var round = sala.round;
+  var jaEscolhi = !!(round && round.actions && round.actions[meEntry.id]);
+  var podeAgir = !sala.vencedor && round && round.phase==='selecting' && !jaEscolhi && !precisaTrocar;
+
+  var meCard = pvpMiniCardHTML(meT, meP, 'Você');
+  var oppCard = oppP ? pvpMiniCardHTML(oppT, oppP, 'Adversário') : '<div class="poke-card"><div class="poke-body"><span class="muted">O adversário ainda vai soltar o próximo.</span></div></div>';
+
+  var painel = '';
+  if(!sala.vencedor && precisaTrocar){
+    var bench = (meT.pokemons||[]).filter(function(p){
+      if(p.id===meP.id) return false;
+      var max = hpMax(meT,p);
+      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+      return cur>0;
+    });
+    painel = '<div class="card"><div class="card-head"><span class="index">Ação necessária</span><h2>'+(meFainted?'😵 '+esc(meP.apelido||meP.especie||'Pokémon')+' desmaiou — escolha o próximo':'Troca disponível')+'</h2></div><div class="card-body">'+
+      (bench.length ? bench.map(function(p){
+        return '<button class="btn-sm" style="margin:2px;" onclick="DT.pvpTrocarForcado(\''+sala.id+'\',\''+meEntry.id+'\',\''+p.id+'\')">'+esc(p.apelido||p.especie||'Pokémon')+'</button>';
+      }).join('') : '<p class="muted" style="font-size:.82rem;">Não sobrou ninguém — a batalha deve encerrar sozinha.</p>')+
+    '</div></div>';
+  } else if(podeAgir){
+    var moveBtns = (meP.moves||[]).map(function(m, idx){
+      if(!m.nome) return '';
+      var semPP = (m.pp||0)>0 && (m.ppAtual||0)<=0;
+      return '<button class="btn-sm" style="margin:2px;" '+(semPP?'disabled':'')+' title="'+esc(m.efeito||'')+'" onclick="DT.pvpAtacar(\''+sala.id+'\',\''+meEntry.id+'\','+idx+')">'+esc(m.nome)+' ('+(m.ppAtual||0)+'/'+(m.pp||0)+')</button>';
+    }).join('');
+    var bench2 = (meT.pokemons||[]).filter(function(p){
+      if(p.id===meP.id) return false;
+      var max = hpMax(meT,p);
+      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+      return cur>0;
+    });
+    var switchBtns = bench2.map(function(p){
+      return '<button class="btn-sm btn-ghost" style="margin:2px;" onclick="DT.pvpTrocarEscolher(\''+sala.id+'\',\''+meEntry.id+'\',\''+p.id+'\')">🔁 '+esc(p.apelido||p.especie||'Pokémon')+'</button>';
+    }).join('');
+    painel = '<div class="card"><div class="card-head"><span class="index">Rodada '+(round?round.number:1)+'</span><h2>Escolha sua ação</h2></div><div class="card-body">'+
+      '<p class="muted" style="font-size:.75rem; margin-bottom:4px;">Atacar</p>'+(moveBtns||'<span class="muted">Nenhum Movimento definido.</span>')+
+      (switchBtns ? '<p class="muted" style="font-size:.75rem; margin:8px 0 4px;">Ou trocar</p>'+switchBtns : '')+
+    '</div></div>';
+  } else if(!sala.vencedor && jaEscolhi){
+    painel = '<div class="card"><div class="card-body"><p class="muted">Ação escolhida — esperando o adversário…</p></div></div>';
+  }
+
+  var vencedorHTML = '';
+  if(sala.vencedor){
+    var vteam = (sala.teams||[]).find(function(tm){ return tm.id===sala.vencedor; });
+    vencedorHTML = '<div class="card" style="border-color:#d4a017;"><div class="card-body" style="text-align:center;">'+
+      '<p style="font-size:1.1rem; margin:0 0 8px;">🏆 <strong>'+esc(vteam?vteam.nome:'Time')+'</strong> venceu!</p>'+
+      '<p class="muted" style="font-size:.8rem;">Todos os Pokémon envolvidos já foram curados.</p>'+
+      '<button class="btn-sm btn-primary" onclick="DT.pvpSairDaSala(\''+sala.id+'\')">Voltar ao Lobby</button>'+
+    '</div></div>';
+  }
+
+  return '<div class="card"><div class="card-head"><span class="index">'+esc(sala.nome)+'</span><h2>⚔️ Batalha em andamento</h2></div><div class="card-body">'+
+      '<div class="grid-2">'+meCard+oppCard+'</div>'+
+    '</div></div>'+
+    vencedorHTML+
+    painel+
+    pvpLogHTML(sala)+
+    (!sala.vencedor ? '<div class="btn-row" style="margin-top:10px;"><button class="btn-danger btn-sm" onclick="DT.pvpDesistir(\''+sala.id+'\')">🏳️ Desistir</button></div>' : '');
+}
+function pvpFinishedHTML(sala, t){
+  var vteam = (sala.teams||[]).find(function(tm){ return tm.id===sala.vencedor; });
+  return '<div class="card"><div class="card-head"><span class="index">'+esc(sala.nome)+'</span><h2>🏁 Batalha encerrada</h2></div><div class="card-body">'+
+    '<p>🏆 <strong>'+esc(vteam?vteam.nome:'Time')+'</strong> venceu! Todos os Pokémon envolvidos já foram curados.</p>'+
+    pvpLogHTML(sala)+
+    '<div class="btn-row" style="margin-top:10px;"><button class="btn-sm btn-primary" onclick="DT.pvpSairDaSala(\''+sala.id+'\')">Voltar ao Lobby</button></div>'+
+  '</div></div>';
+}
+function pvpSalaHTML(sala, t){
+  if(sala.status==='aberta') return pvpTeamPickHTML(sala, t);
+  if(sala.status==='em_batalha') return pvpBattleHTML(sala, t);
+  return pvpFinishedHTML(sala, t);
+}
+function pvpScreen(){
+  var out = '<div class="btn-row" style="margin-bottom:14px;"><button class="btn-sm" onclick="DT.togglePvp()">← Voltar</button></div>';
+  if(SESSION.role!=='player'){
+    out += '<div class="card"><div class="card-head"><span class="index">Combates rápidos</span><h2>⚔️ Área PVP</h2></div><div class="card-body">'+
+      '<p class="muted">Entre com uma conta de Treinador cadastrado pra acessar a Área PVP — times próprios (até 6, com troca), nível fixo com Atributos no máximo, sem precisar de Mestre.</p>'+
+    '</div></div>';
+    return out;
+  }
+  var t = findTrainer(SESSION.trainerId);
+  if(!t) return out;
+  var minhaSala = pvpSalaDoJogador(t.id);
+  if(minhaSala) return out + pvpSalaHTML(minhaSala, t);
+  return out + pvpFichasHTML(t) + pvpLobbyHTML(t);
 }
 
 /* =================== BOOT =================== */
