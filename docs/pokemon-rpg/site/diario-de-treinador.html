@@ -11011,14 +11011,21 @@ function pokeCardHTML(t,p,editable,mode){
   var stageLbl = {atk:'Atq',def:'Def',spa:'AEsp',spd:'DEsp',spe:'Vel',precisao:'Prec',evasao:'Evas'};
   /* Estágio (Cap. 15.1) é automático agora -- Movimento/Habilidade mudam
      sozinhos, e zera sozinho ao sair de campo. Só o Mestre ainda edita à
-     mão (pra corrigir ou adjudicar algo fora do motor); o Treinador só vê. */
-  var stages = '<div class="field"><label>Estágios (±6)</label><div class="stage-grid">'+
+     mão (pra corrigir ou adjudicar algo fora do motor); o Treinador só vê.
+     Tirado da exibição normal da ficha (consumia espaço à toa fora de
+     combate, onde quase nunca precisa) -- continua funcionando 100% igual
+     (mesmos DT.setStage/inputs), só que escondido atrás de um <details>
+     recolhido por padrão; durante o combate de verdade, quem já mostra
+     Estágio é a etiqueta no card da Arena (stageBadgesHTML) e o painel de
+     Atributos (arenaStatsPanelHTML) -- este bloco aqui é só o ajuste manual
+     raro do Mestre. */
+  var stages = '<details class="field"><summary style="cursor:pointer;">Estágios (±6)</summary><div class="stage-grid" style="margin-top:6px;">'+
     stageFields.map(function(s){
       return '<div class="stage-field"><label>'+stageLbl[s]+'</label>'+
         (canGM ? '<input type="number" min="-6" max="6" value="'+(p.estagios[s]||0)+'" onchange="DT.setStage(\''+t.id+'\',\''+did+'\',\''+s+'\', this)">' : '<div class="num" style="text-align:center;">'+(p.estagios[s]||0)+'</div>')+
       '</div>';
     }).join('')+
-  '</div></div>';
+  '</div></details>';
 
   var movesHeader = '<div class="move-labels"><span>Nome</span><span>Tipo</span><span>Categoria</span><span>Poder</span><span>PP</span><span>Prior.</span></div>';
   var movesLabel = '<label style="font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); display:block; margin-bottom:4px;">Movimentos</label>';
