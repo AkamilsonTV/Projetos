@@ -6875,13 +6875,14 @@ function arenaComputeResolveOrder(round){
 }
 /* Vira a chave de 'selecting' pra 'resolving' -- a partir daqui, mais
    ninguém escolhe nada nessa Rodada (arenaQueueAction só escreve durante
-   'selecting'), só falta o passo a passo de verdade (arenaResolveNextStep,
-   disparado pelo Mestre via checkArenaRoundResolution). */
+   'selecting'), só falta o passo a passo de verdade -- 100% manual, um
+   clique do Mestre por vez (DT.arenaResolveStep), sem nenhum avanço
+   automático (pedido do usuário: "eu quero que seja manual... o mestre vai
+   avançando de momento em momento"). */
 function arenaBeginResolving(round){
   round.phase = 'resolving';
   round.resolveOrder = arenaComputeResolveOrder(round);
   round.resolveIdx = 0;
-  round.nextStepAt = Date.now();
   arenaLog('⚔️ Rodada '+round.number+' — todo mundo escolheu, resolvendo em ordem (não-Ataque primeiro; Ataques por Prioridade e Iniciativa)…');
 }
 /* Só aplica o dano de status de fim de turno do PRÓPRIO Pokémon que
@@ -6894,15 +6895,14 @@ function arenaApplyPostActionEffects(entryId){
   if(e) applyEndOfTurnStatusAndLog(e);
   arenaCheckVictory();
 }
-var ROUND_RESOLVE_GAP_MS = 3000; /* "3 segundos de espaçamento entre cada Pokémon", como pedido */
-/* Executa UM passo pendente (round.resolveOrder[resolveIdx]) e agenda o
-   próximo pra ROUND_RESOLVE_GAP_MS depois -- um Pokémon por vez, é aqui
-   que o dado realmente rola, pra todo mundo, igual sempre. Pula sem
-   gastar o espaço de 3s quem desmaiou/saiu de campo antes da própria vez
-   chegar (um Ataque anterior nessa mesma Rodada pode ter derrubado ele) --
-   ninguém veria nada dele mesmo. Só quem dirige a Rodada chama isso (ver
-   checkArenaRoundResolution) -- evita 2 navegadores rolando o MESMO dado
-   ao mesmo tempo. */
+/* Executa UM passo pendente (round.resolveOrder[resolveIdx]) e para --
+   um Pokémon por vez, é aqui que o dado realmente rola, pra todo mundo,
+   igual sempre. Pula em silêncio (sem rolar nada) quem desmaiou/saiu de
+   campo antes da própria vez chegar (um Ataque anterior nessa mesma
+   Rodada pode ter derrubado ele) -- ninguém veria nada dele mesmo. 100%
+   manual (Cap. 86, revisado): só dispara quando o Mestre clica
+   DT.arenaResolveStep, nunca sozinho -- nada de temporizador nenhum, o
+   Mestre é quem decide o ritmo, avançando de momento em momento. */
 function arenaResolveNextStep(round){
   while(round.resolveIdx < round.resolveOrder.length){
     var entryId = round.resolveOrder[round.resolveIdx];
@@ -6918,7 +6918,6 @@ function arenaResolveNextStep(round){
     arenaExecuteQueuedAction(e, t, p, bundle, round);
     round.resolveIdx++;
     if(round.resolveIdx>=round.resolveOrder.length) arenaFinishRoundResolution(round);
-    else round.nextStepAt = Date.now() + ROUND_RESOLVE_GAP_MS;
     return;
   }
   arenaFinishRoundResolution(round);
@@ -7001,9 +7000,8 @@ function arenaFinishRoundResolution(round){
   if(!order.length){
     /* Ninguém elegível sobrou (todo mundo desmaiou/saiu/ainda em segredo) --
        fecha a Rodada de vez em vez de deixar phase:'resolving' pendurado
-       pra sempre (senão o ticker do Mestre, checkArenaRoundResolution,
-       ficaria tentando resolver um passo que nunca chega pro resto da
-       sessão). O Mestre clica "Iniciar Batalha"/"Recalcular" de novo
+       pra sempre (o Mestre clicando "Avançar" nunca teria mais nada pra
+       resolver). O Mestre clica "Iniciar Batalha"/"Recalcular" de novo
        quando tiver alguém em campo. */
     STATE.arena.round = null;
     return;
@@ -8188,18 +8186,23 @@ function arenaCheckVictory(){
   if(!STATE.arena || STATE.arena.vencedor) return;
   var teams = STATE.arena.teams || [];
   if(teams.length<2) return; /* só faz sentido decidir vencedor com 2+ Times na mesa */
-  var teamOfTrainer = {};
-  (STATE.arena.entries||[]).forEach(function(e){ teamOfTrainer[e.trainerId] = e.teamId; });
+  /* Um Treinador só pertence a UM Time normalmente, mas o Mestre pode
+     arrastar Pokémon do mesmo Treinador pra Times diferentes na mão --
+     olhar por ENTRADA (não colapsar num mapa trainerId->teamId, que
+     perderia um dos dois Times quando o mesmo Treinador aparece em
+     ambos) evita declarar vitória errada pro outro lado só porque a
+     entrada mais recente dele calhou de estar num Time diferente. */
   var teamsAlive = {};
-  Object.keys(teamOfTrainer).forEach(function(trainerId){
-    var t = findTrainer(trainerId);
+  (STATE.arena.entries||[]).forEach(function(e){
+    if(teamsAlive[e.teamId]) return; /* esse Time já sabe que tem alguém vivo */
+    var t = findTrainer(e.trainerId);
     if(!t) return;
     var algumVivo = (t.pokemons||[]).some(function(p){
       var max = hpMax(t,p);
       var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
       return cur>0;
     });
-    if(algumVivo) teamsAlive[teamOfTrainer[trainerId]] = true;
+    if(algumVivo) teamsAlive[e.teamId] = true;
   });
   var aliveTeamIds = Object.keys(teamsAlive);
   if(aliveTeamIds.length===1){
@@ -8916,6 +8919,21 @@ DT.arenaForceResolve = function(){
   arenaBeginResolving(round);
   mutate();
 };
+/* Avança a resolução da Rodada em UM passo só, na mão -- é o único jeito
+   dela avançar agora (Cap. 86, revisado a pedido do usuário: "eu quero
+   que seja manual... o mestre vai avançando de momento em momento").
+   Sem temporizador nenhum: só o Mestre clicando de novo dispara o
+   próximo Pokémon. Mesma trava de sempre contra o dado ainda animando/
+   popup de Ação congelado (Cap. 79) -- não deixa o Mestre adiantar o
+   próximo passo antes do resultado atual assentar na tela de todo mundo. */
+DT.arenaResolveStep = function(){
+  if(SESSION.role!=='gm') return;
+  var round = STATE.arena.round;
+  if(!round || round.phase!=='resolving') return;
+  if(SESSION.arenaResolving || DICE_ROLL_ANIM) return;
+  arenaResolveNextStep(round);
+  mutate();
+};
 DT.arenaEndRound = function(){
   if(SESSION.role!=='gm') return;
   STATE.arena.round = null;
@@ -9207,39 +9225,8 @@ function checkArenaRoll(){
     rollHideTimer = setTimeout(function(){ SESSION.showRollOverlay = false; rollHideTimer = null; renderDiceOverlay(); }, totalAnimMs+3200);
   }
 }
-/* Ticker da resolução automática da Rodada (Cap. 86) -- mesmo padrão do
-   #diceOverlay (setInterval tickando fora do render(), pra não recair
-   numa chamada recursiva de render() dentro dele mesmo): quem chama
-   getResolve/checkArenaRoundResolution só GARANTE que o intervalo está de
-   pé, quem de fato dispara o próximo passo (arenaResolveNextStep) é
-   sempre o próprio intervalo, de forma assíncrona. Só o Mestre "dirige"
-   (evita 2 navegadores rolando o MESMO dado ao mesmo tempo pro mesmo
-   Pokémon) -- os outros viewers só recebem o resultado via onSnapshot,
-   igual sempre. Se o Mestre atualizar a página no meio de uma resolução
-   parada, round.nextStepAt (guardado em STATE, sincronizado) já fica no
-   passado -- o 1º tick já dispara o passo atrasado sozinho. */
-var roundResolveTimer = null;
-function ensureRoundResolveTicker(){
-  if(roundResolveTimer) return;
-  roundResolveTimer = setInterval(function(){
-    var round = STATE.arena && STATE.arena.round;
-    if(!round || round.phase!=='resolving' || SESSION.role!=='gm'){ clearInterval(roundResolveTimer); roundResolveTimer=null; return; }
-    if(SESSION.arenaResolving || DICE_ROLL_ANIM) return; /* dado ainda animando/popup congelado (Cap. 79) -- espera assentar antes do próximo passo */
-    if(!round.nextStepAt || Date.now()>=round.nextStepAt){
-      arenaResolveNextStep(round);
-      mutate();
-    }
-  }, 300);
-}
-function checkArenaRoundResolution(){
-  if(SESSION.role!=='gm') return;
-  var round = STATE.arena && STATE.arena.round;
-  if(!round || round.phase!=='resolving') return;
-  ensureRoundResolveTicker();
-}
 function render(){
   checkArenaRoll();
-  checkArenaRoundResolution();
   document.getElementById('app').innerHTML = screenHTML();
   renderDiceOverlay();
 }
@@ -9676,12 +9663,12 @@ function arenaInitiativeHTML(){
   '</div><div class="card-body">';
   if(!r){
     out += '<p class="muted">Nenhuma rodada em andamento. '+(isGM
-      ? 'Clique em "Iniciar Batalha" pra calcular quem age primeiro (Velocidade Efetiva, depois Natural, depois 1d6 em caso de empate) entre quem já está em campo. A partir daí, todo mundo escolhe a própria ação e o site resolve a Rodada sozinho, na ordem certa -- e já abre a próxima em seguida.'
+      ? 'Clique em "Iniciar Batalha" pra calcular quem age primeiro (Velocidade Efetiva, depois Natural, depois 1d6 em caso de empate) entre quem já está em campo. A partir daí, todo mundo escolhe a própria ação; depois disso, você vai clicando em "Avançar" pra resolver a Rodada, um Pokémon de cada vez, na ordem certa -- e já abre a próxima em seguida.'
       : 'Aguarde o Mestre iniciar a batalha.')+'</p>';
   } else if(r.order.length===0){
     out += '<p class="muted">Ninguém em campo pra calcular iniciativa ainda — use "Usar" nos Pokémon primeiro.</p>';
   } else if(r.phase==='resolving'){
-    out += '<p class="muted" style="font-size:.78rem; margin-bottom:8px;">Rodada '+r.number+' — resolvendo (não-Ataque primeiro; Ataques por Prioridade e Iniciativa)…</p>';
+    out += '<p class="muted" style="font-size:.78rem; margin-bottom:8px;">Rodada '+r.number+' — resolvendo (não-Ataque primeiro; Ataques por Prioridade e Iniciativa)'+(isGM?' — clique em "Avançar" pra cada Pokémon':'')+'…</p>';
     out += '<ol class="arena-initiative-list">'+(r.resolveOrder||[]).map(function(entryId, idx){
       var e = findArenaEntry(entryId);
       if(!e) return '';
@@ -9702,6 +9689,10 @@ function arenaInitiativeHTML(){
       '</li>';
     }).join('')+'</ol>';
     if(STATE.arena.vencedor) out += '<p class="muted" style="margin-top:8px;">A batalha já terminou.</p>';
+    else if(isGM){
+      var travadoAnimando = !!(SESSION.arenaResolving || DICE_ROLL_ANIM); /* dado ainda rolando/assentando -- espera terminar antes de liberar o próximo passo */
+      out += '<div class="btn-row" style="margin-top:8px;"><button class="btn-sm"'+(travadoAnimando?' disabled':'')+' onclick="DT.arenaResolveStep()">▶️ Avançar</button></div>';
+    }
   } else {
     var pending = arenaEntriesPendingSelection(r);
     out += '<p class="muted" style="font-size:.78rem; margin-bottom:8px;">Rodada '+r.number+' — escolhendo ações ('+pending.length+' ainda '+(pending.length===1?'falta':'faltam')+')</p>';
