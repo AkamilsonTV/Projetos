@@ -6246,7 +6246,12 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
   if(defAbility==='Shell Armor' || defAbility==='Battle Armor') crit = false;
   result.hit = hit; result.falhaNatural = falhaNatural; result.crit = crit;
 
-  if(!hit){ result.dano = 0; return result; }
+  // Mesmo golpe que erra o alvo precisa deixar typeMod definido (null, nunca
+  // undefined) -- esse result vira lastRoll e é salvo de verdade no Firestore
+  // (ver o comentário grande mais abaixo, perto de "isDamaging ? tm.mod :
+  // null"). Sem isso, um golpe que erra travava os saves da batalha em
+  // silêncio, exatamente igual um Movimento de Status.
+  if(!hit){ result.dano = 0; result.typeMod = null; return result; }
 
   var tm = typeModifier(move.tipo, defPoke.tipo1, defPoke.tipo2);
   result.immune = tm.immune;
@@ -6258,7 +6263,20 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
      mostra sempre a conta real do Tipo, sem ruído de Habilidade. Só faz
      sentido pra Movimento de dano (Físico/Especial) -- Status não causa
      dano variável por Tipo. */
-  result.typeMod = isDamaging ? tm.mod : undefined;
+  /* null, não undefined -- STATE.arena.lastRoll (ou, na Área PVP,
+     sala.lastRoll, via withArenaContext) é salvo de verdade no Firestore,
+     e o SDK real do Firestore REJEITA .set() com qualquer valor
+     `undefined` em qualquer lugar da árvore (o stub de teste não pega
+     isso, só resolve sempre). Achado real do usuário ("quando eu atualizo
+     a página ele volta a vida... como se eu tivesse reiniciado"): usar um
+     Movimento de Status (sem dano, isDamaging=false) gravava typeMod
+     undefined no resultado -- toda vez que ISSO acontecia, o próximo
+     mutate() falhava salvar SILENCIOSAMENTE (só um SESSION.error fácil de
+     não notar no meio de uma batalha), deixando o Firestore travado no
+     último save que tinha funcionado; um F5 puxava de volta esse estado
+     antigo -- PV cheio, Rodada anterior, como se a batalha tivesse
+     "voltado no tempo". */
+  result.typeMod = isDamaging ? tm.mod : null;
 
   /* Habilidades que bloqueiam/alteram o Tipo (Levitate, Wonder Guard,
      absorções, Thick Fat...) -- Mold Breaker/Teravolt/Turboblaze no
@@ -7374,11 +7392,36 @@ function queueSave(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(doSave, 400);
 }
+/* Bug real achado pelo usuário ("quando eu atualizo a página ele volta a
+   vida dos pokémon como se eu tivesse reiniciado... não tá dando pra
+   continuar o combate"): o SDK de verdade do Firestore REJEITA .set()
+   quando QUALQUER valor `undefined` aparece em QUALQUER lugar da árvore
+   do objeto (não é só um alerta -- a Promise inteira rejeita, sem salvar
+   NADA daquela vez). A causa raiz encontrada foi resolveAttack deixando
+   result.typeMod sem valor (undefined) quando um golpe erra o alvo (essa
+   já corrigida, ver o comentário lá) -- mas um motor de combate deste
+   tamanho (Habilidades, Estágios, Efeito Percentual, Movimento de carga...)
+   tem gente demais mexendo em campos condicionais pra confiar que essa
+   foi a ÚNICA vez que isso pode acontecer, hoje ou numa mudança futura.
+   Rede de segurança geral: `JSON.parse(JSON.stringify(STATE))` antes de
+   salvar -- é exatamente o que JSON faz sempre, em qualquer navegador:
+   uma chave de objeto com valor `undefined` simplesmente SOME (não vira
+   `null`, é removida) -- então o documento que chega no Firestore nunca
+   mais pode ter um `undefined` escondido em lugar nenhum, venha de onde
+   vier. Sem isso, o sintoma era exatamente o relatado: aquele mutate()
+   falhava salvar (só um SESSION.error fácil de não notar no meio de uma
+   batalha), o Firestore ficava travado no último save que tinha
+   funcionado, e um F5 puxava de volta esse estado antigo -- PV cheio,
+   Rodada anterior, como se a batalha tivesse "voltado no tempo". */
+function sanitizeForFirestore(state){
+  try { return JSON.parse(JSON.stringify(state)); }
+  catch(e){ return state; } /* nunca deveria falhar (STATE é só dado simples), mas não trava o save por causa da rede de segurança em si */
+}
 function doSave(){
   if(!stateDocRef) return;
   if(saveInFlight){ saveQueuedAfter = true; return; }
   saveInFlight = true;
-  stateDocRef.set(STATE).catch(function(e){
+  stateDocRef.set(sanitizeForFirestore(STATE)).catch(function(e){
     SESSION.error = 'Não consegui salvar no banco de dados (verifique sua internet). Sua alteração pode não ter sido salva — tente de novo.';
     render();
   }).then(function(){
@@ -7398,7 +7441,7 @@ function bootFirebase(){
       if(doc.exists){
         STATE = doc.data();
       } else {
-        stateDocRef.set(STATE);
+        stateDocRef.set(sanitizeForFirestore(STATE));
       }
       migrateState();
       firestoreReady = true;
