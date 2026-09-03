@@ -210,7 +210,7 @@ Cada Movimento tem uma lógica própria de quem ele pode atingir — a mesma dos
 - **Só inimigo** (ex.: Counter): só um Pokémon de outro Time.
 - **Qualquer um** (a maioria dos Movimentos de dano, ex.: Thunderbolt, Tackle): qualquer outro Pokémon em campo, aliado ou inimigo — igual às batalhas em dupla dos jogos oficiais, nada impede mirar no próprio time.
 - **Área** (ex.: Earthquake, Discharge): atinge todo mundo de uma categoria de uma vez só — pode incluir aliados junto com inimigos, dependendo do Movimento (ver abaixo). Não tira ninguém como alvo manualmente — é automático.
-- **Campo** (ex.: Stealth Rock, clima): não mira em nenhum Pokémon específico — afeta o campo/lado da batalha. Mecânica ainda em aberto (Cap. 25).
+- **Campo** (ex.: Spikes, Sticky Web, clima): não mira em nenhum Pokémon específico — afeta o campo/lado da batalha. Mecânica ainda em aberto (Cap. 25). Stealth Rock é a exceção: embora seja conceitualmente um efeito de campo, no site ele pede um alvo — "só inimigo" — pra saber EM QUAL lado plantar a armadilha (ver Cap. 26.6).
 
 Um Movimento de Área pode ser: todos os inimigos, todos os aliados (sem contar você), você e seus aliados, todo mundo menos você, ou literalmente todo mundo em campo — depende do Movimento específico, seguindo o mesmo dado oficial de Tipo/Poder/Precisão.
 
@@ -426,10 +426,56 @@ Na Arena do site, os passos 1 e 2 (Prioridade e quem age primeiro) também já s
 - **Cura e Recuperação**: Recover, Roost, Synthesis, Rest e todo o resto dos Movimentos de cura (Cap. 8.5) já restauram PV de verdade, na porcentagem oficial de cada um, aplicada ao PV Máximo de quem for o alvo resolvido do golpe (o próprio usuário na maioria, um aliado escolhido em Heal Pulse). Jungle Healing e Purify (efeito duplo — cura + cura de Condição de quem não é o alvo do dano) ainda ficam de fora, regra em aberto.
 - **Recuo e Dreno**: golpes de recuo (Take Down, Double-Edge, Brave Bird, Flare Blitz...) já tiram PV do próprio atacante de verdade, na porcentagem oficial sobre o dano causado; golpes de dreno (Absorb, Giga Drain, Drain Punch...) já curam o atacante em cima do dano causado, virando dano nele em vez de cura se o alvo tiver Liquid Ooze. Struggle e Clangorous Soul (custo fixo de PV só por usar o Movimento, não proporcional ao dano) ficam de fora — mecânica diferente, rara.
 - **Movimentos que trocam depois de atacar**: U-turn, Volt Switch e Parting Shot já trocam o usuário de campo de verdade depois de resolver o próprio efeito — se sobrar alguém pra entrar, a troca vira a continuação obrigatória da mesma ação. Baton Pass fica de fora por enquanto (também passa os Estágios pro que entrar, em vez de resetar — mecânica diferente de qualquer troca hoje no sistema).
-- **Regras específicas de Movimentos**: múltiplos acertos, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5), o PP (Cap. 8.6) e a mudança de Estágio (Cap. 15.1) já seguem o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano, Condição de status, mudança de Estágio nem Recuo/Dreno/Cura (Helping Hand, Aromatherapy, etc.) e qualquer Movimento de campo (Stealth Rock, clima — Cap. 8.5). Não existe Struggle automático quando um Pokémon fica sem PP em nenhum Movimento — o Mestre adjudica.
+- **Regras específicas de Movimentos**: múltiplos acertos, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5), o PP (Cap. 8.6) e a mudança de Estágio (Cap. 15.1) já seguem o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano, Condição de status, mudança de Estágio, Recuo/Dreno/Cura, Condição Volátil (Cap. 26) nem armadilha de campo (Helping Hand, Aromatherapy, Spikes, Toxic Spikes, Sticky Web, clima — Stealth Rock já está implementado, Cap. 26.6). Não existe Struggle automático quando um Pokémon fica sem PP em nenhum Movimento — o Mestre adjudica.
 - **Captura**: sistema definitivo de Poké Balls ainda precisa ser desenvolvido.
 - **Habilidades**: 93 das 373 já têm gatilho mecânico automático (Cap. 6.3) — as outras ~280 continuam só texto de referência.
 - **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo), organizada em cinco abas (Poções e Berries, Pokébolas, Itens de Missão, TM, Inventário Geral). Existe um catálogo com os itens oficiais mais reconhecíveis dos jogos — cada um com **descrição em português**, com o valor de cura real do NOSSO sistema (não o número oficial do jogo — ex.: Potion diz "Restaura 5 PV.", não os 20 HP oficiais), que autocompleta sozinha ao escolher o item numa lista — organizado por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave, Recuperação de PP, TMs — as 229 TMs vigentes de Scarlet/Violet), sempre disponível por inteiro (não dá mais pra desligar categoria pra mesa). Um botão "Usar" em cada linha da Mochila (ou o "Usar Item" da Arena) já pergunta direto em qual Pokémon aplicar, sem passo a mais. Cinco tipos já têm efeito de verdade, tanto fora de batalha quanto na Arena: **Vida** (cura PV — quantidade fixa ou cura total), **Condição** (cura Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal), **Reviver** (só funciona em quem está desmaiado, Cap. 19), **Vida + Condição** (cura os dois juntos numa unidade só, tipo Full Restore) e **PP** (Ether/Max Ether/Elixir/Max Elixir/PP Up/PP Max, Cap. 8.6.1). Itens de batalha/evolução, itens segurados, itens-chave e TMs seguem o mesmo fluxo de escolher um Pokémon pra usar nele (mesmo desmaiado, já que não tem trava de PV associada), mas continuam só consumindo 1 unidade e registrando o uso, sem efeito mecânico de verdade — evolução por item, slot de item equipado, ensinar um Movimento por TM de verdade e buffs temporários de batalha ainda são regras em aberto. **Pokébolas são a exceção**: não têm essa opção de uso — servem pra capturar um Pokémon selvagem/alheio, não pra "usar" num Pokémon que já é do próprio Treinador, então ficam sem função de uso até existir um sistema de captura de verdade (envolvendo a Arena) — regra em aberto.
+
+## Capítulo 26 — Condições Voláteis e Movimentos Especiais
+
+Diferente das Condições Principais (Cap. 20) — nunca duas ao mesmo tempo — e da Confusão (Cap. 23, que coexiste com qualquer uma delas —, essas condições e Movimentos abaixo têm regra própria, cada uma independente das outras (um Pokémon pode estar Semeado, com Substituto de pé e Confuso, tudo ao mesmo tempo). Todas resetam ao sair de campo (desmaio, troca ou fuga), igual aos Estágios (Cap. 15.2).
+
+### 26.1 Atordoado (Flinch)
+
+Alguns Movimentos (ex.: Fake Out, Iron Head, Air Slash) têm chance de deixar o alvo Atordoado quando acertam. Um Pokémon Atordoado **perde a própria ação só na Rodada em que foi atordoado** — se ele já tiver agido antes de ser atordoado (era mais rápido que quem causou), a condição simplesmente não pega nele naquela Rodada; nunca sobra pra Rodada seguinte, de nenhum jeito. A Habilidade Inner Focus bloqueia por completo.
+
+### 26.2 Leech Seed (Semente Parasita)
+
+Planta uma semente no alvo (Movimento próprio, chance conforme a Precisão oficial dele — Cap. 26.5) que drena **1/8 do PV Máximo** do semeado no fim de cada turno dele, restaurando essa quantidade pra quem plantou (ou pra quem tomar o lugar dele em campo, se o semeador trocar/desmaiar antes). Não funciona em Pokémon do Tipo Grama (imune). Funciona tecnicamente contra a Habilidade Magic Guard — a semente planta — mas nenhum PV é drenado (Magic Guard bloqueia qualquer PV que não venha de um golpe batendo direto). Contra a Habilidade Liquid Ooze, quem PLANTOU a semente perde a mesma quantidade que ganharia, em vez de curar. O semeado se livra da semente saindo de campo (troca) ou acertando Rapid Spin.
+
+### 26.3 Substitute (Substituto)
+
+Movimento próprio: o usuário perde **25% do PV Máximo** (arredondado pra baixo) pra criar um boneco com esse tanto de PV, que absorve qualquer dano recebido em seu lugar (sem vazar o excesso pro PV de verdade quando o boneco quebra) e bloqueia por completo qualquer Movimento de Status ou efeito colateral usado contra o usuário enquanto o boneco estiver de pé. Falha se o usuário não tiver MAIS que 25% do PV Máximo em PV atual (nunca desmaia usando o próprio Movimento) e falha também se já houver um boneco de pé (só um por vez).
+
+### 26.4 Outrage, Thrash e Petal Dance (Fúria)
+
+O usuário ataca por **2 ou 3 turnos** (sorteado no 1º acerto), repetindo o mesmo golpe no mesmo alvo automaticamente — sem passar pela escolha de ação de novo, e por isso mesmo **não pode trocar de Pokémon** enquanto durar. Ao completar a duração inteira sem nenhuma interrupção, o usuário fica **Confuso** de exaustão (Cap. 23) assim que a fúria termina — bloqueado se o usuário tiver a Habilidade Own Tempo ou um Substituto de pé (Cap. 26.3), igual qualquer tentativa de causar Confusão nele. Se o golpe for interrompido no meio (erra o alvo, ou o usuário não consegue agir por Paralisia/Sono/Congelamento/Atordoado/Confusão) a fúria acaba na hora **sem** causar Confusão — a única exceção é a interrupção acontecer bem na ÚLTIMA rodada programada da fúria, que ainda assim confunde (a fúria já ia terminar e confundir de qualquer jeito).
+
+### 26.5 Movimentos de Condição Pura
+
+Movimentos de Status que só existem pra aplicar uma Condição Principal — sem dano nenhum — usam a própria **Precisão oficial do golpe como a chance de 1d10** (o mesmo dado de Efeito Percentual do Cap. 14), em vez do 1d6 normal de Precisão: "acertar" e "a Condição pegar" são a mesma rolagem, uma coisa só. Exemplos: Thunder Wave, Toxic, Sleep Powder, Spore, Stun Spore, Poison Powder, Glare, Hypnosis, Confuse Ray, Will-O-Wisp, Yawn.
+
+### 26.6 Stealth Rock
+
+Movimento próprio de alvo "só inimigo" (mira um Pokémon específico pra saber em qual TIME plantar a armadilha, mesmo sendo conceitualmente um efeito de campo — ver Cap. 8.5). Assim que planta, qualquer Pokémon daquele Time que entrar em campo dali pra frente (troca normal, forçada por desmaio, ou por um Movimento como U-turn) sofre dano de entrada de acordo com a Efetividade de Tipo Pedra contra ele:
+
+| Efetividade de Pedra | Dano de entrada |
+|---|---|
+| 4× (dois Tipos fracos) | 1/2 do PV Máximo |
+| 2× (um Tipo fraco) | 1/4 do PV Máximo |
+| 1× (neutro) | 1/8 do PV Máximo |
+| 1/2× (um Tipo resiste) | 1/16 do PV Máximo |
+| 1/4× (dois Tipos resistem) | 1/32 do PV Máximo |
+
+Pedra não tem imunidade de Tipo nenhuma, então todo Pokémon cai numa dessas 5 faixas. Só um por Time por vez (usar de novo não empilha nem estica); dura até alguém limpar (Rapid Spin/Tidy Up ainda não removem Stealth Rock neste sistema — regra em aberto, Cap. 25).
+
+### 26.7 Foul Play
+
+Movimento próprio: usa o **Ataque Efetivo do DEFENSOR** na fórmula de dano, em vez do Ataque do próprio usuário — quanto mais forte o Ataque de quem está apanhando, mais forte o golpe bate nele. Todo o resto da fórmula (Defesa, Tipo, STAB, Crítico) continua normal, calculado do jeito de sempre.
+
+### 26.8 Healing Wish e Lunar Dance
+
+Movimento próprio: o usuário desmaia na hora, e o PRÓXIMO Pokémon do mesmo Treinador a entrar em campo (não precisa ser imediato — vale a qualquer momento depois) entra com o **PV cheio** e a **Condição Principal curada** (Queimadura/Veneno/Paralisia/Sono/Congelamento — Confusão não é curada, é uma condição à parte). Lunar Dance é o mesmo Movimento, só que também recarrega o PP de todos os Movimentos até o máximo.
 
 ## Referência Rápida
 
@@ -452,6 +498,8 @@ Na Arena do site, os passos 1 e 2 (Prioridade e quem age primeiro) também já s
 **PP**: 1 por uso (2 se o alvo tiver Pressure) · 0 PP bloqueia o Movimento, sem Struggle automático · só o Mestre edita à mão · Ether/Max Ether/Elixir/Max Elixir/PP Up/PP Max recuperam/aumentam automaticamente (Cap. 8.6.1)
 
 **Condições**: Queimadura (−2 Atq, −1 PV/turno) · Veneno (−2 PV/turno) · Veneno Grave (1,2,3,4...) · Paralisia (remove Agilidade do Treinador, −10 Vel., 1–2 perde ação) · Sono (1 turno obrigatório, depois 5–6 acorda, máx. 3 turnos) · Congelamento (5–6 descongela) · Confusão (5–6 cura; senão 1–2 perde ação e sofre 1 PV)
+
+**Condições Voláteis (Cap. 26)**: Atordoado (perde a ação só nessa Rodada) · Leech Seed (1/8 PV Máx./turno) · Substitute (custa 25% PV Máx.) · Fúria/Outrage (2-3 turnos, trava e depois confunde) · Stealth Rock (1/8 PV Máx. de entrada, por Efetividade de Tipo Pedra)
 
 ---
 

@@ -141,9 +141,17 @@
   }
   textarea{ resize:vertical; min-height:52px; }
 
-  button{ font-family:"Roboto", "Segoe UI", system-ui, sans-serif; cursor:pointer; border-radius:var(--radius-sm); border:2px solid var(--line); background:var(--surface); color:var(--ink); padding:8px 14px; font-size:.82rem; font-weight:700; transition:transform .08s ease; }
-  button:hover{ border-color:var(--accent); }
-  button:active{ transform:translateY(1px); }
+  /* .topbar-link (Cap. mecânica nova) entra aqui também -- pedido do
+     usuário: "os menus (arena, pvp, Ficha) eles poderiam dar a opção de
+     abrir uma nova aba deles se eu quisesse". Arena/PVP/Ficha viram <a
+     href="#hash"> de verdade (não dava pra abrir um <button> puro numa
+     aba nova -- ele nem tem href), mas continuam com a MESMA cara de
+     botão: como esse seletor de base só pega a tag <button>, replica
+     aqui pra topbar-link também (as cores/hover específicas do topbar
+     escuro já vêm de ".topbar .who .btn-ghost", que não é preso à tag). */
+  button, .topbar-link{ font-family:"Roboto", "Segoe UI", system-ui, sans-serif; cursor:pointer; border-radius:var(--radius-sm); border:2px solid var(--line); background:var(--surface); color:var(--ink); padding:8px 14px; font-size:.82rem; font-weight:700; transition:transform .08s ease; text-decoration:none; display:inline-block; }
+  button:hover, .topbar-link:hover{ border-color:var(--accent); }
+  button:active, .topbar-link:active{ transform:translateY(1px); }
   button:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
   .btn-primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
   .btn-primary:hover{ filter:brightness(1.08); }
@@ -390,6 +398,27 @@
   .arena-error-overlay{ position:fixed; inset:0; background:rgba(20,14,8,.45); display:flex; align-items:center; justify-content:center; z-index:210; padding:20px; animation:dice-fade-in .15s ease-out; }
   .arena-error-overlay-card{ background:var(--surface); border:2px solid var(--danger); border-radius:var(--radius); padding:20px 24px; max-width:380px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
   .arena-error-overlay-text{ font-size:.88rem; margin-bottom:12px; }
+
+  /* Menu de Regras (Cap. mecânica nova) -- pedido do usuário: "O Menu de
+     Regras tem que abrir como popup e lá dentro ele estar dividido por
+     abas, não está assim." Antes era um "screen" inteiro (screenHTML()
+     trocava a página toda por ele, igual Arena/PVP/Ficha) -- por isso não
+     era de verdade um popup: abrir Regras te tirava de onde você estava
+     (via SESSION.showRules por cima de tudo). Agora é um overlay de
+     verdade (mesmo padrão visual do .arena-action-overlay acima), com as
+     3 abas (RULES_DOCS) dentro do próprio cabeçalho -- fecha com ✕/clique
+     no fundo/DT.toggleRules() de novo, e a tela de baixo (Arena/PVP/Ficha/
+     Início) continua exatamente como estava, visível de novo assim que
+     fecha. z-index acima até do aviso de erro (210) -- é o usuário pedindo
+     pra ler algo, não deveria ficar escondido atrás de um banner. */
+  .rules-popup-overlay{ position:fixed; inset:0; background:rgba(20,14,8,.55); display:flex; align-items:center; justify-content:center; z-index:220; padding:16px; animation:dice-fade-in .15s ease-out; }
+  .rules-popup-card{ background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); max-width:900px; width:100%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
+  .rules-popup-head{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); flex-shrink:0; }
+  .rules-popup-head h2{ margin:0; font-size:1rem; flex-shrink:0; }
+  .rules-popup-tabs{ display:flex; flex-wrap:wrap; gap:6px; flex:1; }
+  .rules-popup-close{ background:none; border:none; font-size:1.2rem; line-height:1; cursor:pointer; color:var(--ink-dim); padding:2px 6px; flex-shrink:0; }
+  .rules-popup-close:hover{ color:var(--danger); }
+  .rules-popup-body{ padding:14px 18px; overflow-y:auto; }
 
   /* ---- Popup de Ação (Atacar/Item/Trocar/Fugir): antes ficava num card
      fixo lá embaixo da página (precisava rolar a tela até ele, e de novo
@@ -1566,6 +1595,30 @@ var SPECIES_DEX = [
   {num:1024,name:'Terapagos',tipo1:'Normal',tipo2:'',gen:9,base:{hp:90,atk:65,def:85,spa:65,spd:85,spe:60},hab:[{n:'Tera Shift',h:false}]},
   {num:1025,name:'Pecharunt',tipo1:'Venenoso',tipo2:'Fantasma',gen:9,base:{hp:88,atk:88,def:160,spa:88,spd:88,spe:88},hab:[{n:'Poison Puppeteer',h:false}]}
 ];
+
+/* ================ EVOLUÇÃO: ESTÁGIO NA FAMÍLIA (Cap. mecânica nova) ================
+   Pedido do usuário (gerador aleatório de Pokémon na ficha de PVP): "Deixe
+   que ele selecione se quer focar em pokemon de primeira, segunda ou
+   terceira evolução, uma evolução(como Pinsir), de duas evoluções como
+   Slowpoke/slowbro." -- SPECIES_DEX nunca guardou isso (não existe cadeia
+   de evolução em lugar nenhum do dado atual -- o campo "evo" dentro de
+   LEARNSETS é outra coisa: "Movimento ganho ao evoluir pra essa forma",
+   não a cadeia em si). Gerado uma vez via PokeAPI (mesma fonte de sempre:
+   /api/v2/evolution-chain/1 até 541 -- 541 cadeias oficiais, 8 delas 404
+   -- só lendas/mythicals do Gen 9 mais recentes tipo Pecharunt/Ogerpon,
+   sem cadeia cadastrada ainda lá, então entram como [1,1] à mão, único
+   estágio mesmo). Cada valor é [estágio, tamanhoDaFamília] pelo NÚMERO da
+   Pokédex Nacional (chave seguríssima -- nomes têm apóstrofo/hífen/ponto
+   difíceis de casar igual, tipo Farfetch'd/Mr. Mime/Ho-Oh; a URL de cada
+   nó da cadeia já carrega o id .../pokemon-species/{id}/, sem precisar
+   adivinhar nome nenhum). tamanhoDaFamília nunca passa de 3 (nenhuma
+   cadeia oficial tem mais que 3 estágios) -- por isso os filtros do
+   gerador (ver PVP_RANDOM_STAGE_FILTERS/DT.pvpGerarAleatorio) cobrem só
+   5 categorias: 'uma' (tamanho 1, ex.: Pinsir), 'duas' (tamanho 2, ex.:
+   Slowpoke E Slowbro -- os dois estágios da família contam, igual o
+   usuário pediu), e 'primeira'/'segunda'/'terceira' (tamanho 3, filtrando
+   pelo estágio dentro dela). */
+var EVO_STAGE = {1:[1,3],2:[2,3],3:[3,3],4:[1,3],5:[2,3],6:[3,3],7:[1,3],8:[2,3],9:[3,3],10:[1,3],11:[2,3],12:[3,3],13:[1,3],14:[2,3],15:[3,3],16:[1,3],17:[2,3],18:[3,3],19:[1,2],20:[2,2],21:[1,2],22:[2,2],23:[1,2],24:[2,2],25:[2,3],26:[3,3],27:[1,2],28:[2,2],29:[1,3],30:[2,3],31:[3,3],32:[1,3],33:[2,3],34:[3,3],35:[2,3],36:[3,3],37:[1,2],38:[2,2],39:[2,3],40:[3,3],41:[1,3],42:[2,3],43:[1,3],44:[2,3],45:[3,3],46:[1,2],47:[2,2],48:[1,2],49:[2,2],50:[1,2],51:[2,2],52:[1,2],53:[2,2],54:[1,2],55:[2,2],56:[1,3],57:[2,3],58:[1,2],59:[2,2],60:[1,3],61:[2,3],62:[3,3],63:[1,3],64:[2,3],65:[3,3],66:[1,3],67:[2,3],68:[3,3],69:[1,3],70:[2,3],71:[3,3],72:[1,2],73:[2,2],74:[1,3],75:[2,3],76:[3,3],77:[1,2],78:[2,2],79:[1,2],80:[2,2],81:[1,3],82:[2,3],83:[1,2],84:[1,2],85:[2,2],86:[1,2],87:[2,2],88:[1,2],89:[2,2],90:[1,2],91:[2,2],92:[1,3],93:[2,3],94:[3,3],95:[1,2],96:[1,2],97:[2,2],98:[1,2],99:[2,2],100:[1,2],101:[2,2],102:[1,2],103:[2,2],104:[1,2],105:[2,2],106:[2,2],107:[2,2],108:[1,2],109:[1,2],110:[2,2],111:[1,3],112:[2,3],113:[2,3],114:[1,2],115:[1,1],116:[1,3],117:[2,3],118:[1,2],119:[2,2],120:[1,2],121:[2,2],122:[2,3],123:[1,2],124:[2,2],125:[2,3],126:[2,3],127:[1,1],128:[1,1],129:[1,2],130:[2,2],131:[1,1],132:[1,1],133:[1,2],134:[2,2],135:[2,2],136:[2,2],137:[1,3],138:[1,2],139:[2,2],140:[1,2],141:[2,2],142:[1,1],143:[2,2],144:[1,1],145:[1,1],146:[1,1],147:[1,3],148:[2,3],149:[3,3],150:[1,1],151:[1,1],152:[1,3],153:[2,3],154:[3,3],155:[1,3],156:[2,3],157:[3,3],158:[1,3],159:[2,3],160:[3,3],161:[1,2],162:[2,2],163:[1,2],164:[2,2],165:[1,2],166:[2,2],167:[1,2],168:[2,2],169:[3,3],170:[1,2],171:[2,2],172:[1,3],173:[1,3],174:[1,3],175:[1,3],176:[2,3],177:[1,2],178:[2,2],179:[1,3],180:[2,3],181:[3,3],182:[3,3],183:[2,3],184:[3,3],185:[2,2],186:[3,3],187:[1,3],188:[2,3],189:[3,3],190:[1,2],191:[1,2],192:[2,2],193:[1,2],194:[1,2],195:[2,2],196:[2,2],197:[2,2],198:[1,2],199:[2,2],200:[1,2],201:[1,1],202:[2,2],203:[1,2],204:[1,2],205:[2,2],206:[1,2],207:[1,2],208:[2,2],209:[1,2],210:[2,2],211:[1,2],212:[2,2],213:[1,1],214:[1,1],215:[1,2],216:[1,3],217:[2,3],218:[1,2],219:[2,2],220:[1,3],221:[2,3],222:[1,2],223:[1,2],224:[2,2],225:[1,1],226:[2,2],227:[1,1],228:[1,2],229:[2,2],230:[3,3],231:[1,2],232:[2,2],233:[2,3],234:[1,2],235:[1,1],236:[1,2],237:[2,2],238:[1,2],239:[1,3],240:[1,3],241:[1,1],242:[3,3],243:[1,1],244:[1,1],245:[1,1],246:[1,3],247:[2,3],248:[3,3],249:[1,1],250:[1,1],251:[1,1],252:[1,3],253:[2,3],254:[3,3],255:[1,3],256:[2,3],257:[3,3],258:[1,3],259:[2,3],260:[3,3],261:[1,2],262:[2,2],263:[1,3],264:[2,3],265:[1,3],266:[2,3],267:[3,3],268:[2,3],269:[3,3],270:[1,3],271:[2,3],272:[3,3],273:[1,3],274:[2,3],275:[3,3],276:[1,2],277:[2,2],278:[1,2],279:[2,2],280:[1,3],281:[2,3],282:[3,3],283:[1,2],284:[2,2],285:[1,2],286:[2,2],287:[1,3],288:[2,3],289:[3,3],290:[1,2],291:[2,2],292:[2,2],293:[1,3],294:[2,3],295:[3,3],296:[1,2],297:[2,2],298:[1,3],299:[1,2],300:[1,2],301:[2,2],302:[1,1],303:[1,1],304:[1,3],305:[2,3],306:[3,3],307:[1,2],308:[2,2],309:[1,2],310:[2,2],311:[1,1],312:[1,1],313:[1,1],314:[1,1],315:[2,3],316:[1,2],317:[2,2],318:[1,2],319:[2,2],320:[1,2],321:[2,2],322:[1,2],323:[2,2],324:[1,1],325:[1,2],326:[2,2],327:[1,1],328:[1,3],329:[2,3],330:[3,3],331:[1,2],332:[2,2],333:[1,2],334:[2,2],335:[1,1],336:[1,1],337:[1,1],338:[1,1],339:[1,2],340:[2,2],341:[1,2],342:[2,2],343:[1,2],344:[2,2],345:[1,2],346:[2,2],347:[1,2],348:[2,2],349:[1,2],350:[2,2],351:[1,1],352:[1,1],353:[1,2],354:[2,2],355:[1,3],356:[2,3],357:[1,1],358:[2,2],359:[1,1],360:[1,2],361:[1,2],362:[2,2],363:[1,3],364:[2,3],365:[3,3],366:[1,2],367:[2,2],368:[2,2],369:[1,1],370:[1,1],371:[1,3],372:[2,3],373:[3,3],374:[1,3],375:[2,3],376:[3,3],377:[1,1],378:[1,1],379:[1,1],380:[1,1],381:[1,1],382:[1,1],383:[1,1],384:[1,1],385:[1,1],386:[1,1],387:[1,3],388:[2,3],389:[3,3],390:[1,3],391:[2,3],392:[3,3],393:[1,3],394:[2,3],395:[3,3],396:[1,3],397:[2,3],398:[3,3],399:[1,2],400:[2,2],401:[1,2],402:[2,2],403:[1,3],404:[2,3],405:[3,3],406:[1,3],407:[3,3],408:[1,2],409:[2,2],410:[1,2],411:[2,2],412:[1,2],413:[2,2],414:[2,2],415:[1,2],416:[2,2],417:[1,1],418:[1,2],419:[2,2],420:[1,2],421:[2,2],422:[1,2],423:[2,2],424:[2,2],425:[1,2],426:[2,2],427:[1,2],428:[2,2],429:[2,2],430:[2,2],431:[1,2],432:[2,2],433:[1,2],434:[1,2],435:[2,2],436:[1,2],437:[2,2],438:[1,2],439:[1,3],440:[1,3],441:[1,1],442:[1,1],443:[1,3],444:[2,3],445:[3,3],446:[1,2],447:[1,2],448:[2,2],449:[1,2],450:[2,2],451:[1,2],452:[2,2],453:[1,2],454:[2,2],455:[1,1],456:[1,2],457:[2,2],458:[1,2],459:[1,2],460:[2,2],461:[2,2],462:[3,3],463:[2,2],464:[3,3],465:[2,2],466:[3,3],467:[3,3],468:[3,3],469:[2,2],470:[2,2],471:[2,2],472:[2,2],473:[3,3],474:[3,3],475:[3,3],476:[2,2],477:[3,3],478:[2,2],479:[1,1],480:[1,1],481:[1,1],482:[1,1],483:[1,1],484:[1,1],485:[1,1],486:[1,1],487:[1,1],488:[1,1],489:[1,2],490:[2,2],491:[1,1],492:[1,1],493:[1,1],494:[1,1],495:[1,3],496:[2,3],497:[3,3],498:[1,3],499:[2,3],500:[3,3],501:[1,3],502:[2,3],503:[3,3],504:[1,2],505:[2,2],506:[1,3],507:[2,3],508:[3,3],509:[1,2],510:[2,2],511:[1,2],512:[2,2],513:[1,2],514:[2,2],515:[1,2],516:[2,2],517:[1,2],518:[2,2],519:[1,3],520:[2,3],521:[3,3],522:[1,2],523:[2,2],524:[1,3],525:[2,3],526:[3,3],527:[1,2],528:[2,2],529:[1,2],530:[2,2],531:[1,1],532:[1,3],533:[2,3],534:[3,3],535:[1,3],536:[2,3],537:[3,3],538:[1,1],539:[1,1],540:[1,3],541:[2,3],542:[3,3],543:[1,3],544:[2,3],545:[3,3],546:[1,2],547:[2,2],548:[1,2],549:[2,2],550:[1,2],551:[1,3],552:[2,3],553:[3,3],554:[1,2],555:[2,2],556:[1,1],557:[1,2],558:[2,2],559:[1,2],560:[2,2],561:[1,1],562:[1,2],563:[2,2],564:[1,2],565:[2,2],566:[1,2],567:[2,2],568:[1,2],569:[2,2],570:[1,2],571:[2,2],572:[1,2],573:[2,2],574:[1,3],575:[2,3],576:[3,3],577:[1,3],578:[2,3],579:[3,3],580:[1,2],581:[2,2],582:[1,3],583:[2,3],584:[3,3],585:[1,2],586:[2,2],587:[1,1],588:[1,2],589:[2,2],590:[1,2],591:[2,2],592:[1,2],593:[2,2],594:[1,1],595:[1,2],596:[2,2],597:[1,2],598:[2,2],599:[1,3],600:[2,3],601:[3,3],602:[1,3],603:[2,3],604:[3,3],605:[1,2],606:[2,2],607:[1,3],608:[2,3],609:[3,3],610:[1,3],611:[2,3],612:[3,3],613:[1,2],614:[2,2],615:[1,1],616:[1,2],617:[2,2],618:[1,1],619:[1,2],620:[2,2],621:[1,1],622:[1,2],623:[2,2],624:[1,3],625:[2,3],626:[1,1],627:[1,2],628:[2,2],629:[1,2],630:[2,2],631:[1,1],632:[1,1],633:[1,3],634:[2,3],635:[3,3],636:[1,2],637:[2,2],638:[1,1],639:[1,1],640:[1,1],641:[1,1],642:[1,1],643:[1,1],644:[1,1],645:[1,1],646:[1,1],647:[1,1],648:[1,1],649:[1,1],650:[1,3],651:[2,3],652:[3,3],653:[1,3],654:[2,3],655:[3,3],656:[1,3],657:[2,3],658:[3,3],659:[1,2],660:[2,2],661:[1,3],662:[2,3],663:[3,3],664:[1,3],665:[2,3],666:[3,3],667:[1,2],668:[2,2],669:[1,3],670:[2,3],671:[3,3],672:[1,2],673:[2,2],674:[1,2],675:[2,2],676:[1,1],677:[1,2],678:[2,2],679:[1,3],680:[2,3],681:[3,3],682:[1,2],683:[2,2],684:[1,2],685:[2,2],686:[1,2],687:[2,2],688:[1,2],689:[2,2],690:[1,2],691:[2,2],692:[1,2],693:[2,2],694:[1,2],695:[2,2],696:[1,2],697:[2,2],698:[1,2],699:[2,2],700:[2,2],701:[1,1],702:[1,1],703:[1,1],704:[1,3],705:[2,3],706:[3,3],707:[1,1],708:[1,2],709:[2,2],710:[1,2],711:[2,2],712:[1,2],713:[2,2],714:[1,2],715:[2,2],716:[1,1],717:[1,1],718:[1,1],719:[1,1],720:[1,1],721:[1,1],722:[1,3],723:[2,3],724:[3,3],725:[1,3],726:[2,3],727:[3,3],728:[1,3],729:[2,3],730:[3,3],731:[1,3],732:[2,3],733:[3,3],734:[1,2],735:[2,2],736:[1,3],737:[2,3],738:[3,3],739:[1,2],740:[2,2],741:[1,1],742:[1,2],743:[2,2],744:[1,2],745:[2,2],746:[1,1],747:[1,2],748:[2,2],749:[1,2],750:[2,2],751:[1,2],752:[2,2],753:[1,2],754:[2,2],755:[1,2],756:[2,2],757:[1,2],758:[2,2],759:[1,2],760:[2,2],761:[1,3],762:[2,3],763:[3,3],764:[1,1],765:[1,1],766:[1,1],767:[1,2],768:[2,2],769:[1,2],770:[2,2],771:[1,1],772:[1,2],773:[2,2],774:[1,1],775:[1,1],776:[1,1],777:[1,1],778:[1,1],779:[1,1],780:[1,1],781:[1,1],782:[1,3],783:[2,3],784:[3,3],785:[1,1],786:[1,1],787:[1,1],788:[1,1],789:[1,3],790:[2,3],791:[3,3],792:[3,3],793:[1,1],794:[1,1],795:[1,1],796:[1,1],797:[1,1],798:[1,1],799:[1,1],800:[1,1],801:[1,1],802:[1,1],803:[1,2],804:[2,2],805:[1,1],806:[1,1],807:[1,1],808:[1,1],809:[1,1],810:[1,3],811:[2,3],812:[3,3],813:[1,3],814:[2,3],815:[3,3],816:[1,3],817:[2,3],818:[3,3],819:[1,2],820:[2,2],821:[1,3],822:[2,3],823:[3,3],824:[1,3],825:[2,3],826:[3,3],827:[1,2],828:[2,2],829:[1,2],830:[2,2],831:[1,2],832:[2,2],833:[1,2],834:[2,2],835:[1,2],836:[2,2],837:[1,3],838:[2,3],839:[3,3],840:[1,3],841:[2,3],842:[2,3],843:[1,2],844:[2,2],845:[1,1],846:[1,2],847:[2,2],848:[1,2],849:[2,2],850:[1,2],851:[2,2],852:[1,2],853:[2,2],854:[1,2],855:[2,2],856:[1,3],857:[2,3],858:[3,3],859:[1,3],860:[2,3],861:[3,3],862:[3,3],863:[2,2],864:[2,2],865:[2,2],866:[3,3],867:[2,2],868:[1,2],869:[2,2],870:[1,1],871:[1,1],872:[1,2],873:[2,2],874:[1,1],875:[1,1],876:[1,1],877:[1,1],878:[1,2],879:[2,2],880:[1,1],881:[1,1],882:[1,1],883:[1,1],884:[1,2],885:[1,3],886:[2,3],887:[3,3],888:[1,1],889:[1,1],890:[1,1],891:[1,2],892:[2,2],893:[1,1],894:[1,1],895:[1,1],896:[1,1],897:[1,1],898:[1,1],899:[2,2],900:[2,2],901:[3,3],902:[2,2],903:[2,2],904:[2,2],905:[1,1],906:[1,3],907:[2,3],908:[3,3],909:[1,3],910:[2,3],911:[3,3],912:[1,3],913:[2,3],914:[3,3],915:[1,2],916:[2,2],917:[1,2],918:[2,2],919:[1,2],920:[2,2],921:[1,3],922:[2,3],923:[3,3],924:[1,2],925:[2,2],926:[1,2],927:[2,2],928:[1,3],929:[2,3],930:[3,3],931:[1,1],932:[1,3],933:[2,3],934:[3,3],935:[1,2],936:[2,2],937:[2,2],938:[1,2],939:[2,2],940:[1,2],941:[2,2],942:[1,2],943:[2,2],944:[1,2],945:[2,2],946:[1,2],947:[2,2],948:[1,2],949:[2,2],950:[1,1],951:[1,2],952:[2,2],953:[1,2],954:[2,2],955:[1,2],956:[2,2],957:[1,3],958:[2,3],959:[3,3],960:[1,2],961:[2,2],962:[1,1],963:[1,2],964:[2,2],965:[1,2],966:[2,2],967:[1,1],968:[1,1],969:[1,2],970:[2,2],971:[1,2],972:[2,2],973:[1,1],974:[1,2],975:[2,2],976:[1,1],977:[1,1],978:[1,1],979:[3,3],980:[2,2],981:[2,2],982:[2,2],983:[3,3],984:[1,1],985:[1,1],986:[1,1],987:[1,1],988:[1,1],989:[1,1],990:[1,1],991:[1,1],992:[1,1],993:[1,1],994:[1,1],995:[1,1],996:[1,3],997:[2,3],998:[3,3],999:[1,2],1000:[2,2],1001:[1,1],1002:[1,1],1003:[1,1],1004:[1,1],1005:[1,1],1006:[1,1],1007:[1,1],1008:[1,1],1009:[1,1],1010:[1,1],1011:[2,3],1012:[1,2],1013:[2,2],1014:[1,1],1015:[1,1],1016:[1,1],1017:[1,1],1018:[2,2],1019:[3,3],1020:[1,1],1021:[1,1],1022:[1,1],1023:[1,1],1024:[1,1],1025:[1,1]};
 
 /* Habilidades oficiais (nome + efeito curto em inglês, fonte: PokeAPI) -- cada
    espécie no SPECIES_DEX (campo hab) só lista as habilidades que ela realmente
@@ -3679,6 +3732,22 @@ var MOVE_EFFECTS = {
   'Scorching Sands':{ailment:'queimadura',chance:30},
   'Freezing Glare':{ailment:'congelamento',chance:10}
 };
+/* ---- Golpes de Status PUROS (Cap. rolagem d10 -- pedido do usuário:
+   "Vamos trocar a rolagem dos moves que são só pra causar alguma
+   condição para D10 em vez de d6"): os únicos Movimentos onde
+   categoria==='Status', sem dano (poder null/0), sem Estágio
+   (MOVE_STAT_EFFECTS) nem Cura (MOVE_HEAL) -- só existem pra aplicar UM
+   Ailment (MOVE_EFFECTS acima). Curada à mão contra o próprio MOVES_DEX
+   (os 18 que batem com esse critério, confirmados um por um). Usada em
+   resolveAttack pra trocar o d6 de Precisão de sempre pelo MESMO d10 de
+   Chance que já decide Efeito Percentual de golpes de dano -- assim a
+   aplicação fica idêntica pros dois casos, como pedido. */
+var CONDITION_ONLY_MOVES = {
+  'Confuse Ray':1,'Dark Void':1,'Glare':1,'Grass Whistle':1,'Hypnosis':1,
+  'Lovely Kiss':1,'Poison Gas':1,'Poison Powder':1,'Sing':1,'Sleep Powder':1,
+  'Spore':1,'Stun Spore':1,'Supersonic':1,'Sweet Kiss':1,'Teeter Dance':1,
+  'Thunder Wave':1,'Toxic':1,'Will-O-Wisp':1
+};
 
 var MOVE_STAT_EFFECTS = {
   'Acid Armor':{changes:[{stat:'def',change:2}],chance:100},
@@ -3854,6 +3923,29 @@ var MOVE_STAT_EFFECTS = {
   'Work Up':{changes:[{stat:'atk',change:1},{stat:'spa',change:1}],chance:100},
   'Zippy Zap':{changes:[{stat:'evasao',change:1}],chance:100,self:true}
 };
+/* ---- Flinch (Atordoado) -- pedido do usuário: "moves que tem chance de
+   dar Flinched... só pode ser aplicada no turno em que ela for ativada.
+   Se eu for o último a atacar e aplicar flinched, ele não vai pro
+   próximo turno com a condição." Percentuais conferidos no Bulbapedia
+   (mecânica atual, não Gen 1-2 -- ex.: Low Kick tinha Flinch só até a
+   Gen 2, removido depois; por isso não entra aqui). Fling fica de fora
+   (a Chance dele depende do item segurado, que este sistema não modela)
+   e Upper Hand também (só funciona se o alvo tiver escolhido um golpe de
+   Prioridade, previsão que o motor não faz) -- os outros 34 valem
+   direto. Aplicado em resolveAttack/applyAttackResult (result.flinchEfeito,
+   mesmo padrão de d10 do Efeito Percentual) e consumido em
+   arenaFlinchPreCheck (arenaExecuteQueuedAttack), sempre limpo nas duas
+   pontas (ver arenaFinishRoundResolution) pra nunca sobrar pra Rodada
+   seguinte. */
+var MOVE_FLINCH = {
+  'Fake Out':100,
+  'Air Slash':30,'Astonish':30,'Bite':30,'Double Iron Bash':30,'Floaty Fall':30,
+  'Headbutt':30,'Heart Stamp':30,'Icicle Crash':30,'Iron Head':30,'Mountain Gale':30,
+  'Needle Arm':30,'Rock Slide':30,'Rolling Kick':30,'Secret Power':30,'Sky Attack':30,
+  'Snore':30,'Steamroller':30,'Stomp':30,'Triple Arrows':30,'Zing Zap':30,
+  'Dark Pulse':20,'Dragon Rush':20,'Fiery Wrath':20,'Twister':20,'Waterfall':20,'Zen Headbutt':20,
+  'Bone Club':10,'Extrasensory':10,'Fire Fang':10,'Hyper Fang':10,'Ice Fang':10,'Thunder Fang':10
+};
 /* ---- Recuo (dano no próprio usuário, % do dano CAUSADO no alvo) e Dreno
    (cura no próprio usuário, também % do dano causado) -- dado oficial
    (meta.drain da PokeAPI: negativo = recuo, positivo = dreno), Cap. 25.
@@ -3927,6 +4019,27 @@ var CHARGE_MOVE_MSG = {
   'Sky Attack':'recolhe as asas para o próximo ataque', 'Skull Bash':'abaixa a cabeça',
   'Solar Beam':'reúne luz', 'Solar Blade':'reúne luz para condensar em uma lâmina'
 };
+/* Movimentos de "fúria" (Cap. 25) -- pedido do usuário: "Outrage está
+   errado. Segue como ele tem que funcionar... The user of Outrage attacks
+   for 2-3 turns, during which it cannot switch out, and then becomes
+   confused... If Outrage is disrupted (e.g. if the move misses or the
+   user cannot attack due to paralysis) then it will stop and not cause
+   confusion. Pokémon with the ability Own Tempo or those behind a
+   Substitute cannot be confused" (fonte: Bulbapedia). Varredura de
+   mecânica parecida: Thrash e Petal Dance são o MESMO golpe (só muda
+   tipo/dano), então entram junto -- ver poke.outrageLock (motor em
+   DT.resolveArenaMove/arenaBuildSelectingRound/arenaExecuteQueuedAttack).
+   Diferença chave pro CHARGE_MOVES (ver comentário logo acima): aqui o
+   golpe ATACA todo turno, normal, com PP/Precisão/dano rolando de
+   verdade -- não é uma "carga" que golpeia só no fim, é uma trava de N
+   turnos repetindo o mesmo golpe/alvo sem passar pelo menu, decidida (2
+   ou 3, sorteado) já no 1º turno em que acerta. A Confusão final reusa o
+   sistema de Confusão já existente (poke.confuso + arenaConfusionPreCheck,
+   que já respeita Own Tempo -- ver ABILITY_MECHANICS/statusKey==='confuso'
+   -- e Substitute bloqueia por já ser um efeito colateral de golpe que o
+   boneco absorve, ver applyAttackResult) em vez de reimplementar o
+   próprio teste de auto-dano da Confusão. */
+var THRASH_MOVES = { 'Outrage':1, 'Thrash':1, 'Petal Dance':1 };
 /* ---- Categoria de alvo de cada Movimento (self/aliado/inimigo/área) ----
    Gerada a partir do CSV oficial do PokeAPI (moves.csv target_id + move_targets.csv),
    mesma fonte de SPECIES_DEX/MOVES_DEX/LEARNSETS/TYPE_CHART/MOVE_EFFECTS. ---- */
@@ -4376,7 +4489,16 @@ var MOVE_TARGETS = {
   'Magnet Bomb':'any',
   'Stone Edge':'any',
   'Captivate':'all-foes',
-  'Stealth Rock':'field',
+  /* Pedido do usuário: "Ele precisa funcionar afetando o campo do
+     adversário que eu mirar" -- por isso NÃO é 'field' (que nem pede
+     alvo nenhum, ver eligibleMoveTargets/case 'field': return [] -- é
+     por isso que nunca afetava ninguém). Vira 'foe' de propósito: reusa
+     o MESMO seletor de alvo único que Thunder Wave/Toxic já usam --
+     "mirar" literalmente um inimigo -- e o motor aplica a armadilha no
+     TIME (teamId) desse alvo escolhido, não só nele (ver o gancho em
+     resolveMoveUse/STEALTH_ROCK_DAMAGE_FRACTION, mais abaixo, e o
+     tique de dano em DT.arenaSwapInResolved). */
+  'Stealth Rock':'foe',
   'Grass Knot':'any',
   'Chatter':'any',
   'Judgment':'any',
@@ -5782,6 +5904,10 @@ var SESSION = { role:null, trainerId:null, screen:'home', error:'', notice:'', e
      arrastada de cada um (sem entrada no mapa = usa a posição padrão em
      cascata, ver arenaStatsPanelHTML). */
   arenaStatsOpen:[], arenaStatsPos:null,
+  /* Mesma ideia, só pra Área PVP -- lista própria de entryId abertos (a
+     posição arrastada, arenaStatsPos, continua compartilhada de propósito,
+     ver o comentário em statsPanelHTML). */
+  pvpStatsOpen:[],
   /* Janela do Registro (histórico de rolagens, Cap. 17 em diante): mesma
      ideia -- só local, cada viewer arrasta (arenaLogPos={x,y}) e
      redimensiona (arenaLogSize={w,h}) a própria janela sem afetar os
@@ -5890,7 +6016,8 @@ function newTrainer(name, pin){
     battlesWon:0,
     attrPoints:{vigor:0,vontade:0,resistencia:0,mental:0,foco:0,agilidade:0},
     attrPointsAllocated:0, attrChoicePicks:[],
-    pokemons:[], banco:[], itens:[]
+    pokemons:[], banco:[], itens:[],
+    healingWishPending: null /* Healing Wish/Lunar Dance (Cap. mecânica nova) -- ver DT.resolveArenaMove/DT.arenaSwapInResolved */
   };
 }
 var CURA_CONDICAO_LABELS = { '':'Qualquer Condição', queimadura:'Queimadura', veneno:'Veneno/Veneno Grave', paralisia:'Paralisia', sono:'Sono', congelamento:'Congelamento', confuso:'Confusão' };
@@ -5947,6 +6074,7 @@ function migrateState(){
     if(typeof t.attrPointsAllocated !== 'number') t.attrPointsAllocated = attrSpent(t);
     if(!Array.isArray(t.attrChoicePicks)) t.attrChoicePicks = [];
     if(!Array.isArray(t.itens)) t.itens = [];
+    if(t.healingWishPending===undefined) t.healingWishPending = null; /* Healing Wish/Lunar Dance (Cap. mecânica nova) -- flag de batalha por Treinador */
     /* Itens salvos antes de tipo/cura/condicaoAlvo existirem viram 'outro'
        (continuam sem efeito mecânico, como já eram). */
     t.itens.forEach(function(it){
@@ -5975,6 +6103,14 @@ function migrateState(){
       else if(p.habilidade!=='' && habilidadesDaEspecie(p.especie).indexOf(p.habilidade)===-1) p.habilidade = ''; /* espécie mudou, ou nome corrompido */
       if(typeof p.flashFireBoost !== 'boolean') p.flashFireBoost = false; /* Flash Fire (Cap. 6.3) -- flag de batalha, nunca precisa persistir marcado entre sessões */
       if(p.carregando===undefined) p.carregando = null; /* Movimento de carga (Cap. 25) -- flag de batalha, mesmo caso do Flash Fire acima */
+      /* Condições voláteis novas (Flinch/Leech Seed/Substitute/Outrage) --
+         mesmo caso de carregando: flags de batalha, só precisam existir
+         com um valor válido, nunca precisam "significar" nada fora de
+         uma batalha em andamento. */
+      if(typeof p.flinched !== 'boolean') p.flinched = false;
+      if(p.leechSeed===undefined) p.leechSeed = null;
+      if(p.substituto===undefined) p.substituto = null;
+      if(p.outrageLock===undefined) p.outrageLock = null;
     });
   });
   /* Cap. PVP: fichas (Pokémon de PVP, um "box" por Treinador, independente
@@ -6002,10 +6138,12 @@ function migrateState(){
     if(s.vencedor===undefined) s.vencedor = null;
     if(s.fugaTravada===undefined) s.fugaTravada = true;
     if(s.round===undefined) s.round = null;
+    if(!s.hazards || typeof s.hazards!=='object') s.hazards = {}; /* Stealth Rock etc. por Time -- ver STEALTH_ROCK_DAMAGE_FRACTION */
   });
   if(!STATE.arena || typeof STATE.arena!=='object') STATE.arena = {teams:[], entries:[]};
   if(!Array.isArray(STATE.arena.teams)) STATE.arena.teams = [];
   if(!Array.isArray(STATE.arena.entries)) STATE.arena.entries = [];
+  if(!STATE.arena.hazards || typeof STATE.arena.hazards!=='object') STATE.arena.hazards = {}; /* Stealth Rock etc. por Time -- ver STEALTH_ROCK_DAMAGE_FRACTION */
   if(STATE.arena.lastRoll===undefined) STATE.arena.lastRoll = null;
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   if(STATE.arena.round===undefined) STATE.arena.round = null;
@@ -6092,6 +6230,20 @@ function newPokemon(){
     natural:{hp:1,atk:1,def:1,spa:1,spd:1,spe:1},
     vinculo:0, maturidade:0, currentHP:null,
     status:"", statusTurns:0, confuso:false, arenaRevelado:false, natureza:"", habilidade:"", flashFireBoost:false, carregando:null,
+    /* Condições voláteis novas (não fazem parte do status principal, Cap.
+       20 -- coexistem com ele igual confuso já faz):
+       - flinched: Atordoado (Flinch) -- só dura até a PRÓPRIA vez dessa
+         Rodada chegar (nunca sobrevive pra Rodada seguinte, ver
+         arenaFlinchPreCheck/arenaFinishRoundResolution).
+       - leechSeed: { trainerId, pokemonId } de quem semeou ESTE Pokémon
+         (Leech Seed) -- null = não semeado.
+       - substituto: { hp } enquanto o boneco (Substitute) estiver de pé
+         -- null = sem boneco.
+       - outrageLock: { moveIdx, turnsLeft, confusaoAoFim } enquanto
+         travado usando Outrage/Thrash/Petal Dance (mesmo espírito de
+         carregando, mas dura 2-3 turnos JÁ atacando, não 1 turno de
+         carga) -- null = livre. */
+    flinched:false, leechSeed:null, substituto:null, outrageLock:null,
     estagios:{atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0},
     moves:[{nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
            {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"},
@@ -6248,6 +6400,15 @@ function bumpStage(poke, stat, delta){
 function resetStages(poke){
   poke.estagios = {atk:0,def:0,spa:0,spd:0,spe:0,precisao:0,evasao:0};
   poke.carregando = null;
+  /* Mesmo espírito de carregando: condições voláteis que nunca deveriam
+     sobreviver a sair de campo (desmaiar OU trocar) -- Substitute
+     (boneco some), Leech Seed (a semente cai), Outrage/Thrash/Petal
+     Dance (trava quebra) e Flinch (mesmo se ainda não tivesse sido
+     consumido nessa Rodada, sair de campo já resolve isso sozinho). */
+  poke.substituto = null;
+  poke.leechSeed = null;
+  poke.outrageLock = null;
+  poke.flinched = false;
 }
 function arenaLog(text){
   if(!STATE.arena) return;
@@ -6337,6 +6498,19 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
   var attAbility = attPoke.habilidade, defAbility = defPoke.habilidade;
   var moldBreaker = !!MOLD_BREAKER_ABILITIES[attAbility];
   var noGuard = attAbility==='No Guard' || defAbility==='No Guard';
+  /* Pedido do usuário: "Vamos trocar a rolagem dos moves que são só pra
+     causar alguma condição para D10 em vez de d6. Aí a aplicação fica
+     idêntica a de condições causadas como consequência de certos
+     ataques." -- CONDITION_ONLY_MOVES (definida mais abaixo, perto de
+     MOVE_EFFECTS) são os 18 Movimentos de Status puros que só existem
+     pra aplicar uma Condição (Thunder Wave, Toxic, Sleep Powder...): em
+     vez do d6 normal de Precisão, a "Precisão" oficial do golpe vira a
+     Chance do MESMO d10 que já decide Efeito Percentual (result.efeito,
+     mais abaixo) -- então "acertou" e "a Condição pegou" viram uma coisa
+     só, exatamente como pedido. isConditionOnly === true faz hit=true
+     sempre aqui em cima (nunca "erra" pelo d6 -- só type immunity, ou o
+     próprio d10 de Chance mais abaixo, decidem se a Condição pega). */
+  var isConditionOnly = !!CONDITION_ONLY_MOVES[move.nome];
 
   var precisao100 = !move.precisao || parseInt(move.precisao,10)>=100;
   var threshold = hitThreshold(move.precisao);
@@ -6344,9 +6518,9 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
   if(attAbility==='Hustle' && move.categoria==='Físico') threshold = threshold+1;
   if(defAbility==='Wonder Skin' && move.categoria==='Status') threshold = threshold+1;
   var d6 = forcedRoll ? forcedRoll.d6 : rollDie(6);
-  result.d6 = d6;
-  var hit = noGuard ? true : (precisao100 ? true : (d6 >= threshold));
-  var falhaNatural = (!noGuard) && (!precisao100) && d6===1;
+  result.d6 = d6; /* golpe de condição pura ainda rola (e mostra) o d6 por continuidade visual do quadro de dado, mas ele não decide mais nada -- só o d10 de Chance, logo abaixo, decide */
+  var hit = isConditionOnly ? true : (noGuard ? true : (precisao100 ? true : (d6 >= threshold)));
+  var falhaNatural = isConditionOnly ? false : ((!noGuard) && (!precisao100) && d6===1);
   var crit = isDamaging && d6===6;
   if(defAbility==='Shell Armor' || defAbility==='Battle Armor') crit = false;
   result.hit = hit; result.falhaNatural = falhaNatural; result.crit = crit;
@@ -6406,7 +6580,17 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
   if(isDamaging && !tm.immune){
     var atkStat = move.categoria==='Físico' ? 'atk' : 'spa';
     var defStat = move.categoria==='Físico' ? 'def' : 'spd';
-    var atkEff = (defAbility==='Unaware') ? effectiveStatIgnoringStage(attTrainer, attPoke, atkStat) : effectiveStat(attTrainer, attPoke, atkStat);
+    /* Foul Play (pedido do usuário, convertido pro nosso padrão): "uses
+       the opponent's Attack stat instead of the user's" -- o resto do
+       golpe (Tipo pra STAB, Precisão, categoria Físico) continua todo do
+       usuário normal, só o NÚMERO do Ataque em si vem do DEFENSOR. Se o
+       ATACANTE tiver Unaware, ignora os Estágios do defensor no cálculo
+       (mesmo espírito de sempre: Unaware ignora Estágio de quem não é
+       ele) -- por isso o gate trocou de defAbility pra attAbility aqui. */
+    var isFoulPlay = move.nome==='Foul Play';
+    var atkEff = isFoulPlay
+      ? ((attAbility==='Unaware') ? effectiveStatIgnoringStage(defTrainer, defPoke, 'atk') : effectiveStat(defTrainer, defPoke, 'atk'))
+      : ((defAbility==='Unaware') ? effectiveStatIgnoringStage(attTrainer, attPoke, atkStat) : effectiveStat(attTrainer, attPoke, atkStat));
     var defEff = (attAbility==='Unaware') ? effectiveStatIgnoringStage(defTrainer, defPoke, defStat) : effectiveStat(defTrainer, defPoke, defStat);
     var base = atkEff + (move.poder||0) - defEff;
     var stab = (move.tipo && (move.tipo===attPoke.tipo1 || move.tipo===attPoke.tipo2)) ? (attAbility==='Adaptability' ? 2 : 1) : 0;
@@ -6471,7 +6655,20 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
      a Chance (limitada a 100). */
   var fx = MOVE_EFFECTS[move.nome];
   if(fx && !tm.immune && attAbility!=='Sheer Force'){
-    var chance = (attAbility==='Serene Grace') ? Math.min(100, fx.chance*2) : fx.chance;
+    var chance;
+    if(isConditionOnly){
+      /* A "Chance" agora É a Precisão oficial do golpe (Cap. rolagem d10)
+         -- Serene Grace NÃO dobra aqui (ela só existe pra dobrar efeito
+         COLATERAL de golpe de dano, nunca a Precisão base de um golpe de
+         Status puro, mesmo agora que os dois usam o mesmo d10 por baixo).
+         Wonder Skin (Habilidade real do defensor -- "reduz Precisão de
+         golpe de Status pra 50% se for maior") continua valendo, só que
+         agora tampando a Chance em vez do antigo threshold de d6. */
+      chance = parseInt(move.precisao,10) || 100;
+      if(defAbility==='Wonder Skin' && chance>50) chance = 50;
+    } else {
+      chance = (attAbility==='Serene Grace') ? Math.min(100, fx.chance*2) : fx.chance;
+    }
     var d10Threshold = chance/10;
     var d10a = forcedRoll ? forcedRoll.efeitoD10a : rollDie(10);
     var success = chance>=100 ? true : (d10a <= d10Threshold);
@@ -6510,6 +6707,21 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
     result.estagioEfeito = { changes: statFx.changes, chance: statChance, d10a: statD10a, d10b: statD10b, sucesso: statSuccess, self: !!statFx.self };
   }
 
+  /* Flinch (Atordoado) -- mesma família de rolagem (1d10, chance/10),
+     independente do resto (nenhum Movimento real do sistema tem Ailment/
+     Estágio E Flinch ao mesmo tempo, então não tem risco de rolar 3 d10
+     por golpe na prática). Sheer Force cancela pelo mesmo motivo do
+     Ailment ("perde o efeito colateral, ganha poder"). Só decide se o
+     GOLPE teve a sorte de causar Flinch -- Inner Focus do defensor e a
+     regra "só vale se ele ainda não agiu nessa Rodada" são conferidos
+     depois, em applyAttackResult/arenaFlinchPreCheck. */
+  var flinchChance = MOVE_FLINCH[move.nome];
+  if(flinchChance && !tm.immune && attAbility!=='Sheer Force'){
+    var flinchD10 = forcedRoll ? forcedRoll.flinchD10 : rollDie(10);
+    var flinchSuccess = flinchChance>=100 ? true : (flinchD10 <= flinchChance/10);
+    result.flinchEfeito = { chance: flinchChance, d10: flinchD10, sucesso: flinchSuccess };
+  }
+
   return result;
 }
 /* Aplica o resultado num Pokémon-alvo: desconta PV (Cap. 19: 0 PV = Desmaio)
@@ -6519,6 +6731,29 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
 function applyAttackResult(defTrainer, defPoke, result, attPoke){
   var info = { fainted:false, statusApplied:null };
   if(!result.hit) return info;
+  /* Substitute (boneco) -- pedido do usuário: tem PV própria, baseada no
+     PV do usuário (ver DT.resolveArenaMove, onde nasce). Enquanto de pé,
+     absorve TODO dano de golpe de OUTRO Pokémon no lugar do PV de
+     verdade (sem sobra pro Pokémon quando quebra -- regra oficial, "the
+     substitute doll persists until it takes damage equal to..."), e
+     bloqueia por completo Movimento de Status e qualquer efeito
+     colateral (Ailment/Estágio/Flinch) vindo de fora -- "the additional
+     effects of other Pokémon's damaging moves often fail to affect it"
+     (Bulbapedia). Nunca intercepta o PRÓPRIO usuário (um golpe em si
+     mesmo, tipo Swords Dance, passa direto). Recuo/Dreno continuam
+     calculados em cima de result.dano (não mexido aqui) -- é assim que
+     dreno cura o atacante inteiro mesmo o Substituto tendo tomado o
+     golpe, igual no jogo oficial. */
+  if(defPoke.substituto && attPoke && attPoke!==defPoke){
+    info.substituteHit = true;
+    if(result.dano){
+      var absorbed = Math.min(defPoke.substituto.hp, result.dano);
+      defPoke.substituto.hp -= absorbed;
+      info.substituteAbsorbed = absorbed;
+      if(defPoke.substituto.hp<=0){ defPoke.substituto = null; info.substituteBroke = true; }
+    }
+    return info;
+  }
   if(result.dano){
     var max = hpMax(defTrainer, defPoke);
     var cur = (defPoke.currentHP===null || defPoke.currentHP===undefined) ? max : defPoke.currentHP;
@@ -6594,6 +6829,18 @@ function applyAttackResult(defTrainer, defPoke, result, attPoke){
         if(defAb==='Competitive') bumpStage(defPoke,'spa',2);
       }
     }
+  }
+  /* Flinch (Atordoado) -- pedido do usuário. Inner Focus (Habilidade real
+     do DEFENSOR) bloqueia de vez ("Prevents flinching", ABILITY_MECH_SET).
+     Um Pokémon que já desmaiou nesse mesmo golpe não tem o que "perder a
+     ação" na próxima vez que agisse -- nem marca a flag (resetStages já
+     limpa tudo que interessa no desmaio; deixar flinched=true por cima
+     não faria mal nenhum já que ele nem entra mais na fila de ação, mas
+     não marcar é mais limpo/explícito). A trava "só vale se ele ainda
+     não agiu nessa Rodada" e a limpeza no fim da Rodada (nunca sobra pra
+     próxima) ficam em arenaFlinchPreCheck/arenaFinishRoundResolution. */
+  if(result.flinchEfeito && result.flinchEfeito.sucesso && !info.fainted && defPoke.habilidade!=='Inner Focus'){
+    defPoke.flinched = true;
   }
   return info;
 }
@@ -6840,6 +7087,26 @@ function applyMoveSelfHealEffects(attTrainer, attPoke, defTrainer, defPoke, move
     arenaLog(esc(defNome)+' recuperou '+healAmt+' PV com '+esc(move.nome)+'.');
   }
 }
+/* Pedido do usuário ("avise no registro... Ciclano perdeu 1 de
+   precisão"): compara o Estágio ANTES/DEPOIS de attPoke e tgt.poke
+   (capturado pelo chamador em resolveMoveUse, dos dois lados de
+   applyAttackResult) e loga uma linha por Atributo que realmente mudou --
+   nunca duplica com o texto de Habilidade que já loga sozinha (Moxie,
+   Intimidate etc. têm o próprio arenaLog em outro lugar; aqui só entra o
+   que veio do PRÓPRIO Movimento, result.estagioEfeito). */
+function logStageChangeMessages(attPoke, defPoke, beforeAtt, beforeDef, move){
+  function diffAndLog(poke, before){
+    var nome = pokeNome(poke);
+    STAGE_BADGE_ORDER.forEach(function(stat){
+      var delta = (poke.estagios[stat]||0) - (before[stat]||0);
+      if(!delta) return;
+      var verbo = delta>0 ? 'ganhou' : 'perdeu';
+      arenaLog(esc(nome)+' '+verbo+' '+Math.abs(delta)+' de '+esc(stageLblName(stat))+' com '+esc(move.nome)+'.');
+    });
+  }
+  diffAndLog(attPoke, beforeAtt);
+  if(defPoke!==attPoke) diffAndLog(defPoke, beforeDef);
+}
 function resolveMoveUse(attTrainer, attPoke, move, targets){
   var forced = null;
   return targets.map(function(tgt){
@@ -6850,7 +7117,8 @@ function resolveMoveUse(attTrainer, attPoke, move, targets){
         efeitoD10a: result.efeito ? result.efeito.d10a : undefined,
         efeitoD10b: (result.efeito && result.efeito.d10b!==null && result.efeito.d10b!==undefined) ? result.efeito.d10b : undefined,
         estagioD10a: result.estagioEfeito ? result.estagioEfeito.d10a : undefined,
-        estagioD10b: (result.estagioEfeito && result.estagioEfeito.d10b!==null && result.estagioEfeito.d10b!==undefined) ? result.estagioEfeito.d10b : undefined
+        estagioD10b: (result.estagioEfeito && result.estagioEfeito.d10b!==null && result.estagioEfeito.d10b!==undefined) ? result.estagioEfeito.d10b : undefined,
+        flinchD10: result.flinchEfeito ? result.flinchEfeito.d10 : undefined
       };
     }
     /* Rest cura qualquer Condição anterior antes de aplicar o próprio sono
@@ -6858,7 +7126,69 @@ function resolveMoveUse(attTrainer, attPoke, move, targets){
        o sono dele mesmo (ex.: usar Rest já Envenenado deve limpar o
        Veneno e dormir, não ficar preso no Veneno). */
     if(move.nome==='Rest') { tgt.poke.status=''; tgt.poke.statusTurns=0; }
+    /* Pedido do usuário: "Ataques que causam alguma condição, peço que
+       você avise no registro. Ex.: Fulano lançou Sand Attack em Ciclano,
+       Ciclano perdeu 1 de precisão." -- precisa comparar Estágio ANTES e
+       DEPOIS de applyAttackResult (é lá que bumpStage roda de verdade,
+       já passando por bloqueio/inversão de Habilidade tipo Clear Body/
+       Contrary) pra logar só o que REALMENTE mudou, não o que o Movimento
+       "tentou" mudar. */
+    var beforeAttStages = {}; for(var _sk in attPoke.estagios) beforeAttStages[_sk] = attPoke.estagios[_sk];
+    var beforeDefStages = {}; for(var _sk2 in tgt.poke.estagios) beforeDefStages[_sk2] = tgt.poke.estagios[_sk2];
     var info = applyAttackResult(tgt.trainer, tgt.poke, result, attPoke);
+    /* Leech Seed (Cap. mecânica nova) -- pedido do usuário, convertido pro
+       nosso padrão: "plantar" a semente é só marcar tgt.poke.leechSeed
+       (quem se beneficia, por trainerId -- nunca um pokemonId fixo,
+       porque "restores it to the user, OR ANY POKÉMON THAT TAKES ITS
+       PLACE" precisa ser resolvido de novo a cada tique, ver
+       applyEndOfTurnStatusAndLog). Passa pelo mesmo d6 de Precisão de
+       sempre (~90% oficial) -- só entra aqui se result.hit for true.
+       Imune em Grama (não pega a semente); Substituto já bloqueou antes
+       de chegar aqui (info.substituteHit) -- nem candidata. Só um planta
+       por vez (não estica). O dreno em si (1/8 do PV Máximo por turno) e
+       Magic Guard/Liquid Ooze ficam em applyEndOfTurnStatusAndLog. */
+    if(move.nome==='Leech Seed' && result.hit && !info.substituteHit){
+      var seedTargetNome = pokeNome(tgt.poke);
+      if(tgt.poke.tipo1==='Grama' || tgt.poke.tipo2==='Grama'){
+        arenaLog(esc(seedTargetNome)+' é do Tipo Grama — imune a Leech Seed.');
+      } else if(tgt.poke.leechSeed){
+        arenaLog(esc(seedTargetNome)+' já está com uma Leech Seed plantada — não dá pra plantar de novo.');
+      } else {
+        tgt.poke.leechSeed = { trainerId: attTrainer.id };
+        arenaLog(esc(pokeNome(attPoke))+' ('+esc(attTrainer.name)+') plantou Leech Seed em '+esc(seedTargetNome)+'.');
+      }
+    }
+    /* Stealth Rock (Cap. mecânica nova) -- pedido do usuário: "Ele precisa
+       funcionar afetando o campo do adversário que eu mirar." Armar a
+       armadilha não faz nada com o ALVO em si agora (Substituto nem
+       bloqueia -- é um efeito de campo, não um efeito colateral do golpe
+       nele) -- só marca STATE.arena.hazards[teamId do alvo escolhido]. O
+       dano de verdade (1/8-1/32 do PV Máximo, por Efetividade de Tipo
+       Pedra) acontece depois, quando QUALQUER Pokémon daquele Time entra
+       em campo -- ver applyStealthRockOnSwitchIn, chamado de dentro de
+       DT.arenaSwapInResolved. */
+    if(move.nome==='Stealth Rock' && result.hit){
+      var srTeamId = tgt.entry.teamId;
+      if(!STATE.arena.hazards) STATE.arena.hazards = {};
+      if(!STATE.arena.hazards[srTeamId]) STATE.arena.hazards[srTeamId] = {};
+      var srTimeNome = (STATE.arena.teams||[]).find(function(tm){ return tm.id===srTeamId; });
+      srTimeNome = srTimeNome ? srTimeNome.nome : srTeamId;
+      if(STATE.arena.hazards[srTeamId].stealthRock){
+        arenaLog(esc(pokeNome(attPoke))+' ('+esc(attTrainer.name)+') tentou usar Stealth Rock no campo de '+esc(srTimeNome)+', mas as pedras já estão armadas lá.');
+      } else {
+        STATE.arena.hazards[srTeamId].stealthRock = true;
+        arenaLog(esc(pokeNome(attPoke))+' ('+esc(attTrainer.name)+') usou Stealth Rock — pedras levitantes cercam o campo de '+esc(srTimeNome)+'.');
+      }
+    }
+    if(info.substituteHit){
+      var subDefNome = pokeNome(tgt.poke);
+      if(info.substituteAbsorbed){
+        arenaLog(esc(subDefNome)+' tem um Substituto de pé — absorveu '+info.substituteAbsorbed+' de dano'+(info.substituteBroke?' e quebrou!':'.'));
+      } else {
+        arenaLog(esc(subDefNome)+' tem um Substituto de pé — protegido do efeito de '+esc(move.nome)+'.');
+      }
+    }
+    logStageChangeMessages(attPoke, tgt.poke, beforeAttStages, beforeDefStages, move);
     applyAbilityHooksAfterHit(attTrainer, attPoke, move, tgt.trainer, tgt.poke, result, info);
     applyMoveSelfHealEffects(attTrainer, attPoke, tgt.trainer, tgt.poke, move, result);
     /* Recuo/Liquid Ooze podem ter desmaiado o próprio ATACANTE -- info só
@@ -7101,6 +7431,28 @@ function arenaResolveNextStep(round){
   }
   arenaFinishRoundResolution(round);
 }
+/* Fúria (Outrage/Thrash/Petal Dance) interrompida ANTES de sequer tentar
+   atacar -- Flinch/Paralisia-trava/Sono/Congelado/Confusão-trava, tudo
+   que já faz arenaExecuteQueuedAttack devolver cedo (ver os 3 pontos
+   abaixo). Bulbapedia: "disrupted if it is not successful due to...
+   sleeping, paralysis, freeze, flinching" -- encerra a trava sempre,
+   e só ainda assim confunde se essa era a última rodada da fúria (mesma
+   regra do "errou o golpe" dentro de DT.resolveArenaMove). */
+function arenaDisruptOutrageLock(p, round){
+  if(!p.outrageLock) return;
+  var furia = p.outrageLock;
+  var nome = p.apelido||p.especie||'Pokémon';
+  var eraUltimoTurno = (furia.turnsUsed+1) >= furia.turnsTotal;
+  p.outrageLock = null;
+  if(eraUltimoTurno && !abilityBlocksStatus(p,'confuso') && !p.substituto){
+    p.confuso = true;
+    arenaLog('Rodada '+round.number+' · '+esc(nome)+' não conseguiu agir bem no último turno da fúria — mesmo assim ficou Confuso de exaustão.');
+  } else if(eraUltimoTurno){
+    arenaLog('Rodada '+round.number+' · '+esc(nome)+' não conseguiu agir no último turno da fúria — não ficou Confuso (Habilidade/Substituto bloqueia).');
+  } else {
+    arenaLog('Rodada '+round.number+' · '+esc(nome)+' não conseguiu agir — a fúria foi interrompida antes de terminar, sem ficar Confuso.');
+  }
+}
 function arenaExecuteQueuedAction(e, t, p, bundle, round){
   if(bundle.kind==='atacar') arenaExecuteQueuedAttack(e, t, p, bundle, round);
   else if(bundle.kind==='item') arenaExecuteQueuedItem(e, t, bundle, round);
@@ -7119,6 +7471,22 @@ function arenaExecuteQueuedAction(e, t, p, bundle, round){
    chegaria curado. */
 function arenaExecuteQueuedAttack(e, t, p, bundle, round){
   var nome = p.apelido||p.especie||'Pokémon';
+  /* Flinch (Atordoado) -- pedido do usuário: "só pode ser aplicada no
+     turno em que ela for ativada... se eu for o último a atacar e
+     aplicar flinched, ele não vai pro próximo turno com a condição."
+     Consumido (checado E limpo) bem aqui, na hora exata da PRÓPRIA vez
+     dele chegar dentro da MESMA Rodada em que foi atordoado -- nunca
+     sobra pra Rodada seguinte porque arenaFinishRoundResolution também
+     limpa geral no fim, cobrindo o caso de quem já tinha agido ANTES de
+     ser atordoado (aí a flag nem chega a ser consumida aqui, e ainda
+     assim não pode vazar pra próxima Rodada). */
+  if(p.flinched){
+    p.flinched = false;
+    arenaLog('Rodada '+round.number+' · '+esc(nome)+' ('+esc(t.name)+') está Atordoado (Flinch) — perde a ação.');
+    arenaDisruptOutrageLock(p, round);
+    arenaApplyPostActionEffects(e.id);
+    return;
+  }
   var statusCheck = arenaStatusActionPreCheck(e);
   if(statusCheck){
     var statusLine;
@@ -7128,14 +7496,14 @@ function arenaExecuteQueuedAttack(e, t, p, bundle, round){
     else if(statusCheck.d6!==null) statusLine = 'está Dormindo (turno '+statusCheck.turno+') — 1d6 pra acordar: '+statusCheck.d6+(statusCheck.acordou?' — acordou! Pode agir':' — continua dormindo');
     else statusLine = 'estava Dormindo — acordou automaticamente (já eram 3 turnos)';
     arenaLog('Rodada '+round.number+' · '+esc(nome)+' ('+esc(t.name)+') '+esc(statusLine)+'.');
-    if(statusCheck.lostAction){ arenaApplyPostActionEffects(e.id); return; }
+    if(statusCheck.lostAction){ arenaDisruptOutrageLock(p, round); arenaApplyPostActionEffects(e.id); return; }
   }
   var confCheck = arenaConfusionPreCheck(e);
   if(confCheck){
     var plainLines = ['1d6 pra eliminar a Confusão: '+confCheck.d6end+(confCheck.ended?' — termina!':' — continua confuso')];
     if(confCheck.tested) plainLines.push('1d6 pra agir: '+confCheck.d6act+(confCheck.lostAction ? (confCheck.magicGuard ? ' — perde a ação, mas Magic Guard bloqueia o PV do próprio golpe' : (' — perde a ação, sofre 1 PV'+(confCheck.fainted?' (desmaiou!)':''))) : ' — age normalmente'));
     arenaLog('Rodada '+round.number+' · '+esc(nome)+' ('+esc(t.name)+') está Confuso — '+esc(plainLines.join(' · '))+'.');
-    if(confCheck.lostAction){ arenaApplyPostActionEffects(e.id); return; }
+    if(confCheck.lostAction){ arenaDisruptOutrageLock(p, round); arenaApplyPostActionEffects(e.id); return; }
   }
   var move = (p.moves||[])[bundle.moveIdx];
   if(!move || !move.nome){ arenaApplyPostActionEffects(e.id); return; } /* Movimento mudou/sumiu entre escolher e resolver -- desiste em silêncio */
@@ -7147,6 +7515,7 @@ function arenaExecuteQueuedAttack(e, t, p, bundle, round){
     manualIds = bundle.manualTargetIds.filter(function(id){ return eligibleNow.indexOf(id)!==-1; });
     if(manualIds.length===0){
       if(bundle.isChargeRelease) p.carregando = null; /* o golpe "saiu" mesmo sem acertar -- não fica preso carregando pra sempre (Cap. 25) */
+      if(p.outrageLock) p.outrageLock = null; /* sem alvo pra continuar a fúria -- encerra sem Confundir (mesma regra de "perturbado" numa rodada que não era a última) */
       arenaLog('Rodada '+round.number+' · '+esc(nome)+' ('+esc(t.name)+') tentou usar '+esc(move.nome)+' — não sobrou alvo em campo, o golpe se perde.');
       arenaApplyPostActionEffects(e.id);
       return;
@@ -7193,8 +7562,23 @@ function arenaFinishRoundResolution(round){
      continua participando das Rodadas normalmente (escolhe Atacar/Item/
      Fugir igual qualquer um) -- trocar é só uma opção extra, sempre à
      mão, não uma obrigação. */
+  clearAllFlinch();
   STATE.arena.round = arenaBuildSelectingRound(round.number+1, order);
   arenaLog('🔁 Rodada '+STATE.arena.round.number+' começou — escolham as ações.');
+}
+/* Rede de segurança do Flinch: nunca deveria sobrar marcado quando uma
+   Rodada nova abre (o consumo normal já limpa em arenaExecuteQueuedAttack,
+   mas quem JÁ tinha agido nessa Rodada antes de ser atordoado nunca passa
+   por lá de novo até a Rodada seguinte -- exatamente o caso "fui o
+   último a atacar e apliquei flinched" citado pelo usuário). Limpa todo
+   mundo em campo (STATE.arena.entries), não só quem tem Rodada nova pela
+   frente -- barato e sem risco de esquecer alguém. */
+function clearAllFlinch(){
+  (STATE.arena.entries||[]).forEach(function(e){
+    var t = findTrainer(e.trainerId);
+    var p = t && getPoke(e.trainerId, e.pokemonId);
+    if(p) p.flinched = false;
+  });
 }
 function isOwnArenaEntry(entryId){
   var e = (STATE.arena.entries||[]).find(function(x){ return x.id===entryId; });
@@ -7242,6 +7626,51 @@ function applyEndOfTurnStatusAndLog(entry){
       var fainted = novoHP<=0;
       if(fainted) resetStages(p);
       arenaLog(esc(nome)+' ('+esc(t.name)+') sofreu <strong>'+dano+'</strong> de dano por '+esc(ailmentLabel(p.status))+(fainted?' — 😵 Desmaiou!':''));
+    }
+  }
+
+  /* Leech Seed (Cap. mecânica nova) -- pedido do usuário: "drena 1/8 do
+     PV MÁXIMO no fim de cada turno e restaura pro usuário, ou qualquer
+     Pokémon que tome o lugar dele." 1/8 do PV Máximo do SEMEADO (nunca
+     do PV atual); Magic Guard bloqueia o dano de vez (mas a semente
+     continua plantada -- "it does technically work... but no HP will be
+     sapped"); Liquid Ooze no semeado inverte o ganho do beneficiário em
+     perda. O beneficiário é procurado de novo a cada tique por
+     trainerId (não por um Pokémon fixo) -- se ele já não estiver mais em
+     campo (desmaiou/saiu sem substituto), a semente ainda drena, só
+     ninguém recebe nada. Big Root (item equipado, +30% de cura) não
+     existe nesse sistema -- fora de escopo, sem item equipado modelado. */
+  var curAfterStatus = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+  if(p.leechSeed && curAfterStatus>0){
+    if(ability==='Magic Guard'){
+      arenaLog(esc(nome)+' tem Magic Guard — a Leech Seed não tira PV dele.');
+    } else {
+      var seedAmt = Math.max(1, Math.floor(max/8));
+      var seedNovoHP = clampInt(curAfterStatus-seedAmt, 0, max);
+      var sapped = curAfterStatus - seedNovoHP;
+      p.currentHP = seedNovoHP;
+      var seedFainted = seedNovoHP<=0;
+      arenaLog(esc(nome)+' ('+esc(t.name)+') perdeu <strong>'+sapped+'</strong> PV pra Leech Seed'+(seedFainted?' — 😵 Desmaiou!':'')+'.');
+      var seedBeneficiaryTrainerId = p.leechSeed.trainerId;
+      if(seedFainted) resetStages(p); /* zera p.leechSeed também -- já não precisamos mais dele, guardado em seedBeneficiaryTrainerId acima */
+      var benefEntry = (STATE.arena.entries||[]).find(function(e){ return e.trainerId===seedBeneficiaryTrainerId; });
+      var benefT = benefEntry && findTrainer(benefEntry.trainerId);
+      var benefP = benefT && benefEntry && getPoke(benefEntry.trainerId, benefEntry.pokemonId);
+      if(benefP){
+        var benefMax = hpMax(benefT, benefP);
+        var benefCur = (benefP.currentHP===null||benefP.currentHP===undefined) ? benefMax : benefP.currentHP;
+        if(benefCur>0){
+          if(p.habilidade==='Liquid Ooze'){
+            var benefAfterOoze = clampInt(benefCur-sapped, 0, benefMax);
+            benefP.currentHP = benefAfterOoze;
+            arenaLog(esc(nome)+' tem Liquid Ooze — '+esc(pokeNome(benefP))+' sofreu '+sapped+' de dano em vez de curar com a Leech Seed.');
+            if(benefAfterOoze<=0) resetStages(benefP);
+          } else {
+            benefP.currentHP = clampInt(benefCur+sapped, 0, benefMax);
+            arenaLog(esc(pokeNome(benefP))+' recuperou '+sapped+' PV da Leech Seed em '+esc(nome)+'.');
+          }
+        }
+      }
     }
   }
 
@@ -8530,7 +8959,13 @@ DT.arenaStatsShow = function(entryId){
   if(!e) return;
   var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
   var isGM = SESSION.role==='gm';
-  if(!isGM && !isOwner && !e.revelado) return;
+  /* Pedido do usuário: só o dono (ou o Mestre) pode ver o painel de
+     Atributos -- nunca o time adversário, mesmo que o Pokémon já esteja
+     revelado em campo (e.revelado só controla se o SPRITE/nome aparecem,
+     não se os Atributos internos ficam expostos). Defesa em profundidade:
+     o botão que chama isso já não aparece nesse caso (ver statsBtn em
+     arenaEntryHTML), mas confere de novo aqui direto. */
+  if(!isGM && !isOwner) return;
   if(!Array.isArray(SESSION.arenaStatsOpen)) SESSION.arenaStatsOpen = [];
   if(SESSION.arenaStatsOpen.indexOf(entryId)===-1) SESSION.arenaStatsOpen.push(entryId);
   render();
@@ -8541,6 +8976,34 @@ DT.arenaStatsClose = function(entryId){
   var idx = SESSION.arenaStatsOpen.indexOf(entryId);
   if(idx===-1) return;
   SESSION.arenaStatsOpen.splice(idx,1);
+  render();
+};
+/* Mesmo painel flutuante de Atributos, agora na Área PVP (pedido do
+   usuário: "coloque aquele menu flutuante da ficha do Pokémon igual temos
+   na arena... quero que fique ativo pra ver só os Pokémon que fazem parte
+   do time do jogador, nunca os do adversário"). Só o dono da própria
+   entrada pode abrir -- SEM exceção de Mestre (não existe Mestre na Área
+   PVP) e SEM olhar pra "revelado" (aqui não existe segredo de time
+   nenhum, mas mesmo assim nunca deixa ver o Pokémon do adversário).
+   withArenaContext só durante a resolução do entryId/trainer/poke -- o
+   resto (SESSION.pvpStatsOpen) não depende de STATE.arena nunca. */
+DT.pvpStatsShow = function(salaId, entryId){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala) return;
+  var e = null;
+  withArenaContext(sala, function(){ e = findArenaEntry(entryId); });
+  if(!e) return;
+  var myVid = pvpVirtualId(sala, SESSION.trainerId);
+  if(e.trainerId!==myVid) return;
+  if(!Array.isArray(SESSION.pvpStatsOpen)) SESSION.pvpStatsOpen = [];
+  if(SESSION.pvpStatsOpen.indexOf(entryId)===-1) SESSION.pvpStatsOpen.push(entryId);
+  render();
+};
+DT.pvpStatsClose = function(entryId){
+  if(!Array.isArray(SESSION.pvpStatsOpen)) return;
+  var idx = SESSION.pvpStatsOpen.indexOf(entryId);
+  if(idx===-1) return;
+  SESSION.pvpStatsOpen.splice(idx,1);
   render();
 };
 /* Arrastar o painel pela barra do topo -- engine própria e mais simples
@@ -8849,6 +9312,36 @@ DT.arenaSwapIn = function(newPokemonId){
   arenaResetActionState();
   mutate();
 };
+/* Stealth Rock (Cap. mecânica nova) -- pedido do usuário: dano oficial de
+   entrada por Efetividade de Tipo Pedra (typeModifier SOMA por Tipo, ver
+   o comentário logo antes dele -- só existem 5 valores possíveis: -4,-2,
+   0,2,4, e Pedra não tem imunidade de Tipo nenhuma, então sempre cai
+   nessa tabela): 4x->metade do PV Máx, 2x->1/4, 1x->1/8 (padrão), 1/2x->
+   1/16, 1/4x->1/32. Só dispara se o Time de quem está ENTRANDO tiver a
+   armadilha armada (STATE.arena.hazards[teamId].stealthRock, marcada em
+   resolveMoveUse quando alguém usa o golpe mirando um inimigo daquele
+   Time). Chamado de DT.arenaSwapInResolved -- único lugar onde um
+   Pokémon novo pisa em campo nesse motor (troca normal, forçada por
+   desmaio, ou U-turn/Volt Switch/Parting Shot). */
+var STEALTH_ROCK_DAMAGE_FRACTION = { '4':2, '2':4, '0':8, '-2':16, '-4':32 };
+function applyStealthRockOnSwitchIn(trainer, poke, teamId){
+  if(!STATE.arena.hazards || !STATE.arena.hazards[teamId] || !STATE.arena.hazards[teamId].stealthRock) return;
+  var max = hpMax(trainer, poke);
+  var cur = (poke.currentHP===null||poke.currentHP===undefined) ? max : poke.currentHP;
+  if(cur<=0) return; /* já desmaiado, não tem PV pra descontar */
+  var tm = typeModifier('Pedra', poke.tipo1, poke.tipo2); /* devolve {mod, immune} -- Cap. 13, ver o comentário logo antes da função */
+  var frac = STEALTH_ROCK_DAMAGE_FRACTION[String(tm.mod)] || 8;
+  var dano = Math.max(1, Math.floor(max/frac));
+  var novoHP = clampInt(cur-dano, 0, max);
+  poke.currentHP = novoHP;
+  var nome = pokeNome(poke);
+  var label = typeEffectivenessLabel(tm.mod, tm.immune);
+  arenaLog(esc(nome)+' entrou em campo e foi atingido por Stealth Rock — perdeu '+dano+' PV'+(label?' ('+esc(label)+')':'')+'.');
+  if(novoHP<=0){
+    arenaLog(esc(nome)+' desmaiou com o dano de Stealth Rock!');
+    resetStages(poke);
+  }
+}
 /* O que de fato troca um Pokémon em campo -- reaproveitado tanto pela
    resolução de uma troca ESCOLHIDA (arenaExecuteQueuedSwap) quanto por
    uma FORÇADA (DT.arenaSwapIn acima). Nunca mexe na fila da Rodada --
@@ -8882,7 +9375,24 @@ DT.arenaSwapInResolved = function(oldEntry, newPokemonId){
   newP.arenaRevelado = true;
   var idx = STATE.arena.entries.indexOf(oldEntry);
   if(idx!==-1) STATE.arena.entries.splice(idx, 1, newEntry);
-  applyOnSwitchInAbility(oldT, newP, oldEntry.teamId);
+  /* Healing Wish/Lunar Dance (Cap. mecânica nova) -- pedido do usuário:
+     "cura o aliado que entrar em campo tanto com vida e condições."
+     Consumido aqui, no PRÓXIMO Pokémon desse MESMO Treinador a pisar em
+     campo (trainer.healingWishPending, marcado em DT.resolveArenaMove) --
+     acontece ANTES de Stealth Rock de propósito (cura o PV Máximo
+     inteiro primeiro; a % das pedras é sobre o PV Máximo, então a ordem
+     não muda o número final, mas assim quem olha o Registro vê a cura
+     "acontecendo" antes do estrago das pedras, igual faz sentido). */
+  if(oldT.healingWishPending){
+    var hwPend = oldT.healingWishPending;
+    newP.currentHP = newMax;
+    newP.status = ''; newP.statusTurns = 0;
+    if(hwPend.pp){ (newP.moves||[]).forEach(function(m){ if((m.pp||0)>0) m.ppAtual = m.pp; }); }
+    oldT.healingWishPending = null;
+    arenaLog((STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '')+esc(oldT.name)+' recebeu a cura de '+(hwPend.pp?'Lunar Dance':'Healing Wish')+' — '+esc(newP.apelido||newP.especie||'Pokémon')+' entra com PV cheio, sem Condições'+(hwPend.pp?' e PP restaurado':'')+'.');
+  }
+  applyStealthRockOnSwitchIn(oldT, newP, oldEntry.teamId); /* pedras primeiro (Cap. mecânica nova) -- se isso já desmaiar o recém-entrado, Habilidade de entrada (Intimidate etc.) nem deveria disparar */
+  if(((newP.currentHP===null||newP.currentHP===undefined) ? hpMax(oldT,newP) : newP.currentHP) > 0) applyOnSwitchInAbility(oldT, newP, oldEntry.teamId);
 
   arenaLog((STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '')+esc(oldT.name)+' trocou '+esc(oldP.apelido||oldP.especie||'Pokémon')+' por '+esc(newP.apelido||newP.especie||'Pokémon')+'.');
   arenaCheckVictory(); /* o dano de status ao sair (Queimadura/Veneno) pode ter sido o golpe final nele -- Cap. 25/59 */
@@ -9026,8 +9536,134 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
     return;
   }
 
+  /* Substitute (Cap. rotina de mecânicas -- pedido do usuário: "o usuário
+     deveria perder vida para colocar o boneco e ele tem a vida dele
+     própria baseada na vida do usuário"): não passa pelo pipeline normal
+     de dano/Precisão -- é auto-alvo, sem d6/d10, sem lastRoll (mesmo
+     padrão de CHARGE_MOVES, acima: log próprio + arenaApplyPostActionEffects
+     + return direto). Custa exatamente 25% do PV Máximo (arredondado pra
+     baixo, dado oficial) -- falha se o usuário não tiver MAIS que isso de
+     PV atual (nunca desmaia usando Substitute), e falha também se já
+     tiver um Substituto de pé (só um por vez). O boneco nasce com PV
+     igual ao que foi gasto -- protege o usuário até essa quantidade de
+     dano (ver applyAttackResult, mais acima, e a checagem de imunidade a
+     Movimento de Status/efeito colateral enquanto ele existir). */
+  if(move.nome==='Substitute' && !isChargeRelease){
+    var subMax = hpMax(attTrainer, attPoke);
+    var subCur = (attPoke.currentHP===null||attPoke.currentHP===undefined) ? subMax : attPoke.currentHP;
+    var subNome = attPoke.apelido || attPoke.especie || 'Pokémon';
+    var subCost = Math.floor(subMax/4);
+    var subMsg;
+    if(attPoke.substituto){
+      subMsg = esc(subNome)+' ('+esc(attTrainer.name)+') tentou usar Substitute, mas já tem um Substituto de pé.';
+    } else if(subCost<=0 || subCur<=subCost){
+      subMsg = esc(subNome)+' ('+esc(attTrainer.name)+') tentou usar Substitute, mas não tem PV suficiente (precisa de mais de 25% do PV Máximo).';
+    } else {
+      attPoke.currentHP = subCur - subCost;
+      attPoke.substituto = { hp: subCost };
+      subMsg = esc(subNome)+' ('+esc(attTrainer.name)+') usou Substitute — perdeu '+subCost+' PV pra criar um Substituto com '+subCost+' PV.';
+    }
+    arenaLog((STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '')+subMsg);
+    arenaApplyPostActionEffects(atkEntry.id);
+    mutate();
+    return;
+  }
+
+  /* Healing Wish / Lunar Dance (Cap. mecânica nova) -- pedido do usuário:
+     "Healing wish... O usuário vai a 0 de hp e cura o aliado que entrar
+     em campo tanto com vida e condições." Varredura de mecânica parecida:
+     Lunar Dance é o MESMO golpe (só que também restaura o PP de todos os
+     Movimentos) -- entra junto. Mesmo padrão do Substitute logo acima:
+     auto-alvo, não passa pelo pipeline normal de dano/Precisão (sem d6/
+     d10, sem lastRoll) -- o usuário desmaia NA HORA (currentHP=0), e a
+     cura de verdade só acontece DEPOIS, quando alguém entrar no lugar
+     dele -- trainer.healingWishPending, consumido em
+     DT.arenaSwapInResolved (mesmo espírito "por trainerId" da Leech
+     Seed: quem se beneficia é o PRÓXIMO Pokémon desse Treinador a entrar
+     em campo, não um pokemonId fixo). "Condições curadas" = Condição
+     Principal (Queimadura/Veneno/Paralisia/Sono/Congelamento), igual ao
+     jogo oficial -- Confusão é uma condição À PARTE (volátil) que Healing
+     Wish NUNCA curou em nenhuma geração, então fica de fora de propósito. */
+  if((move.nome==='Healing Wish' || move.nome==='Lunar Dance') && !isChargeRelease){
+    var hwNome = attPoke.apelido || attPoke.especie || 'Pokémon';
+    attTrainer.healingWishPending = { pp: move.nome==='Lunar Dance' };
+    attPoke.currentHP = 0;
+    resetStages(attPoke);
+    arenaLog((STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '')+esc(hwNome)+' ('+esc(attTrainer.name)+') usou '+esc(move.nome)+' e desmaiou — quem entrar no lugar dele será curado por completo.');
+    arenaApplyPostActionEffects(atkEntry.id);
+    mutate();
+    return;
+  }
+
   var perTarget = resolveMoveUse(attTrainer, attPoke, move, resolved);
   var first = perTarget[0].result;
+
+  /* Varredura de mecânica parecida (Leech Seed): "The seeded Pokémon can
+     clear Leech Seed by switching out or using Rapid Spin." Trocar já
+     limpa sozinho (resetStages, chamado em toda saída de campo) -- só
+     faltava Rapid Spin em si, quando o usuário acerta de verdade. */
+  if(move.nome==='Rapid Spin' && first.hit && attPoke.leechSeed){
+    attPoke.leechSeed = null;
+    arenaLog(esc(attPoke.apelido||attPoke.especie||'Pokémon')+' tem Rapid Spin — livrou-se da própria Leech Seed.');
+  }
+
+  /* Movimentos de fúria (Outrage/Thrash/Petal Dance, ver THRASH_MOVES):
+     ao contrário de CHARGE_MOVES, este golpe já atacou de verdade agora
+     mesmo (resolveMoveUse acima, com Precisão/dano normais) -- aqui só
+     decide/mantém/encerra a trava de repetir sozinho nos próximos turnos
+     (poke.outrageLock, lido em arenaBuildSelectingRound igual carregando).
+     1º uso (sem trava ainda): sorteia 2 ou 3 turnos (Bulbapedia, Gen II+)
+     e só TRAVA se o golpe acertou -- errou no 1º turno, nem chega a
+     começar a fúria. Usos seguintes (já travado): conta mais 1 turno
+     usado; se ainda não chegou no fim da trava OU se essa era a última
+     rodada mas o golpe foi "perturbado" (errou), simplesmente encerra;
+     só aplica Confusão no final se COMPLETOU a duração inteira sem
+     perturbação nenhuma OU se a perturbação aconteceu bem na última
+     rodada que já ia confundir de qualquer jeito (fonte: Bulbapedia,
+     "If a disruption occurs on what would have been the final,
+     confusion-inducing turn of Thrash, the user will still become
+     confused."). */
+  if(THRASH_MOVES[move.nome]){
+    var furiaNome = attPoke.apelido || attPoke.especie || 'Pokémon';
+    if(!attPoke.outrageLock){
+      if(first.hit){
+        var furiaDuracao = rollDie(2) + 1; /* 1d2: 1→2 turnos, 2→3 turnos */
+        attPoke.outrageLock = { moveIdx: (attPoke.moves||[]).indexOf(move), moveName: move.nome, category: category, targetIds: resolved.map(function(r){ return r.entry.id; }), turnsTotal: furiaDuracao, turnsUsed: 1 };
+        arenaLog(esc(furiaNome)+' ('+esc(attTrainer.name)+') entrou em fúria com '+esc(move.nome)+' — vai atacar de novo sozinho por mais '+(furiaDuracao-1)+' turno(s), sem poder trocar.');
+      }
+    } else {
+      var furiaLock = attPoke.outrageLock;
+      furiaLock.turnsUsed += 1;
+      var eraUltimoTurno = furiaLock.turnsUsed >= furiaLock.turnsTotal;
+      if(!first.hit){
+        /* Perturbado por errar o golpe (Bulbapedia): só ainda confunde se
+           essa perturbação caiu bem na última rodada da fúria -- senão
+           encerra sem Confusão nenhuma. */
+        attPoke.outrageLock = null;
+        if(eraUltimoTurno){
+          if(!abilityBlocksStatus(attPoke,'confuso') && !attPoke.substituto){
+            attPoke.confuso = true;
+            arenaLog(esc(furiaNome)+' ('+esc(attTrainer.name)+') errou o último golpe da fúria, mas mesmo assim ficou Confuso de exaustão.');
+          } else {
+            arenaLog(esc(furiaNome)+' ('+esc(attTrainer.name)+') errou o último golpe da fúria — a fúria acabou sem Confundir (Habilidade/Substituto bloqueia).');
+          }
+        } else {
+          arenaLog(esc(furiaNome)+' ('+esc(attTrainer.name)+') errou o golpe — a fúria de '+esc(move.nome)+' foi interrompida, sem ficar Confuso.');
+        }
+      } else if(eraUltimoTurno){
+        attPoke.outrageLock = null;
+        if(!abilityBlocksStatus(attPoke,'confuso') && !attPoke.substituto){
+          attPoke.confuso = true;
+          arenaLog(esc(furiaNome)+' ('+esc(attTrainer.name)+') terminou a fúria de '+esc(move.nome)+' — ficou Confuso de exaustão.');
+        } else {
+          arenaLog(esc(furiaNome)+' ('+esc(attTrainer.name)+') terminou a fúria de '+esc(move.nome)+' — não ficou Confuso (Habilidade/Substituto bloqueia).');
+        }
+      }
+      /* Ainda no meio da fúria (nem última rodada, nem perturbado): não
+         loga nada extra -- o rollLogLine padrão de baixo já registra o
+         golpe normal, igual qualquer outro ataque repetido. */
+    }
+  }
 
   STATE.arena.lastRoll = {
     ts: Date.now(),
@@ -9098,11 +9734,29 @@ function arenaBuildSelectingRound(number, order){
     var e = findArenaEntry(row.entryId);
     var t = e && findTrainer(e.trainerId);
     var p = t && getPoke(e.trainerId, e.pokemonId);
-    if(!p || !p.carregando) return;
-    var charge = p.carregando;
-    var chargedMove = (p.moves||[])[charge.moveIdx];
-    if(chargedMove && chargedMove.nome===charge.moveName){
-      round.actions[e.id] = { kind:'atacar', moveIdx:charge.moveIdx, category:charge.category, manualTargetIds:charge.targetIds, isChargeRelease:true };
+    if(!p) return;
+    if(p.carregando){
+      var charge = p.carregando;
+      var chargedMove = (p.moves||[])[charge.moveIdx];
+      if(chargedMove && chargedMove.nome===charge.moveName){
+        round.actions[e.id] = { kind:'atacar', moveIdx:charge.moveIdx, category:charge.category, manualTargetIds:charge.targetIds, isChargeRelease:true };
+      }
+      return;
+    }
+    /* Fúria (Outrage/Thrash/Petal Dance, ver THRASH_MOVES): mesmo truque
+       do Movimento de carga acima -- a ação já nasce PRÉ-escolhida
+       (round.actions[e.id]) antes da fase de seleção abrir, então o
+       menu de ação nunca aparece pra essa entrada nessa Rodada. Isso
+       satisfaz sozinho o "during which it cannot switch out" (Cap.
+       arenaEntriesPendingSelection/DT.arenaSelectActor: quem já tem
+       round.actions[e.id] preenchido nem entra na lista de quem falta
+       escolher, e clicar não abre nada -- ver linha ~8765). */
+    if(p.outrageLock){
+      var furia = p.outrageLock;
+      var furiaMove = (p.moves||[])[furia.moveIdx];
+      if(furiaMove && furiaMove.nome===furia.moveName){
+        round.actions[e.id] = { kind:'atacar', moveIdx:furia.moveIdx, category:furia.category, manualTargetIds:furia.targetIds };
+      }
     }
   });
   /* Se isso já deixou todo mundo escolhido (ex.: só sobrou quem estava
@@ -9478,12 +10132,40 @@ var POKEBALL_SVG = '<svg class="pokeball" viewBox="0 0 24 24" aria-hidden="true"
   '<circle cx="12" cy="12" r="1.2" fill="#fff" stroke="#222" stroke-width="1"/>'+
 '</svg>';
 function topbar(rightHTML){
+  /* Pedido do usuário: "os menus (arena, pvp, Ficha) eles poderiam dar a
+     opção de abrir uma nova aba deles se eu quisesse... Cria um menu só
+     pra ficha aí ele fica independente... Quero que sejam abas
+     independentes." -- 3 mudanças aqui:
+     1) Arena/PVP viram <a href="#hash"> de verdade (mesmo #hash de
+        syncRouteHash/applyRouteFromHash, Cap. rotas) em vez de <button>
+        puro -- um clique normal continua chamando DT.toggleArena/
+        togglePvp (SPA, sem recarregar a página -- por isso o "return
+        false" trava a navegação padrão do link), mas Ctrl/Cmd-clique ou
+        clique do meio (ou "Abrir em nova aba" do menu de contexto) ignora
+        onclick/return-false pro <a> de propósito -- é assim que TODO
+        navegador trata link com href, então isso já abre uma aba nova
+        sozinha nesse #hash, sem precisar de nada mais.
+     2) Ficha ganha um link PRÓPRIO (não existia nenhum botão pra ela no
+        topbar -- só dava pra "voltar" fechando Arena/PVP) -- só aparece
+        pra quem está logado como jogador (SESSION.role==='player'), já
+        que só faz sentido pra Treinador dono da ficha; DT.gotoFicha só
+        fecha Arena/PVP, deixando SESSION.screen (já 'player-sheet' de
+        quem logou) aparecer por baixo -- mesmo #ficha de sempre.
+     3) Regras fica de fora dessa lista de propósito -- o usuário só
+        pediu isso pra "arena, pvp, Ficha", e Regras já é um popup sem
+        #hash próprio (SESSION.showRules, ver o comentário em
+        currentRouteHash) -- abrir ela numa aba nova sozinha não faria
+        sentido (não tem tela nenhuma "por baixo" pra mostrar junto). */
+  var fichaLink = SESSION.role==='player'
+    ? '<a href="#ficha" class="topbar-link btn-ghost btn-sm" onclick="DT.gotoFicha();return false;">🎒 Ficha</a>'
+    : '';
   return '<div class="topbar">'+
     '<div class="wordmark">'+POKEBALL_SVG+'<div><h1>Diário de Treinador</h1><span class="sub">Pokémon RPG · v0.2</span></div></div>'+
     '<div class="who">'+(rightHTML||'')+
       '<button class="btn-ghost btn-sm" onclick="DT.toggleTheme()" title="Trocar tema">'+(CURRENT_THEME==='dark' ? '☀️' : '🌙')+'</button>'+
-      '<button class="btn-ghost btn-sm" onclick="DT.toggleArena()">🏟️ Arena</button>'+
-      '<button class="btn-ghost btn-sm" onclick="DT.togglePvp()">⚔️ PVP</button>'+
+      fichaLink+
+      '<a href="#arena" class="topbar-link btn-ghost btn-sm" onclick="DT.toggleArena();return false;">🏟️ Arena</a>'+
+      '<a href="#pvp" class="topbar-link btn-ghost btn-sm" onclick="DT.togglePvp();return false;">⚔️ PVP</a>'+
       '<button class="btn-ghost btn-sm" onclick="DT.toggleRules()">📖 Regras</button>'+
     '</div>'+
   '</div>';
@@ -9497,10 +10179,12 @@ function banners(){
 }
 
 function screenHTML(){
-  if(SESSION.showRules){
-    var rulesRight = SESSION.role==='gm' ? gmTopRight() : (SESSION.role==='player' ? playerTopRight() : '');
-    return wrap(rulesScreen(), rulesRight);
-  }
+  /* Regras (Cap. mecânica nova) deixou de ser um "screen" à parte (não
+     troca mais a tela toda) -- vira um popup de verdade, anexado por
+     wrap() em cima de QUALQUER tela (Arena/PVP/Ficha/Início...), ver
+     rulesPopupHTML(). Por isso SESSION.showRules NÃO aparece mais aqui:
+     a tela de baixo continua sendo escolhida normalmente pelos outros
+     "if"s abaixo, e o popup só se sobrepõe visualmente. */
   if(SESSION.showArena){
     var arenaRight = SESSION.role==='gm' ? gmTopRight() : (SESSION.role==='player' ? playerTopRight() : '');
     return wrap(arenaScreen(), arenaRight);
@@ -9523,7 +10207,7 @@ function screenHTML(){
   }
 }
 function wrap(bodyHTML, rightHTML){
-  return '<div class="shell">'+topbar(rightHTML)+banners()+bodyHTML+legalFooter()+'</div>'+typeDatalist('typeList')+speciesDatalist('speciesDexList')+moveDatalist('movesDexList');
+  return '<div class="shell">'+topbar(rightHTML)+banners()+bodyHTML+legalFooter()+'</div>'+typeDatalist('typeList')+speciesDatalist('speciesDexList')+moveDatalist('movesDexList')+rulesPopupHTML();
 }
 /* ---- Overlay de dado no centro da tela: aparece pra todo mundo conectado
    quando um ataque é resolvido na Arena (STATE.arena.lastRoll), não só pra
@@ -9767,13 +10451,23 @@ DT.showRulesTab = function(key){
   render();
 };
 DT.retryRules = function(){ RULES_CACHE[SESSION.rulesTab] = null; fetchRulesDoc(SESSION.rulesTab); render(); };
-function rulesScreen(){
+/* Pedido do usuário: "O Menu de Regras tem que abrir como popup e lá
+   dentro ele estar dividido por abas, não está assim." Antes essa função
+   se chamava rulesScreen() e screenHTML() a usava pra TROCAR a página
+   inteira (mesmo tratamento de Arena/PVP/Ficha) -- nunca foi de verdade
+   um popup, só um "screen" a mais (perdia o que estava na tela de baixo
+   até fechar). Agora vira um overlay de verdade (mesmo padrão visual do
+   .arena-action-overlay, ver CSS) que wrap() anexa por CIMA de qualquer
+   tela -- ver DT.toggleRules/SESSION.showRules, chamado de rulesPopupHTML()
+   dentro de wrap(). As 3 abas (RULES_DOCS) ficam dentro do cabeçalho, ao
+   lado do ✕ de fechar. */
+function rulesPopupHTML(){
+  if(!SESSION.showRules) return '';
   var key = SESSION.rulesTab || 'regras';
   var doc = RULES_DOCS[key];
-  var tabs = '<div class="btn-row rules-tabs">'+Object.keys(RULES_DOCS).map(function(k){
+  var tabs = '<div class="rules-popup-tabs">'+Object.keys(RULES_DOCS).map(function(k){
     return '<button class="btn-sm'+(k===key?' btn-primary':'')+'" onclick="DT.showRulesTab(\''+k+'\')">'+RULES_DOCS[k].label+'</button>';
   }).join('')+'</div>';
-  var back = '<div class="btn-row" style="margin-bottom:14px; justify-content:space-between;"><button class="btn-sm" onclick="DT.toggleRules()">← Voltar</button>'+tabs+'</div>';
   var cached = RULES_CACHE[key];
   var body;
   if(cached === undefined || cached === null){
@@ -9786,7 +10480,12 @@ function rulesScreen(){
   } else {
     body = '<div class="rules-doc">'+cached+'</div>';
   }
-  return back+body;
+  return '<div class="rules-popup-overlay" onclick="DT.toggleRules()">'+
+    '<div class="rules-popup-card" onclick="event.stopPropagation()">'+
+      '<div class="rules-popup-head"><h2>📖 Regras</h2>'+tabs+'<button type="button" class="rules-popup-close" title="Fechar" onclick="DT.toggleRules()">✕</button></div>'+
+      '<div class="rules-popup-body">'+body+'</div>'+
+    '</div>'+
+  '</div>';
 }
 
 /* =================== ARENA (esboço v1) ==================== */
@@ -9797,6 +10496,19 @@ function hpBarTier(pct){ return pct<=20 ? ' low' : (pct<=50 ? ' mid' : ''); }
 DT.toggleArena = function(){
   SESSION.showArena = !SESSION.showArena;
   if(SESSION.showArena) SESSION.showPvp = false; /* abrir a Arena fecha o PVP -- páginas próprias, uma de cada vez (Cap. rotas por hash) */
+  render();
+};
+/* Pedido do usuário: "Cria um menu só pra ficha aí ele fica
+   independente." -- Ficha nunca teve um "toggle" próprio porque ela
+   sempre foi só "o que sobra" quando Arena/PVP estão fechados (ver
+   currentRouteHash: SESSION.screen==='player-sheet' com os dois false).
+   Só fecha Arena/PVP -- não mexe em SESSION.screen (quem já logou como
+   jogador já está em 'player-sheet' por baixo; sem login, cai na tela de
+   entrar/logar, que já é o comportamento certo pra uma ficha privada por
+   PIN, igual o link #ficha direto já fazia). */
+DT.gotoFicha = function(){
+  SESSION.showArena = false;
+  SESSION.showPvp = false;
   render();
 };
 /* Banner de vitória (Cap. 25/59): STATE.arena.vencedor só é preenchido por
@@ -10396,12 +11108,19 @@ function arenaEntryHTML(e){
       '</div>'
     : '';
 
-  /* Ver atributos (Cap. 15.1): qualquer um que enxergue essa entrada de
-     verdade (mesma regra de canSeeReal, já garantida por estarmos aqui)
-     pode abrir o painel flutuante -- informação pública, igual a Equipe
-     ativa. event.stopPropagation() pra não disparar o clique do card
+  /* Ver atributos (Cap. 15.1): pedido do usuário ("quero que fique ativo
+     pra ver só os Pokémon que fazem parte do time do jogador, nunca os do
+     adversários") -- ANTES, qualquer um que enxergasse a entrada
+     (canSeeReal, que inclui e.revelado -- ou seja, QUALQUER Pokémon já
+     revelado em campo, do time que for) já tinha acesso à tabela de
+     Atributo/Estágio/Efetivo completa de qualquer Pokémon, inclusive do
+     adversário. Agora só o próprio dono (isOwner) ou o Mestre (onisciente
+     por natureza) veem o botão -- nunca outro jogador olhando o time
+     adversário. event.stopPropagation() pra não disparar o clique do card
      inteiro (agir/escolher alvo) por baixo do botão. */
-  var statsBtn = '<button type="button" class="arena-info-btn" title="Ver atributos" onclick="event.stopPropagation();DT.arenaStatsShow(\''+e.id+'\')">📊</button>';
+  var statsBtn = (isOwner || isGM)
+    ? '<button type="button" class="arena-info-btn" title="Ver atributos" onclick="event.stopPropagation();DT.arenaStatsShow(\''+e.id+'\')">📊</button>'
+    : '';
 
   return '<div class="'+slotClass+'"'+slotClick+'>'+
     (resolvingNow ? '<div class="arena-turn-badge">▶ Resolvendo</div>' : (jaEscolheu ? '<div class="arena-turn-badge arena-turn-badge-done">✅ Escolheu</div>' : ''))+
@@ -10446,8 +11165,21 @@ function arenaStatsOnePanelHTML(entryId, idx){
   if(!t || !p) return '';
   var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
   var isGM = SESSION.role==='gm';
-  if(!isGM && !isOwner && !e.revelado) return '';
-
+  /* Pedido do usuário: painel de Atributos só pro dono (ou Mestre) --
+     nunca o adversário, mesmo já revelado (ver DT.arenaStatsShow acima). */
+  if(!isGM && !isOwner) return '';
+  return statsPanelHTML(entryId, idx, t, p, "DT.arenaStatsClose('"+entryId+"')");
+}
+/* Corpo do painel flutuante em si (Cap. 15.1) -- função pura, recebe
+   trainer/poke já resolvidos por parâmetro (nunca lê STATE.arena/findTrainer
+   direto), pra dar pra reaproveitar tanto na Arena quanto na Área PVP
+   (pvpStatsOnePanelHTML, mais abaixo) sem duplicar HTML nem tocar em nada
+   do outro lado -- só o "close" muda (closeOnclickJS: qual DT.*Close
+   chamar). A posição arrastada (SESSION.arenaStatsPos[entryId]) é
+   compartilhada entre os dois de propósito: é estado 100% local dessa
+   aba/sessão (nunca sincroniza, nunca é dado de jogo), e um entryId de
+   verdade nunca colide entre Arena e PVP (mesmo uid() gerador dos dois). */
+function statsPanelHTML(entryId, idx, t, p, closeOnclickJS){
   var num = pokeSpeciesNum(p);
   var sprite = num
     ? '<img class="poke-sprite" src="'+spriteUrl(num)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
@@ -10497,7 +11229,7 @@ function arenaStatsOnePanelHTML(entryId, idx){
       sprite+
       '<div class="arena-stats-head-name"><strong>'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</strong>'+
         '<span class="muted" style="font-size:.66rem;">'+esc(t.name)+'</span></div>'+
-      '<button type="button" class="arena-stats-close" title="Fechar" onpointerdown="event.stopPropagation()" onclick="DT.arenaStatsClose(\''+entryId+'\')">✕</button>'+
+      '<button type="button" class="arena-stats-close" title="Fechar" onpointerdown="event.stopPropagation()" onclick="'+closeOnclickJS+'">✕</button>'+
     '</div>'+
     '<div class="arena-stats-body">'+
       typeTags(p)+
@@ -10512,6 +11244,28 @@ function arenaStatsOnePanelHTML(entryId, idx){
       (movesHTML ? '<ul class="arena-stats-moves">'+movesHTML+'</ul>' : '')+
     '</div>'+
   '</div>';
+}
+/* Painel flutuante de Atributos na Área PVP -- mesmo statsPanelHTML de
+   cima, só resolvendo trainer/poke DENTRO de withArenaContext (a sala,
+   não a Arena de verdade) e travando em "só o dono" (sem noção de Mestre
+   nem de 'revelado' aqui). */
+function pvpStatsOnePanelHTML(salaId, entryId, idx){
+  var sala = STATE.pvp.salas[salaId]; if(!sala) return '';
+  var e = null, t = null, p = null;
+  withArenaContext(sala, function(){
+    e = findArenaEntry(entryId);
+    if(!e) return;
+    t = findTrainer(e.trainerId);
+    p = t && getPoke(e.trainerId, e.pokemonId);
+  });
+  if(!e || !t || !p) return '';
+  var myVid = pvpVirtualId(sala, SESSION.trainerId);
+  if(e.trainerId!==myVid) return '';
+  return statsPanelHTML(entryId, idx, t, p, "DT.pvpStatsClose('"+entryId+"')");
+}
+function pvpStatsPanelHTML(salaId){
+  var openIds = SESSION.pvpStatsOpen || [];
+  return openIds.map(function(entryId, idx){ return pvpStatsOnePanelHTML(salaId, entryId, idx); }).join('');
 }
 /* A Equipe ativa de TODO MUNDO aparece pra TODO MUNDO na Arena, jogador
    ou Mestre -- isso é informação pública da mesa (quem cada um tem, com
@@ -11459,6 +12213,32 @@ function withArenaContext(arenaObj, fn){
    oficial dos Movimentos aprendidos por Nível (movePickOptions) -- o
    Movimento por TM/Evolução/Egg nunca teve teto de Nível nenhum. */
 var PVP_LEVEL = 16;
+/* Gerador de Pokémon aleatório (Cap. mecânica nova) -- pedido do usuário:
+   "Coloque a opção de gerar um Pokémon aleatório na ficha do PVP.
+   Sorteando desde o Pokémon, habilidade, Nature e moves... Deixe que ele
+   selecione se quer focar em pokemon de primeira, segunda ou terceira
+   evolução, uma evolução(como Pinsir), de duas evoluções como
+   Slowpoke/slowbro." As 5 categorias batem 1:1 com o que EVO_STAGE
+   consegue expressar (ver o comentário grande lá, perto de SPECIES_DEX):
+   familySize 1/2/3, e dentro de 3 ainda filtra por estágio. */
+var PVP_RANDOM_STAGE_LABELS = {
+  uma: 'Uma evolução (nunca evolui, ex.: Pinsir)',
+  duas: 'Família de duas evoluções (ex.: Slowpoke/Slowbro)',
+  primeira: '1ª evolução (família de 3, ex.: Bulbasaur)',
+  segunda: '2ª evolução (família de 3, ex.: Ivysaur)',
+  terceira: '3ª evolução/final (família de 3, ex.: Venusaur)'
+};
+function speciesMatchesStageFilter(sp, categoria){
+  var info = EVO_STAGE[sp.num];
+  if(!info) return false; /* sem dado de evolução pra essa Espécie -- fica de fora de qualquer categoria (nunca sorteada) */
+  var stage = info[0], familySize = info[1];
+  if(categoria==='uma') return familySize===1;
+  if(categoria==='duas') return familySize===2;
+  if(categoria==='primeira') return familySize===3 && stage===1;
+  if(categoria==='segunda') return familySize===3 && stage===2;
+  if(categoria==='terceira') return familySize===3 && stage===3;
+  return false;
+}
 /* "Treinador" fictício com os 6 Atributos sempre no máximo (5/5), usado só
    pra PRÉ-VISUALIZAR PV/Atributo Efetivo de uma ficha de PVP fora de
    qualquer sala (a ficha em si não pertence a Treinador nenhum -- vira
@@ -11911,6 +12691,69 @@ DT.pvpSetMoveSelect = function(pid, idx, el){
   p.moves[idx] = novo;
   mutate();
 };
+/* Gerador de Pokémon aleatório (Cap. mecânica nova) -- pedido do usuário:
+   "Coloque a opção de gerar um Pokémon aleatório na ficha do PVP.
+   Sorteando desde o Pokémon, habilidade, Nature e moves. Obviamente
+   deixando que o usuário personalize depois da rolagem." categoria é uma
+   das 5 chaves de PVP_RANDOM_STAGE_LABELS (ver speciesMatchesStageFilter,
+   perto de PVP_LEVEL). Sorteia:
+   1) Espécie -- só entre as que batem com a categoria escolhida
+      (SPECIES_DEX inteiro, filtrado por EVO_STAGE).
+   2) Habilidade -- entre as MESMAS opções que o seletor manual já oferece
+      (habilidadesSelecionaveisDaEspecie: mecânicas primeiro, senão todas
+      as reais) -- nunca inventa uma Habilidade que a Espécie não tem.
+   3) Natureza -- entre as 25 oficiais (NATURES_DEX), sem restrição (toda
+      Espécie pode ter qualquer Natureza).
+   4) Movimentos (4 slots) -- reúne TODAS as opções válidas da Espécie nos
+      4 métodos (Nível até o teto do RPG/TM/Evolução/Egg, ver
+      movePickOptions -- MESMA fonte que o seletor manual usa, então nunca
+      sorteia um Movimento que a ficha não deixaria escolher à mão),
+      sem repetir nome, embaralha e pega os 4 primeiros -- se a Espécie
+      tiver menos que 4 Movimentos cadastrados no total, os slots que
+      sobrarem ficam vazios (mesmo comportamento de uma ficha nova).
+   Nada disso trava a edição depois -- os mesmos <select>/<input> de
+   sempre continuam liberados pra personalizar (só p.emBatalha bloqueia,
+   igual qualquer outro campo da ficha). */
+DT.pvpGerarAleatorio = function(pid, categoria){
+  if(SESSION.role!=='player') return;
+  var p = pvpGetFicha(SESSION.trainerId, pid); if(!p || p.emBatalha) return;
+  if(!PVP_RANDOM_STAGE_LABELS[categoria]) return;
+  var pool = SPECIES_DEX.filter(function(sp){ return speciesMatchesStageFilter(sp, categoria); });
+  if(!pool.length) return; /* não deveria acontecer -- toda categoria tem gente (ver o comentário de EVO_STAGE) */
+  var sp = pool[Math.floor(Math.random()*pool.length)];
+  applySpeciesData(p, sp);
+  p.apelido = ''; /* sorteio novo -- Espécie totalmente diferente, não faz sentido herdar o apelido de antes */
+
+  var habs = habilidadesSelecionaveisDaEspecie(p.especie);
+  p.habilidade = habs.length ? habs[Math.floor(Math.random()*habs.length)] : '';
+
+  p.natureza = NATURES_DEX[Math.floor(Math.random()*NATURES_DEX.length)].nome;
+
+  var ls = LEARNSETS[sp.num];
+  var ceiling = officialLevelCeiling(PVP_LEVEL);
+  var candidatos = [];
+  var vistos = {};
+  ['normal','tm','evo','egg'].forEach(function(metodo){
+    movePickOptions(ls, metodo, ceiling).forEach(function(o){
+      if(!vistos[o.name]){ vistos[o.name] = true; candidatos.push({name:o.name, metodo:metodo}); }
+    });
+  });
+  for(var i=candidatos.length-1;i>0;i--){ var j = Math.floor(Math.random()*(i+1)); var tmp = candidatos[i]; candidatos[i] = candidatos[j]; candidatos[j] = tmp; }
+  for(var idx=0; idx<4; idx++){
+    var escolhido = candidatos[idx];
+    var found = escolhido && findMoveByName(escolhido.name);
+    if(found){
+      var novoMv = {metodo: escolhido.metodo};
+      applyMoveData(novoMv, found);
+      p.moves[idx] = novoMv;
+    } else {
+      p.moves[idx] = {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"};
+    }
+  }
+
+  SESSION.notice = 'Sorteado: '+sp.name+' (#'+sp.num+') — Habilidade, Natureza e Movimentos também sorteados. Personalize à vontade antes de usar numa sala.';
+  mutate();
+};
 
 /* ---- Lobby: criar/entrar/sair de sala ---- */
 DT.pvpCriarSala = function(){
@@ -12100,6 +12943,24 @@ function pvpFichaCardHTML(p){
     '<div class="field"><label>Espécie</label><input type="text" list="speciesDexList" '+(locked?'disabled':'')+' placeholder="ex: Charizard" value="'+esc(p.especie)+'" onchange="DT.pvpSetFichaField(\''+did+'\',\'especie\', this)"></div>'+
     '<div class="field"><label>Nível fixo — Atributos no máximo</label><span class="num">PV máx. '+max+'</span></div>'+
   '</div>';
+  /* Gerador aleatório (Cap. mecânica nova) -- pedido do usuário: "Coloque
+     a opção de gerar um Pokémon aleatório na ficha do PVP... Obviamente
+     deixando que o usuário personalize depois da rolagem." Escolhe a
+     categoria de estágio de evolução ANTES de rolar (select ao lado do
+     botão, mesmo padrão de "digitar o nome da sala antes de Criar" já
+     usado no Lobby) -- DT.pvpGerarAleatorio lê o <select> pelo id na
+     hora do clique. */
+  var randSelId = 'pvpRandCat-'+did;
+  var randomBlock = locked ? '' : '<div class="field" style="margin-bottom:10px;">'+
+    '<label>🎲 Gerar aleatório (Espécie + Habilidade + Natureza + Movimentos)</label>'+
+    '<div class="btn-row">'+
+      '<select id="'+randSelId+'">'+
+        Object.keys(PVP_RANDOM_STAGE_LABELS).map(function(k){ return '<option value="'+k+'">'+esc(PVP_RANDOM_STAGE_LABELS[k])+'</option>'; }).join('')+
+      '</select>'+
+      '<button type="button" class="btn-sm" onclick="DT.pvpGerarAleatorio(\''+did+'\', document.getElementById(\''+randSelId+'\').value)">🎲 Sortear</button>'+
+    '</div>'+
+    '<p class="muted" style="font-size:.7rem; margin:4px 0 0;">Sorteia tudo pronto pra batalhar — personalize à vontade depois (Apelido, Movimentos, etc.).</p>'+
+  '</div>';
   var statRows = STAT_ORDER.filter(function(s){ return s!=='hp'; }).map(function(stat){
     var eff = effectiveStat(maxT, p, stat);
     return '<tr><td>'+STAT_LABELS[stat]+'</td><td class="num">'+p.natural[stat]+'</td><td class="num eff">'+eff+'</td></tr>';
@@ -12181,7 +13042,7 @@ function pvpFichaCardHTML(p){
     return learnsetBar+table;
   }).join('<hr class="rule" style="margin:10px 0;">');
   var movesBlock = '<div>'+movesLabel+moveBlocks+'</div>';
-  return '<div class="poke-card">'+head+'<div class="poke-body">'+apelidoField+speciesField+statTable+naturezaRow+habilidadeRow+movesBlock+'</div></div>';
+  return '<div class="poke-card">'+head+'<div class="poke-body">'+apelidoField+speciesField+randomBlock+statTable+naturezaRow+habilidadeRow+movesBlock+'</div></div>';
 }
 function pvpFichasHTML(t){
   var fichas = pvpFichaList(t.id);
@@ -12209,7 +13070,13 @@ function pvpLobbyHTML(t){
     '</div>'+
   '</div></div>';
 }
-function pvpMiniCardHTML(t,p,label){
+/* statsBtnArgs: [salaId, entryId] só quando esse card é o PRÓPRIO Pokémon
+   do jogador (pedido do usuário: painel de Atributos só do próprio time,
+   nunca do adversário) -- null/omitido pro card do adversário, que nunca
+   mostra o botão. Mesmo motivo pra stageBadgesHTML(p): "quando a gente
+   aumenta um estágio que seja exibido na tela também, igual fazemos na
+   arena" -- reaproveitada tal e qual (função pura, já usada na Arena). */
+function pvpMiniCardHTML(t,p,label,statsBtnArgs){
   var max = hpMax(t,p);
   var cur = (p.currentHP===null||p.currentHP===undefined) ? max : Math.max(0,p.currentHP);
   var pct = max>0 ? Math.round(cur/max*100) : 0;
@@ -12217,7 +13084,11 @@ function pvpMiniCardHTML(t,p,label){
   var spriteHTML = spNum
     ? '<img class="poke-sprite" src="'+spriteUrl(spNum)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
     : '<div class="poke-sprite-placeholder">❔</div>';
-  return '<div class="poke-card"><div class="poke-head">'+
+  var statsBtn = statsBtnArgs
+    ? '<button type="button" class="arena-info-btn" title="Ver atributos" onclick="event.stopPropagation();DT.pvpStatsShow(\''+statsBtnArgs[0]+'\',\''+statsBtnArgs[1]+'\')">📊</button>'
+    : '';
+  return '<div class="poke-card" style="position:relative;"><div class="poke-head">'+
+    statsBtn+
     '<div class="identity">'+spriteHTML+
       '<div style="min-width:0;">'+
         '<div class="nick">'+esc(label)+': '+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+(cur<=0?' <span class="badge status-bad">Desmaiado</span>':'')+(p.status?'<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>':'')+(p.confuso?'<span class="badge status-bad">Confuso</span>':'')+'</div>'+
@@ -12226,6 +13097,7 @@ function pvpMiniCardHTML(t,p,label){
     '</div>'+
   '</div><div class="poke-body">'+
     '<div class="hp-row"><span class="num">'+cur+'</span><span class="muted">/ '+max+' PV</span><div class="hp-bar'+hpBarTier(pct)+'"><i style="width:'+pct+'%"></i></div></div>'+
+    stageBadgesHTML(p)+
   '</div></div>';
 }
 function pvpLogHTML(sala){
@@ -12332,7 +13204,7 @@ function pvpBattleHTML(sala, t){
   }
   var painelHTML = painel ? '<div class="card"><div class="card-body">'+painel+'</div></div>' : '';
 
-  var meCard = pvpMiniCardHTML(meT, meP, 'Você');
+  var meCard = pvpMiniCardHTML(meT, meP, 'Você', [sala.id, meEntry.id]);
   var oppCard = oppP ? pvpMiniCardHTML(oppT, oppP, 'Adversário') : '<div class="poke-card"><div class="poke-body"><span class="muted">O adversário ainda vai soltar o próximo.</span></div></div>';
 
   var vencedorHTML = '';
@@ -12351,7 +13223,8 @@ function pvpBattleHTML(sala, t){
     painelHTML+
     vencedorHTML+
     pvpLogHTML(sala)+
-    (!sala.vencedor ? '<div class="btn-row" style="margin-top:10px;"><button class="btn-danger btn-sm" onclick="DT.pvpDesistir(\''+sala.id+'\')">🏳️ Desistir</button></div>' : '');
+    (!sala.vencedor ? '<div class="btn-row" style="margin-top:10px;"><button class="btn-danger btn-sm" onclick="DT.pvpDesistir(\''+sala.id+'\')">🏳️ Desistir</button></div>' : '')+
+    pvpStatsPanelHTML(sala.id);
 }
 function pvpFinishedHTML(sala, t){
   var vteam = (sala.teams||[]).find(function(tm){ return tm.id===sala.vencedor; });

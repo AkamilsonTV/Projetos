@@ -208,7 +208,9 @@ Botão **☀️/🌙** no topo. O site sempre abre claro por padrão; a escolha 
 
 ## Regras e guias
 
-Botão **"📖 Regras"** no topo — três abas: **Regras** (livro completo), **Guia do Treinador** e **Guia do Mestre** (este aqui). Vale a pena revisar o Guia do Treinador de vez em quando, pra saber exatamente o que cada jogador vê e pode fazer sozinho.
+Botão **"📖 Regras"** no topo abre um popup por cima da tela em que você está — três abas dentro dele: **Regras** (livro completo), **Guia do Treinador** e **Guia do Mestre** (este aqui). Fecha com **✕** (ou clicando fora) sem perder o que você estava fazendo na tela de baixo. Vale a pena revisar o Guia do Treinador de vez em quando, pra saber exatamente o que cada jogador vê e pode fazer sozinho.
+
+Assim como o Treinador, você também tem os botões **"🏟️ Arena"**/**"⚔️ PVP"** como links de verdade — Ctrl/⌘-clique ou clique do meio abrem numa aba nova do navegador, independente.
 
 ## Saindo
 

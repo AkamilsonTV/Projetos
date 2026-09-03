@@ -171,6 +171,7 @@ A janela **"📜 Rolagens da Arena"** guarda uma linha por ataque já resolvido 
 O botão **"⚔️ PVP"** no topo abre um modo à parte da Arena — combates rápidos, direto com outro Treinador cadastrado, sem precisar do Mestre pra nada. As regras de tipo/dano/status/Habilidade são exatamente as mesmas da Arena normal (qualquer correção nelas vale pros dois lugares).
 
 - **Fichas de PVP são separadas do seu Time do RPG.** Em "🎴 Fichas de PVP" você monta quantos Pokémon quiser (até 20), escolhendo só **Espécie**, **Movimentos**, **Natureza** e **Habilidade** — nível é sempre o máximo do RPG (Nível 16), seus Atributos já entram travados no topo, então não tem Vínculo nem ponto de Atributo pra mexer. Clique numa ficha pra expandir e editar; "+ Nova Ficha" cria outra. Os Movimentos são o mesmo seletor "Learnset" (Nível/Evo/TM/Egg) da ficha do RPG — só aparece o que aquela Espécie realmente aprende, nunca dá pra digitar um Movimento que ela não tem. O seletor de Habilidade mostra a descrição oficial de **todas** as opções logo abaixo, não só da que você já escolheu — dá pra comparar antes de decidir.
+- **🎲 Gerar aleatório**: não quer montar a ficha do zero? Escolha uma das 5 categorias de evolução no menu (uma evolução como Pinsir, duas evoluções como Slowpoke/Slowbro, ou 1ª/2ª/3ª evolução de uma família de 3 como Bulbasaur/Ivysaur/Venusaur) e clique em **"🎲 Sortear"** — sorteia a Espécie inteira dentro dessa categoria, mais Habilidade, Natureza e os 4 Movimentos de uma vez, tudo dentro do que aquela Espécie realmente pode ter. Depois do sorteio, os campos continuam 100% editáveis — mude o que quiser (inclusive sortear de novo quantas vezes quiser).
 - **Lobby**: crie uma sala (nome opcional) ou entre numa que já esteja aberta. Cada sala é só você e mais um oponente.
 - **Montar o time**: dentro da sala, escolha até 6 das suas fichas de PVP (com troca durante a batalha, igual a Equipe ativa da Arena). Assim que escolher o 1º Pokémon, apareceria **"Quem vai pro campo primeiro?"** com uma lista dos escolhidos — clique em qualquer um deles (⭐ marca o atual) pra decidir quem entra em campo primeiro; o padrão é o 1º que você escolheu, mas dá pra trocar antes de ficar pronto. Só clique **"✓ Pronto"** depois de decidir. Igual ao resto do time, o adversário não vê quem você escolheu até a batalha realmente começar. Assim que os dois jogadores estiverem prontos (time + líder escolhidos), a batalha começa sozinha — ninguém precisa clicar em nada pra "iniciar".
 - **Sua vez**: escolha um Movimento (ou troque de Pokémon) a cada Rodada, direto no painel de comando que aparece na tela. Assim que os dois jogadores escolherem, a Rodada resolve sozinha — e cada rolagem de verdade aparece num quadro de **dado 3D** (caindo e girando até assentar, com uma pausa de alguns segundos pra dar tempo de ver o resultado) antes do tabuleiro atualizado aparecer. Tem mais de uma rolagem na Rodada (você e o adversário atacaram)? Elas aparecem uma de cada vez, em fila. Não quer esperar? Clique em **"Pular"** (ou no fundo escuro) pra ir direto pro resultado.
@@ -179,9 +180,13 @@ O botão **"⚔️ PVP"** no topo abre um modo à parte da Arena — combates r�
 - **Uma ficha ficou travada "Em batalha" mesmo sem batalha nenhuma rolando?** Isso não deveria mais acontecer (corrigimos a causa), mas se acontecer com uma ficha antiga: abra ela na lista de Fichas de PVP e clique em **"🔓 Forçar saída"** (pede confirmação antes de agir) — ela é destravada e curada na hora, do mesmo jeito que ficaria se a batalha tivesse terminado normal. Só use se a batalha já acabou/sumiu de verdade — se ela ainda estiver rolando, espere terminar.
 - **Fim de batalha**: o Time vencedor é anunciado e **todos os Pokémon envolvidos (dos dois lados) são curados automaticamente** — PV, Condição, Confusão e PP de volta ao máximo — prontos pra outra batalha na hora.
 
-## Links diretos
+## Links diretos e abas independentes
 
-A Arena, a Área PVP e a sua Ficha têm cada uma o próprio link — repare no fim do endereço na barra do navegador: `...diario-de-treinador.html#arena`, `#pvp` ou `#ficha`. Ele muda sozinho conforme você navega, então dá pra copiar o link da tela em que você está e mandar pra alguém (ainda precisa entrar com o PIN de sempre — o link não pula o login). Voltar/Avançar do navegador também funciona normal entre essas telas. Abrir as **📖 Regras** por cima de qualquer uma delas não muda o link — fecha e você volta pra exatamente onde estava.
+A Arena, a Área PVP e a sua Ficha têm cada uma o próprio link — repare no fim do endereço na barra do navegador: `...diario-de-treinador.html#arena`, `#pvp` ou `#ficha`. Ele muda sozinho conforme você navega, então dá pra copiar o link da tela em que você está e mandar pra alguém (ainda precisa entrar com o PIN de sempre — o link não pula o login). Voltar/Avançar do navegador também funciona normal entre essas telas.
+
+Os botões **"🏟️ Arena"**, **"⚔️ PVP"** e **"🎒 Ficha"** (esse último só aparece logado como jogador) são links de verdade — um clique normal abre na mesma aba, do jeito de sempre, mas Ctrl-clique (ou ⌘-clique no Mac), clique do meio do mouse, ou "Abrir link em nova aba" no menu do botão direito abrem essa tela numa **aba nova do navegador**, independente — útil pra acompanhar a Arena numa aba e mexer na sua Ficha em outra ao mesmo tempo, por exemplo.
+
+Abrir as **📖 Regras** por cima de qualquer uma dessas telas não muda o link nem fecha o que você tinha aberto — vira um popup por cima, com um **✕** pra fechar e voltar exatamente pra onde estava.
 
 ## Tema claro/escuro
 
@@ -193,7 +198,7 @@ No Chrome ou Edge (PC, Mac, Linux ou Android), clique no ícone de instalação 
 
 ## Regras e guias
 
-O botão **"📖 Regras"** no topo abre esta área, com três abas: **Regras** (o livro de regras completo), **Guia do Treinador** (este aqui) e **Guia do Mestre**. Um botão **"← Voltar"** leva de volta pra onde você estava.
+O botão **"📖 Regras"** no topo abre um popup por cima da tela em que você está (Arena, PVP, Ficha — tanto faz), com três abas dentro dele: **Regras** (o livro de regras completo), **Guia do Treinador** (este aqui) e **Guia do Mestre**. Clique numa aba pra trocar, ou no **✕** (ou fora do popup) pra fechar — você volta exatamente pra onde estava, sem perder nada.
 
 ## Saindo
 
