@@ -448,6 +448,35 @@
   .battle-stage-tag{ margin-top:4px; width:88px; text-align:center; }
   .battle-stage-name{ font-size:.66rem; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .battle-stage-tag .hp-bar{ height:6px; border-color:rgba(255,255,255,.5); }
+  /* Sprite clicável (mesmas classes de estado do card -- arena-slot-selectable/
+     -targetable/-attacking/-target-picked/-waiting -- reaproveitadas direto na
+     sprite do palco, sem CSS novo pra cada uma; só o cursor:pointer/outline
+     genérico delas já funciona aqui). */
+  .battle-stage-mon.arena-slot-selectable, .battle-stage-mon.arena-slot-targetable{ cursor:pointer; }
+  .battle-stage-mon.arena-slot-waiting{ opacity:.6; }
+  /* Câmera (Mestre/Espectador escolhendo quem ver de costas). */
+  .battle-stage-cam-row{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  /* Menu de Ação (RPG) ancorado DENTRO do palco -- pedido do usuário: "tem
+     que ser feito todo pela tela de combate, na imagem mesmo". Mesmo popup
+     de sempre (arena-action-overlay), só que a posição muda de fixed/tela
+     inteira pra absolute/só o palco quando ele está aninhado aqui dentro
+     (.battle-stage tem position:relative desde sempre, pros holofotes). */
+  .battle-stage .arena-action-overlay{ position:absolute; z-index:30; border-radius:var(--radius-lg); }
+  /* Painel de comando da Área PVP, mesma ideia só que sem dimming (não
+     precisa esconder nada por trás -- não tem segredo/alvo manual no PVP):
+     fica dentro do palco, encaixado embaixo das fileiras, como uma
+     "caixinha de comando" no rodapé da cena. */
+  .battle-stage-panel{ position:relative; z-index:5; margin-top:10px; background:rgba(10,20,32,.72); border:2px solid rgba(255,255,255,.25); border-radius:var(--radius); padding:10px 12px; backdrop-filter:blur(2px); }
+  .battle-stage-panel-head{ font-size:.78rem; font-weight:700; color:#fff; margin-bottom:6px; }
+  .battle-stage-panel .muted{ color:#cfe3f2; }
+  /* Animações simples (CSS puro, sem sprite-sheet nenhum) -- pedido do
+     usuário: um "avanço" rápido em quem ataca, um "tremor + flash" em quem
+     é atingido de verdade. Disparadas por battleStageAnimClass, só
+     enquanto STATE.arena.lastRoll estiver fresco (ver STAGE_ANIM_WINDOW_MS). */
+  @keyframes battle-stage-lunge{ 0%{ transform:scale(1); } 35%{ transform:scale(1.18); } 100%{ transform:scale(1); } }
+  @keyframes battle-stage-hit{ 0%{ transform:translateX(0); filter:brightness(1); } 15%{ transform:translateX(-5px); filter:brightness(2.4) saturate(0); } 35%{ transform:translateX(5px); } 55%{ transform:translateX(-3px); } 100%{ transform:translateX(0); filter:brightness(1); } }
+  .battle-stage-anim-attack{ animation:battle-stage-lunge .5s ease-out; }
+  .battle-stage-anim-hit{ animation:battle-stage-hit .45s ease-out; }
 
   .moves-list{ display:flex; flex-direction:column; gap:6px; }
   .move-row{ display:grid; grid-template-columns: 1.3fr .8fr .8fr .5fr .6fr .5fr; gap:6px; align-items:center; font-size:.76rem; margin-bottom:4px; }
@@ -4860,6 +4889,12 @@ function pokeSpeciesNum(p){
 }
 function spriteUrl(num){
   return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/'+num+'.png';
+}
+/* Sprite "de costas" (mesmo banco oficial, pasta back/) -- pedido do
+   usuário: no palco de batalha, cada um vê o PRÓPRIO Pokémon de costas,
+   igual o jogo de verdade (câmera atrás do seu Treinador). */
+function spriteUrlBack(num){
+  return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/'+num+'.png';
 }
 var MOVES_DEX = [
   {name:'Absorb',tipo:'Grama',categoria:'Especial',pp:25,poder:1,precisao:'100%',prioridade:0,efeito:'Um ataque que suga nutrientes. O PV do usuário é restaurado em até metade do dano causado no alvo.',gen:1},
@@ -9694,10 +9729,18 @@ function arenaScreen(){
   out += arenaErrorPopupHTML();
   out += arenaSolturaHTML(isGM);
   out += arenaInitiativeHTML();
+  /* Câmera do palco: quem está jogando de verdade (tem uma entrada própria
+     em campo) sempre vê o PRÓPRIO Time de costas, automático -- ninguém
+     escolhe o quê ver, é sempre "eu". Sem entrada própria (Mestre ou
+     Espectador), a câmera vem do botão (SESSION.arenaStageCam, ver
+     battleStageCamHTML), começando no 1º Time. O menu de Ação
+     (arenaActionPanelHTML) entra DENTRO do próprio palco -- pedido do
+     usuário, "tem que ser feito todo pela tela de combate". */
   var meuEntryArena = SESSION.role==='player' ? (STATE.arena.entries||[]).find(function(e){ return e.trainerId===SESSION.trainerId; }) : null;
-  out += battleStageHTML(meuEntryArena ? meuEntryArena.teamId : null);
+  var camaraTeamId = meuEntryArena ? meuEntryArena.teamId : (SESSION.arenaStageCam || ((STATE.arena.teams||[])[0] && STATE.arena.teams[0].id) || null);
+  if(!meuEntryArena) out += battleStageCamHTML(camaraTeamId);
+  out += battleStageHTML(camaraTeamId, arenaActionPanelHTML());
   out += arenaTeamsHTML(isGM);
-  out += arenaActionPanelHTML();
   out += arenaSourceHTML();
   out += arenaLogHTML();
   out += arenaStatsPanelHTML();
@@ -10051,28 +10094,52 @@ function arenaActionPanelHTML(){
 }
 /* =================== PALCO DE BATALHA (cena visual, estilo estádio) ===================
    Pedido do usuário: uma referência visual de "arena de verdade" (imagem
-   mandada, estilo Pokémon Sword/Shield -- estádio com Times enfileirados)
-   pra acompanhar a batalha em vez de só ler cards. Fica só como um resumo
-   visual no TOPO, acima dos cards de sempre (Times/mini-cards) -- nenhum
-   controle/botão existente sai do lugar, essa cena não reage a clique
-   nenhum, só mostra. Uma função só, reaproveitada tanto na Arena do RPG
-   (arenaScreen, acima de arenaTeamsHTML) quanto na Área PVP
-   (pvpBattleHTML, acima dos mini-cards atuais) -- lê STATE.arena.teams/
-   entries direto, então funciona idêntica nos dois lugares (a Área PVP já
-   aponta STATE.arena pra dentro da sala via withArenaContext). Sem
-   estádio de verdade nem imagem nenhuma -- é tudo desenhado em CSS
-   (gradientes + as sprites oficiais que o site já usa em todo canto),
-   "mesmo que seja simples" como o usuário pediu. */
-function battleStageMonHTML(t, p){
+   mandada, estilo Pokémon Sword/Shield) pra acompanhar a batalha em vez de
+   só ler cards, EM PERSPECTIVA igual o jogo (você vê o SEU Pokémon de
+   costas, o do adversário de frente), com o menu de Ação ancorado dentro
+   dela e animações simples de ataque/acerto. Uma função só, reaproveitada
+   tanto na Arena do RPG (arenaScreen, acima de arenaTeamsHTML) quanto na
+   Área PVP (pvpBattleHTML) -- lê STATE.arena.teams/entries direto, então
+   funciona idêntica nos dois lugares (a Área PVP já aponta STATE.arena pra
+   dentro da sala via withArenaContext). Sem estádio de verdade nem imagem
+   nenhuma -- tudo em CSS (gradientes) + as sprites oficiais de sempre
+   (agora também a versão "de costas", spriteUrlBack) + a MESMA lógica de
+   clique que já existe no card (arenaEntryInteraction, extraída pra não
+   duplicar/arriscar a lógica de alvo/segredo/troca já testada). */
+/* por quanto tempo depois de um golpe a sprite ainda "anima" -- precisa
+   cobrir a animação do dado inteira (DICE_STAGE_MS=500ms POR estágio; um
+   Movimento com efeito percentual rola 2 estágios, d6 então d10 = até
+   ~1000ms) mais uma folga, senão a rolagem ainda nem tinha assentado de
+   verdade na tela e a "animação simples" já teria sumido de novo. */
+var STAGE_ANIM_WINDOW_MS = 1800;
+/* Rolagem fresca o bastante pra animar, e essa entrada é o ATACANTE ou um
+   ALVO atingido de verdade dela -- casado só pelo nome (apelido/espécie +
+   Treinador), já que STATE.arena.lastRoll nunca guardou entryId nenhum;
+   simples o bastante pro pedido do usuário ("animações simples"), sem
+   precisar mexer no formato do lastRoll (usado em vários outros lugares
+   já testados). */
+function battleStageAnimClass(lastRoll, t, p){
+  if(!lastRoll || (Date.now()-lastRoll.ts) > STAGE_ANIM_WINDOW_MS) return '';
+  var nome = p.apelido || p.especie || '?';
+  if(lastRoll.atacante===nome && lastRoll.atacanteTrainer===t.name) return ' battle-stage-anim-attack';
+  var alvo = (lastRoll.alvos||[]).find(function(a){ return a.nome===nome && a.trainerNome===t.name; });
+  if(alvo && lastRoll.hit && !alvo.immune && (alvo.dano>0 || alvo.statusApplied)) return ' battle-stage-anim-hit';
+  return '';
+}
+function battleStageMonHTML(t, p, e, deCostas, lastRoll){
   var max = hpMax(t,p);
   var cur = (p.currentHP===null||p.currentHP===undefined) ? max : Math.max(0,p.currentHP);
   var pct = max>0 ? Math.round(cur/max*100) : 0;
   var fainted = cur<=0;
   var spNum = pokeSpeciesNum(p);
+  var animClass = fainted ? '' : battleStageAnimClass(lastRoll, t, p);
   var spriteHTML = spNum
-    ? '<img class="battle-stage-sprite'+(fainted?' battle-stage-fainted':'')+'" src="'+spriteUrl(spNum)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">'
+    ? '<img class="battle-stage-sprite'+(fainted?' battle-stage-fainted':'')+animClass+'" src="'+(deCostas?spriteUrlBack(spNum):spriteUrl(spNum))+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">'
     : '<div class="poke-sprite-placeholder">❔</div>';
-  return '<div class="battle-stage-mon">'+
+  var interaction = e ? arenaEntryInteraction(e) : null;
+  var clickClass = (interaction && interaction.slotClass) ? interaction.slotClass : '';
+  var clickAttr = (interaction && interaction.onclick) ? interaction.onclick : '';
+  return '<div class="battle-stage-mon'+clickClass+'"'+clickAttr+'>'+
     spriteHTML+
     '<div class="battle-stage-platform"></div>'+
     '<div class="battle-stage-tag">'+
@@ -10081,28 +10148,61 @@ function battleStageMonHTML(t, p){
     '</div>'+
   '</div>';
 }
-function battleStageHTML(meuTeamId){
+/* extraHTML entra DENTRO do próprio .battle-stage (não acima nem abaixo) --
+   é o que deixa o menu de Ação (RPG) ou o painel de comando (PVP) "ancorado
+   no palco" (pedido do usuário: "tem que ser feito todo pela tela de
+   combate, na imagem mesmo") em vez de solto em outro canto da tela. Sem
+   nenhuma entrada revelada (cena vazia), devolve só o extraHTML puro --
+   nunca some um menu que porventura já estivesse aberto. */
+function battleStageHTML(cameraTeamId, extraHTML){
+  extraHTML = extraHTML || '';
   var teams = (STATE.arena && STATE.arena.teams) || [];
-  if(teams.length<1) return '';
+  if(teams.length<1) return extraHTML;
   var entries = (STATE.arena.entries||[]).filter(function(e){ return e.revelado; });
-  if(!entries.length) return '';
-  var rows = teams.map(function(team){
+  if(!entries.length) return extraHTML;
+  var lastRoll = STATE.arena.lastRoll;
+  /* Quem fica de costas (perto) sempre desenha DEPOIS de quem fica de
+     frente (longe), não importa a ordem de STATE.arena.teams -- pedido do
+     usuário ("perspectiva tipo no jogo"): o seu Time sempre embaixo, o
+     resto sempre em cima, igual a câmera atrás do seu Treinador. */
+  var farRowsHTML = [], nearRowsHTML = [];
+  teams.forEach(function(team){
     var teamEntries = entries.filter(function(e){ return e.teamId===team.id; });
-    if(!teamEntries.length) return '';
+    if(!teamEntries.length) return;
+    var deCostas = cameraTeamId ? team.id===cameraTeamId : false;
     var mons = teamEntries.map(function(e){
       var t = findTrainer(e.trainerId);
       var p = t && getPoke(e.trainerId, e.pokemonId);
-      return (t && p) ? battleStageMonHTML(t, p) : '';
+      return (t && p) ? battleStageMonHTML(t, p, e, deCostas, lastRoll) : '';
     }).join('');
-    if(!mons) return '';
-    var perto = meuTeamId ? team.id===meuTeamId : false;
-    return '<div class="battle-stage-row'+(perto?' battle-stage-row-near':' battle-stage-row-far')+'">'+
+    if(!mons) return;
+    var rowHTML = '<div class="battle-stage-row'+(deCostas?' battle-stage-row-near':' battle-stage-row-far')+'">'+
       '<span class="battle-stage-team-label">'+esc(team.nome)+'</span>'+
       '<div class="battle-stage-mons">'+mons+'</div>'+
     '</div>';
-  }).join('');
-  if(!rows) return '';
-  return '<div class="battle-stage">'+rows+'</div>';
+    (deCostas ? nearRowsHTML : farRowsHTML).push(rowHTML);
+  });
+  var rows = farRowsHTML.join('') + nearRowsHTML.join('');
+  if(!rows) return extraHTML;
+  return '<div class="battle-stage">'+rows+extraHTML+'</div>';
+}
+/* Câmera do Mestre (e de quem só está assistindo, sem Pokémon em campo):
+   quem está jogando de verdade sempre vê o PRÓPRIO Time de costas
+   (automático); quem não tem Time nenhum em campo escolhe qual ver "de
+   costas" por um botão -- pedido do usuário ("o mestre precisa ver o
+   pokémon que ele quiser de costas, igual no jogo mesmo"). Só local
+   (SESSION), nunca sincroniza -- cada um na mesa escolhe a própria câmera
+   sem afetar os outros. */
+DT.arenaSetStageCam = function(teamId){ SESSION.arenaStageCam = teamId; render(); };
+function battleStageCamHTML(cameraTeamId){
+  var teams = (STATE.arena && STATE.arena.teams) || [];
+  if(teams.length<2) return '';
+  return '<div class="battle-stage-cam-row">'+
+    '<span class="muted" style="font-size:.7rem;">Ver de costas:</span>'+
+    teams.map(function(team){
+      return '<button type="button" class="btn-sm'+(team.id===cameraTeamId?' btn-primary':'')+'" onclick="DT.arenaSetStageCam(\''+team.id+'\')">'+esc(team.nome)+'</button>';
+    }).join('')+
+  '</div>';
 }
 function arenaTeamsHTML(isGM){
   var teams = (STATE.arena && STATE.arena.teams) || [];
@@ -10137,35 +10237,30 @@ function arenaTeamsHTML(isGM){
   out += '</div></div>';
   return out;
 }
-function arenaEntryHTML(e){
+/* O que o clique numa entrada em campo faz -- extraído de arenaEntryHTML
+   pra ser reaproveitado também pela sprite do palco de batalha (pedido do
+   usuário: o menu de Atacar/Item/Trocar/Fugir tem que abrir "pela tela de
+   combate, na imagem mesmo"). MESMA lógica de sempre (quem pode agir,
+   quem é alvo elegível agora, convite de troca de desmaiado/pendente,
+   segredo da Soltura, trava de resolução) num lugar só -- nunca
+   dessincroniza entre o card de baixo e a sprite de cima, porque os dois
+   chamam a mesma função. Devolve as classes de ESTADO (sem a base
+   .arena-slot, que cada chamador aplica do jeito certo pra si), o
+   onclick (ou '' se não clicável agora) e o resto que os dois lugares
+   também precisam pra desenhar (banner de desmaio/troca, badge de
+   "escolheu"/"resolvendo", se controla). */
+function arenaEntryInteraction(e){
+  var out = { slotClass:'', onclick:'', targetable:false, canControl:false, resolvingNow:false, jaEscolheu:false, faintedSwappable:false, switchOutSwappable:false, aindaSecreto:false };
   var t = findTrainer(e.trainerId);
-  if(!t) return '';
-  var p = getPoke(e.trainerId, e.pokemonId);
-  if(!p) return '';
+  var p = t && getPoke(e.trainerId, e.pokemonId);
+  if(!t || !p) return out;
   var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
   var isGM = SESSION.role==='gm';
-  /* Dentro de um Time o Pokémon sempre aparece pra todo mundo -- toda
-     entrada nova já nasce com revelado:true (DT.arenaSetEntry/arenaSwapIn).
-     A Pokébola aqui é só um fallback defensivo pra entrada antiga que
-     escapou da migração; a Pokébola de verdade agora mora na Equipe ativa
-     (arenaTrainerSourceHTML), antes do Pokémon ir pro Time pela 1ª vez. */
-  var canSeeReal = isGM || isOwner || e.revelado;
   var canControl = isGM || isOwner;
-
-  if(!canSeeReal){
-    return '<div class="arena-slot arena-slot-hidden"><div class="arena-pokeball">'+POKEBALL_SVG+'</div>'+
-      '<span class="muted" style="font-size:.64rem;">'+esc(t.name)+'</span></div>';
-  }
-
-  var num = pokeSpeciesNum(p);
-  var sprite = num
-    ? '<img class="poke-sprite" src="'+spriteUrl(num)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
-    : '<div class="poke-sprite-placeholder">❔</div>';
+  out.canControl = canControl;
   var max = hpMax(t,p);
   var cur = (p.currentHP===null || p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
-  var pct = max>0 ? Math.round(cur/max*100) : 0;
   var fainted = cur<=0;
-  var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'')+(!fainted && p.carregando?'🌀':'');
   /* Desmaiou, mas ainda sobra alguém pra entrar no lugar (Cap. 25/59): o
      próprio slot desmaiado vira o convite pra escolher o próximo, sem
      precisar ir pelo menu Atacar/Item/Trocar/Fugir (que não faz sentido
@@ -10176,9 +10271,11 @@ function arenaEntryHTML(e){
      quiser" -- mesmo convite sempre-disponível de um Pokémon desmaiado,
      só que esse aqui ainda está de pé. */
   var switchOutSwappable = !fainted && !!e.pendingSwitchOut && canControl && !(STATE.arena && STATE.arena.vencedor) && arenaHasSwapCandidate(t, p.id);
+  out.faintedSwappable = faintedSwappable;
+  out.switchOutSwappable = switchOutSwappable;
 
-  /* Fluxo de ação, tudo por clique direto no card (sem botão "Usar" nem
-     "Agir" separados):
+  /* Fluxo de ação, tudo por clique direto (sem botão "Usar" nem "Agir"
+     separados):
      - Ninguém agindo ainda: clicar no seu próprio Pokémon (ou o Mestre no
        de qualquer um) já seleciona ele pra agir — revela sozinho se
        preciso e abre o menu Atacar/Item/Trocar/Fugir.
@@ -10187,7 +10284,7 @@ function arenaEntryHTML(e){
        clicável — respeita a lógica dela (self/aliado/inimigo/qualquer um),
        incluindo o próprio ator quando ele mesmo é um alvo válido
        (ex.: "você ou aliado"). */
-  var slotClass = 'arena-slot';
+  var slotClass = '';
   var slotClick = '';
   var targetable = false;
   var actingNow = SESSION.arenaAttacker;
@@ -10209,6 +10306,7 @@ function arenaEntryHTML(e){
       if(eligibleForTarget && eligibleForTarget.some(function(x){ return x.id===e.id; })) targetable = true;
     }
   }
+  out.targetable = targetable;
 
   /* Cap. 86 (substitui a fila sequencial de "vez"): TODOS escolhem juntos
      durante round.phase==='selecting' -- fica clicável quem ainda não
@@ -10227,6 +10325,9 @@ function arenaEntryHTML(e){
      todo mundo (isso furaria a revelação simultânea). O Mestre continua
      vendo normal, pode agir/revelar na mão se precisar. */
   var aindaSecreto = !e.revelado && !isGM;
+  out.jaEscolheu = jaEscolheu;
+  out.resolvingNow = resolvingNow;
+  out.aindaSecreto = aindaSecreto;
   if(e.id===SESSION.arenaAttackTarget){
     slotClass += ' arena-slot-target-picked';
   } else if(targetable){
@@ -10250,11 +10351,54 @@ function arenaEntryHTML(e){
 
   /* Rolagem de verdade ainda resolvendo (SESSION.arenaResolving, ver
      DT.resolveArenaMove): o popup de Ação continua na tela mas congelado,
-     então nenhum card pode parecer clicável -- reforça por cima de
-     qualquer classe/onclick que a lógica acima já tenha calculado (defesa
-     em profundidade além dos "if(SESSION.arenaResolving) return;" nas
+     então nada pode parecer clicável -- reforça por cima de qualquer
+     classe/onclick que a lógica acima já tenha calculado (defesa em
+     profundidade além dos "if(SESSION.arenaResolving) return;" nas
      DT.arena*). */
   if(SESSION.arenaResolving) slotClick = '';
+  out.slotClass = slotClass;
+  out.onclick = slotClick;
+  return out;
+}
+function arenaEntryHTML(e){
+  var t = findTrainer(e.trainerId);
+  if(!t) return '';
+  var p = getPoke(e.trainerId, e.pokemonId);
+  if(!p) return '';
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
+  var isGM = SESSION.role==='gm';
+  /* Dentro de um Time o Pokémon sempre aparece pra todo mundo -- toda
+     entrada nova já nasce com revelado:true (DT.arenaSetEntry/arenaSwapIn).
+     A Pokébola aqui é só um fallback defensivo pra entrada antiga que
+     escapou da migração; a Pokébola de verdade agora mora na Equipe ativa
+     (arenaTrainerSourceHTML), antes do Pokémon ir pro Time pela 1ª vez. */
+  var canSeeReal = isGM || isOwner || e.revelado;
+
+  if(!canSeeReal){
+    return '<div class="arena-slot arena-slot-hidden"><div class="arena-pokeball">'+POKEBALL_SVG+'</div>'+
+      '<span class="muted" style="font-size:.64rem;">'+esc(t.name)+'</span></div>';
+  }
+
+  var num = pokeSpeciesNum(p);
+  var sprite = num
+    ? '<img class="poke-sprite" src="'+spriteUrl(num)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
+    : '<div class="poke-sprite-placeholder">❔</div>';
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null || p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
+  var pct = max>0 ? Math.round(cur/max*100) : 0;
+  var fainted = cur<=0;
+  var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'')+(!fainted && p.carregando?'🌀':'');
+
+  var interaction = arenaEntryInteraction(e);
+  var slotClass = 'arena-slot' + interaction.slotClass;
+  var slotClick = interaction.onclick;
+  var targetable = interaction.targetable;
+  var canControl = interaction.canControl;
+  var faintedSwappable = interaction.faintedSwappable;
+  var switchOutSwappable = interaction.switchOutSwappable;
+  var jaEscolheu = interaction.jaEscolheu;
+  var resolvingNow = interaction.resolvingNow;
+  var actingNow = SESSION.arenaAttacker;
 
   /* Enquanto o card inteiro é o alvo do clique (agir ou escolher alvo),
      some com o ✕ — senão o clique podia acabar caindo nele (que bloqueia a
@@ -11846,7 +11990,6 @@ function pvpBattleHTML(sala, t){
     meP = (meT && meEntry) ? getPoke(meEntry.trainerId, meEntry.pokemonId) : null;
     oppT = oppEntry && findTrainer(oppEntry.trainerId);
     oppP = (oppT && oppEntry) ? getPoke(oppEntry.trainerId, oppEntry.pokemonId) : null;
-    stageHTML = battleStageHTML(meEntry ? meEntry.teamId : null);
   });
   if(!meEntry || !meT || !meP) return '<div class="card"><div class="card-body"><p class="muted">Você não está em campo nessa batalha.</p></div></div>';
 
@@ -11856,9 +11999,6 @@ function pvpBattleHTML(sala, t){
   var jaEscolhi = !!(round && round.actions && round.actions[meEntry.id]);
   var podeAgir = !sala.vencedor && round && round.phase==='selecting' && !jaEscolhi && !precisaTrocar;
 
-  var meCard = pvpMiniCardHTML(meT, meP, 'Você');
-  var oppCard = oppP ? pvpMiniCardHTML(oppT, oppP, 'Adversário') : '<div class="poke-card"><div class="poke-body"><span class="muted">O adversário ainda vai soltar o próximo.</span></div></div>';
-
   var painel = '';
   if(!sala.vencedor && precisaTrocar){
     var bench = (meT.pokemons||[]).filter(function(p){
@@ -11867,11 +12007,10 @@ function pvpBattleHTML(sala, t){
       var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
       return cur>0;
     });
-    painel = '<div class="card"><div class="card-head"><span class="index">Ação necessária</span><h2>'+(meFainted?'😵 '+esc(meP.apelido||meP.especie||'Pokémon')+' desmaiou — escolha o próximo':'Troca disponível')+'</h2></div><div class="card-body">'+
+    painel = '<div class="battle-stage-panel-head">'+(meFainted?'😵 '+esc(meP.apelido||meP.especie||'Pokémon')+' desmaiou — escolha o próximo':'Troca disponível')+'</div>'+
       (bench.length ? bench.map(function(p){
         return '<button class="btn-sm" style="margin:2px;" onclick="DT.pvpTrocarForcado(\''+sala.id+'\',\''+meEntry.id+'\',\''+p.id+'\')">'+esc(p.apelido||p.especie||'Pokémon')+'</button>';
-      }).join('') : '<p class="muted" style="font-size:.82rem;">Não sobrou ninguém — a batalha deve encerrar sozinha.</p>')+
-    '</div></div>';
+      }).join('') : '<p class="muted" style="font-size:.82rem;">Não sobrou ninguém — a batalha deve encerrar sozinha.</p>');
   } else if(podeAgir){
     var moveBtns = (meP.moves||[]).map(function(m, idx){
       if(!m.nome) return '';
@@ -11887,13 +12026,22 @@ function pvpBattleHTML(sala, t){
     var switchBtns = bench2.map(function(p){
       return '<button class="btn-sm btn-ghost" style="margin:2px;" onclick="DT.pvpTrocarEscolher(\''+sala.id+'\',\''+meEntry.id+'\',\''+p.id+'\')">🔁 '+esc(p.apelido||p.especie||'Pokémon')+'</button>';
     }).join('');
-    painel = '<div class="card"><div class="card-head"><span class="index">Rodada '+(round?round.number:1)+'</span><h2>Escolha sua ação</h2></div><div class="card-body">'+
+    painel = '<div class="battle-stage-panel-head">Rodada '+(round?round.number:1)+' — escolha sua ação</div>'+
       '<p class="muted" style="font-size:.75rem; margin-bottom:4px;">Atacar</p>'+(moveBtns||'<span class="muted">Nenhum Movimento definido.</span>')+
-      (switchBtns ? '<p class="muted" style="font-size:.75rem; margin:8px 0 4px;">Ou trocar</p>'+switchBtns : '')+
-    '</div></div>';
+      (switchBtns ? '<p class="muted" style="font-size:.75rem; margin:8px 0 4px;">Ou trocar</p>'+switchBtns : '');
   } else if(!sala.vencedor && jaEscolhi){
-    painel = '<div class="card"><div class="card-body"><p class="muted">Ação escolhida — esperando o adversário…</p></div></div>';
+    painel = '<p class="muted" style="margin:0;">Ação escolhida — esperando o adversário…</p>';
   }
+  /* O painel de comando (Atacar/Trocar/etc.) entra DENTRO do próprio palco
+     -- pedido do usuário, "tem que ser feito todo pela tela de combate,
+     na imagem mesmo" -- em vez de um card solto embaixo dos mini-cards. */
+  var painelWrapped = painel ? '<div class="battle-stage-panel">'+painel+'</div>' : '';
+  withArenaContext(sala, function(){
+    stageHTML = battleStageHTML(meEntry.teamId, painelWrapped);
+  });
+
+  var meCard = pvpMiniCardHTML(meT, meP, 'Você');
+  var oppCard = oppP ? pvpMiniCardHTML(oppT, oppP, 'Adversário') : '<div class="poke-card"><div class="poke-body"><span class="muted">O adversário ainda vai soltar o próximo.</span></div></div>';
 
   var vencedorHTML = '';
   if(sala.vencedor){
@@ -11910,7 +12058,6 @@ function pvpBattleHTML(sala, t){
       '<div class="grid-2">'+meCard+oppCard+'</div>'+
     '</div></div>'+
     vencedorHTML+
-    painel+
     pvpLogHTML(sala)+
     (!sala.vencedor ? '<div class="btn-row" style="margin-top:10px;"><button class="btn-danger btn-sm" onclick="DT.pvpDesistir(\''+sala.id+'\')">🏳️ Desistir</button></div>' : '');
 }
