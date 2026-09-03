@@ -2387,6 +2387,24 @@ function habilidadesDaEspecie(especieName){
 function findAbilityByName(nome){
   return ABILITIES_DEX.find(function(a){ return a.name===nome; }) || null;
 }
+/* Lista de referência (Nome + descrição oficial) de cada Habilidade candidata
+   de um seletor -- pedido do usuário ("fica complicado de escolher sem
+   isso"): antes só aparecia a descrição da Habilidade JÁ escolhida, então
+   pra comparar as opções era escolher, ler, trocar, ler nova, escolher de
+   novo se não gostou. Renderizada logo abaixo do <select>, tanto no
+   seletor do Mestre (RPG) quanto no builder de ficha da Área PVP -- mesma
+   função, um lugar só, pra nunca ficar uma lista sem descrição e a outra
+   com (usada por habilidadeRow em pokeCardHTML e pvpFichaCardHTML). Recebe
+   só os NOMES (a "Oculta"/gatilho mecânico já aparece no próprio <option>
+   da lista suspensa, não precisa duplicar aqui). */
+function abilityChoicesRefHTML(names){
+  if(!names || !names.length) return '';
+  var rows = names.map(function(n){
+    var ab = findAbilityByName(n);
+    return '<div style="padding:3px 0; border-bottom:1px solid var(--line);"><strong>'+esc(n)+'</strong>'+(ab && ab.efeito ? ' — '+esc(ab.efeito) : '<span class="muted"> — sem descrição cadastrada</span>')+'</div>';
+  }).join('');
+  return '<div class="ability-ref-list" style="margin-top:6px; max-height:170px; overflow-y:auto; font-size:.7rem;">'+rows+'</div>';
+}
 /* =================== HABILIDADES: QUAIS TÊM GATILHO MECÂNICO =================
    Das 373 Habilidades reais (ABILITIES_DEX), essas 92 ganharam gatilho
    automático de verdade no motor de batalha (ver bloco ABILITY_* mais
@@ -11028,6 +11046,7 @@ function pokeCardHTML(t,p,editable,mode){
                 return '<option value="'+esc(h.n)+'"'+(h.n===p.habilidade?' selected':'')+'>'+(mecanica?'⚙️ ':'')+esc(h.n)+(h.h?' (Oculta)':'')+'</option>';
               }).join('')+
             '</select>'+
+            abilityChoicesRefHTML(habsDisponiveis.map(function(h){ return h.n; }))+
             (!habsMecanicas.length ? '<div class="muted" style="font-size:.7rem; margin-top:2px;">Nenhuma Habilidade real dessa Espécie tem gatilho automático ainda — só texto de referência (Cap. 25).</div>' : '')
           : '<span class="muted">Defina a Espécie primeiro.</span>')
       : (p.habilidade ? '<span class="num">'+esc(p.habilidade)+'</span>' : '<span class="muted">Nenhuma</span>'))+
@@ -11579,14 +11598,17 @@ function pvpFichaCardHTML(p){
       '</select>')+
   '</div>';
   var habsSelecionaveis = habilidadesSelecionaveisDaEspecie(p.especie);
+  var habAtualPVP = findAbilityByName(p.habilidade);
   var habilidadeRow = '<div class="field"><label>Habilidade</label>'+
     (locked ? (p.habilidade?esc(p.habilidade):'<span class="muted">Nenhuma</span>') :
       (habsSelecionaveis.length
         ? '<select onchange="DT.pvpSetHabilidade(\''+did+'\', this)">'+
             '<option value=""'+(!p.habilidade?' selected':'')+'>— Nenhuma —</option>'+
             habsSelecionaveis.map(function(h){ return '<option value="'+esc(h)+'"'+(h===p.habilidade?' selected':'')+'>'+esc(h)+'</option>'; }).join('')+
-          '</select>'
+          '</select>'+
+          abilityChoicesRefHTML(habsSelecionaveis)
         : '<span class="muted">Defina a Espécie primeiro.</span>'))+
+    (habAtualPVP && habAtualPVP.efeito ? '<div class="muted" style="font-size:.72rem; margin-top:2px;"><strong>Escolhida:</strong> '+esc(habAtualPVP.efeito)+'</div>' : '')+
   '</div>';
   var movesLabel = '<label style="font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); display:block; margin-bottom:4px;">Movimentos — restritos ao que essa Espécie realmente aprende (Nível '+PVP_LEVEL+', o teto do RPG)</label>';
   var speciesNumForMoves = pokeSpeciesNum(p);
