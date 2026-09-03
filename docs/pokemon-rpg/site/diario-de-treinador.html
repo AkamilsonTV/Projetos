@@ -333,6 +333,55 @@
   @keyframes dice-spin{ 0%{ transform:rotate(0deg) scale(1); } 50%{ transform:rotate(180deg) scale(1.18); } 100%{ transform:rotate(360deg) scale(1); } }
   @keyframes dice-flicker{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
 
+  /* ---- Quadro de dado da Área PVP: 100% separado do #diceOverlay da
+     Arena (nem globals, nem CSS, nem função em comum além de utilitários
+     puros como rollSummaryLines/diceStagesFor) -- pedido do usuário desde
+     o início ("Eles tem que ficar totalmente independentes"). Só aqui: um
+     dado 3D DE VERDADE (cubo com 6 faces reais em CSS, transform-style:
+     preserve-3d), "caindo numa mesa e rolando" -- pedido explícito do
+     usuário. O tabuleiro real (STATE.pvp) já resolveu tudo na hora,
+     síncrono (pvpDriveResolution) -- essa animação é 100% cosmética,
+     local de cada cliente, tocada a partir de sala.rollQueue (fila
+     persistida de rolagens ainda não mostradas, ver pvpCheckRoll no JS);
+     nunca atrasa nem arrisca travar a resolução de verdade. */
+  .pvp-dice-overlay{ position:fixed; inset:0; background:rgba(10,14,22,.62); display:flex; align-items:center; justify-content:center; z-index:200; padding:20px; animation:dice-fade-in .15s ease-out; }
+  .pvp-dice-card{ background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); padding:22px 26px 18px; max-width:380px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.4); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
+  .pvp-dice-table{ height:96px; display:flex; align-items:flex-end; justify-content:center; gap:22px; margin-bottom:10px; }
+  .pvp-die3d-scene{ width:60px; height:60px; perspective:340px; }
+  .pvp-die3d-cube{ position:relative; width:60px; height:60px; margin:0 auto; transform-style:preserve-3d; transform:rotateX(var(--restX,0deg)) rotateY(var(--restY,0deg)); }
+  .pvp-die3d-cube.pvp-die-tumbling{ animation:pvp-die-tumble var(--dur,1100ms) cubic-bezier(.22,.85,.32,1.2) forwards; }
+  .pvp-die3d-face{ position:absolute; inset:0; width:60px; height:60px; background:#f7f3e8; border:2px solid #2a2622; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:2.1rem; line-height:1; color:#2a2622; backface-visibility:hidden; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
+  .pvp-die3d-f1{ transform:translateZ(30px); }
+  .pvp-die3d-f6{ transform:rotateY(180deg) translateZ(30px); }
+  .pvp-die3d-f2{ transform:rotateY(90deg) translateZ(30px); }
+  .pvp-die3d-f5{ transform:rotateY(-90deg) translateZ(30px); }
+  .pvp-die3d-f3{ transform:rotateX(90deg) translateZ(30px); }
+  .pvp-die3d-f4{ transform:rotateX(-90deg) translateZ(30px); }
+  @keyframes pvp-die-tumble{
+    0%{ transform: translateY(-52px) rotateX(0deg) rotateY(0deg); }
+    55%{ transform: translateY(4px) rotateX(calc(var(--restX,0deg) * .7)) rotateY(calc(var(--restY,0deg) * .7)); }
+    78%{ transform: translateY(-8px) rotateX(var(--restX,0deg)) rotateY(var(--restY,0deg)); }
+    100%{ transform: translateY(0) rotateX(var(--restX,0deg)) rotateY(var(--restY,0deg)); }
+  }
+  /* d10 (rolagem de Efeito Percentual): uma "moeda" plana que gira no ar e
+     cai de cara pro alto mostrando o número -- um d10 de verdade não é um
+     cubo (é um trapezoedro pentagonal), então em vez de tentar imitar as
+     10 faces em 3D, gira só em Y (efeito de moeda rodopiando) até
+     assentar mostrando o número, o que já basta pra passar a mesma
+     sensação de "objeto físico rolando e caindo" pedida. */
+  .pvp-die10-scene{ width:52px; height:52px; perspective:260px; }
+  .pvp-die10{ position:relative; width:52px; height:52px; margin:0 auto; border-radius:50%; background:linear-gradient(160deg,#f7f3e8,#dcd4c0); border:2px solid #2a2622; display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:700; color:#2a2622; transform:rotateY(var(--restY,0deg)); backface-visibility:hidden; }
+  .pvp-die10.pvp-die-tumbling{ animation:pvp-die10-tumble var(--dur,900ms) cubic-bezier(.22,.85,.32,1.2) forwards; }
+  @keyframes pvp-die10-tumble{
+    0%{ transform: translateY(-40px) rotateY(0deg) scale(.82); }
+    60%{ transform: translateY(2px) rotateY(calc(var(--restY,0deg) * .75)) scale(1.05); }
+    100%{ transform: translateY(0) rotateY(var(--restY,0deg)) scale(1); }
+  }
+  .pvp-dice-stage-label{ font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); margin-bottom:2px; }
+  .pvp-dice-summary{ font-size:.86rem; line-height:1.5; margin:8px 0 14px; }
+  .pvp-dice-summary-rolling{ font-style:italic; color:var(--ink-dim); }
+  .pvp-dice-queue-hint{ font-size:.68rem; color:var(--ink-dim); margin-bottom:6px; }
+
 
   /* Notificação de combate como popup (além da faixa de sempre no topo) --
      z-index acima até do quadro de dado (200), porque é um aviso que
@@ -454,6 +503,7 @@
 <body>
 <div id="app"></div>
 <div id="diceOverlay"></div>
+<div id="pvpDiceOverlay"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -5743,9 +5793,64 @@ try{
   if(savedSession && savedSession.role==='gm'){ SESSION.role='gm'; SESSION.screen='gm-dashboard'; }
   else if(savedSession && savedSession.role==='player' && savedSession.trainerId){ SESSION.role='player'; SESSION.trainerId=savedSession.trainerId; SESSION.screen='player-sheet'; }
 }catch(e){}
+applyRouteFromHash(); /* #pvp/#arena/#ficha na barra de endereço já abre direto na tela certa (função hoisted, definida mais abaixo) */
 
 function persistSession(){ try{ localStorage.setItem('dt_session', JSON.stringify({role:SESSION.role, trainerId:SESSION.trainerId})); }catch(e){} }
 function clearSession(){ SESSION.role=null; SESSION.trainerId=null; SESSION.screen='home'; SESSION.showRules=false; SESSION.showArena=false; SESSION.showPvp=false; try{ localStorage.removeItem('dt_session'); }catch(e){} }
+
+/* =================== ROTAS POR HASH =================== */
+/* Pedido do usuário: "É possível o PVP ter um link, a Arena ter outro e a
+   ficha ter outro? Em todos eles a regra acompanha, abrindo como se fosse
+   popup." -- PVP/Arena/Ficha ganham cada um o próprio #hash (link direto,
+   compartilhável, com Voltar/Avançar do navegador funcionando de verdade),
+   sem virar 3 páginas HTML separadas (continua tudo num arquivo só, GitHub
+   Pages puro). Regras continua sendo só um popup por cima de qualquer uma
+   das 3 (SESSION.showRules) -- de propósito NÃO tem hash próprio, currentRouteHash
+   não olha pra ele, então abrir/fechar Regras nunca mexe no link da tela
+   de baixo.
+   history.replaceState (não location.hash=...) de propósito: troca o link
+   na barra de endereço sem empilhar uma entrada nova no histórico a cada
+   render() (o site re-renderiza a QUALQUER clique) e, mais importante,
+   NUNCA dispara o evento 'hashchange' sozinho -- só navegação de verdade
+   (o usuário colando um link, ou clicando Voltar/Avançar) dispara, que é
+   exatamente quando applyRouteFromHash() abaixo precisa rodar. Sem essa
+   escolha, sincronizar o hash a cada render() enquanto TAMBÉM escuta
+   hashchange criaria um loop. */
+function currentRouteHash(){
+  /* Mesma ordem de prioridade de screenHTML() (showArena antes de showPvp)
+     -- os dois toggles agora se excluem sozinhos ao abrir (ver DT.toggleArena/
+     DT.togglePvp), mas manter a MESMA ordem aqui garante que o link nunca
+     minta sobre qual tela está de fato na tela, mesmo no caso raro de os
+     dois ainda ficarem true ao mesmo tempo. */
+  if(SESSION.showArena) return 'arena';
+  if(SESSION.showPvp) return 'pvp';
+  if(SESSION.screen==='player-sheet') return 'ficha';
+  return '';
+}
+function syncRouteHash(){
+  if(typeof window==='undefined' || !window.location || !window.history || typeof window.history.replaceState!=='function') return;
+  try{
+    var wanted = currentRouteHash();
+    var atual = (window.location.hash||'').replace('#','');
+    if(wanted===atual) return;
+    var url = window.location.pathname + window.location.search + (wanted ? '#'+wanted : '');
+    window.history.replaceState(null, '', url);
+  }catch(e){ /* file://, iframe sandboxed, etc -- não é crítico, só não sincroniza */ }
+}
+/* Lida com chegar direto num link (#pvp/#arena/#ficha) ou usar Voltar/
+   Avançar do navegador -- roda no boot (antes do 1º render) e de novo a
+   cada 'hashchange'. Sem login (Treinador/Mestre), #ficha simplesmente não
+   tem o que mostrar ainda -- SESSION.screen só vira 'player-sheet' de
+   verdade depois de um login válido (ver restoreSession acima e os DT.*
+   de login mais abaixo), então o link te leva até a tela de entrar, o que
+   já é o comportamento certo (a ficha é privada, por PIN). */
+function applyRouteFromHash(){
+  if(typeof window==='undefined' || !window.location) return;
+  var hash = (window.location.hash||'').replace('#','');
+  if(hash==='pvp'){ SESSION.showPvp = true; SESSION.showArena = false; }
+  else if(hash==='arena'){ SESSION.showArena = true; SESSION.showPvp = false; }
+  else if(hash==='ficha'){ SESSION.showArena = false; SESSION.showPvp = false; }
+}
 
 /* =================== TEMA (escolha do jogador, não segue o sistema) ===================
    Aplicado logo no carregamento, antes do primeiro render, pra não "piscar"
@@ -9360,6 +9465,9 @@ function render(){
   checkArenaRoll();
   document.getElementById('app').innerHTML = screenHTML();
   renderDiceOverlay();
+  pvpCheckRoll(); /* quadro de dado 3D da Área PVP -- 100% separado do de cima, ver pvp-dice-overlay no CSS e pvpCheckRoll/pvpAdvanceDiceQueue no JS */
+  pvpRenderDiceOverlay();
+  syncRouteHash(); /* #pvp/#arena/#ficha -- mantém o link da barra de endereço igual à tela mostrada agora */
 }
 
 var POKEBALL_SVG = '<svg class="pokeball" viewBox="0 0 24 24" aria-hidden="true">'+
@@ -9688,6 +9796,7 @@ var STATUS_ICONS = {queimadura:'🔥', veneno:'☠️', veneno_grave:'☠️', p
 function hpBarTier(pct){ return pct<=20 ? ' low' : (pct<=50 ? ' mid' : ''); }
 DT.toggleArena = function(){
   SESSION.showArena = !SESSION.showArena;
+  if(SESSION.showArena) SESSION.showPvp = false; /* abrir a Arena fecha o PVP -- páginas próprias, uma de cada vez (Cap. rotas por hash) */
   render();
 };
 /* Banner de vitória (Cap. 25/59): STATE.arena.vencedor só é preenchido por
@@ -11370,7 +11479,7 @@ function newPvpSala(nome, criadorId, criadorNome){
   return {
     id: uid(), nome: (nome||'Sala').trim().slice(0,40) || 'Sala', criador: criadorId, criadorNome: criadorNome, criadoEm: Date.now(),
     status: 'aberta', /* aberta -> em_batalha -> finalizada */
-    jogadores: [], /* {trainerId, nome, teamId, pronto, timeEscolhido:[fichaIds], desistiu} */
+    jogadores: [], /* {trainerId, nome, teamId, pronto, timeEscolhido:[fichaIds], lider:fichaId|null, desistiu} */
     teams: [], entries: [], round: null, log: [], vencedor: null, fugaTravada: true, virtuais: {}
   };
 }
@@ -11398,12 +11507,209 @@ function pvpIsOwnerEntry(sala, entry){ return SESSION.role==='player' && !!entry
    Rodada inteira de uma vez. O teto (guard) é só rede de segurança contra
    um bug de estado nunca fechar 'resolving' -- não deveria disparar na
    prática. */
+/* A resolução em si continua 100% síncrona e instantânea (arenaResolveNextStep
+   reaproveitado sem mudança nenhuma) -- de propósito: qualquer atraso de
+   verdade aqui só criaria risco de corrida entre os dois clientes (quem
+   resolve, quando, o que salva por cima do quê). O "espere uns segundos"
+   pedido pelo usuário ("Após os ataques a resolução tá sendo muito
+   rápida... não tem mais dado rolando na tela?") é resolvido inteiro do
+   lado de fora, como pura encenação visual: cada rolagem de verdade que
+   acontece aqui dentro (sala.lastRoll mudou) é copiada pra sala.rollQueue
+   (persistida, então o adversário e qualquer espectador também recebem a
+   fila via Firestore) -- e cada cliente, sozinho, no seu próprio ritmo,
+   consome essa fila com o quadro de dado 3D (pvpCheckRoll/
+   pvpAdvanceDiceQueue, mais abaixo) sem depender de mais nenhuma escrita
+   no banco. O tabuleiro real já está 100% resolvido no instante em que
+   essa função retorna -- só a REVELAÇÃO na tela é que fica pausada. */
 function pvpDriveResolution(sala){
   var guard = 0;
   while(sala.round && sala.round.phase==='resolving' && guard<500){
+    var beforeTs = sala.lastRoll && sala.lastRoll.ts;
     arenaResolveNextStep(sala.round);
     guard++;
+    if(sala.lastRoll && sala.lastRoll.ts!==beforeTs) pvpQueueRoll(sala, sala.lastRoll);
   }
+}
+function pvpQueueRoll(sala, roll){
+  if(!Array.isArray(sala.rollQueue)) sala.rollQueue = [];
+  var copy = {};
+  for(var k in roll){ if(roll.hasOwnProperty(k)) copy[k] = roll[k]; }
+  sala.rollQueue.push(copy);
+  if(sala.rollQueue.length>12) sala.rollQueue = sala.rollQueue.slice(-12); /* não deixa o documento crescer sem limite numa batalha longa */
+}
+
+/* =================== QUADRO DE DADO 3D DA ÁREA PVP ===================
+   Pedido do usuário: "Após os ataques a resolução tá sendo muito rápida.
+   Espere uns segundos. Por que não tem mais dado rolando na tela? Você
+   consegue configurar um [dado] 3D? Como se ele tivesse caindo numa mesa
+   e rolando?"
+
+   100% independente do #diceOverlay da Arena (mesmo espírito de sempre:
+   "Eles tem que ficar totalmente independentes") -- nem globals, nem CSS,
+   nem função em comum além de utilitários PUROS que só recebem o objeto
+   da rolagem por parâmetro (diceStagesFor/rollSummaryLines), sem tocar em
+   STATE.arena nunca. Por isso nem precisa do ARENA_CONTEXT_DEPTH (essa
+   trava existe só porque o quadro da Arena lê STATE.arena.lastRoll direto
+   -- esse aqui lê sala.rollQueue, achada via pvpSalaDoJogador(), imune ao
+   troca-e-volta do withArenaContext desde o início).
+
+   Cada cliente consome sala.rollQueue sozinho, no próprio ritmo: PVP_DICE_
+   SEEN_TS[salaId] é a marca-d'água (por ts) do que essa aba já mostrou --
+   a 1ª vez que uma sala aparece pra essa aba (reload no meio de uma
+   batalha, ou acabou de entrar), a marca nasce já no fim da fila (sem
+   reprisar o histórico inteiro de rolagens antigas). Cada rolagem nova
+   some da fila real, some visualmente e volta como "pendente" local
+   (PVP_DICE_PENDING) -- animada uma de cada vez (PVP_DICE_ANIM),
+   respeitando a ordem, com uma pausa depois de assentar antes de passar
+   pra próxima (ou fechar, se acabou). */
+var PVP_DICE_SEEN_TS = {}; /* salaId -> ts da última rolagem já mostrada nessa aba */
+var PVP_DICE_PENDING = []; /* rolagens (cópias de sala.rollQueue) ainda não animadas nessa aba */
+var PVP_DICE_ANIM = null; /* { roll, stages, stageIdx, restX, restY } */
+var pvpDiceTimer = null;
+var PVP_DIE_TUMBLE_MS = 1100; /* d6 caindo/girando até assentar */
+var PVP_DIE10_TUMBLE_MS = 900; /* d10 (Efeito Percentual) -- gira só em Y, tipo moeda */
+var PVP_RESULT_HOLD_MS = 1900; /* pausa mostrando o resultado assentado antes de ir pra próxima rolagem (ou fechar) */
+var PVP_DIE_FACE_ROT = { /* rotação do CUBO (rotateX/rotateY, em graus) que deixa cada face voltada pra câmera */
+  1:{x:0,y:0}, 2:{x:0,y:-90}, 3:{x:-90,y:0}, 4:{x:90,y:0}, 5:{x:0,y:90}, 6:{x:0,y:180}
+};
+function pvpCheckRoll(){
+  if(SESSION.role!=='player' || !SESSION.trainerId) return;
+  var sala = pvpSalaDoJogador(SESSION.trainerId);
+  if(!sala || sala.status!=='em_batalha') return;
+  var queue = sala.rollQueue || [];
+  if(PVP_DICE_SEEN_TS[sala.id]===undefined){
+    /* 1ª vez que essa aba vê essa sala -- marca a fila inteira como "já
+       vista" sem animar nada disso agora (evita reprisar a batalha toda
+       toda vez que a página é recarregada no meio dela). */
+    PVP_DICE_SEEN_TS[sala.id] = queue.length ? queue[queue.length-1].ts : 0;
+    return;
+  }
+  var seen = PVP_DICE_SEEN_TS[sala.id];
+  var fresh = queue.filter(function(r){ return r.ts>seen; });
+  if(!fresh.length) return;
+  PVP_DICE_SEEN_TS[sala.id] = queue[queue.length-1].ts;
+  fresh.forEach(function(r){ PVP_DICE_PENDING.push(r); });
+  pvpAdvanceDiceQueue();
+}
+function pvpAdvanceDiceQueue(){
+  if(PVP_DICE_ANIM || !PVP_DICE_PENDING.length) return; /* já tem uma rolagem animando, ou não sobrou nenhuma -- nada a fazer agora */
+  var roll = PVP_DICE_PENDING.shift();
+  var faceRot = PVP_DIE_FACE_ROT[roll.d6] || PVP_DIE_FACE_ROT[1];
+  PVP_DICE_ANIM = {
+    roll: roll,
+    stages: diceStagesFor(roll), /* reaproveita a mesma função pura da Arena: ['d6', 'd10a'?, 'd10b'?] */
+    stageIdx: 0,
+    restX: faceRot.x + 720, /* +2 voltas inteiras só pra dar a sensação de "rolando" antes de assentar -- fixo, não aleatório (mantém a animação estável/testável) */
+    restY: faceRot.y + 720,
+    d10RestY: 720 /* o "d10" (moeda) não precisa apontar pra face nenhuma -- só gira e para */
+  };
+  SESSION.showPvpRollOverlay = true;
+  pvpRenderDiceOverlay();
+  pvpScheduleDiceStage();
+}
+function pvpScheduleDiceStage(){
+  if(pvpDiceTimer){ clearTimeout(pvpDiceTimer); pvpDiceTimer = null; }
+  var anim = PVP_DICE_ANIM; if(!anim) return;
+  var stageName = anim.stages[anim.stageIdx];
+  var dur = stageName==='d6' ? PVP_DIE_TUMBLE_MS : PVP_DIE10_TUMBLE_MS;
+  pvpDiceTimer = setTimeout(function(){
+    if(!PVP_DICE_ANIM || PVP_DICE_ANIM!==anim) return; /* dispensado (DT.pvpDismissRoll) enquanto o timer esperava */
+    anim.stageIdx++;
+    if(anim.stageIdx>=anim.stages.length){
+      pvpRenderDiceOverlay(); /* mostra o resultado assentado (todas as faces já paradas) */
+      pvpDiceTimer = setTimeout(function(){
+        if(PVP_DICE_ANIM!==anim) return;
+        PVP_DICE_ANIM = null;
+        if(PVP_DICE_PENDING.length){ pvpAdvanceDiceQueue(); }
+        else { SESSION.showPvpRollOverlay = false; render(); } /* fila esvaziada -- revela o tabuleiro de vez (já estava resolvido faz tempo, só a tela que esperou) */
+      }, PVP_RESULT_HOLD_MS);
+      return;
+    }
+    pvpRenderDiceOverlay();
+    pvpScheduleDiceStage();
+  }, dur);
+}
+/* Fecha o quadro na unha (clique no fundo ou botão "Pular") -- pula
+   TODA a fila pendente de uma vez (não só a rolagem atual). O tabuleiro
+   por trás já está certo há tempos; isso só encurta a encenação pra quem
+   não quer esperar. */
+DT.pvpDismissRoll = function(){
+  PVP_DICE_PENDING = [];
+  PVP_DICE_ANIM = null;
+  if(pvpDiceTimer){ clearTimeout(pvpDiceTimer); pvpDiceTimer = null; }
+  SESSION.showPvpRollOverlay = false;
+  render();
+};
+function pvpRenderDiceOverlay(){
+  var el = document.getElementById('pvpDiceOverlay');
+  if(el) el.innerHTML = pvpDiceOverlayHTML();
+}
+function pvpDiceOverlayHTML(){
+  if(!SESSION.showPvpRollOverlay || !PVP_DICE_ANIM) return '';
+  var anim = PVP_DICE_ANIM;
+  var roll = anim.roll;
+  var curStage = anim.stages[anim.stageIdx]; /* 'd6' | 'd10a' | 'd10b' | undefined (assentou de vez) */
+  var settled = anim.stageIdx>=anim.stages.length;
+
+  function stageStatus(name){
+    var idx = anim.stages.indexOf(name);
+    if(idx===-1) return 'n/a';
+    if(settled || idx<anim.stageIdx) return 'done';
+    if(idx===anim.stageIdx) return 'rolling';
+    return 'pending';
+  }
+
+  var d6Status = stageStatus('d6');
+  var d6Tumbling = d6Status==='rolling';
+  var d6HTML = '<div class="pvp-die3d-scene"><div class="pvp-die3d-cube'+(d6Tumbling?' pvp-die-tumbling':'')+'" style="--restX:'+anim.restX+'deg; --restY:'+anim.restY+'deg; --dur:'+PVP_DIE_TUMBLE_MS+'ms;">'+
+    '<div class="pvp-die3d-face pvp-die3d-f1">⚀</div>'+
+    '<div class="pvp-die3d-face pvp-die3d-f2">⚁</div>'+
+    '<div class="pvp-die3d-face pvp-die3d-f3">⚂</div>'+
+    '<div class="pvp-die3d-face pvp-die3d-f4">⚃</div>'+
+    '<div class="pvp-die3d-face pvp-die3d-f5">⚄</div>'+
+    '<div class="pvp-die3d-face pvp-die3d-f6">⚅</div>'+
+  '</div></div>';
+
+  var d10HTML = '';
+  if(roll.efeito){
+    var st1 = stageStatus('d10a'), st2 = stageStatus('d10b');
+    /* Só desenha o d10 depois que o PRÓPRIO estágio dele começou -- 'pending'
+       (ainda no estágio do d6) não entra aqui, senão o valor de verdade
+       (roll.efeito.d10a/d10b, já decidido de antemão em resolveAttack)
+       vazaria na tela antes da hora (mesmo cuidado que a Arena já toma:
+       ver diceOverlayHTML/d10Parts lá em cima, que só empilha algo pra
+       'rolling'/'done', nunca pra 'pending'). */
+    if(st1==='rolling' || st1==='done'){
+      var showingSecond = st2==='rolling' || st2==='done';
+      var d10Tumbling = st1==='rolling' || st2==='rolling';
+      var d10Val = showingSecond ? roll.efeito.d10b : roll.efeito.d10a;
+      /* Enquanto ainda tá girando, não faz sentido mostrar um número parado -- mas como esse dado não sorteia faces aleatórias quadro a quadro (a diferença do d6 da Arena), só troca pro valor real quando o estágio termina. */
+      var d10Label = d10Tumbling ? '' : String(d10Val);
+      d10HTML = '<div class="pvp-die10-scene"><div class="pvp-die10'+(d10Tumbling?' pvp-die-tumbling':'')+'" style="--restY:'+(anim.d10RestY)+'deg; --dur:'+PVP_DIE10_TUMBLE_MS+'ms;">'+esc(d10Label)+'</div></div>';
+    }
+  }
+
+  var stageLabel = !settled
+    ? (curStage==='d6' ? '🎲 Rolando o d6…' : curStage==='d10a' ? '🎲 Rolando o 1d10 (efeito)…' : '🎲 Crítico — 2ª tentativa do 1d10…')
+    : '';
+
+  var summaryHTML;
+  if(!settled){
+    summaryHTML = '<div class="pvp-dice-summary pvp-dice-summary-rolling">'+esc(stageLabel)+'</div>';
+  } else {
+    summaryHTML = '<div class="pvp-dice-summary">'+rollSummaryLines(roll).join('<br>')+'</div>'; /* reaproveita a mesma função pura da Arena -- só recebe o objeto por parâmetro, não lê STATE.arena */
+  }
+
+  var queueHint = PVP_DICE_PENDING.length ? '<div class="pvp-dice-queue-hint">+'+PVP_DICE_PENDING.length+' rolagem(ns) na fila…</div>' : '';
+
+  return '<div class="pvp-dice-overlay" onclick="DT.pvpDismissRoll()">'+
+    '<div class="pvp-dice-card" onclick="event.stopPropagation()">'+
+      '<div class="pvp-dice-table">'+d6HTML+d10HTML+'</div>'+
+      summaryHTML+
+      queueHint+
+      (settled ? '<button class="btn-sm" onclick="DT.pvpDismissRoll()">Fechar</button>' : '<button class="btn-ghost btn-sm" onclick="DT.pvpDismissRoll()">Pular</button>')+
+    '</div>'+
+  '</div>';
 }
 /* Cura tudo (PV, Condição, Confusão, PP, Estágios) de quem participou --
    pedido do usuário ("após o término do combate, todos os Pokémon são
@@ -11470,7 +11776,15 @@ function pvpTryStartBattle(sala){
     });
     var vid = pvpVirtualId(sala, j.trainerId);
     sala.virtuais[vid] = { id:vid, name:j.nome, attrPoints:{vigor:5,vontade:5,resistencia:5,mental:5,foco:5,agilidade:5}, pokemons: fichas, banco: [] };
-    sala.entries.push({ id: uid(), teamId: j.teamId, trainerId: vid, pokemonId: fichas[0].id, revelado:true, pendingSwitchOut:false });
+    /* Pedido do usuário ("você tá pegando o primeiro dos 6 e iniciando"):
+       quem entra em campo primeiro é o líder que o próprio jogador
+       escolheu (DT.pvpEscolherLider), não fichas[0] por acaso da ordem
+       que foram clicadas. j.lider é validado de novo aqui (contra a
+       lista final de fichas de verdade, não só o id) -- fallback pro
+       1º da lista só cobre o caso raro de alguma inconsistência ter
+       escapado da validação em pvpFicarPronto. */
+    var liderFicha = fichas.find(function(p){ return p.id===j.lider; }) || fichas[0];
+    sala.entries.push({ id: uid(), teamId: j.teamId, trainerId: vid, pokemonId: liderFicha.id, revelado:true, pendingSwitchOut:false });
   });
   sala.status = 'em_batalha';
   withArenaContext(sala, function(){
@@ -11487,7 +11801,11 @@ function pvpTryStartBattle(sala){
    applyMoveData de sempre (mesma base oficial da PokeAPI que o RPG usa),
    só que quem edita é o próprio Treinador, e o Vínculo fica travado em
    25 (máximo) pra sempre, nunca aparece um campo pra editar. ---- */
-DT.togglePvp = function(){ SESSION.showPvp = !SESSION.showPvp; render(); };
+DT.togglePvp = function(){
+  SESSION.showPvp = !SESSION.showPvp;
+  if(SESSION.showPvp) SESSION.showArena = false; /* abrir o PVP fecha a Arena -- páginas próprias, uma de cada vez (Cap. rotas por hash) */
+  render();
+};
 DT.pvpAddFicha = function(){
   if(SESSION.role!=='player') return;
   var list = pvpFichaList(SESSION.trainerId);
@@ -11602,7 +11920,7 @@ DT.pvpCriarSala = function(){
   var nomeEl = document.getElementById('pvpNovaSalaNome');
   var nome = (nomeEl && nomeEl.value) ? nomeEl.value.trim() : '';
   var sala = newPvpSala(nome || ('Sala de '+t.name), t.id, t.name);
-  sala.jogadores.push({ trainerId:t.id, nome:t.name, teamId:null, pronto:false, timeEscolhido:[], desistiu:false });
+  sala.jogadores.push({ trainerId:t.id, nome:t.name, teamId:null, pronto:false, timeEscolhido:[], lider:null, desistiu:false });
   STATE.pvp.salas[sala.id] = sala;
   mutate();
 };
@@ -11612,7 +11930,7 @@ DT.pvpEntrarSala = function(salaId){
   if(pvpSalaDoJogador(t.id)){ SESSION.error = 'Você já está numa sala de PVP.'; render(); return; }
   var sala = STATE.pvp.salas[salaId];
   if(!sala || sala.status!=='aberta' || sala.jogadores.length>=2) return;
-  sala.jogadores.push({ trainerId:t.id, nome:t.name, teamId:null, pronto:false, timeEscolhido:[], desistiu:false });
+  sala.jogadores.push({ trainerId:t.id, nome:t.name, teamId:null, pronto:false, timeEscolhido:[], lider:null, desistiu:false });
   mutate();
 };
 DT.pvpSairDaSala = function(salaId){
@@ -11637,12 +11955,34 @@ DT.pvpToggleFichaNoTime = function(salaId, pid){
   var jogador = sala.jogadores.find(function(j){ return j.trainerId===SESSION.trainerId; });
   if(!jogador || jogador.pronto) return;
   var idx = jogador.timeEscolhido.indexOf(pid);
-  if(idx!==-1){ jogador.timeEscolhido.splice(idx,1); mutate(); return; }
+  if(idx!==-1){
+    jogador.timeEscolhido.splice(idx,1);
+    if(jogador.lider===pid) jogador.lider = null; /* saiu do time -- não pode continuar marcado como quem vai pro campo primeiro */
+    mutate();
+    return;
+  }
   if(jogador.timeEscolhido.length>=6){ SESSION.error = 'Máximo de 6 Pokémon por time (Cap. resposta do usuário: Time completo até 6, com troca).'; render(); return; }
   var ficha = pvpGetFicha(SESSION.trainerId, pid);
   if(!ficha || !ficha.especie){ SESSION.error = 'Essa ficha ainda não tem Espécie definida.'; render(); return; }
   if(ficha.emBatalha){ SESSION.error = 'Essa ficha já está em outra batalha agora.'; render(); return; }
   jogador.timeEscolhido.push(pid);
+  if(jogador.timeEscolhido.length===1) jogador.lider = pid; /* 1º Pokémon escolhido já vira o líder padrão -- o jogador troca se quiser, mas nunca fica sem nenhum marcado */
+  mutate();
+};
+/* Escolher qual Pokémon do time vai pro campo primeiro (pedido do usuário:
+   "Você tá pegando o primeiro dos 6 e iniciando... deixe escolher"). Cada
+   jogador escolhe o próprio líder às cegas -- o adversário só vê que ele
+   está "pronto", nunca qual ficha escolheu -- exatamente como as ações
+   de Ataque já ficam escondidas até os dois escolherem (arenaQueueAction);
+   pvpTryStartBattle só revela os dois times (e quem cada um mandou pro
+   campo primeiro) quando a batalha realmente começa. */
+DT.pvpEscolherLider = function(salaId, pid){
+  if(SESSION.role!=='player') return;
+  var sala = STATE.pvp.salas[salaId]; if(!sala || sala.status!=='aberta') return;
+  var jogador = sala.jogadores.find(function(j){ return j.trainerId===SESSION.trainerId; });
+  if(!jogador || jogador.pronto) return;
+  if(jogador.timeEscolhido.indexOf(pid)===-1) return;
+  jogador.lider = pid;
   mutate();
 };
 DT.pvpFicarPronto = function(salaId){
@@ -11650,6 +11990,7 @@ DT.pvpFicarPronto = function(salaId){
   var sala = STATE.pvp.salas[salaId]; if(!sala || sala.status!=='aberta') return;
   var jogador = sala.jogadores.find(function(j){ return j.trainerId===SESSION.trainerId; });
   if(!jogador || !jogador.timeEscolhido.length) return;
+  if(!jogador.lider || jogador.timeEscolhido.indexOf(jogador.lider)===-1) return; /* precisa escolher quem vai pro campo primeiro antes de ficar pronto */
   jogador.pronto = true;
   pvpTryStartBattle(sala);
   mutate();
@@ -11907,14 +12248,32 @@ function pvpTeamPickHTML(sala, t){
   var outros = sala.jogadores.filter(function(j){ return j.trainerId!==t.id; }).map(function(j){
     return '<p class="muted" style="font-size:.8rem;">'+esc(j.nome)+': '+j.timeEscolhido.length+' Pokémon escolhido(s)'+(j.pronto?' — ✓ pronto':' — ainda escolhendo')+'</p>';
   }).join('');
+  /* Pedido do usuário ("deixe escolher qual dos pokémon escolhidos queremos
+     mandar pro combate antes de começar direto"): quem vai pro campo
+     primeiro é uma escolha à parte de "quais 6 estão no time" -- só
+     aparece depois de já ter pelo menos 1 Pokémon escolhido. Fica
+     escondida do adversário do mesmo jeito que o time inteiro já fica
+     (só o "pronto" aparece pra ele) -- os dois só descobrem quando a
+     batalha realmente começa (pvpTryStartBattle), igual uma ação de
+     Ataque só revela quando os dois já escolheram (Cap. 86). */
+  var liderHTML = '';
+  if(jogador.timeEscolhido.length){
+    var liderBtns = jogador.timeEscolhido.map(function(pid){
+      var p = pvpGetFicha(t.id, pid); if(!p) return '';
+      var isLider = jogador.lider===pid;
+      return '<button class="btn-sm'+(isLider?' btn-primary':'')+'" style="margin:2px;" '+(jogador.pronto?'disabled':'')+' onclick="DT.pvpEscolherLider(\''+sala.id+'\',\''+pid+'\')">'+(isLider?'⭐ ':'')+esc(p.apelido||p.especie||'Pokémon')+'</button>';
+    }).join('');
+    liderHTML = '<div style="margin-top:10px;"><p class="muted" style="font-size:.75rem; margin-bottom:4px;">Quem vai pro campo primeiro?</p>'+liderBtns+'</div>';
+  }
   return '<div class="card"><div class="card-head"><span class="index">'+esc(sala.nome)+'</span><h2>🎽 Monte seu time (até 6, com troca)</h2></div><div class="card-body">'+
     rows+
+    liderHTML+
     outros+
     (sala.jogadores.length<2 ? '<p class="muted" style="font-size:.82rem;">Esperando outro jogador entrar na sala…</p>' : '')+
     '<div class="btn-row" style="margin-top:10px;">'+
       (jogador.pronto
         ? '<button class="btn-sm" onclick="DT.pvpDesfazerPronto(\''+sala.id+'\')">Desfazer prontidão</button>'
-        : '<button class="btn-sm btn-primary" '+(jogador.timeEscolhido.length?'':'disabled')+' onclick="DT.pvpFicarPronto(\''+sala.id+'\')">✓ Pronto</button>')+
+        : '<button class="btn-sm btn-primary" '+((jogador.timeEscolhido.length && jogador.lider)?'':'disabled')+' title="'+(jogador.timeEscolhido.length && !jogador.lider ? 'Escolha quem vai pro campo primeiro' : '')+'" onclick="DT.pvpFicarPronto(\''+sala.id+'\')">✓ Pronto</button>')+
       '<button class="btn-ghost btn-sm" onclick="DT.pvpSairDaSala(\''+sala.id+'\')">Sair da sala</button>'+
     '</div>'+
   '</div></div>';
@@ -12023,6 +12382,12 @@ function pvpScreen(){
 }
 
 /* =================== BOOT =================== */
+/* Voltar/Avançar do navegador, ou colar um link com #pvp/#arena/#ficha
+   direto na barra -- não passa por nenhum DT.*, então precisa do próprio
+   listener (ver syncRouteHash/applyRouteFromHash, mais acima). */
+if(typeof window!=='undefined' && window.addEventListener){
+  window.addEventListener('hashchange', function(){ applyRouteFromHash(); render(); });
+}
 render(); /* pinta a tela imediatamente (tela de config ou "carregando") */
 bootFirebase();
 
