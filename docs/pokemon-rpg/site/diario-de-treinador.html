@@ -409,17 +409,21 @@
   .hp-bar.low > i{ background:var(--danger); }
   .arena-hp-label{ font-size:.62rem; font-variant-numeric:tabular-nums; color:var(--muted); text-align:center; margin-bottom:2px; }
 
-  /* Palco de batalha, EM PERSPECTIVA (evolução a partir de uma imagem de
-     referência estilo Pokémon Sword/Shield, depois refinada pelo usuário:
-     "igual no jogo... fiquem meio que na diagonal... um chão clássico de
-     pokémon... com as linhas"): um "chão" de terra batida com anéis
-     concêntricos (.battle-stage-ground, decorativo, só CSS -- sem imagem
-     nenhuma), com cada Time ancorado num ponto dele (leque, ver
-     battleStageHTML) -- o seu, embaixo/de costas/maior; os outros em
-     cima, espalhados à esquerda/direita em posição relativa ESTÁVEL.
-     Cores fixas (não seguem --surface/--ink do tema claro/escuro do
-     site) de propósito -- uma arena de batalha "parece" arena em
-     qualquer tema, igual no jogo oficial. */
+  /* Palco de batalha, EM PERSPECTIVA -- 3ª geração desse visual, cada uma
+     a partir de uma imagem de referência do usuário: 1) print de batalha
+     estilo Pokémon Sword/Shield; 2) "fiquem meio que na diagonal... um
+     chão clássico de pokémon... com as linhas" (virou a elipse com anéis
+     concêntricos); 3) "a perspectiva ainda tá muito ruim... se baseia
+     nesse aqui" + um print de ESTÁDIO visto de cima (arquibancada de
+     tábuas na diagonal, cantos de pedra, grama, campo de terra com linha
+     central e marca circular vermelho/branco no meio) -- essa é a versão
+     atual: .battle-stage-field-wrap (chão do estádio, ver o bloco logo
+     abaixo) desenhado a partir dessa 3ª referência, com cada Time ancorado
+     num ponto dele (leque, ver battleStageHTML) -- o seu, embaixo/de
+     costas/maior; os outros em cima, espalhados à esquerda/direita em
+     posição relativa ESTÁVEL. Cores fixas (não seguem --surface/--ink do
+     tema claro/escuro do site) de propósito -- uma arena de batalha
+     "parece" arena em qualquer tema, igual no jogo oficial. */
   .battle-stage{
     position:relative; border-radius:var(--radius-lg); overflow:hidden; margin-bottom:16px;
     background:linear-gradient(180deg, #9fd8f0 0%, #79c2e6 24%, #5b9c4e 27%, #4a8a3a 100%);
@@ -437,13 +441,66 @@
      dele sem se sobrepor às sprites; o popup de Ação do RPG, que dimma o
      palco inteiro, continua absolute/inset:0 igual sempre. */
   .battle-stage-ground-wrap{ position:relative; width:100%; aspect-ratio:2.3/1; min-height:220px; }
-  .battle-stage-ground{
-    position:absolute; left:8%; right:8%; bottom:2%; height:66%; border-radius:50%;
+  /* Estádio visto de cima, EM PERSPECTIVA FORÇADA -- 2ª rodada de feedback
+     do usuário, com uma imagem de referência nova (um estádio Pokémon
+     visto de cima: arquibancada de tábuas na diagonal, cantos de pedra,
+     grama, campo de terra com linha central e a marca circular
+     vermelho/branco no meio): a elipse lisa de antes ("Tá muito ruim")
+     virou um trapézio de verdade (clip-path -- a base larga fica embaixo/
+     perto, o topo estreito fica em cima/longe), que é o jeito 2D clássico
+     de simular profundidade sem precisar de transform 3D de verdade (que
+     ia exigir todo o resto -- sprites incluídas -- deformando junto, o
+     que não dá: sprite deitada no chão não parece Pokémon nenhum). As
+     sprites continuam num plano separado, sempre "de pé"/retas, por cima
+     desse chão -- só o chão em si ganha a perspectiva. */
+  .battle-stage-field-wrap{
+    position:absolute; left:2%; right:2%; top:4%; bottom:0; clip-path:polygon(3% 100%, 97% 100%, 76% 6%, 24% 6%);
+    box-shadow:0 16px 26px rgba(0,0,0,.4); border-radius:4px; overflow:hidden;
+  }
+  /* Arquibancada: tábuas de madeira na diagonal (repeating-linear-gradient
+     45deg, igual a referência), moldura em volta do gramado inteiro. */
+  .battle-stage-field{
+    position:absolute; inset:0;
     background:
-      repeating-radial-gradient(ellipse at center, rgba(255,255,255,.3) 0, rgba(255,255,255,.3) 2px, transparent 2px, transparent 16%),
-      radial-gradient(ellipse at center, #d5af73 0%, #c19a5e 42%, #a67d42 72%, #8a6531 100%);
-    box-shadow: 0 0 0 9px #4d8f3c, 0 0 0 11px rgba(255,255,255,.35), 0 14px 22px rgba(0,0,0,.35);
-    pointer-events:none;
+      repeating-linear-gradient(45deg, #8a5a2e 0 9px, #7a4d26 9px 18px, #96652f 18px 20px);
+  }
+  /* Cantos de pedra (os blocos cinza da referência, vistos de cima) --
+     só nos 2 cantos de baixo/perto (os de cima somem no próprio recorte
+     do trapézio, igual sumiriam ao longe de verdade). */
+  .battle-stage-field::before, .battle-stage-field::after{
+    content:''; position:absolute; bottom:0; width:15%; height:22%;
+    background:linear-gradient(135deg, #9aa3ac 0%, #767f88 55%, #5d646c 100%);
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,.25);
+  }
+  .battle-stage-field::before{ left:0; clip-path:polygon(0 0, 100% 100%, 0 100%); }
+  .battle-stage-field::after{ right:0; clip-path:polygon(100% 0, 100% 100%, 0 100%); }
+  /* Grama e terra usam o PRÓPRIO trapézio (clip-path de novo, encaixado
+     dentro do trapézio maior das tábuas -- não um simples inset em %
+     retas): um inset comum deixaria a moldura de madeira praticamente
+     invisível lá em cima (onde o trapézio já é bem estreito, o inset em %
+     "come" a faixa toda), enquanto um trapézio menor com a MESMA
+     inclinação mantém a faixa de madeira com a largura visível parecida
+     do começo ao fim, igual uma arquibancada de verdade contornando o
+     campo inteiro. */
+  .battle-stage-field-grass{
+    position:absolute; inset:0; clip-path:polygon(8% 96%, 92% 96%, 73% 11%, 27% 11%);
+    background:linear-gradient(180deg, #6fbf5a 0%, #4f9c40 100%);
+  }
+  .battle-stage-field-dirt{
+    position:absolute; inset:0; clip-path:polygon(15% 90%, 85% 90%, 68% 17%, 32% 17%);
+    background:radial-gradient(ellipse at center, #d5af73 0%, #c19a5e 45%, #a67d42 100%);
+    box-shadow:inset 0 0 0 2px rgba(30,20,10,.4);
+  }
+  .battle-stage-field-centerline{ position:absolute; left:50%; top:0; bottom:0; width:2px; background:rgba(20,12,4,.35); transform:translateX(-50%); }
+  /* Marquinha central inspirada na Pokébola da imagem de referência
+     (círculo metade vermelho/metade branco, com um miolo branco menor). */
+  .battle-stage-field-centermark{
+    position:absolute; left:50%; top:52%; width:17%; aspect-ratio:1; transform:translate(-50%,-50%);
+    border-radius:50%; border:2px solid rgba(20,12,4,.4); overflow:hidden;
+    background:linear-gradient(90deg, #d64840 50%, #f2ede0 50%);
+  }
+  .battle-stage-field-centermark::after{
+    content:''; position:absolute; inset:32%; border-radius:50%; background:#f2ede0; border:2px solid rgba(20,12,4,.4);
   }
   /* Nome do Time vira uma legendinha DENTRO da etiqueta do Pokémon (não
      mais uma etiqueta flutuante posicionada à parte) -- empilhado normal,
@@ -9378,7 +9435,12 @@ function checkArenaRoll(){
     startDiceRollAnimation(lr);
     var totalAnimMs = diceStagesFor(lr).length * DICE_STAGE_MS;
     if(rollHideTimer) clearTimeout(rollHideTimer);
-    rollHideTimer = setTimeout(function(){ SESSION.showRollOverlay = false; rollHideTimer = null; renderDiceOverlay(); }, totalAnimMs+3200);
+    /* render() completo aqui (não só o overlay) -- é só agora, com o
+       quadro de dado fechando, que o palco de batalha (por baixo dele o
+       tempo todo) fica visível de novo; é o instante certo pra tocar a
+       animação simples do golpe (battle-stage-anim-attack/-hit) de
+       verdade, pra alguém ver. */
+    rollHideTimer = setTimeout(function(){ SESSION.showRollOverlay = false; rollHideTimer = null; render(); }, totalAnimMs+3200);
   }
 }
 function render(){
@@ -9629,7 +9691,11 @@ DT.dismissRoll = function(){
     render();
     return;
   }
-  renderDiceOverlay();
+  /* render() completo aqui também (não só o overlay) -- mesmo motivo do
+     rollHideTimer acima: fechar o quadro de dado na unha é o mesmo
+     instante em que o palco de batalha some do meio, e precisa de um
+     render() de verdade pra tocar a animação simples do golpe. */
+  render();
 };
 function legalFooter(){
   return '<footer class="legal">Ficha compartilhada apenas com quem tem o link e conhece os PINs. Não é um cofre: qualquer pessoa com acesso técnico ao link pode inspecionar os dados salvos no banco.</footer>';
@@ -10133,10 +10199,19 @@ function arenaActionPanelHTML(){
    duplicar/arriscar a lógica de alvo/segredo/troca já testada). */
 /* por quanto tempo depois de um golpe a sprite ainda "anima" -- precisa
    cobrir a animação do dado inteira (DICE_STAGE_MS=500ms POR estágio; um
-   Movimento com efeito percentual rola 2 estágios, d6 então d10 = até
-   ~1000ms) mais uma folga, senão a rolagem ainda nem tinha assentado de
-   verdade na tela e a "animação simples" já teria sumido de novo. */
-var STAGE_ANIM_WINDOW_MS = 1800;
+   Movimento com efeito percentual rola até 3 estágios -- d6, d10a e,
+   se veio Crítico com a 1ª falhando, d10b -- até ~1500ms) MAIS o tempo
+   que o próprio quadro de dado (#diceOverlay, position:fixed, cobre a
+   tela inteira por cima do palco) fica aberto DEPOIS de assentar, pra dar
+   tempo de ler o resultado (rollHideTimer, totalAnimMs+3200ms) -- achado
+   real do usuário ("a animação não tá aparecendo"): o palco já tocava a
+   animação certinho, só que 100% escondido atrás do quadro de dado, e
+   ninguém nunca chegava a ver -- por isso agora um render() completo
+   também dispara quando esse quadro FECHA (checkArenaRoll/DT.dismissRoll,
+   ambos abaixo), que é o momento em que o palco finalmente fica visível
+   de novo; a janela precisa ficar aberta até esse instante, senão a
+   rolagem já teria "esfriado" bem antes dele acontecer. */
+var STAGE_ANIM_WINDOW_MS = 5500;
 /* Rolagem fresca o bastante pra animar, e essa entrada é o ATACANTE ou um
    ALVO atingido de verdade dela -- casado só pelo nome (apelido/espécie +
    Treinador), já que STATE.arena.lastRoll nunca guardou entryId nenhum;
@@ -10237,7 +10312,11 @@ function battleStageHTML(cameraTeamId, extraHTML){
     var theta = others.length<=1 ? 0 : (-spread + (2*spread)*idx/(others.length-1));
     var rad = theta*Math.PI/180;
     var closeness = 1-Math.cos(rad); /* 0 no centro (mais longe/menor), cresce nas pontas (mais perto/maior) */
-    var xPct = 50 + Math.sin(rad)*40;
+    /* O espalhamento horizontal também "afunila" quanto mais longe (menos
+       closeness) -- acompanha o trapézio de verdade do chão (.battle-
+       stage-field-wrap, mais estreito lá em cima/longe), então a sprite
+       nunca parece flutuar fora do campo. */
+    var xPct = 50 + Math.sin(rad)*40*(0.45+0.55*closeness);
     var yPct = 6 + 16*closeness;
     var scale = 0.55 + 0.22*closeness;
     var z = 10 + Math.round(closeness*10);
@@ -10246,7 +10325,14 @@ function battleStageHTML(cameraTeamId, extraHTML){
   if(!meHTML && !othersHTML) return extraHTML;
   return '<div class="battle-stage">'+
     '<div class="battle-stage-ground-wrap">'+
-      '<div class="battle-stage-ground"></div>'+
+      '<div class="battle-stage-field-wrap">'+
+        '<div class="battle-stage-field"></div>'+
+        '<div class="battle-stage-field-grass"></div>'+
+        '<div class="battle-stage-field-dirt">'+
+          '<div class="battle-stage-field-centerline"></div>'+
+          '<div class="battle-stage-field-centermark"></div>'+
+        '</div>'+
+      '</div>'+
       othersHTML+meHTML+
     '</div>'+
     extraHTML+
