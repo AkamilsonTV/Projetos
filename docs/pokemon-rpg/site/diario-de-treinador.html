@@ -409,43 +409,62 @@
   .hp-bar.low > i{ background:var(--danger); }
   .arena-hp-label{ font-size:.62rem; font-variant-numeric:tabular-nums; color:var(--muted); text-align:center; margin-bottom:2px; }
 
-  /* Palco de batalha (cena visual, pedido do usuário a partir de uma imagem
-     de referência estilo Pokémon Sword/Shield): um "estádio" simples
-     desenhado só em CSS (sem imagem nenhuma) -- céu em degradê no topo,
-     campo escuro embaixo com dois "holofotes" circulares (um por Time),
-     as sprites oficiais já usadas no resto do site em pé sobre uma
-     plataforma elíptica. Cores fixas (não seguem --surface/--ink do tema
-     claro/escuro do site) de propósito -- uma arena de batalha "parece"
-     arena em qualquer tema, igual no jogo oficial. Time mais perto de
-     quem está vendo (o próprio, se for jogador) fica embaixo/maior; o
-     resto fica em cima/menor, sugerindo profundidade. */
+  /* Palco de batalha, EM PERSPECTIVA (evolução a partir de uma imagem de
+     referência estilo Pokémon Sword/Shield, depois refinada pelo usuário:
+     "igual no jogo... fiquem meio que na diagonal... um chão clássico de
+     pokémon... com as linhas"): um "chão" de terra batida com anéis
+     concêntricos (.battle-stage-ground, decorativo, só CSS -- sem imagem
+     nenhuma), com cada Time ancorado num ponto dele (leque, ver
+     battleStageHTML) -- o seu, embaixo/de costas/maior; os outros em
+     cima, espalhados à esquerda/direita em posição relativa ESTÁVEL.
+     Cores fixas (não seguem --surface/--ink do tema claro/escuro do
+     site) de propósito -- uma arena de batalha "parece" arena em
+     qualquer tema, igual no jogo oficial. */
   .battle-stage{
     position:relative; border-radius:var(--radius-lg); overflow:hidden; margin-bottom:16px;
-    background:linear-gradient(180deg, #9fd8f0 0%, #6fb8dd 38%, #1c3a5e 40%, #142c48 100%);
-    padding:14px 10px 18px; border:2px solid var(--line); box-shadow:var(--shadow);
+    background:linear-gradient(180deg, #9fd8f0 0%, #79c2e6 24%, #5b9c4e 27%, #4a8a3a 100%);
+    /* padding-top bem maior que os outros lados: é o "céu" que sobra pros
+       Times mais distantes (sprite pequena, no topo do leque) --
+       transform:translate(-50%,-100%) faz a sprite deles crescer PRA CIMA a
+       partir do ponto de ancoragem, e sem esse respiro elas ficavam cortadas
+       pelo overflow:hidden (Cap. "faltou algo mais realista", achado no
+       screenshot de 4 Times: só a etiqueta aparecia, sprite sumia). */
+    padding:90px 10px 18px; border:2px solid var(--line); box-shadow:var(--shadow);
   }
-  .battle-stage::before, .battle-stage::after{
-    content:''; position:absolute; left:50%; width:280px; height:120px; border-radius:50%;
-    background:radial-gradient(ellipse at center, rgba(120,220,255,.35) 0%, rgba(120,220,255,0) 70%);
-    transform:translateX(-50%); pointer-events:none;
+  /* O próprio chão participa do fluxo normal (reserva a própria altura,
+     via aspect-ratio) -- é o que deixa o painel de comando da Área PVP
+     (.battle-stage-panel, sempre em fluxo, sem dimming) encaixar embaixo
+     dele sem se sobrepor às sprites; o popup de Ação do RPG, que dimma o
+     palco inteiro, continua absolute/inset:0 igual sempre. */
+  .battle-stage-ground-wrap{ position:relative; width:100%; aspect-ratio:2.3/1; min-height:220px; }
+  .battle-stage-ground{
+    position:absolute; left:8%; right:8%; bottom:2%; height:66%; border-radius:50%;
+    background:
+      repeating-radial-gradient(ellipse at center, rgba(255,255,255,.3) 0, rgba(255,255,255,.3) 2px, transparent 2px, transparent 16%),
+      radial-gradient(ellipse at center, #d5af73 0%, #c19a5e 42%, #a67d42 72%, #8a6531 100%);
+    box-shadow: 0 0 0 9px #4d8f3c, 0 0 0 11px rgba(255,255,255,.35), 0 14px 22px rgba(0,0,0,.35);
+    pointer-events:none;
   }
-  .battle-stage::before{ top:6px; }
-  .battle-stage::after{ bottom:-10px; }
-  .battle-stage-row{ position:relative; display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 0; }
-  .battle-stage-team-label{ font-size:.66rem; font-weight:700; letter-spacing:.04em; color:#eaf6ff; text-shadow:0 1px 3px rgba(0,0,0,.5); text-transform:uppercase; }
-  .battle-stage-mons{ display:flex; flex-wrap:wrap; justify-content:center; gap:18px; }
-  .battle-stage-row-far .battle-stage-mons{ opacity:.88; }
-  .battle-stage-row-far .battle-stage-sprite{ width:52px; height:52px; }
-  .battle-stage-row-near .battle-stage-sprite{ width:78px; height:78px; }
-  .battle-stage-mon{ position:relative; display:flex; flex-direction:column; align-items:center; width:92px; }
+  /* Nome do Time vira uma legendinha DENTRO da etiqueta do Pokémon (não
+     mais uma etiqueta flutuante posicionada à parte) -- empilhado normal,
+     sem cálculo de posição próprio, então nunca mais sobrepõe a sprite ou
+     o nome do Pokémon por baixo dela. */
+  .battle-stage-team-label{ font-size:.6rem; font-weight:700; letter-spacing:.04em; color:#bfe4ff; text-shadow:0 1px 3px rgba(0,0,0,.6); text-transform:uppercase; line-height:1.1; }
+  /* Cada Time fica ancorado num ponto do chão (left/top em %, calculados
+     na hora por battleStageHTML/battleStageAnchorHTML -- trigonometria
+     simples, não precisa de nada 3D de verdade) -- daí o "leque na
+     diagonal" pedido: quanto mais pro centro-topo, mais longe (menor);
+     quanto mais pra lateral, mais perto (maior), como um Time sentado ao
+     seu lado numa mesa redonda em vez de literalmente atrás. */
+  .battle-stage-mon{ position:absolute; display:flex; flex-direction:column; align-items:center; width:96px; }
   .battle-stage-platform{
-    position:absolute; bottom:20px; left:50%; width:64px; height:18px; transform:translateX(-50%);
-    background:radial-gradient(ellipse at center, rgba(150,235,255,.65) 0%, rgba(150,235,255,0) 72%);
+    position:absolute; bottom:20px; left:50%; width:60px; height:16px; transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 74%);
     border-radius:50%;
   }
-  .battle-stage-sprite{ position:relative; z-index:1; image-rendering:pixelated; filter:drop-shadow(0 6px 4px rgba(0,0,0,.35)); }
-  .battle-stage-sprite.battle-stage-fainted{ filter:grayscale(1) opacity(.55) drop-shadow(0 6px 4px rgba(0,0,0,.35)); transform:rotate(90deg); }
-  .battle-stage-tag{ margin-top:4px; width:88px; text-align:center; }
+  .battle-stage-sprite{ position:relative; z-index:1; width:84px; height:84px; image-rendering:pixelated; filter:drop-shadow(0 6px 4px rgba(0,0,0,.4)); }
+  .battle-stage-sprite.battle-stage-fainted{ filter:grayscale(1) opacity(.55) drop-shadow(0 6px 4px rgba(0,0,0,.4)); transform:rotate(90deg); }
+  .battle-stage-tag{ margin-top:4px; width:96px; text-align:center; }
   .battle-stage-name{ font-size:.66rem; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .battle-stage-tag .hp-bar{ height:6px; border-color:rgba(255,255,255,.5); }
   /* Sprite clicável (mesmas classes de estado do card -- arena-slot-selectable/
@@ -460,23 +479,29 @@
      que ser feito todo pela tela de combate, na imagem mesmo". Mesmo popup
      de sempre (arena-action-overlay), só que a posição muda de fixed/tela
      inteira pra absolute/só o palco quando ele está aninhado aqui dentro
-     (.battle-stage tem position:relative desde sempre, pros holofotes). */
-  .battle-stage .arena-action-overlay{ position:absolute; z-index:30; border-radius:var(--radius-lg); }
+     (.battle-stage tem position:relative desde sempre); z-index maior que
+     qualquer sprite/label do chão (até ~51), pra dimmar tudo por baixo de
+     verdade em vez de deixar alguma sprite "vazar" por cima do popup. */
+  .battle-stage .arena-action-overlay{ position:absolute; z-index:100; border-radius:var(--radius-lg); }
   /* Painel de comando da Área PVP, mesma ideia só que sem dimming (não
      precisa esconder nada por trás -- não tem segredo/alvo manual no PVP):
-     fica dentro do palco, encaixado embaixo das fileiras, como uma
-     "caixinha de comando" no rodapé da cena. */
+     fica dentro do palco, embaixo do chão (fluxo normal, não sobrepõe as
+     sprites), como uma "caixinha de comando" no rodapé da cena. */
   .battle-stage-panel{ position:relative; z-index:5; margin-top:10px; background:rgba(10,20,32,.72); border:2px solid rgba(255,255,255,.25); border-radius:var(--radius); padding:10px 12px; backdrop-filter:blur(2px); }
   .battle-stage-panel-head{ font-size:.78rem; font-weight:700; color:#fff; margin-bottom:6px; }
   .battle-stage-panel .muted{ color:#cfe3f2; }
   /* Animações simples (CSS puro, sem sprite-sheet nenhum) -- pedido do
-     usuário: um "avanço" rápido em quem ataca, um "tremor + flash" em quem
-     é atingido de verdade. Disparadas por battleStageAnimClass, só
-     enquanto STATE.arena.lastRoll estiver fresco (ver STAGE_ANIM_WINDOW_MS). */
-  @keyframes battle-stage-lunge{ 0%{ transform:scale(1); } 35%{ transform:scale(1.18); } 100%{ transform:scale(1); } }
-  @keyframes battle-stage-hit{ 0%{ transform:translateX(0); filter:brightness(1); } 15%{ transform:translateX(-5px); filter:brightness(2.4) saturate(0); } 35%{ transform:translateX(5px); } 55%{ transform:translateX(-3px); } 100%{ transform:translateX(0); filter:brightness(1); } }
-  .battle-stage-anim-attack{ animation:battle-stage-lunge .5s ease-out; }
-  .battle-stage-anim-hit{ animation:battle-stage-hit .45s ease-out; }
+     usuário: as primeiras eram rápidas demais pra notar ("talvez estejam
+     muito rápidas... ficaria mais vistoso"), então ficaram mais lentas
+     (.9s) e mais expressivas (avanço maior, tremor com mais quiques) --
+     disparadas por battleStageAnimClass assim que o dado assenta de
+     verdade (STATE.arena.lastRoll fresco, ver STAGE_ANIM_WINDOW_MS), na
+     sprite (não no card inteiro, então nunca briga com o transform de
+     posição/escala do .battle-stage-mon que a contém). */
+  @keyframes battle-stage-lunge{ 0%{ transform:scale(1); } 40%{ transform:scale(1.32); } 70%{ transform:scale(.94); } 100%{ transform:scale(1); } }
+  @keyframes battle-stage-hit{ 0%{ transform:translateX(0); filter:brightness(1); } 12%{ transform:translateX(-8px); filter:brightness(2.6) saturate(0); } 28%{ transform:translateX(8px); } 44%{ transform:translateX(-6px); } 60%{ transform:translateX(4px); } 78%{ transform:translateX(-2px); } 100%{ transform:translateX(0); filter:brightness(1); } }
+  .battle-stage-anim-attack{ animation:battle-stage-lunge .9s ease-out; }
+  .battle-stage-anim-hit{ animation:battle-stage-hit .9s ease-out; }
 
   .moves-list{ display:flex; flex-direction:column; gap:6px; }
   .move-row{ display:grid; grid-template-columns: 1.3fr .8fr .8fr .5fr .6fr .5fr; gap:6px; align-items:center; font-size:.76rem; margin-bottom:4px; }
@@ -10126,7 +10151,7 @@ function battleStageAnimClass(lastRoll, t, p){
   if(alvo && lastRoll.hit && !alvo.immune && (alvo.dano>0 || alvo.statusApplied)) return ' battle-stage-anim-hit';
   return '';
 }
-function battleStageMonHTML(t, p, e, deCostas, lastRoll){
+function battleStageMonHTML(t, p, e, deCostas, lastRoll, posStyle, teamName){
   var max = hpMax(t,p);
   var cur = (p.currentHP===null||p.currentHP===undefined) ? max : Math.max(0,p.currentHP);
   var pct = max>0 ? Math.round(cur/max*100) : 0;
@@ -10139,21 +10164,57 @@ function battleStageMonHTML(t, p, e, deCostas, lastRoll){
   var interaction = e ? arenaEntryInteraction(e) : null;
   var clickClass = (interaction && interaction.slotClass) ? interaction.slotClass : '';
   var clickAttr = (interaction && interaction.onclick) ? interaction.onclick : '';
-  return '<div class="battle-stage-mon'+clickClass+'"'+clickAttr+'>'+
+  /* O nome do Time entra DENTRO da própria etiqueta do Pokémon (não mais
+     uma etiqueta flutuante calculada à parte) -- evita de vez qualquer
+     sobreposição entre o nome do Time e a sprite/nome do Pokémon, já que
+     agora está tudo empilhado no MESMO bloco, um embaixo do outro. */
+  return '<div class="battle-stage-mon'+clickClass+'" style="'+(posStyle||'')+'"'+clickAttr+'>'+
     spriteHTML+
     '<div class="battle-stage-platform"></div>'+
     '<div class="battle-stage-tag">'+
+      (teamName ? '<div class="battle-stage-team-label">'+esc(teamName)+'</div>' : '')+
       '<div class="battle-stage-name">'+esc(p.apelido||p.especie||'?')+(fainted?' 😵':'')+'</div>'+
       '<div class="hp-bar'+hpBarTier(pct)+'"><i style="width:'+pct+'%"></i></div>'+
     '</div>'+
   '</div>';
+}
+/* Um Time inteiro (1+ Pokémon revelados dele, cada um já com o nome do
+   Time na própria etiqueta) ancorado num ponto do "chão" (xPct/yPct, em %
+   de .battle-stage-ground-wrap) com um tamanho (scale) -- mais de um
+   Pokémon no mesmo Time (dupla/N-batalha) fica em leque em volta desse
+   mesmo ponto, sem se sobrepor. */
+function battleStageAnchorHTML(team, entries, xPct, yPct, scale, deCostas, lastRoll, z){
+  var teamEntries = entries.filter(function(e){ return e.teamId===team.id; });
+  if(!teamEntries.length) return '';
+  var count = teamEntries.length;
+  return teamEntries.map(function(e, idx){
+    var t = findTrainer(e.trainerId);
+    var p = t && getPoke(e.trainerId, e.pokemonId);
+    if(!t || !p) return '';
+    var offsetPx = Math.round((idx-(count-1)/2) * 58 * scale);
+    var posStyle = 'left:calc('+xPct.toFixed(1)+'% + '+offsetPx+'px); top:'+yPct.toFixed(1)+'%; z-index:'+z+'; transform:translate(-50%,-100%) scale('+scale.toFixed(2)+');';
+    return battleStageMonHTML(t, p, e, deCostas, lastRoll, posStyle, team.nome);
+  }).join('');
 }
 /* extraHTML entra DENTRO do próprio .battle-stage (não acima nem abaixo) --
    é o que deixa o menu de Ação (RPG) ou o painel de comando (PVP) "ancorado
    no palco" (pedido do usuário: "tem que ser feito todo pela tela de
    combate, na imagem mesmo") em vez de solto em outro canto da tela. Sem
    nenhuma entrada revelada (cena vazia), devolve só o extraHTML puro --
-   nunca some um menu que porventura já estivesse aberto. */
+   nunca some um menu que porventura já estivesse aberto.
+
+   Layout em leque, "mesa redonda" (pedido do usuário -- "que fique algo
+   crível, como se eles estivessem no chão... e que tivesse a inteligência
+   de girar... quem está à direita do meu, sempre estará"): EU (o Time da
+   câmera) fico ancorado embaixo/centro, de costas, sempre no maior
+   tamanho. Os OUTROS Times entram em leque na metade de cima do chão --
+   a ORDEM deles nunca vem da posição da câmera, vem da ordem ESTÁVEL de
+   STATE.arena.teams (que só o Mestre muda, criando/removendo Time, nunca
+   sozinha): pra cada Time, "quantos assentos à minha direita, dando a
+   volta" = (índice do Time - meu índice) mod N -- um número que não muda
+   só porque EU troquei de câmera ou porque olhei de outro Time depois.
+   Com isso, quem calhou de estar "1 à minha direita" continua exatamente
+   ali, não importa quantos Times existam ao todo (2, 3, 4...). */
 function battleStageHTML(cameraTeamId, extraHTML){
   extraHTML = extraHTML || '';
   var teams = (STATE.arena && STATE.arena.teams) || [];
@@ -10161,30 +10222,35 @@ function battleStageHTML(cameraTeamId, extraHTML){
   var entries = (STATE.arena.entries||[]).filter(function(e){ return e.revelado; });
   if(!entries.length) return extraHTML;
   var lastRoll = STATE.arena.lastRoll;
-  /* Quem fica de costas (perto) sempre desenha DEPOIS de quem fica de
-     frente (longe), não importa a ordem de STATE.arena.teams -- pedido do
-     usuário ("perspectiva tipo no jogo"): o seu Time sempre embaixo, o
-     resto sempre em cima, igual a câmera atrás do seu Treinador. */
-  var farRowsHTML = [], nearRowsHTML = [];
-  teams.forEach(function(team){
-    var teamEntries = entries.filter(function(e){ return e.teamId===team.id; });
-    if(!teamEntries.length) return;
-    var deCostas = cameraTeamId ? team.id===cameraTeamId : false;
-    var mons = teamEntries.map(function(e){
-      var t = findTrainer(e.trainerId);
-      var p = t && getPoke(e.trainerId, e.pokemonId);
-      return (t && p) ? battleStageMonHTML(t, p, e, deCostas, lastRoll) : '';
-    }).join('');
-    if(!mons) return;
-    var rowHTML = '<div class="battle-stage-row'+(deCostas?' battle-stage-row-near':' battle-stage-row-far')+'">'+
-      '<span class="battle-stage-team-label">'+esc(team.nome)+'</span>'+
-      '<div class="battle-stage-mons">'+mons+'</div>'+
-    '</div>';
-    (deCostas ? nearRowsHTML : farRowsHTML).push(rowHTML);
-  });
-  var rows = farRowsHTML.join('') + nearRowsHTML.join('');
-  if(!rows) return extraHTML;
-  return '<div class="battle-stage">'+rows+extraHTML+'</div>';
+  var activeTeams = teams.filter(function(team){ return entries.some(function(e){ return e.teamId===team.id; }); });
+  if(!activeTeams.length) return extraHTML;
+  var N = activeTeams.length;
+  var myIdx = cameraTeamId ? activeTeams.findIndex(function(team){ return team.id===cameraTeamId; }) : -1;
+  if(myIdx===-1) myIdx = 0;
+  var meTeam = activeTeams[myIdx];
+  var others = [];
+  for(var k=1;k<N;k++) others.push(activeTeams[(myIdx+k)%N]);
+
+  var meHTML = battleStageAnchorHTML(meTeam, entries, 50, 92, 1.15, true, lastRoll, 40);
+  var spread = others.length<=1 ? 0 : Math.min(64, 26+(others.length-1)*14);
+  var othersHTML = others.map(function(team, idx){
+    var theta = others.length<=1 ? 0 : (-spread + (2*spread)*idx/(others.length-1));
+    var rad = theta*Math.PI/180;
+    var closeness = 1-Math.cos(rad); /* 0 no centro (mais longe/menor), cresce nas pontas (mais perto/maior) */
+    var xPct = 50 + Math.sin(rad)*40;
+    var yPct = 6 + 16*closeness;
+    var scale = 0.55 + 0.22*closeness;
+    var z = 10 + Math.round(closeness*10);
+    return battleStageAnchorHTML(team, entries, xPct, yPct, scale, false, lastRoll, z);
+  }).join('');
+  if(!meHTML && !othersHTML) return extraHTML;
+  return '<div class="battle-stage">'+
+    '<div class="battle-stage-ground-wrap">'+
+      '<div class="battle-stage-ground"></div>'+
+      othersHTML+meHTML+
+    '</div>'+
+    extraHTML+
+  '</div>';
 }
 /* Câmera do Mestre (e de quem só está assistindo, sem Pokémon em campo):
    quem está jogando de verdade sempre vê o PRÓPRIO Time de costas
