@@ -11365,13 +11365,31 @@ function pvpDriveResolution(sala){
 /* Cura tudo (PV, Condição, Confusão, PP, Estágios) de quem participou --
    pedido do usuário ("após o término do combate, todos os Pokémon são
    curados") -- e libera as fichas (emBatalha=null) pra poder entrar numa
-   sala nova. Como sala.virtuais[...].pokemons guarda REFERÊNCIA direta pra
-   ficha de verdade (STATE.pvp.fichas[trainerId]), curar aqui já cura a
-   ficha real do jogador -- não existe cópia/instantâneo pra sincronizar
-   depois. */
+   sala nova.
+
+   Bug real achado pelo usuário ("alguns pokémon estão ficando presos em
+   batalhas... mesmo depois de sair"): o comentário antigo aqui dizia que
+   sala.virtuais[...].pokemons era uma REFERÊNCIA direta pra ficha de
+   verdade em STATE.pvp.fichas[trainerId] -- e É, mas só até o primeiro
+   round-trip pelo Firestore (queueSave, debounced 400ms). onSnapshot faz
+   STATE = doc.data() -- um deserialize do ZERO, sem noção nenhuma de
+   referência compartilhada -- então, passados uns 400ms do início da
+   batalha (tempo de sobra pra qualquer batalha real, que dura vários
+   turnos), sala.virtuais[vid].pokemons[i] e STATE.pvp.fichas[trainerId][j]
+   viram DUAS CÓPIAS independentes da mesma ficha original. Curar/destravar
+   só a cópia de dentro da sala (o que esse código fazia) nunca chegava na
+   ficha de verdade -- ela ficava com emBatalha=<sala já apagada> PRA
+   SEMPRE, sem ninguém nunca mais conseguir escolhê-la de novo. Fix: buscar
+   a ficha de verdade DE NOVO por id (pvpGetFicha, contra o STATE atual)
+   em vez de confiar que o objeto capturado na hora que a batalha começou
+   ainda é o mesmo. */
 function pvpHealAll(sala){
-  Object.keys(sala.virtuais||{}).forEach(function(vid){
-    (sala.virtuais[vid].pokemons||[]).forEach(function(p){
+  (sala.jogadores||[]).forEach(function(j){
+    var vid = pvpVirtualId(sala, j.trainerId);
+    var virtual = sala.virtuais && sala.virtuais[vid];
+    if(!virtual) return;
+    (virtual.pokemons||[]).forEach(function(stale){
+      var p = pvpGetFicha(j.trainerId, stale.id) || stale; /* fallback pro raro caso de a ficha ter sido apagada no meio da batalha */
       p.currentHP = null; p.status=''; p.statusTurns=0; p.confuso=false; p.flashFireBoost=false; p.carregando=null;
       resetStages(p);
       (p.moves||[]).forEach(function(m){ m.ppAtual = m.pp; });
@@ -11435,6 +11453,31 @@ DT.pvpAddFicha = function(){
   p.vinculo = 25;
   p.emBatalha = null;
   list.push(p);
+  mutate();
+};
+/* Botão de emergência (pedido do usuário: "Se não conseguir resolver isso
+   de forma automática, coloque uma forma de forçar a saída para cada
+   jogador") -- rede de segurança pro caso de uma ficha ficar travada
+   "Em batalha" mesmo depois da sala ter acabado (bug real corrigido em
+   pvpHealAll acima, mas isso cobre qualquer ficha que já tenha ficado
+   presa ANTES dessa correção, e qualquer outro jeito ainda não previsto
+   de uma trava sobrar). Só o dono da própria ficha pode liberar a
+   própria; passa por uma confirmação (mesmo padrão de "Remover?" já
+   usado no resto do site) porque, se a batalha ainda estiver mesmo
+   rolando de verdade em alguma sala, isso destrava a ficha sem tirar
+   ela de campo lá dentro -- então só usa se a ficha realmente ficou
+   perdida (a sala já não existe mais, ou já devia ter acabado). */
+DT.pvpAskForceRelease = function(pid){ SESSION.confirmForceReleasePvpFicha = pid; render(); };
+DT.pvpCancelForceRelease = function(){ SESSION.confirmForceReleasePvpFicha = null; render(); };
+DT.pvpForceReleaseFicha = function(pid){
+  if(SESSION.role!=='player') return;
+  var p = pvpGetFicha(SESSION.trainerId, pid);
+  if(!p) return;
+  p.emBatalha = null;
+  p.currentHP = null; p.status=''; p.statusTurns=0; p.confuso=false; p.flashFireBoost=false; p.carregando=null;
+  resetStages(p);
+  (p.moves||[]).forEach(function(m){ m.ppAtual = m.pp; });
+  SESSION.confirmForceReleasePvpFicha = null;
   mutate();
 };
 DT.pvpRemoveFicha = function(pid){
@@ -11646,6 +11689,14 @@ function pvpFichaCardHTML(p){
   var spriteHTML = spNum
     ? '<img class="poke-sprite" src="'+spriteUrl(spNum)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
     : '<div class="poke-sprite-placeholder">❔</div>';
+  /* Botão de emergência (pedido do usuário -- ver DT.pvpForceReleaseFicha
+     acima): só aparece quando a ficha está travada, com a mesma
+     confirmação "Sim/Não" já usada em outros lugares do site (ex.:
+     remover um Time da Arena). */
+  var lockedControl = !locked ? '<button class="btn-ghost btn-sm" onclick="DT.pvpRemoveFicha(\''+p.id+'\')">✕</button>'
+    : SESSION.confirmForceReleasePvpFicha===p.id
+      ? '<span class="muted" style="font-size:.7rem;">Forçar saída da batalha?</span> <button class="btn-danger btn-sm" onclick="DT.pvpForceReleaseFicha(\''+p.id+'\')">Sim</button> <button class="btn-ghost btn-sm" onclick="DT.pvpCancelForceRelease()">Não</button>'
+      : '<button class="btn-ghost btn-sm" title="Use só se essa ficha ficou presa numa batalha que já acabou/sumiu -- se a batalha ainda estiver rolando de verdade, espere ela terminar." onclick="DT.pvpAskForceRelease(\''+p.id+'\')">🔓 Forçar saída</button>';
   var head = '<div class="poke-head">'+
     '<div class="identity" onclick="DT.toggleExpand(\''+p.id+'\')" style="cursor:pointer; flex:1;">'+
       spriteHTML+
@@ -11654,7 +11705,7 @@ function pvpFichaCardHTML(p){
         '<div class="species">'+(p.especie?esc(p.especie)+' · ':'')+typeTags(p)+'</div>'+
       '</div>'+
     '</div>'+
-    (locked ? '' : '<button class="btn-ghost btn-sm" onclick="DT.pvpRemoveFicha(\''+p.id+'\')">✕</button>')+
+    lockedControl+
   '</div>';
   if(!expanded){
     return '<div class="poke-card">'+head+'<div class="poke-body"><span class="muted" style="font-size:.78rem;">PV máx.: '+max+'</span></div></div>';

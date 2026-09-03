@@ -176,6 +176,7 @@ O botão **"⚔️ PVP"** no topo abre um modo à parte da Arena — combates r�
 - **Sua vez**: escolha um Movimento (ou troque de Pokémon) a cada Rodada, direto no painel de comando que aparece na tela. Assim que os dois jogadores escolherem, a Rodada inteira resolve sozinha na hora — sem esperar ninguém avançar passo a passo.
 - **Desmaiou?** Escolha o próximo da sua lista, igual na Arena normal.
 - **🏳️ Desistir**: a qualquer momento, encerra a batalha na hora e declara o outro jogador vencedor — sem precisar terminar de verdade.
+- **Uma ficha ficou travada "Em batalha" mesmo sem batalha nenhuma rolando?** Isso não deveria mais acontecer (corrigimos a causa), mas se acontecer com uma ficha antiga: abra ela na lista de Fichas de PVP e clique em **"🔓 Forçar saída"** (pede confirmação antes de agir) — ela é destravada e curada na hora, do mesmo jeito que ficaria se a batalha tivesse terminado normal. Só use se a batalha já acabou/sumiu de verdade — se ela ainda estiver rolando, espere terminar.
 - **Fim de batalha**: o Time vencedor é anunciado e **todos os Pokémon envolvidos (dos dois lados) são curados automaticamente** — PV, Condição, Confusão e PP de volta ao máximo — prontos pra outra batalha na hora.
 
 ## Tema claro/escuro
