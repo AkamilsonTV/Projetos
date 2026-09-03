@@ -6050,6 +6050,22 @@ function typeModifier(moveTipo, defTipo1, defTipo2){
   });
   return {mod:mod, immune:immune};
 }
+/* Etiqueta de efetividade de Tipo pro Registro/quadro de dado da Arena
+   (pedido do usuário): 2x quando o Movimento é forte contra só 1 dos
+   Tipos do defensor, 4x quando é forte contra os 2; o mesmo pro lado
+   fraco (1/2x um Tipo resiste, 1/4x os dois resistem); Imune tem
+   prioridade sobre qualquer conta de mod (a Habilidade que causou a
+   imunidade pode nem aparecer no mod). Sem nada disso (mod 0 -- neutro,
+   ou um Tipo fraco cancelando o outro resistente), devolve null: o
+   Registro continua exatamente como sempre foi, sem etiqueta nenhuma. */
+function typeEffectivenessLabel(typeMod, immune){
+  if(immune) return 'Imune';
+  if(typeMod===2) return 'Super Efetivo (x2)';
+  if(typeMod>=4) return 'Super Efetivo (x4)';
+  if(typeMod===-2) return 'Pouco Efetivo (x1/2)';
+  if(typeMod<=-4) return 'Pouco Efetivo (x1/4)';
+  return null;
+}
 
 /* =================== HABILIDADES: MOTOR DE GATILHOS =================
    Só as Habilidades de ABILITY_MECH_SET (perto de habilidadesDaEspecie)
@@ -6179,6 +6195,14 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
   var tm = typeModifier(move.tipo, defPoke.tipo1, defPoke.tipo2);
   result.immune = tm.immune;
   result.abilityAbsorb = null;
+  /* Efetividade de Tipo pro Registro/quadro de dado -- puramente do dado
+     oficial (mod: +2 por Tipo fraco, -2 por Tipo resistido, somando os até
+     2 Tipos do defensor), ANTES de qualquer Habilidade mexer em tm.mod
+     (Thick Fat, Tinted Lens...) -- assim a etiqueta "Super/Pouco Efetivo"
+     mostra sempre a conta real do Tipo, sem ruído de Habilidade. Só faz
+     sentido pra Movimento de dano (Físico/Especial) -- Status não causa
+     dano variável por Tipo. */
+  result.typeMod = isDamaging ? tm.mod : undefined;
 
   /* Habilidades que bloqueiam/alteram o Tipo (Levitate, Wonder Guard,
      absorções, Thick Fat...) -- Mold Breaker/Teravolt/Turboblaze no
@@ -8802,6 +8826,7 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
         nome: pt.poke.apelido || pt.poke.especie || 'Pokémon',
         trainerNome: pt.trainer.name,
         dano: pt.result.dano||0, immune: !!pt.result.immune,
+        typeMod: pt.result.typeMod,
         fainted: pt.info.fainted, statusApplied: pt.info.statusApplied
       };
     })
@@ -9313,6 +9338,8 @@ function rollSummaryLines(lr){
       lines.push('Sem efeito — imune a esse Tipo.');
     } else {
       lines.push(a.dano ? ('Dano: <strong>'+a.dano+'</strong>'+(lr.crit?' · Crítico!':'')) : (lr.crit?'Crítico!':'Acertou.'));
+      var eff = typeEffectivenessLabel(a.typeMod, false);
+      if(eff) lines.push('<strong>'+esc(eff)+'</strong>');
       if(a.fainted) lines.push('😵 Desmaiou!');
     }
     var fx = effectOutcomeText(lr, a);
@@ -9322,7 +9349,11 @@ function rollSummaryLines(lr){
     alvos.forEach(function(a){
       var bits = [];
       if(a.immune) bits.push('imune');
-      else if(a.dano) bits.push('dano '+a.dano);
+      else {
+        if(a.dano) bits.push('dano '+a.dano);
+        var effBit = typeEffectivenessLabel(a.typeMod, false);
+        if(effBit) bits.push(effBit);
+      }
       if(a.fainted) bits.push('😵 desmaiou');
       if(a.statusApplied) bits.push((STATUS_ICONS[a.statusApplied]||'💫')+' '+esc(ailmentLabel(a.statusApplied)));
       lines.push('• '+esc(a.nome)+(bits.length ? (': '+bits.join(', ')) : ''));
@@ -9345,12 +9376,21 @@ function rollLogLine(lr){
   } else if(alvos.length===1){
     var a = alvos[0];
     if(a.immune) parts.push('imune');
-    else if(a.dano) parts.push('dano '+a.dano);
+    else {
+      if(a.dano) parts.push('dano '+a.dano);
+      var eff = typeEffectivenessLabel(a.typeMod, false);
+      if(eff) parts.push(eff);
+    }
     if(a.fainted) parts.push('😵 desmaiou');
   } else if(alvos.length>1){
     parts.push(alvos.map(function(a){
       var bits = [];
-      if(a.immune) bits.push('imune'); else if(a.dano) bits.push('dano '+a.dano);
+      if(a.immune) bits.push('imune');
+      else {
+        if(a.dano) bits.push('dano '+a.dano);
+        var effBit = typeEffectivenessLabel(a.typeMod, false);
+        if(effBit) bits.push(effBit);
+      }
       if(a.fainted) bits.push('desmaiou');
       return esc(a.nome)+(bits.length?(' '+bits.join('/')):'');
     }).join('; '));

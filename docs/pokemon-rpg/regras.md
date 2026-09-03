@@ -293,6 +293,8 @@ Dano mínimo de um golpe que acerte: **1** (mesmo com resultado zero/negativo). 
 - **Pouco Efetivo**: −2 por resistência (duas resistências = −4). Fraqueza e resistência podem se cancelar.
 - **Imunidade**: 0 de dano, ignora a regra de dano mínimo. Também bloqueia qualquer Efeito Percentual do Movimento (Cap. 14) contra esse alvo — um Pokémon imune ao Tipo do golpe não sofre a Condição de status que ele poderia causar.
 
+Na Arena do site, isso já aparece etiquetado nas rolagens (Registro e quadro de dado), pra ninguém precisar decorar o quadro de Tipos na hora: **"Super Efetivo (x2)"** quando o Movimento é forte contra 1 dos Tipos do defensor, **"Super Efetivo (x4)"** quando é forte contra os 2; do lado oposto, **"Pouco Efetivo (x1/2)"** com 1 Tipo resistindo, **"Pouco Efetivo (x1/4)"** com os 2 resistindo; e **"Imune"** quando o Tipo bloqueia o golpe por completo. Sem nada disso — neutro, ou uma fraqueza cancelando uma resistência (Cap. 13) — a rolagem continua sem etiqueta nenhuma, igual sempre foi.
+
 ## Capítulo 14 — Efeitos Percentuais
 
 Usa **1d10**:
