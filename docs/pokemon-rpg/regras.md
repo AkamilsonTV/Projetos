@@ -1,0 +1,543 @@
+# Pokémon RPG — Livro de Regras (Versão 0.2 Consolidada)
+
+> Sistema em desenvolvimento. Quando uma regra desta versão contradizer uma versão anterior, vale a regra apresentada neste documento.
+
+## Capítulo 1 — A proposta do sistema
+
+Pokémon RPG foi desenvolvido para permitir aventuras no universo Pokémon utilizando números pequenos, dados simples e cálculos rápidos.
+
+O objetivo não é reproduzir todas as fórmulas dos jogos eletrônicos. Os valores oficiais servem como referência para preservar as diferenças entre espécies, movimentos e tipos, mas são convertidos para escalas adequadas ao RPG de mesa.
+
+A regra fundamental é simples: **simplificar Pokémon sem apagar aquilo que torna cada Pokémon diferente.**
+
+O sistema utiliza principalmente **1d6** para testes de combate e **1d10** para efeitos percentuais.
+
+Não existem níveis individuais para Pokémon. O crescimento é dividido entre três elementos:
+
+- **Nível do Treinador** — desenvolvimento geral do personagem; determina os Movimentos que seus Pokémon conseguem utilizar.
+- **Vínculo** — relação entre um Treinador e cada Pokémon individualmente; determina quanto dos atributos do Treinador o Pokémon consegue aproveitar.
+- **Maturidade** — desenvolvimento individual do Pokémon em sua forma atual, principalmente em relação à evolução.
+
+## Capítulo 2 — O Treinador
+
+### 2.1 Nível do Treinador
+
+Pokémon não possuem níveis individuais (não existe "Pikachu Nível 15"). O nível pertence exclusivamente ao Treinador. **Nível máximo: 16.**
+
+### 2.2 Os seis Atributos
+
+| Treinador | Pokémon |
+|---|---|
+| Vigor | HP |
+| Vontade | Ataque |
+| Resistência | Defesa |
+| Mental | Ataque Especial |
+| Foco | Defesa Especial |
+| Agilidade | Velocidade |
+
+Cada Atributo do Treinador vai de **0 a 5** (cinco é o máximo pela progressão normal).
+
+### 2.3 Progressão
+
+- Nível 1: todos os Atributos começam em 0; o Treinador recebe **1 ponto livre**.
+- A cada novo nível, +1 ponto.
+- **Níveis ímpares**: o jogador escolhe livremente onde colocar o ponto.
+- **Níveis pares**: rola **1d6** — 1 Vigor, 2 Vontade, 3 Resistência, 4 Mental, 5 Foco, 6 Agilidade. Se o atributo sorteado já tiver 5 pontos, role novamente.
+
+No Nível 16 o Treinador terá recebido 16 pontos (oito escolhidos, oito por dado).
+
+### 2.4 Progressão de Nível
+
+A cada **4 batalhas completas vencidas**, o Treinador sobe 1 Nível automaticamente.
+
+Usa a mesma definição de "batalha completa vencida" do Vínculo (3.2): basta o Treinador ter vencido a batalha — não precisa dar o golpe final. O contador de vitórias é acompanhado pelo Mestre e não aparece na ficha do Treinador; quando chega a 4, o novo Nível aparece na ficha do Treinador e o contador volta a 0, recomeçando a contagem até a próxima subida.
+
+O Mestre também pode conceder um Nível fora dessa contagem por motivo narrativo, assim como já pode fazer com Vínculo (3.2).
+
+## Capítulo 3 — Vínculo
+
+Vínculo representa confiança, convivência e sintonia entre Pokémon e Treinador. Cada Pokémon possui seu próprio Vínculo, escala **0–25**.
+
+### 3.2 Obtendo Vínculo
+
+Ao vencer uma batalha completa, cada Pokémon que participou (basta ter entrado em campo) recebe **+1 Vínculo**, no máximo +1 por batalha. Derrotas não concedem nem retiram Vínculo. Perdas de Vínculo só acontecem por motivos narrativos. O Mestre pode conceder Vínculo adicional pela história.
+
+### 3.3 Vínculo e Atributos
+
+A cada 5 pontos de Vínculo, libera-se 1 ponto adicional dos Atributos do Treinador:
+
+| Vínculo | Atributos liberados |
+|---|---|
+| 0–4 | 0 |
+| 5–9 | 1 |
+| 10–14 | 2 |
+| 15–19 | 3 |
+| 20–24 | 4 |
+| 25 | 5 |
+
+O Vínculo é um **limite de utilização**: se libera 3 pontos mas o Treinador só tem 2 no atributo correspondente, o Pokémon recebe apenas +2.
+
+### 3.4 Natural e Efetivo
+
+Atributo Natural (da espécie) + pontos do Treinador liberados pelo Vínculo = **Atributo Efetivo**.
+
+Exemplo: Ataque Natural 7, Vontade do Treinador 5, Vínculo 15 (libera 3) → Ataque Efetivo = 10.
+
+## Capítulo 4 — Maturidade
+
+Maturidade representa o desenvolvimento individual do Pokémon em sua forma evolutiva atual, independente do Nível do Treinador e do Vínculo. Cada forma terá seu próprio ganho de Maturidade por combate e, quando aplicável, requisito de Maturidade para evolução (**tabela definitiva ainda em desenvolvimento**).
+
+Participar de uma batalha completa concede Maturidade mesmo em derrota. O Mestre pode conceder Maturidade pela narrativa.
+
+### 4.1 Evolução e reinício
+
+Ao evoluir, a Maturidade volta para 0 e a nova forma inicia seu próprio desenvolvimento. **O Vínculo não é reiniciado.**
+
+## Capítulo 5 — Evolução
+
+Pokémon treinados evoluem automaticamente ao cumprir todos os requisitos aplicáveis (Nível do Treinador, Vínculo, Maturidade, Pedras ou condições específicas — nem toda evolução usa todos). O Treinador pode usar um dispositivo apropriado para impedir a evolução; a recusa do próprio Pokémon é narrativa, sem regra própria.
+
+Evoluções originalmente por troca são adaptadas via Pedras ou outras condições. Pokémon selvagens podem existir naturalmente em formas evoluídas.
+
+Após evoluir, os Atributos Naturais são substituídos pelos da nova espécie.
+
+## Capítulo 6 — Atributos dos Pokémon
+
+Os seis Atributos Naturais (HP, Ataque, Defesa, Ataque Especial, Defesa Especial, Velocidade) derivam dos Base Stats oficiais.
+
+### 6.1 Conversão (Base Stat → RPG)
+
+| Base Stat | RPG | Base Stat | RPG |
+|---|---|---|---|
+| 1–19 | 1 | 130–139 | 13 |
+| 20–29 | 2 | 140–149 | 14 |
+| 30–39 | 3 | 150–164 | 15 |
+| 40–49 | 4 | 165–179 | 16 |
+| 50–59 | 5 | 180–199 | 17 |
+| 60–69 | 6 | 200–219 | 18 |
+| 70–79 | 7 | 220–239 | 19 |
+| 80–89 | 8 | 240+ | 20 |
+| 90–99 | 9 | | |
+| 100–109 | 10 | | |
+| 110–119 | 11 | | |
+| 120–129 | 12 | | |
+
+Sem arredondamento (49 vale 4, 50 vale 5).
+
+### 6.2 Natureza
+
+Cada Pokémon tem uma Natureza oficial (25 no total — 5 delas neutras). Aqui ela vira um ajuste fixo, não porcentagem: **+1 num Atributo Efetivo e −1 em outro** (nunca em PV) — as 5 neutras (Hardy, Docile, Serious, Bashful, Quirky) não fazem nada. Só o Mestre escolhe/muda a Natureza de um Pokémon.
+
+### 6.3 Habilidade
+
+Cada Pokémon tem uma Habilidade oficial da própria espécie (normal ou oculta). Só o Mestre escolhe/muda, restrito às Habilidades que aquela espécie realmente pode ter.
+
+Das 373 Habilidades oficiais, **93 têm gatilho automático de verdade** no motor de batalha — escolhidas pra cobrir pelo menos uma Habilidade mecânica em 85,6% de todos os 1025 Pokémon, sem inventar sistemas que o jogo ainda não tem (clima, terreno, item equipado, flinch, golpes de hit múltiplo). O seletor do Mestre prioriza essas 93 sempre que a espécie tiver alguma entre as reais dela; só cai pra lista completa (aí sim, só texto de referência, sem efeito automático) quando a espécie não tem nenhuma — nenhuma Habilidade real de nenhuma espécie foi excluída do jogo, só do automatismo.
+
+O que cada categoria de gatilho faz (todas convertidas/equilibradas pro nosso sistema, com valores fixos pequenos em vez das porcentagens/multiplicadores oficiais):
+
+- **No contato**: quem apanha de um golpe Físico que faz contato pode devolver algo automaticamente — status (Static, Poison Point, Flame Body, Effect Spore — 30% cada, 1d10), dano fixo (Rough Skin, Iron Barbs — 1/8 do PV Máximo de quem bateu), ou queda de Estágio (Gooey, Tangling Hair). "Faz contato" é uma aproximação: todo Movimento Físico conta, menos uma lista curada dos golpes à distância mais conhecidos (Terremoto, pedras/ossos arremessados, explosões...) — a PokeAPI não marca isso por Movimento, então o Mestre sempre pode corrigir na mesa se um golpe específico não fizer sentido na lista.
+- **Imunidade/absorção de Tipo**: Levitate (imune a Terra), Water Absorb/Volt Absorb (imune, cura 1/4 do PV Máximo), Sap Sipper/Storm Drain/Lightning Rod (imune, +1 Estágio), Flash Fire (imune a Fogo, próximo golpe de Fogo dela ganha bônus), Wonder Guard (só passa golpe super efetivo), Soundproof (imune a golpe baseado em som). Scrappy/Tinted Lens fazem o oposto — furam uma imunidade/resistência do outro lado. Mold Breaker/Teravolt/Turboblaze ignoram todas essas do oponente (não ignoram Sturdy).
+- **Sobreviver/reduzir dano**: Sturdy (com o PV cheio, nunca desmaia num golpe só — fica com 1), Shell Armor/Battle Armor (nunca sofre Crítico), Fluffy (metade do dano de contato, dobro do de Fogo), Heatproof/Thick Fat (metade/resistência extra contra Fogo e, no caso de Thick Fat, também Gelo).
+- **Bônus de dano do atacante**: Technician (golpe fraco), Iron Fist/Strong Jaw (soco/mordida — listas curadas), Sheer Force (perde o efeito colateral do golpe, ganha poder fixo), Sniper (Crítico), Adaptability (STAB em dobro), Overgrow/Blaze/Torrent/Swarm (PV próprio ≤ 1/3 do máximo + Tipo do golpe bate com a Habilidade).
+- **Bônus fixo de Atributo Efetivo**: Guts (com alguma Condição), Hustle/Huge Power/Pure Power (sempre), Defeatist (PV ≤ metade do máximo, penalidade), Protosynthesis (só sob Sol Forte, Cap. 26.9)/Quark Drive (sempre, no Atributo mais alto) — entram direto no Atributo Efetivo, aparecem na própria ficha, não só em combate.
+- **Precisão/Crítico**: Compound Eyes (mais fácil acertar), Hustle (golpe Físico mais difícil de acertar), Wonder Skin (Movimento de Status mais difícil de acertar nela), No Guard (sempre acerta, dos dois lados), Unaware (ignora o Estágio do lado oposto — nunca o próprio), Serene Grace (dobra a Chance do efeito colateral).
+- **Entrada em campo**: Intimidate (−1 Ataque em todo mundo do time oposto já em campo) — Clear Body/White Smoke/Full Metal Body/Hyper Cutter/Inner Focus/Own Tempo/Oblivious/Scrappy bloqueiam, Contrary/Guard Dog revertem pra +1, Rattled ainda ganha +1 Velocidade, Defiant/Competitive ganham +2 Ataque/Ataque Especial em cima da própria queda. Download (+1 Ataque ou Ataque Especial, comparando a Defesa e a Defesa Especial de quem já está em campo do outro time).
+- **Saída de campo** (troca deliberada, não fuga nem desmaio): Regenerator (cura 1/3 do PV Máximo), Natural Cure (some com a Condição).
+- **Fim do próprio turno**: Speed Boost (+1 Velocidade), Shed Skin (30% de curar a própria Condição), Ice Body (cura 1/16 do PV Máximo, só sob Granizo)/Rain Dish (idem, só sob Chuva — Cap. 26.9), Healer (30% de curar a Condição de um aliado), Magic Guard (bloqueia o dano de status por turno) e Poison Heal (vira cura em vez do dano de Veneno).
+- **Ao desmaiar o oponente**: Moxie (+1 Ataque), Beast Boost (+1 no Atributo mais alto). Aftermath (dano em quem desmaiou ela no contato).
+- **Condição espelhada**: Synchronize (a Condição que um golpe aplicou nela também pega em quem atacou), Poison Touch (Habilidade de quem ataca — 30% de envenenar no contato), Shield Dust (bloqueia o efeito colateral do próprio golpe que ela sofreu, sem bloquear o dano), Immunity/Limber/Insomnia/Vital Spirit/Water Veil/Magma Armor/Sweet Veil/Own Tempo (nunca pegam a Condição correspondente); Leaf Guard faz o mesmo (as 5 Condições de uma vez), mas só sob Sol Forte (Cap. 26.9).
+- **Custo de PP**: Pressure — quem tem ela custa 2 PP em vez de 1 pra quem usar um Movimento nela (ver Cap. 8.6).
+
+Sem exceção: nenhuma dessas 93 dá algum efeito além do listado acima (sem item equipado, sem terreno) — é conversão homebrew pro nosso sistema, pensada pra ficar equilibrada com o resto do jogo, não uma cópia 1:1 do jogo oficial. Quatro delas (Leaf Guard, Protosynthesis, Ice Body, Rain Dish) dependem do Clima certo pra funcionar, agora que ele existe de verdade (Cap. 26.9) — as outras 89 continuam sempre ativas.
+
+## Capítulo 7 — Pontos de Vida
+
+```
+PV Máximo = 10 + (HP Efetivo × 3)
+```
+
+Exemplo: HP Natural 6 + Vigor efetivo 3 → HP Efetivo 9 → PV = 10 + 27 = 37. Cada ponto de Vigor efetivamente aplicado vale +3 PV Máximos.
+
+## Capítulo 8 — Movimentos
+
+### 8.1 Quatro Movimentos
+
+Cada Pokémon pode possuir **4 Movimentos** — limite disponível em combate.
+
+### 8.2 Aprendizado pelo Nível do Treinador
+
+| Nível oficial | Treinador |
+|---|---|
+| 1–5 | 1 |
+| 6–10 | 2 |
+| 11–15 | 3 |
+| 16–20 | 4 |
+| 21–25 | 5 |
+| 26–30 | 6 |
+| 31–35 | 7 |
+| 36–40 | 8 |
+| 41–45 | 9 |
+| 46–50 | 10 |
+| 51–55 | 11 |
+| 56–60 | 12 |
+| 61–70 | 13 |
+| 71–80 | 14 |
+| 81–90 | 15 |
+| 91–100 | 16 |
+
+### 8.3 Pokémon recém-capturados
+
+Regra de acesso imediato: ao ser capturado, o Pokémon já possui todos os Movimentos naturais cujo requisito seja ≤ ao Nível atual do Treinador — independe de Vínculo e Maturidade (o Vínculo continua necessário só para aproveitar os Atributos).
+
+### 8.4 Outras formas de aprender um Movimento
+
+Além do aprendizado natural por Nível (8.2), um Pokémon pode ter um Movimento vindo de:
+
+- **Evo**: ganho automaticamente ao evoluir pra aquela forma (não depende de Nível do Treinador nem de Maturidade).
+- **TM**: ensinado por Fita de Movimento, desde que a espécie consiga aprender aquele Movimento por essa via nos jogos oficiais — sem depender do Nível do Treinador.
+- **Egg**: ensinado por Breeding, desde que a espécie consiga aprender aquele Movimento por essa via nos jogos oficiais.
+
+Um Movimento vindo de qualquer uma dessas formas ocupa um dos 4 slots normalmente, igual a um aprendido por Nível. **HM não existe neste sistema** — o mecanismo foi removido dos jogos oficiais a partir da Geração 9 (já vinha sendo substituído por Pokémon de Montaria desde a Geração 7).
+
+### 8.5 Alvo do Movimento
+
+Cada Movimento tem uma lógica própria de quem ele pode atingir — a mesma dos jogos oficiais, não é livre escolha do jogador:
+
+- **Em si mesmo** (ex.: Swords Dance, Rest): só o próprio usuário. Não pode ser usado em outro Pokémon.
+- **Só aliado** (ex.: Helping Hand): só um Pokémon do mesmo Time, nunca o próprio usuário nem um inimigo.
+- **Você ou aliado** (ex.: Acupressure): o usuário ou um Pokémon do mesmo Time.
+- **Só inimigo** (ex.: Counter): só um Pokémon de outro Time.
+- **Qualquer um** (a maioria dos Movimentos de dano, ex.: Thunderbolt, Tackle): qualquer outro Pokémon em campo, aliado ou inimigo — igual às batalhas em dupla dos jogos oficiais, nada impede mirar no próprio time.
+- **Área** (ex.: Earthquake, Discharge): atinge todo mundo de uma categoria de uma vez só — pode incluir aliados junto com inimigos, dependendo do Movimento (ver abaixo). Não tira ninguém como alvo manualmente — é automático.
+- **Campo** (ex.: Spikes, Sticky Web): não mira em nenhum Pokémon específico — afeta o campo/lado da batalha. Mecânica ainda em aberto (Cap. 25), exceto os Movimentos de clima (Cap. 26.9), Stealth Rock (Cap. 26.6) e Toxic Spikes (Cap. 26.6-bis), já implementados. Os dois são a exceção quanto ao ALVO: embora sejam conceitualmente um efeito de campo, no site pedem um alvo — "só inimigo" — pra saber EM QUAL lado plantar a armadilha.
+
+Um Movimento de Área pode ser: todos os inimigos, todos os aliados (sem contar você), você e seus aliados, todo mundo menos você, ou literalmente todo mundo em campo — depende do Movimento específico, seguindo o mesmo dado oficial de Tipo/Poder/Precisão.
+
+**Rolagem de um Movimento de Área**: a Precisão/Crítico (1d6, Cap. 10/11) e o Efeito Percentual (1d10, Cap. 14) são **uma rolagem só pro uso inteiro**, valendo igual pra todos os alvos atingidos — só o Dano (Cap. 12/13) é calculado de novo pra cada um, porque depende do Tipo e dos Atributos de cada defensor. Isso é uma simplificação deliberada pra esse sistema (o Cap. 25 já lista "múltiplos alvos" como mecânica sem regra própria) — sem isso, seria uma rolagem inteira repetida pra cada Pokémon atingido, toda vez.
+
+### 8.6 PP (Pontos de Poder)
+
+Cada Movimento tem um **PP Máximo** oficial (de 1 a 40, dependendo do Movimento — vem direto do jogo original) e um **PP Atual**, que começa igual ao Máximo e some conforme o Movimento é usado. Escolher/trocar um Movimento sempre enche o PP dele de novo.
+
+- **Custo normal: 1 PP por uso.** Se o alvo (mesmo você mesmo, num Movimento que mira em si próprio) tiver a Habilidade **Pressure**, custa **2 PP** em vez de 1.
+- **PV zerado é diferente de PP zerado**: um Movimento com PP Atual em 0 não pode mais ser escolhido — o jogo bloqueia e avisa. Não existe Struggle automático nesse sistema: se o Pokémon ficar sem PP em nenhum dos 4 Movimentos, é o Mestre quem decide o que acontece (pode narrar como Struggle mesmo, adjudicando o dano na mão — Cap. 25).
+- **PP Atual e PP Máximo só o Mestre edita direto na ficha** — igual os Estágios (Cap. 15.3), o Treinador só vê os números, pra evitar erro de contagem ou trapaça. A forma normal do jogador recuperar PP é usando um item de Recuperação de PP (8.6.1) ou descansando/indo ao Centro Pokémon fora de batalha, com o Mestre aplicando.
+- **Movimento sem PP cadastrado nunca trava**: se o nome digitado não bater com nenhum da base oficial (homebrew do Mestre), o PP fica em 0/0 e simplesmente não é controlado — nunca impede o Movimento de ser usado.
+
+### 8.6.1 Itens de Recuperação de PP
+
+Seis itens oficiais (categoria "Recuperação de PP" do catálogo, Cap. 25) recuperam ou aumentam PP automaticamente, sem o Mestre precisar calcular nada na mão:
+
+- **Ether**: recupera 10 PP de um Movimento escolhido.
+- **Max Ether**: enche o PP Atual desse Movimento até o Máximo.
+- **Elixir**: recupera 10 PP de cada um dos 4 Movimentos de uma vez.
+- **Max Elixir**: enche o PP Atual dos 4 Movimentos até o Máximo, de uma vez.
+- **PP Up**: aumenta o PP Máximo de um Movimento em 20% do valor original (mínimo +1), até um teto de +60% (equivalente a 3 usos) — o PP Atual sobe na mesma medida ganha no Máximo, sem forçar o Máximo cheio.
+- **PP Max**: aplica de uma vez o teto de +60% do PP Up num Movimento (equivalente a usar 3 PP Up de uma vez), com o mesmo ganho refletido no Atual.
+
+PP Up e PP Max sempre usam o PP Máximo **original** do Movimento (antes de qualquer PP Up já aplicado) como referência do teto — não empilha em cima de outro PP Up pra passar de +60%. Ether/PP Up/PP Max pedem escolher **um** dos 4 Movimentos do Pokémon; Elixir/Max Elixir afetam os 4 de uma vez. Usados pela aba **Cura** da ficha ou pelo menu **Usar Item** da Arena, igual aos demais itens de cura (Cap. 25) — consomem 1 unidade e alteram o PP de verdade, sem o Mestre precisar calcular nada.
+
+## Capítulo 9 — Poder dos Movimentos
+
+| Power oficial | Poder RPG |
+|---|---|
+| 1–30 | 1 |
+| 31–50 | 2 |
+| 51–70 | 3 |
+| 71–90 | 4 |
+| 91–110 | 5 |
+| 111–130 | 6 |
+| 131–150 | 7 |
+| 151–170 | 8 |
+| 171–199 | 9 |
+| 200+ | 10 |
+
+Exemplos: Tackle 40 → 2, Flamethrower 90 → 4, Earthquake 100 → 5, Close Combat 120 → 6, Hyper Beam 150 → 7, Explosion 250 → 10. Movimentos de poder variável recebem adaptação própria.
+
+## Capítulo 10 — Rolagem de Ataque
+
+Dado básico: **1d6**.
+
+| Precisão | Acerto |
+|---|---|
+| 100% | Automático em condições normais |
+| 90–99% | 2–6 |
+| 70–89% | 3–6 |
+| 50–69% | 4–6 |
+| Abaixo de 50% | 5–6 |
+
+### 10.1 Precisão 100%
+
+Acerta automaticamente; ainda assim role 1d6 só para crítico (1–5 normal, 6 crítico). Resultado 1 não provoca falha.
+
+### 10.2 Falha Natural
+
+O natural 1 só é Falha Natural quando a Precisão Base original é < 100%. Um movimento originalmente 100% nunca adquire Falha Natural, mesmo com Precisão reduzida ou Evasão aumentada depois.
+
+## Capítulo 11 — Crítico
+
+Em movimentos com dano: **6 natural = crítico**, concede **+4 ao Dano Final** (não multiplica). Movimentos sem dano não possuem crítico — um 6 não concede bônus.
+
+## Capítulo 12 — Dano
+
+- Físico: `Ataque Efetivo + Poder − Defesa Efetiva = Dano Base`
+- Especial: `Ataque Especial Efetivo + Poder − Defesa Especial Efetiva = Dano Base`
+
+Dano mínimo de um golpe que acerte: **1** (mesmo com resultado zero/negativo). Imunidade é exceção.
+
+## Capítulo 13 — Tipos
+
+- **STAB**: movimento compartilha tipo com o Pokémon → +1 Dano Final.
+- **Super Efetivo**: +2 Dano Final por tipo vulnerável do defensor (fraqueza dupla = +4).
+- **Pouco Efetivo**: −2 por resistência (duas resistências = −4). Fraqueza e resistência podem se cancelar.
+- **Imunidade**: 0 de dano, ignora a regra de dano mínimo. Também bloqueia qualquer Efeito Percentual do Movimento (Cap. 14) contra esse alvo — um Pokémon imune ao Tipo do golpe não sofre a Condição de status que ele poderia causar.
+
+Na Arena do site, isso já aparece etiquetado nas rolagens (Registro e quadro de dado), pra ninguém precisar decorar o quadro de Tipos na hora: **"Super Efetivo (x2)"** quando o Movimento é forte contra 1 dos Tipos do defensor, **"Super Efetivo (x4)"** quando é forte contra os 2; do lado oposto, **"Pouco Efetivo (x1/2)"** com 1 Tipo resistindo, **"Pouco Efetivo (x1/4)"** com os 2 resistindo; e **"Imune"** quando o Tipo bloqueia o golpe por completo. Sem nada disso — neutro, ou uma fraqueza cancelando uma resistência (Cap. 13) — a rolagem continua sem etiqueta nenhuma, igual sempre foi.
+
+## Capítulo 14 — Efeitos Percentuais
+
+Usa **1d10**:
+
+| Chance | Resultado |
+|---|---|
+| 10% | 1 |
+| 20% | 1–2 |
+| 30% | 1–3 |
+| 40% | 1–4 |
+| 50% | 1–5 |
+| 60% | 1–6 |
+| 70% | 1–7 |
+| 80% | 1–8 |
+| 90% | 1–9 |
+| 100% | Automático |
+
+Se o ataque foi Crítico e tem efeito percentual, teste normalmente; se falhar, o crítico concede uma **segunda tentativa** de 1d10. Se ambas falharem, o efeito não ocorre.
+
+## Capítulo 15 — Estágios, Buffs e Debuffs
+
+Cada estágio = **+1 ou −1** no atributo (sem multiplicadores/divisões). Modificadores de estágio são aplicados diretamente ao atributo antes do cálculo final de dano. Precisão e Evasão seguem o mesmo conceito.
+
+### 15.1 Aplicação automática pelo Movimento
+
+Cada Movimento que altera Estágio nos jogos oficiais (Swords Dance, Growl, Close Combat, etc.) tem sua própria mudança de Estágio, direção e Chance — a Arena do site aplica automaticamente ao resolver o Movimento, com o mesmo 1d10 do Efeito Percentual (Cap. 14), rolado à parte do teste de Condição de status.
+
+- **Movimento em você mesmo** (ex.: Swords Dance) ou golpe de dano com efeito colateral **no próprio atacante** (ex.: Close Combat baixa Defesa/Def. Especial de quem usou, não de quem apanhou): o Estágio sempre muda em quem usou o Movimento.
+- **Golpe de dano com efeito colateral no defensor** (ex.: Growl, Icy Wind): o Estágio muda em quem foi atingido.
+- Uma queda de Estágio vinda de um **oponente** respeita as mesmas reações automáticas de Habilidade do Cap. 6.3: Clear Body/White Smoke/Full Metal Body/Hyper Cutter/Inner Focus/Own Tempo/Oblivious/Scrappy bloqueiam, Contrary reverte pra alta, e Defiant/Competitive ainda ganham +2 Ataque/Ataque Especial em cima da própria queda — igual já valia só pra Intimidate, agora vale pra qualquer Movimento que baixe Estágio de um oponente. Shield Dust bloqueia só o efeito colateral de um golpe que **o próprio Shield Dust sofreu de um oponente** — nunca bloqueia um Movimento que ele mesmo usa em si próprio.
+
+### 15.2 Estágios voltam a zero ao sair de campo
+
+Igual nos jogos oficiais: assim que um Pokémon sai do campo de batalha — desmaia, é trocado ou foge com sucesso — todos os Estágios dele (Ataque, Defesa, Ataque Especial, Defesa Especial, Velocidade, Precisão, Evasão) voltam a **0** automaticamente. Um Pokémon que volta a campo depois (de novo na Arena, ou reativado por um Reviver) começa sempre do zero, sem herdar buff/debuff de antes.
+
+### 15.3 Quem edita
+
+Os Estágios são geridos pelo sistema, igual o PP (Cap. 8.6) — **só o Mestre edita um Estágio direto na ficha**, pra ajuste manual ou correção. O Treinador só vê os números, sem poder mexer neles: toda mudança de Estágio durante a batalha acontece sozinha, pelo Movimento que a causou (15.1) ou pelo reset automático ao sair de campo (15.2).
+
+## Capítulo 16 — Iniciativa e Turnos
+
+Age primeiro quem tem maior **Velocidade Efetiva**; empate → compara **Velocidade Natural**; empate de novo → cada jogador rola 1d6, maior vence (novo empate = nova rolagem, turno a turno se necessário).
+
+**Na Arena do site, ninguém escolhe "por vez": todo mundo escolhe a própria ação ao mesmo tempo, e depois o Mestre vai resolvendo a Rodada na mão, um Pokémon de cada vez.** O Mestre clica "▶️ Iniciar Batalha" pra abrir uma Rodada — a partir daí, cada Treinador com um Pokémon em campo pode clicar no próprio Pokémon e escolher Atacar/Usar Item/Trocar/Fugir livremente, sem esperar ninguém; o Mestre pode escolher por qualquer entrada que ainda não tenha escolhido, mas nem ele reabre uma escolha já feita. **Antes de "Iniciar Batalha" (ou entre uma Rodada e outra, no instante em que a anterior termina de resolver e a próxima ainda está sendo montada), ninguém consegue agir — nem o Mestre**: a única oportunidade de agir é durante a seleção de uma Rodada de verdade, já com o Pokémon dele em campo. Assim que todo mundo que podia escolher já escolheu, a Rodada passa sozinha pra fase de **resolução** — o Mestre também pode forçar isso antes, se alguém sumiu ou travou e ninguém mais vai escolher. Só que resolver, a partir daí, é **manual**: o Mestre clica "▶️ Avançar" pra processar um Pokémon por vez, na ordem descrita no Capítulo 17 — sem nenhum avanço automático nem temporizador, no ritmo que a mesa quiser. Assim que o Mestre resolve o último Pokémon pendente, a **próxima Rodada já é calculada e aberta pra seleção sozinha**, sem precisar de mais nenhum clique — isso se repete até a batalha acabar.
+
+Um Pokémon que entra de surpresa **depois** que uma Rodada já começou a ser escolhida — o Mestre metendo alguém novo na Arena no meio do caminho — não entra nela: ele só aparece como participante normal a partir da **próxima** fase de seleção. Uma troca voluntária durante a própria escolha de alguém (Cap. 18, escolher "Trocar" como ação) continua consumindo a ação inteira como sempre — quem entra nesse caso só age a partir da Rodada seguinte.
+
+## Capítulo 17 — Prioridade e Ordem de Resolução
+
+Movimentos preservam seus valores oficiais de Prioridade (+1, +2, negativos quando aplicável).
+
+### 17.1 Ordem de resolução de uma Rodada
+
+Depois que todo mundo escolheu a própria ação (Capítulo 16), o site resolve a Rodada inteira sozinho, nesta ordem, sem perguntar nada a ninguém no meio do caminho:
+
+1. **Ações que não são Ataque primeiro** — Trocar de Pokémon, Usar Item e Fugir sempre resolvem antes de qualquer Ataque, **mesmo que esse Ataque tenha Prioridade**. Entre elas, quem tiver maior Velocidade Efetiva resolve primeiro (empate → Velocidade Natural → 1d6, igual sempre).
+2. **Depois, os Ataques** — entre eles, **Prioridade maior resolve primeiro**; em empate de Prioridade, decide a Velocidade Efetiva (depois Natural, depois 1d6 em empate total).
+
+### 17.2 Sem negociação nenhuma
+
+Como todo mundo já escolheu a própria ação com antecedência (Cap. 16), não existe mais nenhuma pergunta de "quer usar sua Prioridade?" no meio da resolução — Prioridade simplesmente entra na frente sozinha, na ordem descrita acima. Um Movimento de Prioridade continua tão útil quanto sempre foi (ainda decide quem age primeiro entre dois Ataques), só que a decisão de usá-lo (ou não) acontece **na hora de escolher**, junto com o resto da mesa, e não depois de ver o que o oponente fez.
+
+## Capítulo 18 — Troca de Pokémon
+
+Só pode ser feita na vez do Treinador; consome completamente a ação. O novo Pokémon entra mas não age naquele turno — age normalmente a partir do turno seguinte.
+
+### 18.1 Fuga
+
+Tentar fugir da batalha também consome a ação inteira. Se algum Movimento, Habilidade ou motivo de história estiver prendendo o Pokémon em campo, o Mestre pode travar a fuga pra aquela batalha inteira — nesse caso ela é bloqueada direto, sem rolar dado. Sem trava, rola **1d10**: 1–3 não consegue fugir (a ação é gasta, o Pokémon continua em campo); 4–10 foge com sucesso e sai da batalha.
+
+## Capítulo 19 — Desmaio
+
+Ao chegar a **0 PV**, o Pokémon Desmaia e não pode continuar lutando. Se o Treinador tiver outro Pokémon capaz de lutar, ele entra. Sem Pokémon capazes de lutar de um lado, a batalha termina.
+
+Um Pokémon desmaiado só volta a lutar com um item de **Reviver** (volta com metade do PV máximo, ou o máximo inteiro se for um Reviver "cheio") ou no Centro Pokémon, fora de batalha — qualquer outro item de cura de PV não faz efeito nele enquanto estiver desmaiado.
+
+Na Arena do site, isso é conferido sozinho toda vez que alguém vai a 0 PV, nessa ordem: se sobrar algum outro Pokémon vivo na Equipe ativa de quem desmaiou, o próprio slot vira um convite pra escolher o próximo (clique direto, sem passar pelo menu de ação); se não sobrar ninguém, esse Treinador está eliminado, e se todos os Treinadores do mesmo Time também já estiverem eliminados, o outro Time vence a batalha sozinho, na hora — sem o Mestre precisar apertar nada.
+
+## Capítulo 20 — Condições de Status
+
+Um Pokémon nunca tem duas Condições Principais simultâneas. **Confusão** é exceção e coexiste com qualquer uma delas.
+
+### 20.1 Queimadura
+−2 Ataque; −1 PV ao final de cada turno. (Afeta Ataque, não Ataque Especial.)
+
+### 20.2 Veneno
+−2 PV ao final de cada turno. Não reduz atributos.
+
+**Imunidade por Tipo (Bulbapedia)**: Pokémon dos Tipos **Aço** e **Venenoso** nunca ficam com Veneno ou Veneno Grave, por nenhum caminho — golpe direto, retaliação de contato (ex.: Poison Point), Poison Touch ou Synchronize. Única exceção: quem está causando o veneno tem a Habilidade **Corrosion** ("this Pokémon can inflict poison on Poison and Steel Pokémon"), que ignora só essa imunidade de Tipo (nunca a imunidade por Habilidade, tipo Immunity).
+
+### 20.3 Veneno Grave
+Dano crescente por turno: 1 → 2 → 3 → 4 → 5... O contador **volta a zero** sempre que o Pokémon sai de campo (troca, forçada ou escolhida) e reinicia a contagem do 1 quando ele retorna — a Condição em si continua (ele volta Gravemente Envenenado), só a contagem de dano reinicia, igual no jogo oficial.
+
+### 20.4 Paralisia
+Anula o bônus de Agilidade do Treinador e aplica −10 Velocidade (não cai abaixo de 0). No início da ação: 1–2 no 1d6 perde a ação; 3–6 age normalmente.
+
+## Capítulo 21 — Sono
+
+Duração: mínimo 1 turno, máximo 3. 1º turno dormindo é obrigatório (sem teste). A partir do 2º turno, no início da ação: 1d6, 5–6 acorda (e pode agir no mesmo turno), 1–4 continua. No 3º turno, mesmo teste; se falhar, esse é obrigatoriamente o último turno dormindo — acorda automaticamente no turno seguinte e pode agir.
+
+## Capítulo 22 — Congelamento
+
+Não pode agir normalmente. No início do turno: 1d6 — 1–4 continua Congelado, 5–6 descongela (pode agir no mesmo turno). Movimentos específicos podem descongelar automaticamente conforme sua descrição — na prática, qualquer golpe do Tipo Fogo que acerte de verdade (com dano) já descongela, oficial e sem exceção por nome.
+
+Na Arena do site, Paralisia, Sono e Congelamento (20.4/21/22) já são testados sozinhos na hora de **resolver** um Ataque desse Pokémon (Capítulo 17), na mesma ordem do Cap. 24 (antes da Confusão) — o site já rola o(s) dado(s), mostra o resultado num aviso e no Registro, e só deixa o golpe sair (ou não) de acordo. Sono conta o número do turno sozinho (1º obrigatório, 2º-3º testados, acorda garantido depois disso). **Esse teste só acontece pra quem escolheu Atacar** — escolher Usar Item em vez disso pula o teste inteiro (mesmo que o Pokémon estivesse Dormindo/Paralisado/Congelado): como Item sempre resolve antes de qualquer Ataque na mesma Rodada (Cap. 17), curar a própria condição com um item — Dormindo tomando um Chesto Berry, por exemplo — já livra o Pokémon de precisar passar por esse teste, sem burlar a obrigatoriedade dele (só que a cura consome a ação inteira daquela Rodada, igual qualquer uso de item — o Pokémon não ataca também no mesmo turno em que se cura).
+
+## Capítulo 23 — Confusão
+
+Coexiste com qualquer Condição Principal. No início do turno, antes de testar seu efeito, tenta eliminar a Confusão: 1d6, 5–6 termina (pode agir normalmente, respeitando outras condições). Se continuar (1–4), testa o efeito: 1d6, 1–2 perde a ação e sofre 1 PV; 3–6 age normalmente.
+
+Na Arena do site, esses dois testes já rolam sozinhos na hora de **resolver** um Ataque desse Pokémon (Capítulo 17): o site já rola o 1d6 pra eliminar a Confusão e, se continuar, o 1d6 do efeito — mostra o resultado num aviso e no Registro antes de deixar o golpe sair (ou não). Igual Paralisia/Sono/Congelamento, esse teste só acontece pra quem escolheu Atacar — escolher Usar Item pula o teste, e como Item resolve antes de qualquer Ataque na Rodada, curar a própria Confusão com um item chega a tempo (consumindo a ação inteira, como qualquer uso de item).
+
+## Capítulo 24 — Ordem de Resolução de um Ataque
+
+1. Determine se o Movimento tem Prioridade; resolva a janela de Prioridade se necessário.
+2. Determine quem age primeiro (Velocidade Efetiva → Natural → 1d6).
+3. Verifique condições que impeçam a ação (Paralisia, Sono, Congelamento, Confusão).
+4. Resolva a Precisão.
+5. Verifique o Crítico (dano: 6 natural).
+6. Determine o Dano Base (Físico ou Especial).
+7. Aplique modificadores (STAB, Tipos, Crítico, etc.).
+8. Determine o Dano Final (mínimo 1; Imunidade = 0).
+9. Resolva efeitos percentuais (1d10; crítico dá segunda tentativa).
+10. Resolva efeitos de final de turno (Queimadura, Veneno, Veneno Grave, etc.).
+
+Na Arena do site, os passos 1 e 2 (Prioridade e quem age primeiro) também já são automáticos: todo mundo escolhe a própria ação de uma vez (Capítulo 16) e a ORDEM em que a Rodada resolve já sai calculada sozinha, na ordem do Capítulo 17 (não-Ataque antes de Ataque; entre Ataques, Prioridade decide antes de Iniciativa) — sem pausar pra perguntar nada a ninguém no meio do caminho. A execução em si (rolar o dado de cada Pokémon nessa ordem) fica na mão do Mestre, avançando manualmente um por um. Os passos 4 a 9 (Precisão, Crítico, Dano Base, Tipos, Dano Final e Efeito Percentual) já são resolvidos automaticamente na hora de cada Pokémon resolver a própria ação — ver o Guia do Treinador/Guia do Mestre. O passo 3 inteiro já é automático: Paralisia, Sono e Congelamento (Cap. 20.4/21/22) são testados sozinhos primeiro, e Confusão (Cap. 23) logo depois, na hora de resolver — nessa ordem, só pra quem escolheu Atacar. O passo 10 também já é automático para Queimadura, Veneno e Veneno Grave (Cap. 20): o dano é aplicado sozinho logo depois que o próprio Pokémon afetado termina de agir, sem precisar esperar o fim da rodada inteira. Recuo, Dreno e Movimentos de cura (Cap. 25) também já entram nessa mesma resolução automática, na porcentagem oficial de cada Movimento. Magic Guard bloqueia qualquer um desses PV que não venham de um golpe batendo direto no Pokémon (status por turno, recuo, Confusão, Liquid Ooze, Rough Skin/Iron Barbs, Aftermath).
+
+## Capítulo 25 — Mecânicas ainda em desenvolvimento
+
+- **Maturidade e Evolução**: estrutura existe (incluindo reinício após evolução), tabela definitiva de progressão das espécies ainda será construída.
+- **Cura e Recuperação**: Recover, Roost, Synthesis, Rest e todo o resto dos Movimentos de cura (Cap. 8.5) já restauram PV de verdade, na porcentagem oficial de cada um, aplicada ao PV Máximo de quem for o alvo resolvido do golpe (o próprio usuário na maioria, um aliado escolhido em Heal Pulse). Jungle Healing e Purify (efeito duplo — cura + cura de Condição de quem não é o alvo do dano) ainda ficam de fora, regra em aberto.
+- **Recuo e Dreno**: golpes de recuo (Take Down, Double-Edge, Brave Bird, Flare Blitz...) já tiram PV do próprio atacante de verdade, na porcentagem oficial sobre o dano causado; golpes de dreno (Absorb, Giga Drain, Drain Punch...) já curam o atacante em cima do dano causado, virando dano nele em vez de cura se o alvo tiver Liquid Ooze. Struggle e Clangorous Soul (custo fixo de PV só por usar o Movimento, não proporcional ao dano) ficam de fora — mecânica diferente, rara.
+- **Movimentos que trocam depois de atacar**: U-turn, Volt Switch e Parting Shot já trocam o usuário de campo de verdade depois de resolver o próprio efeito — se sobrar alguém pra entrar, a troca vira a continuação obrigatória da mesma ação. Baton Pass fica de fora por enquanto (também passa os Estágios pro que entrar, em vez de resetar — mecânica diferente de qualquer troca hoje no sistema).
+- **Regras específicas de Movimentos**: múltiplos acertos, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5), o PP (Cap. 8.6) e a mudança de Estágio (Cap. 15.1) já seguem o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano, Condição de status, mudança de Estágio, Recuo/Dreno/Cura, Condição Volátil (Cap. 26) nem armadilha de campo (Helping Hand, Aromatherapy, Spikes, Sticky Web — Stealth Rock, Toxic Spikes e Clima já estão implementados, Cap. 26.6, 26.6-bis e 26.9). Não existe Struggle automático quando um Pokémon fica sem PP em nenhum Movimento — o Mestre adjudica.
+- **Captura**: sistema definitivo de Poké Balls ainda precisa ser desenvolvido.
+- **Habilidades**: 93 das 373 já têm gatilho mecânico automático (Cap. 6.3) — as outras ~280 continuam só texto de referência.
+- **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo), organizada em cinco abas (Poções e Berries, Pokébolas, Itens de Missão, TM, Inventário Geral). Existe um catálogo com os itens oficiais mais reconhecíveis dos jogos — cada um com **descrição em português**, com o valor de cura real do NOSSO sistema (não o número oficial do jogo — ex.: Potion diz "Restaura 5 PV.", não os 20 HP oficiais), que autocompleta sozinha ao escolher o item numa lista — organizado por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave, Recuperação de PP, TMs — as 229 TMs vigentes de Scarlet/Violet), sempre disponível por inteiro (não dá mais pra desligar categoria pra mesa). Um botão "Usar" em cada linha da Mochila (ou o "Usar Item" da Arena) já pergunta direto em qual Pokémon aplicar, sem passo a mais. Cinco tipos já têm efeito de verdade, tanto fora de batalha quanto na Arena: **Vida** (cura PV — quantidade fixa ou cura total), **Condição** (cura Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal), **Reviver** (só funciona em quem está desmaiado, Cap. 19), **Vida + Condição** (cura os dois juntos numa unidade só, tipo Full Restore) e **PP** (Ether/Max Ether/Elixir/Max Elixir/PP Up/PP Max, Cap. 8.6.1). Itens de batalha/evolução, itens segurados, itens-chave e TMs seguem o mesmo fluxo de escolher um Pokémon pra usar nele (mesmo desmaiado, já que não tem trava de PV associada), mas continuam só consumindo 1 unidade e registrando o uso, sem efeito mecânico de verdade — evolução por item, slot de item equipado, ensinar um Movimento por TM de verdade e buffs temporários de batalha ainda são regras em aberto. **Pokébolas são a exceção**: não têm essa opção de uso — servem pra capturar um Pokémon selvagem/alheio, não pra "usar" num Pokémon que já é do próprio Treinador, então ficam sem função de uso até existir um sistema de captura de verdade (envolvendo a Arena) — regra em aberto.
+
+## Capítulo 26 — Condições Voláteis e Movimentos Especiais
+
+Diferente das Condições Principais (Cap. 20) — nunca duas ao mesmo tempo — e da Confusão (Cap. 23, que coexiste com qualquer uma delas —, essas condições e Movimentos abaixo têm regra própria, cada uma independente das outras (um Pokémon pode estar Semeado, com Substituto de pé e Confuso, tudo ao mesmo tempo). Todas resetam ao sair de campo (desmaio, troca ou fuga), igual aos Estágios (Cap. 15.2).
+
+### 26.1 Atordoado (Flinch)
+
+Alguns Movimentos (ex.: Fake Out, Iron Head, Air Slash) têm chance de deixar o alvo Atordoado quando acertam. Um Pokémon Atordoado **perde a própria ação só na Rodada em que foi atordoado** — se ele já tiver agido antes de ser atordoado (era mais rápido que quem causou), a condição simplesmente não pega nele naquela Rodada; nunca sobra pra Rodada seguinte, de nenhum jeito. A Habilidade Inner Focus bloqueia por completo.
+
+### 26.2 Leech Seed (Semente Parasita)
+
+Planta uma semente no alvo (Movimento próprio, chance conforme a Precisão oficial dele — Cap. 26.5) que drena **1/8 do PV Máximo** do semeado no fim de cada turno dele, restaurando essa quantidade pra quem plantou (ou pra quem tomar o lugar dele em campo, se o semeador trocar/desmaiar antes). Não funciona em Pokémon do Tipo Grama (imune). Funciona tecnicamente contra a Habilidade Magic Guard — a semente planta — mas nenhum PV é drenado (Magic Guard bloqueia qualquer PV que não venha de um golpe batendo direto). Contra a Habilidade Liquid Ooze, quem PLANTOU a semente perde a mesma quantidade que ganharia, em vez de curar. O semeado se livra da semente saindo de campo (troca) ou acertando Rapid Spin.
+
+### 26.3 Substitute (Substituto)
+
+Movimento próprio: o usuário perde **25% do PV Máximo** (arredondado pra baixo) pra criar um boneco com esse tanto de PV, que absorve qualquer dano recebido em seu lugar (sem vazar o excesso pro PV de verdade quando o boneco quebra) e bloqueia por completo qualquer Movimento de Status ou efeito colateral usado contra o usuário enquanto o boneco estiver de pé. Falha se o usuário não tiver MAIS que 25% do PV Máximo em PV atual (nunca desmaia usando o próprio Movimento) e falha também se já houver um boneco de pé (só um por vez).
+
+### 26.4 Outrage, Thrash e Petal Dance (Fúria)
+
+O usuário ataca por **2 ou 3 turnos** (sorteado no 1º acerto), repetindo o mesmo golpe no mesmo alvo automaticamente — sem passar pela escolha de ação de novo, e por isso mesmo **não pode trocar de Pokémon** enquanto durar. Ao completar a duração inteira sem nenhuma interrupção, o usuário fica **Confuso** de exaustão (Cap. 23) assim que a fúria termina — bloqueado se o usuário tiver a Habilidade Own Tempo ou um Substituto de pé (Cap. 26.3), igual qualquer tentativa de causar Confusão nele. Se o golpe for interrompido no meio (erra o alvo, ou o usuário não consegue agir por Paralisia/Sono/Congelamento/Atordoado/Confusão) a fúria acaba na hora **sem** causar Confusão — a única exceção é a interrupção acontecer bem na ÚLTIMA rodada programada da fúria, que ainda assim confunde (a fúria já ia terminar e confundir de qualquer jeito).
+
+### 26.5 Movimentos de Condição Pura
+
+Movimentos de Status que só existem pra aplicar uma Condição Principal — sem dano nenhum — usam a própria **Precisão oficial do golpe como a chance de 1d10** (o mesmo dado de Efeito Percentual do Cap. 14), em vez do 1d6 normal de Precisão: "acertar" e "a Condição pegar" são a mesma rolagem, uma coisa só. Exemplos: Thunder Wave, Toxic, Sleep Powder, Spore, Stun Spore, Poison Powder, Glare, Hypnosis, Confuse Ray, Will-O-Wisp, Yawn.
+
+### 26.6 Stealth Rock
+
+Movimento próprio de alvo "só inimigo" (mira um Pokémon específico pra saber em qual TIME plantar a armadilha, mesmo sendo conceitualmente um efeito de campo — ver Cap. 8.5). Assim que planta, qualquer Pokémon daquele Time que entrar em campo dali pra frente (troca normal, forçada por desmaio, ou por um Movimento como U-turn) sofre dano de entrada de acordo com a Efetividade de Tipo Pedra contra ele:
+
+| Efetividade de Pedra | Dano de entrada |
+|---|---|
+| 4× (dois Tipos fracos) | 1/2 do PV Máximo |
+| 2× (um Tipo fraco) | 1/4 do PV Máximo |
+| 1× (neutro) | 1/8 do PV Máximo |
+| 1/2× (um Tipo resiste) | 1/16 do PV Máximo |
+| 1/4× (dois Tipos resistem) | 1/32 do PV Máximo |
+
+Pedra não tem imunidade de Tipo nenhuma, então todo Pokémon cai numa dessas 5 faixas. Só um por Time por vez (usar de novo não empilha nem estica); **Rapid Spin remove Stealth Rock do próprio campo do usuário** quando acerta (nunca do campo adversário) — Tidy Up continua em aberto (Cap. 25).
+
+### 26.6-bis Toxic Spikes
+
+Mesmo padrão de Stealth Rock (Cap. 26.6, incluindo o ALVO "só inimigo" pra escolher o Time): armadilha que empilha até **2 camadas** — usar de novo com só 1 camada arma a 2ª; com as 2 já armadas, uma 3ª tentativa não faz nada além de avisar. Efeito de entrada, por camada (Bulbapedia):
+
+| Camadas | Efeito de entrada |
+|---|---|
+| 1 | Envenena (Veneno normal) |
+| 2 | Envenena Gravemente (Veneno Grave) |
+
+Regras de entrada (Bulbapedia):
+- Só afeta Pokémon **no chão** — Tipo Voador e Habilidade Levitate nunca são afetados (mesmo critério de "no chão" que já vale pra golpe de Tipo Terra, Cap. 13).
+- Já respeita a imunidade de Veneno por Tipo e por Habilidade (Cap. 20.2) — Aço/Venenoso, ou qualquer Habilidade tipo Immunity, não são afetados.
+- Um Pokémon que já tem outra Condição Principal não é afetado (a armadilha não sobrescreve).
+- Um Pokémon do **Tipo Venenoso** que entra em campo **absorve e remove a armadilha inteira** do próprio Time (as 2 camadas de uma vez, se houver) — comportamento único, sem equivalente em Stealth Rock. Aço (sem ser também Venenoso) só não é afetado, mas não remove nada.
+
+**Rapid Spin remove Toxic Spikes do próprio campo do usuário** quando acerta (as camadas somem de uma vez), igual faz com Stealth Rock.
+
+### 26.7 Foul Play
+
+Movimento próprio: usa o **Ataque Efetivo do DEFENSOR** na fórmula de dano, em vez do Ataque do próprio usuário — quanto mais forte o Ataque de quem está apanhando, mais forte o golpe bate nele. Todo o resto da fórmula (Defesa, Tipo, STAB, Crítico) continua normal, calculado do jeito de sempre.
+
+### 26.8 Healing Wish e Lunar Dance
+
+Movimento próprio: o usuário desmaia na hora, e o PRÓXIMO Pokémon do mesmo Treinador a entrar em campo (não precisa ser imediato — vale a qualquer momento depois) entra com o **PV cheio** e a **Condição Principal curada** (Queimadura/Veneno/Paralisia/Sono/Congelamento — Confusão não é curada, é uma condição à parte). Lunar Dance é o mesmo Movimento, só que também recarrega o PP de todos os Movimentos até o máximo.
+
+### 26.9 Clima
+
+A batalha sempre começa em **Clima Neutro**. Cinco Movimentos de campo já existentes (Rain Dance, Sunny Day, Sandstorm, Hail, Snowscape — mais Chilly Reception, que também arma clima) trocam o clima ativo por 5 turnos (a própria Rodada de usar já conta como a 1ª — sobram 4 depois dela); usar um Movimento de clima diferente SUBSTITUI o anterior por completo, nunca soma duração. O Mestre também pode trocar o clima na mão a qualquer momento (permanente, até ele mudar de novo) — a Área PVP, sem Mestre, só muda de clima por Movimento.
+
+| Clima | Efeito |
+|---|---|
+| **Chuva** | Golpe de Água +2 de dano fixo · golpe de Fogo −2 |
+| **Sol Forte** | Golpe de Fogo +2 de dano fixo · golpe de Água −2 · ninguém pode ser Congelado (exceto Freeze-Dry) · Solar Beam/Solar Blade não precisam carregar |
+| **Tempestade de Areia** | 1/16 do PV Máximo de dano no fim de cada Rodada em quem não é Pedra/Terra/Aço (Magic Guard bloqueia) · +2 Defesa Especial Efetiva pro Tipo Pedra |
+| **Granizo** | 1/16 do PV Máximo de dano no fim de cada Rodada em quem não é Gelo (Magic Guard bloqueia) |
+| **Neve** | +2 Defesa Efetiva pro Tipo Gelo (sem dano nenhum) |
+
+Os bônus/penalidades de dano são fixos (convertidos pro sistema aditivo do jogo — nunca um multiplicador ×1.5/×0.5 como no jogo oficial), mesmo espírito de STAB e bônus de Habilidade. Moonlight/Synthesis/Morning Sun curam 67% do PV Máximo sob Sol Forte, só 25% sob Chuva/Areia/Granizo, e os 50% de sempre no resto (Neutro e Neve). Weather Ball muda de Tipo (Água/Fogo/Pedra/Gelo) e ganha +2 de poder conforme o clima ativo, virando Normal de novo no Neutro.
+
+Quatro Habilidades reais passam a depender do clima certo pra funcionar: **Leaf Guard** e **Protosynthesis** exigem Sol Forte; **Ice Body** exige Granizo; **Rain Dish** exige Chuva. Um banner mostra o clima ativo (com a contagem de turnos restantes, quando veio de Movimento) tanto na Arena quanto na Área PVP, atualizando junto com qualquer mudança.
+
+## Referência Rápida
+
+**Dados**: 1d6 (ataques, crítico, iniciativa, diversos efeitos) · 1d10 (porcentagens)
+
+**Treinador**: Nível máximo 16 · Atributos 0–5 · sobe 1 Nível a cada 4 batalhas vencidas (contador só do Mestre)
+
+**Vínculo** (máx. 25): 5=+1 · 10=+2 · 15=+3 · 20=+4 · 25=+5
+
+**HP**: `10 + (HP Efetivo × 3)`
+
+**Dano**: `Ataque + Poder − Defesa` ou `Ataque Especial + Poder − Defesa Especial`
+
+**Modificadores**: STAB +1 · Super Efetivo +2/fraqueza · Pouco Efetivo −2/resistência · Crítico +4 · Imunidade 0 · Dano mínimo 1
+
+**Estágios**: 1 estágio = ±1 no atributo · muda sozinho pelo Movimento que causa (Cap. 15.1), volta a 0 ao sair de campo (15.2) · só o Mestre edita à mão (15.3)
+
+**Movimentos**: máximo 4, aprendizado natural pelo Nível do Treinador
+
+**PP**: 1 por uso (2 se o alvo tiver Pressure) · 0 PP bloqueia o Movimento, sem Struggle automático · só o Mestre edita à mão · Ether/Max Ether/Elixir/Max Elixir/PP Up/PP Max recuperam/aumentam automaticamente (Cap. 8.6.1)
+
+**Condições**: Queimadura (−2 Atq, −1 PV/turno) · Veneno (−2 PV/turno; imune p/ Tipo Aço/Venenoso, exceto Corrosion) · Veneno Grave (1,2,3,4... — reseta a 0 sempre que sai e volta de campo) · Paralisia (remove Agilidade do Treinador, −10 Vel., 1–2 perde ação) · Sono (1 turno obrigatório, depois 5–6 acorda, máx. 3 turnos) · Congelamento (5–6 descongela) · Confusão (5–6 cura; senão 1–2 perde ação e sofre 1 PV)
+
+**Condições Voláteis (Cap. 26)**: Atordoado (perde a ação só nessa Rodada) · Leech Seed (1/8 PV Máx./turno) · Substitute (custa 25% PV Máx.) · Fúria/Outrage (2-3 turnos, trava e depois confunde) · Stealth Rock (1/8 PV Máx. de entrada, por Efetividade de Tipo Pedra — Rapid Spin remove do próprio campo) · Toxic Spikes (1 camada envenena, 2 envenena grave quem entra e é do chão — Tipo Venenoso absorve e remove, Rapid Spin remove do próprio campo)
+
+**Clima (Cap. 26.9)**: começa Neutro · Movimento dura 5 turnos (troca sempre substitui) · Mestre troca na mão, permanente · Chuva/Sol Forte (±2 dano fixo Água/Fogo) · Areia/Granizo (1/16 PV Máx./turno, Magic Guard bloqueia) · Areia +2 SpD Pedra · Neve +2 Def Gelo
+
+---
+
+*Este documento acompanha o site "Diário de Treinador", a ferramenta de fichas do grupo. Os grandes blocos que ainda faltam são Maturidade/Evolução definitiva e Captura — o núcleo de combate (incluindo PP, Estágios e os itens de cura) já está definido para batalhas completas.*
