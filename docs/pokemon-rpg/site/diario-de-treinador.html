@@ -256,6 +256,13 @@
   .learnset-label{ font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-dim); font-weight:700; }
   .learnset-bar select{ width:auto; flex:1; min-width:160px; }
 
+  /* ---- Arena: tela de Configuração de Times (Cap. mecânica nova) ---- */
+  .arena-setup-team{ border:1px solid var(--line); border-radius:var(--radius); padding:10px; margin-bottom:12px; background:var(--surface); }
+  .arena-setup-team .arena-team-head{ margin:-10px -10px 8px; border-radius:var(--radius) var(--radius) 0 0; }
+  .arena-setup-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 2px; border-bottom:1px solid var(--line); font-size:.82rem; }
+  .arena-setup-row:last-of-type{ border-bottom:none; }
+  .arena-setup-row-npc{ display:block; padding:8px 2px; }
+
   /* ---- Arena (esboço v1) ---- */
   .arena-teams{ display:flex; gap:14px; flex-wrap:wrap; }
   .arena-team{ flex:1 1 220px; min-width:200px; border:2px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden; }
@@ -455,14 +462,19 @@
      popup EXATAMENTE como já apareciam no campo -- arenaEntryHTML já
      resolve a mesma lógica de "quem fica clicável" sozinha, então não tem
      nada duplicado: chamar a função de novo aqui dentro já basta. */
-  .arena-action-overlay{ position:fixed; inset:0; background:rgba(20,14,8,.55); display:flex; align-items:center; justify-content:center; z-index:180; padding:16px; animation:dice-fade-in .15s ease-out; }
-  /* Rolagem em cima (arenaResolving, .dice-overlay já é o mesmo fundo
-     escuro por cima, z-index 200 > 180): sem isso os dois fundos
-     semitransparentes empilhados escureciam demais e ainda piscavam
-     (esse popup de baixo não entra/sai de novo, então não roda o
-     dice-fade-in de novo -- só o de cima). */
-  .arena-action-overlay-resolving{ background:transparent; animation:none; }
-  .arena-action-overlay-card{ background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); max-width:560px; width:100%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
+  /* Pedido do usuário (Cap. mecânica nova, redesign "cara do PVP"): "ficou
+     melhor a suíte do PVP com o menu de rolagem não flutuante fixo
+     embaixo" -- igual pvpBattleHTML (Área PVP nunca teve popup nenhum, o
+     painel de Ação sempre foi só mais um <div class="card"> no fluxo
+     normal da página), o menu de Ação da Arena deixou de ser um popup
+     fixed cobrindo a tela (fundo escuro, centralizado) e virou um card
+     comum, ancorado no lugar de sempre (embaixo dos Times) -- MESMAS
+     classes de antes (arena-action-overlay/-card), só o ESTILO mudou;
+     toda a lógica de JS (corpo, noAnimClass do Cap. 120, quem pode ver)
+     continua idêntica, sem tocar em nada disso. */
+  .arena-action-overlay{ display:block; margin-top:14px; animation:dice-fade-in .15s ease-out; }
+  .arena-action-overlay-resolving{ animation:none; }
+  .arena-action-overlay-card{ background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); width:100%; display:flex; flex-direction:column; animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
   /* Pedido do usuário: "toda vez que eu clico, dentro do popup dele, pra
      fazer outra coisa, ele fecha o popup rápido e abre outro... Queria
      algo contínuo". Mesma lógica do .dice-overlay-noanim (ver comentário
@@ -6301,6 +6313,29 @@ function migrateState(){
      hora sempre. */
   if(!Array.isArray(STATE.arena.presentes)) STATE.arena.presentes = [];
   if(STATE.arena.solturaAberta===undefined) STATE.arena.solturaAberta = false;
+  /* Configuração de Times "cara de PVP" (Cap. mecânica nova) -- pedido do
+     usuário: "quero que a Arena fique mais parecida com o PVP... o
+     mestre definirá os times... colocará cada jogador em seu time ou
+     NPC... o jogador não vê nada além do registro e do clima" antes do
+     Mestre iniciar. battleActive===false é a tela de CONFIGURAÇÃO (só o
+     Mestre mexe -- times, quem entra em cada um, NPC, Pokémon solto);
+     true é a batalha em si (mesmo motor de sempre -- Rodada/Iniciativa/
+     Ataque/hazards/clima, nada disso muda). virtuais é o mesmo padrão já
+     usado pela Área PVP (STATE.arena.virtuais só existe hoje DENTRO de
+     uma sala de PVP, swapado pra cá via withArenaContext) -- aqui vira
+     permanente, pra NPC e Pokémon solto poderem ser "treinadores" de
+     verdade pro findTrainer/getPoke/hpMax reconhecerem, sem duplicar
+     nenhuma lógica de combate pra eles. */
+  /* Ficha salva de ANTES dessa leva existir nunca teve battleActive
+     nenhum -- se ela já tem entradas em campo (uma batalha real já em
+     andamento sob o motor antigo), tratar como "false" de propósito
+     jogaria o Mestre/jogadores de volta pra tela de Configuração no meio
+     de um combate. Herda true nesse caso (a batalha continua exatamente
+     de onde estava); só uma Arena de verdade vazia (nunca usada, ou já
+     zerada) começa em false (Configuração). */
+  if(STATE.arena.battleActive===undefined) STATE.arena.battleActive = (STATE.arena.entries||[]).length>0;
+  if(!STATE.arena.virtuais || typeof STATE.arena.virtuais!=='object') STATE.arena.virtuais = {};
+  (STATE.arena.teams||[]).forEach(function(tm){ if(!Array.isArray(tm.trainerIds)) tm.trainerIds = []; });
   /* Cap. 86 -- a Negociação de Prioridade (pergunta Sim/Não, Cap.
      17.1-17.3 antigo) saiu de vez: agora TODOS escolhem a ação primeiro
      (STATE.arena.round.phase='selecting') e só depois o site resolve a
@@ -8777,9 +8812,198 @@ DT.arenaRenameTeam = function(teamId, el){
 DT.arenaAskRemoveTeam = function(teamId){ SESSION.confirmRemoveArenaTeam = teamId; render(); };
 DT.arenaCancelRemoveTeam = function(){ SESSION.confirmRemoveArenaTeam = null; render(); };
 DT.arenaRemoveTeam = function(teamId){
+  var team = (STATE.arena.teams||[]).find(function(x){ return x.id===teamId; });
+  /* Todo NPC/Pokémon solto só existe DENTRO de um Time (Cap. mecânica
+     nova, ver DT.arenaAddNpc/arenaAddLoosePoke) -- remover o Time inteiro
+     também apaga o "treinador" virtual deles (nunca sobra um NPC órfão,
+     sem Time nenhum, ocupando STATE.arena.virtuais pra sempre). Um
+     Treinador de VERDADE só perde a vaga (continua existindo em
+     STATE.trainers normalmente). */
+  if(team){
+    (team.trainerIds||[]).forEach(function(tid){
+      if(STATE.arena.virtuais && STATE.arena.virtuais[tid]) delete STATE.arena.virtuais[tid];
+    });
+  }
   STATE.arena.teams = STATE.arena.teams.filter(function(x){ return x.id!==teamId; });
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.teamId!==teamId; });
   SESSION.confirmRemoveArenaTeam = null;
+  mutate();
+};
+/* =================== Configuração de Times "cara de PVP" (Cap. mecânica
+   nova) — pedido do usuário: "quero que a Arena fique mais parecida com
+   o PVP... o mestre definirá os times... colocará cada jogador em seu
+   time ou NPC... um botão de adicionar NPC com seus pokémon e outro de
+   adicionar só pokémon solto." ===================
+   team.trainerIds guarda quem entra em campo por aquele Time quando a
+   batalha começar -- um id pode ser um Treinador de VERDADE (real,
+   existe em STATE.trainers) OU um "treinador" VIRTUAL (NPC ou Pokémon
+   solto, existe só em STATE.arena.virtuais -- mesmo padrão que a Área
+   PVP já usa pra si mesma, ver findTrainer). Cada id só pode estar
+   atribuído a UM Time por vez -- arenaAssignedTeamOf() garante isso. */
+function arenaAssignedTeamOf(entityId){
+  return (STATE.arena.teams||[]).find(function(tm){ return (tm.trainerIds||[]).indexOf(entityId)!==-1; });
+}
+/* Defensivo (não depende de migrateState ter rodado -- mesmo espírito do
+   resto do arquivo, ver o comentário grande em arenaScreen): garante
+   team.trainerIds antes de qualquer push/filter nele. */
+function arenaEnsureTrainerIds(team){
+  if(team && !Array.isArray(team.trainerIds)) team.trainerIds = [];
+  return team;
+}
+DT.arenaAssignTrainer = function(teamId, trainerId){
+  if(SESSION.role!=='gm') return;
+  var team = arenaEnsureTrainerIds((STATE.arena.teams||[]).find(function(x){ return x.id===teamId; }));
+  var t = findTrainer(trainerId);
+  if(!team || !t) return;
+  if(arenaAssignedTeamOf(trainerId)) return; /* já está em outro Time -- tira de lá primeiro (arenaUnassignEntity) */
+  team.trainerIds.push(trainerId);
+  mutate();
+};
+/* Tira um id (Treinador real, NPC ou Pokémon solto) do Time que ele
+   estiver -- pra NPC/solto isso também apaga o "treinador" virtual de
+   vez (não existe fora de um Time); um Treinador de verdade só perde a
+   vaga, continua intacto em STATE.trainers. */
+DT.arenaUnassignEntity = function(entityId){
+  if(SESSION.role!=='gm') return;
+  var team = arenaAssignedTeamOf(entityId);
+  if(!team) return;
+  team.trainerIds = team.trainerIds.filter(function(id){ return id!==entityId; });
+  if(STATE.arena.virtuais && STATE.arena.virtuais[entityId]) delete STATE.arena.virtuais[entityId];
+  mutate();
+};
+/* + Adicionar NPC: cria um "treinador" virtual vazio (sem Pokémon ainda)
+   já atribuído ao Time -- o Mestre preenche o nome e depois clica em "+
+   Pokémon" (DT.arenaAddNpcPoke) quantas vezes quiser pra montar o time
+   dele, um sorteio (randomizePokemonInPlace) por clique, mesma mecânica
+   já usada nas fichas de PVP -- "Obviamente deixando que o usuário
+   personalize depois da rolagem" vale aqui também (Espécie/Movimentos/
+   Habilidade/Natureza/Atributos Naturais continuam editáveis à mão
+   depois, reaproveitando pokeCardHTML igual qualquer outra ficha). */
+DT.arenaAddNpc = function(teamId, nome){
+  if(SESSION.role!=='gm') return;
+  var team = arenaEnsureTrainerIds((STATE.arena.teams||[]).find(function(x){ return x.id===teamId; }));
+  if(!team) return;
+  if(!STATE.arena.virtuais) STATE.arena.virtuais = {};
+  var vid = 'npc_'+uid();
+  STATE.arena.virtuais[vid] = { id:vid, name:(nome||'').trim()||'NPC', attrPoints:{vigor:5,vontade:5,resistencia:5,mental:5,foco:5,agilidade:5}, pokemons:[], banco:[], isNpc:true };
+  team.trainerIds.push(vid);
+  mutate();
+};
+DT.arenaRenameNpc = function(npcId, el){
+  if(SESSION.role!=='gm') return;
+  var v = STATE.arena.virtuais && STATE.arena.virtuais[npcId];
+  if(!v || !v.isNpc) return;
+  v.name = el.value.trim() || v.name;
+  mutate();
+};
+DT.arenaAddNpcPoke = function(npcId, categoria){
+  if(SESSION.role!=='gm') return;
+  var v = STATE.arena.virtuais && STATE.arena.virtuais[npcId];
+  if(!v) return;
+  var p = newPokemon();
+  p.vinculo = 25; /* mesmo padrão de ficha de PVP -- Vínculo já no máximo, sem precisar preencher à mão */
+  if(!randomizePokemonInPlace(p, categoria)) return;
+  v.pokemons.push(p);
+  mutate();
+};
+DT.arenaRemoveNpcPoke = function(npcId, pokeId){
+  if(SESSION.role!=='gm') return;
+  var v = STATE.arena.virtuais && STATE.arena.virtuais[npcId];
+  if(!v) return;
+  v.pokemons = (v.pokemons||[]).filter(function(p){ return p.id!==pokeId; });
+  mutate();
+};
+/* + Pokémon solto: sorteia um Pokémon inteiro (mesma rolagem de
+   NPC/PVP) e já nasce como o próprio "treinador" virtual dele, batizado
+   com o nome da Espécie sorteada -- "um botão de adicionar só pokémon
+   solto" pede um Pokémon SEM dono nenhum, então não faz sentido pedir um
+   nome de NPC antes (o clique já entrega pronto pra batalhar). */
+DT.arenaAddLoosePoke = function(teamId, categoria){
+  if(SESSION.role!=='gm') return;
+  var team = arenaEnsureTrainerIds((STATE.arena.teams||[]).find(function(x){ return x.id===teamId; }));
+  if(!team) return;
+  var p = newPokemon();
+  p.vinculo = 25;
+  if(!randomizePokemonInPlace(p, categoria)) return;
+  if(!STATE.arena.virtuais) STATE.arena.virtuais = {};
+  var vid = 'solto_'+uid();
+  STATE.arena.virtuais[vid] = { id:vid, name:p.especie, attrPoints:{vigor:5,vontade:5,resistencia:5,mental:5,foco:5,agilidade:5}, pokemons:[p], banco:[], isLoose:true };
+  team.trainerIds.push(vid);
+  mutate();
+};
+/* ▶️ Iniciar Combate: pedido do usuário -- "ele obrigatoriamente pegará
+   os pokémon ativos dos treinadores e irá entrar na arena", sem nenhum
+   passo de Soltura em segredo (Cap. 17/55, ainda existe pro fluxo
+   antigo, mas essa tela nova nunca mais chama). Pra cada id atribuído
+   (Treinador real: usa a própria Equipe ativa; NPC/solto: usa
+   v.pokemons, montado na configuração acima), entra com o PRIMEIRO
+   Pokémon vivo da lista, já revelado:true (sem segredo nenhum -- o
+   Mestre já viu tudo montando a configuração). Times sem ninguém vivo
+   pra entrar travam o início (mensagem de erro) -- não faz sentido
+   começar uma batalha com um lado inteiro sem Pokémon nenhum. */
+DT.arenaIniciarCombate = function(){
+  if(SESSION.role!=='gm') return;
+  var teams = STATE.arena.teams||[];
+  if(teams.length<2){ SESSION.error = 'Precisa de pelo menos 2 Times pra iniciar o combate.'; render(); return; }
+  var novasEntries = [];
+  for(var i=0;i<teams.length;i++){
+    var team = teams[i];
+    var teamTemVivo = false;
+    (team.trainerIds||[]).forEach(function(tid){
+      var t = findTrainer(tid);
+      if(!t) return;
+      var vivo = (t.pokemons||[]).find(function(p){
+        var max = hpMax(t,p);
+        var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+        return cur>0;
+      });
+      if(!vivo) return;
+      teamTemVivo = true;
+      novasEntries.push({ id: uid(), teamId: team.id, trainerId: tid, pokemonId: vivo.id, revelado: true });
+    });
+    if(!teamTemVivo){
+      SESSION.error = 'O Time "'+team.nome+'" não tem ninguém vivo atribuído -- coloque pelo menos um jogador, NPC ou Pokémon solto com PV antes de iniciar.';
+      render();
+      return;
+    }
+  }
+  STATE.arena.entries = novasEntries;
+  STATE.arena.hazards = {};
+  STATE.arena.vencedor = null;
+  STATE.arena.round = null;
+  STATE.arena.battleActive = true;
+  (novasEntries||[]).forEach(function(e){
+    var t = findTrainer(e.trainerId), p = t && getPoke(e.trainerId, e.pokemonId);
+    if(t && p) p.arenaRevelado = true;
+  });
+  arenaLog('⚔️ O Mestre iniciou o combate — cada Time entra com o próprio Pokémon ativo.');
+  mutate();
+  DT.arenaStartRound();
+};
+/* 🔄 Nova configuração: pedido implícito do fluxo (depois de uma
+   vitória, o Mestre precisa voltar pra tela de configuração pra montar
+   o próximo combate) -- mantém Times/NPC/Pokémon solto já montados
+   (troca rápida pro próximo confronto), só limpa o que era só DAQUELA
+   batalha (entradas, hazards, vencedor, Rodada). Reseta arenaRevelado do
+   time INTEIRO (Equipe ativa + Banco) de cada Treinador/NPC/solto que
+   participou -- mesmo motivo de sempre do DT.arenaLeave antigo (Cap. 55,
+   ver o comentário grande lá): "essa participação acabou" é o limite
+   natural de revelação aqui também, senão um Pokémon que já lutou uma
+   vez ficaria com nome/sprite público pra sempre em qualquer combate
+   futuro, sem soltura nenhuma pra "escondê-lo" de novo. */
+DT.arenaReconfigurar = function(){
+  if(SESSION.role!=='gm') return;
+  var participantIds = {};
+  (STATE.arena.teams||[]).forEach(function(tm){ (tm.trainerIds||[]).forEach(function(id){ participantIds[id]=true; }); });
+  Object.keys(participantIds).forEach(function(id){
+    var t = findTrainer(id);
+    if(t) (t.pokemons||[]).concat(t.banco||[]).forEach(function(p){ p.arenaRevelado = false; });
+  });
+  STATE.arena.entries = [];
+  STATE.arena.hazards = {};
+  STATE.arena.vencedor = null;
+  STATE.arena.round = null;
+  STATE.arena.battleActive = false;
   mutate();
 };
 /* Habilidades de entrada em campo (Intimidate, Download) -- disparam toda
@@ -10963,7 +11187,12 @@ function arenaVictoryHTML(){
   var team = (STATE.arena.teams||[]).find(function(t){ return t.id===STATE.arena.vencedor; });
   return '<div class="card" style="border-color:#d4a017;"><div class="card-body" style="text-align:center;">'+
     '<p style="font-size:1.1rem; margin:0 0 8px;">🏆 <strong>'+esc(team?team.nome:'Time')+'</strong> venceu a batalha!</p>'+
-    (SESSION.role==='gm' ? '<button class="btn-sm" onclick="DT.arenaClearVictory()">Limpar e continuar</button>' : '<p class="muted" style="font-size:.8rem;">O Mestre decide o que vem a seguir.</p>')+
+    (SESSION.role==='gm'
+      ? '<div class="btn-row" style="justify-content:center;">'+
+          '<button class="btn-sm" onclick="DT.arenaClearVictory()">Limpar e continuar</button>'+
+          '<button class="btn-sm btn-primary" onclick="DT.arenaReconfigurar()">🔄 Nova configuração</button>'+
+        '</div>'
+      : '<p class="muted" style="font-size:.8rem;">O Mestre decide o que vem a seguir.</p>')+
   '</div></div>';
 }
 /* Notificação de combate (SESSION.error) também como popup, chamativo,
@@ -11011,21 +11240,50 @@ function weatherBannerHTML(w, isGM){
     selector+
   '</div></div>';
 }
+/* Redesenho "cara do PVP" (Cap. mecânica nova) -- pedido do usuário:
+   "quero que a Arena fique mais parecida com o PVP, pois fica mais
+   clean... o mestre definirá os times... o jogador não vai ver nada além
+   do registro de eventos e o clima" antes de o Mestre iniciar. O fluxo
+   antigo de Soltura em segredo (Cap. 17/55: arenaSolturaHTML/
+   arenaSourceHTML, DT.arenaEnter/arenaOpenSoltura/arenaRevelarTodos)
+   continua existindo por baixo (várias fichas antigas e alguns testes
+   ainda dependem das funções em si), só não é mais chamado por essa
+   tela -- foi substituído por STATE.arena.battleActive: false é a
+   Configuração de Times (arenaSetupHTML pro Mestre, arenaWaitingHTML pro
+   jogador); true é a batalha em si, com o MESMO motor de sempre
+   (Rodada/Iniciativa/Ataque/hazards/clima intactos), só que o menu de
+   Ação (arenaActionPanelHTML) deixou de ser um popup flutuante e virou
+   um card fixo no fluxo da página, "não flutuante fixo embaixo" igual a
+   Área PVP sempre foi (ver o comentário grande na CSS .arena-action-
+   overlay). Reversível: git checkpoint no commit anterior a essa leva. */
 function arenaScreen(){
   var isGM = SESSION.role==='gm';
+  /* Mesma inferência de migrateState (comentário grande lá): nunca
+     depende de migrateState ter rodado antes -- battleActive explícito
+     manda; sem ele, uma Arena que já tem entradas em campo (batalha
+     real em andamento, ficha de antes dessa leva existir) conta como
+     ativa, só uma Arena vazia de verdade cai na tela de Configuração. */
+  var battleActive = !!(STATE.arena && (STATE.arena.battleActive!==undefined ? STATE.arena.battleActive : (STATE.arena.entries||[]).length>0));
   var out = '<div class="btn-row" style="margin-bottom:14px;"><button class="btn-sm" onclick="DT.toggleArena()">← Voltar</button></div>';
-  out += '<div class="card"><div class="card-head"><span class="index">Esboço · v1</span><h2>🏟️ Arena</h2></div><div class="card-body">'+
-    '<p class="muted" style="font-size:.82rem;">Entre num Time (▶️ Entrar na Arena, ali embaixo), espere o Mestre liberar a soltura, e solte o seu primeiro Pokémon em segredo — o Mestre revela todo mundo de uma vez quando o resto da mesa também já tiver escolhido. Depois disso, pode arrastar um Pokémon (pelo ⠿) direto pra um Time também, se precisar corrigir algo na mão.</p>'+
-  '</div></div>';
+  if(!battleActive){
+    out += '<div class="card"><div class="card-head"><span class="index">Cara do PVP</span><h2>🏟️ Arena</h2></div><div class="card-body">'+
+      '<p class="muted" style="font-size:.82rem;">'+(isGM
+        ? 'Monte os Times abaixo (jogador, NPC ou Pokémon solto) e clique em "▶️ Iniciar Combate" quando estiver tudo pronto — cada um entra automaticamente com o próprio Pokémon ativo da Equipe ativa, sem soltura em segredo.'
+        : 'Aguardando o Mestre montar os Times e iniciar o combate.')+
+    '</p></div></div>';
+  }
   out += weatherBannerHTML(STATE.arena && STATE.arena.weather, isGM);
   out += arenaSpectatorHTML();
   out += arenaVictoryHTML();
   out += arenaErrorPopupHTML();
-  out += arenaSolturaHTML(isGM);
-  out += arenaInitiativeHTML();
-  out += arenaActionPanelHTML();
-  out += arenaTeamsHTML(isGM);
-  out += arenaSourceHTML();
+  if(!battleActive){
+    out += isGM ? arenaSetupHTML() : arenaWaitingHTML();
+  } else {
+    out += arenaInitiativeHTML();
+    out += arenaActionPanelHTML();
+    out += arenaTeamsHTML(isGM);
+    out += arenaBattlePanelsHTML();
+  }
   out += arenaLogHTML();
   out += arenaStatsPanelHTML();
   return out;
@@ -11400,6 +11658,112 @@ function arenaActionPanelHTML(){
   return '<div class="arena-action-overlay'+noAnimClass+'"><div class="arena-action-overlay-card'+noAnimClass+'">'+
     '<div class="arena-action-overlay-head"><h2>⚔️ Ação</h2>'+closeBtn+'</div>'+
     '<div class="arena-action-overlay-body">'+body+'</div>'+
+  '</div></div>';
+}
+/* Treinadores REAIS (STATE.trainers) que ainda não estão atribuídos a
+   NENHUM Time -- fonte do <select> "+ Jogador" (Cap. mecânica nova). */
+function arenaUnassignedRealTrainers(){
+  var assigned = {};
+  (STATE.arena.teams||[]).forEach(function(tm){ (tm.trainerIds||[]).forEach(function(id){ assigned[id]=true; }); });
+  return (STATE.trainers||[]).filter(function(t){ return !assigned[t.id]; });
+}
+/* Uma linha do "elenco" de um Time na tela de configuração -- três
+   formatos bem diferentes por trás do MESMO id (Treinador real, NPC,
+   Pokémon solto), mas todos removíveis pelo mesmo botão único
+   (DT.arenaUnassignEntity já sabe diferenciar). */
+function arenaSetupRosterRowHTML(entityId){
+  var isReal = (STATE.trainers||[]).some(function(t){ return t.id===entityId; });
+  if(isReal){
+    var t = findTrainer(entityId);
+    if(!t) return '';
+    var vivos = (t.pokemons||[]).filter(function(p){
+      var max = hpMax(t,p); var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+      return cur>0;
+    }).length;
+    return '<div class="arena-setup-row">'+
+      '<span>🧑 <strong>'+esc(t.name)+'</strong> <span class="muted" style="font-size:.72rem;">('+vivos+' vivo(s) na Equipe ativa)</span></span>'+
+      '<button class="btn-ghost btn-sm" onclick="DT.arenaUnassignEntity(\''+entityId+'\')">✕</button>'+
+    '</div>';
+  }
+  var v = STATE.arena.virtuais && STATE.arena.virtuais[entityId];
+  if(!v) return '';
+  var catOptions = Object.keys(PVP_RANDOM_STAGE_LABELS).map(function(k){ return '<option value="'+k+'">'+esc(PVP_RANDOM_STAGE_LABELS[k])+'</option>'; }).join('');
+  if(v.isNpc){
+    var npcPokeChips = (v.pokemons||[]).map(function(p){
+      return '<span class="tag" style="font-size:.7rem;">'+esc(p.especie||'?')+' <button class="btn-ghost btn-sm" style="padding:0 4px;" onclick="DT.arenaRemoveNpcPoke(\''+entityId+'\',\''+p.id+'\')" title="Remover esse Pokémon do NPC">✕</button></span>';
+    }).join(' ');
+    var npcSelId = 'arenaNpcCat-'+entityId;
+    return '<div class="arena-setup-row arena-setup-row-npc">'+
+      '<div class="btn-row" style="justify-content:space-between;">'+
+        '<input type="text" value="'+esc(v.name)+'" onchange="DT.arenaRenameNpc(\''+entityId+'\', this)" style="max-width:140px;">'+
+        '<button class="btn-ghost btn-sm" onclick="DT.arenaUnassignEntity(\''+entityId+'\')">✕ NPC</button>'+
+      '</div>'+
+      '<div style="margin:4px 0;">'+(npcPokeChips || '<span class="muted" style="font-size:.72rem;">Sem Pokémon ainda.</span>')+'</div>'+
+      '<div class="btn-row"><select id="'+npcSelId+'">'+catOptions+'</select>'+
+      '<button class="btn-sm" onclick="DT.arenaAddNpcPoke(\''+entityId+'\', document.getElementById(\''+npcSelId+'\').value)">🎲 + Pokémon</button></div>'+
+    '</div>';
+  }
+  var p0 = (v.pokemons||[])[0];
+  return '<div class="arena-setup-row">'+
+    '<span>🐾 <strong>'+esc(v.name)+'</strong>'+(p0 ? ' <span class="muted" style="font-size:.72rem;">('+esc(p0.tipo1||'')+(p0.tipo2?'/'+esc(p0.tipo2):'')+')</span>' : '')+'</span>'+
+    '<button class="btn-ghost btn-sm" onclick="DT.arenaUnassignEntity(\''+entityId+'\')">✕</button>'+
+  '</div>';
+}
+function arenaSetupTeamHTML(team, livres){
+  var removeControl = SESSION.confirmRemoveArenaTeam===team.id
+    ? '<span class="muted" style="font-size:.7rem;">Remover?</span> <button class="btn-danger btn-sm" onclick="DT.arenaRemoveTeam(\''+team.id+'\')">Sim</button> <button class="btn-ghost btn-sm" onclick="DT.arenaCancelRemoveTeam()">Não</button>'
+    : '<button class="btn-ghost btn-sm" onclick="DT.arenaAskRemoveTeam(\''+team.id+'\')">✕ Time</button>';
+  var roster = (team.trainerIds||[]).map(arenaSetupRosterRowHTML).join('');
+  var addPlayerSel = livres.length
+    ? '<div class="btn-row" style="margin-top:6px;"><select id="arenaAddPlayer-'+team.id+'">'+
+        livres.map(function(t){ return '<option value="'+t.id+'">'+esc(t.name)+'</option>'; }).join('')+
+      '</select><button class="btn-sm" onclick="DT.arenaAssignTrainer(\''+team.id+'\', document.getElementById(\'arenaAddPlayer-'+team.id+'\').value)">+ Jogador</button></div>'
+    : '<p class="muted" style="font-size:.72rem; margin-top:6px;">Nenhum Treinador livre pra adicionar (todos já estão em algum Time).</p>';
+  var npcNameId = 'arenaNpcNome-'+team.id;
+  var addNpc = '<div class="btn-row" style="margin-top:6px;"><input type="text" id="'+npcNameId+'" placeholder="Nome do NPC" style="max-width:160px;"><button class="btn-sm" onclick="DT.arenaAddNpc(\''+team.id+'\', document.getElementById(\''+npcNameId+'\').value)">+ NPC</button></div>';
+  var looseSelId = 'arenaLooseCat-'+team.id;
+  var addLoose = '<div class="btn-row" style="margin-top:6px;"><select id="'+looseSelId+'">'+
+      Object.keys(PVP_RANDOM_STAGE_LABELS).map(function(k){ return '<option value="'+k+'">'+esc(PVP_RANDOM_STAGE_LABELS[k])+'</option>'; }).join('')+
+    '</select><button class="btn-sm" onclick="DT.arenaAddLoosePoke(\''+team.id+'\', document.getElementById(\''+looseSelId+'\').value)">🎲 + Pokémon solto</button></div>';
+  return '<div class="arena-setup-team">'+
+    '<div class="arena-team-head"><input type="text" value="'+esc(team.nome)+'" onchange="DT.arenaRenameTeam(\''+team.id+'\', this)">'+removeControl+'</div>'+
+    (roster || '<p class="muted" style="font-size:.76rem;">Ninguém atribuído ainda.</p>')+
+    addPlayerSel+addNpc+addLoose+
+  '</div>';
+}
+/* Tela de configuração "cara de PVP" (Cap. mecânica nova) -- pedido do
+   usuário: "o mestre definirá os times... colocará cada jogador em seu
+   time ou NPC... um botão de adicionar NPC com seus pokémon e outro de
+   adicionar só pokémon solto." Só o Mestre vê isso (o jogador vê
+   arenaWaitingHTML no lugar) -- fica no ar enquanto
+   STATE.arena.battleActive for false. */
+function arenaSetupHTML(){
+  var teams = STATE.arena.teams||[];
+  var livres = arenaUnassignedRealTrainers();
+  var out = '<div class="card"><div class="card-head"><span class="index">Mestre</span><h2>🧩 Configurar Times</h2>'+
+    '<button class="btn-sm" onclick="DT.arenaAddTeam()">+ Novo Time</button>'+
+  '</div><div class="card-body">';
+  if(teams.length===0){
+    out += '<p class="muted">Clique em "+ Novo Time" pra começar -- pode criar mais de 2, cada um com jogadores, NPC ou Pokémon solto.</p>';
+  } else {
+    out += teams.map(function(team){ return arenaSetupTeamHTML(team, livres); }).join('');
+  }
+  var podeIniciar = teams.length>=2;
+  out += '<div class="btn-row" style="margin-top:14px; align-items:center;">'+
+    '<button class="btn-primary btn-sm" '+(podeIniciar?'':'disabled')+' onclick="DT.arenaIniciarCombate()">▶️ Iniciar Combate</button>'+
+    (podeIniciar ? '' : '<span class="muted" style="font-size:.78rem;">Precisa de pelo menos 2 Times.</span>')+
+  '</div>';
+  out += '</div></div>';
+  return out;
+}
+/* O que o jogador vê enquanto o Mestre ainda está configurando -- pedido
+   do usuário: "quando os jogadores entrarem na sala eles não vão ver
+   nada além do registro de eventos embaixo e o clima." (weatherBannerHTML
+   e arenaLogHTML continuam vindo de fora, em arenaScreen -- esse card
+   aqui é só o recado no meio, no lugar de qualquer coisa de Time/Soltura.) */
+function arenaWaitingHTML(){
+  return '<div class="card"><div class="card-body" style="text-align:center; padding:26px 16px;">'+
+    '<p class="muted">⏳ Aguardando o Mestre configurar os Times e iniciar o combate.</p>'+
   '</div></div>';
 }
 function arenaTeamsHTML(isGM){
@@ -11842,6 +12206,28 @@ function arenaSourceTilesRowHTML(t){
       '<div style="font-size:.66rem; text-align:center;">'+(p.apelido?esc(p.apelido):esc(p.especie))+'</div>'+
     '</div>';
   }).join('')+'</div>';
+}
+/* Painel de Equipe ativa DURANTE a batalha (Cap. mecânica nova, redesign
+   "cara do PVP") -- versão enxuta de arenaTrainerSourceHTML, sem
+   Entrar/Sair da Arena nem status de Soltura (Cap. 17/55, superado pela
+   tela de Configuração/DT.arenaIniciarCombate): só os tiles da Equipe
+   ativa (bench + quem já está em campo, reaproveitando
+   arenaSourceTilesRowHTML de sempre, inclusive pro clique de Trocar) e a
+   Mochila (🎒), que continuam existindo durante a luta -- sem isso, o
+   jogador perderia o próprio acesso aos itens no meio do combate. */
+function arenaTrainerBattlePanelHTML(t){
+  var tiles = arenaSourceTilesRowHTML(t);
+  var itens = (t.itens||[]).filter(function(it){ return it.quantidade>0; });
+  var mochila = itens.length
+    ? '<div style="margin-top:10px;"><span class="muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.06em;">🎒 Mochila</span><div class="btn-row" style="margin-top:4px; flex-wrap:wrap;">'+
+        itens.map(function(it){ return '<span class="tag">'+esc(it.nome)+' x'+it.quantidade+'</span>'; }).join('')+
+      '</div></div>'
+    : '';
+  return '<div class="card"><div class="card-head"><span class="index">Equipe ativa</span><h2>'+esc(t.name)+'</h2></div><div class="card-body">'+tiles+mochila+'</div></div>';
+}
+function arenaBattlePanelsHTML(){
+  if((STATE.trainers||[]).length===0) return '';
+  return STATE.trainers.map(arenaTrainerBattlePanelHTML).join('');
 }
 function arenaTrainerSourceHTML(t){
   var entries = (STATE.arena && STATE.arena.entries) || [];
@@ -13249,12 +13635,22 @@ DT.pvpSetMoveSelect = function(pid, idx, el){
    Nada disso trava a edição depois -- os mesmos <select>/<input> de
    sempre continuam liberados pra personalizar (só p.emBatalha bloqueia,
    igual qualquer outro campo da ficha). */
-DT.pvpGerarAleatorio = function(pid, categoria){
-  if(SESSION.role!=='player') return;
-  var p = pvpGetFicha(SESSION.trainerId, pid); if(!p || p.emBatalha) return;
-  if(!PVP_RANDOM_STAGE_LABELS[categoria]) return;
+/* Núcleo do sorteio em si (Espécie/Habilidade/Natureza/Movimentos),
+   extraído do corpo original de DT.pvpGerarAleatorio pra virar
+   reaproveitável -- pedido do usuário (Cap. mecânica nova, redesign da
+   Arena): "adicionar NPC com seus pokémon e outro de adicionar só
+   pokémon solto" precisa gerar um Pokémon de verdade (Espécie real,
+   Habilidade/Natureza/Movimentos válidos), não um "Pokémon" vazio -- em
+   vez de duplicar toda essa lógica, DT.pvpGerarAleatorio (ficha de PVP)
+   e DT.arenaAddNpcPoke/DT.arenaAddLoosePoke (Cap. mecânica nova) chamam
+   esta mesma função em cima de qualquer objeto Pokémon (`p`), seja da
+   ficha de PVP ou de um "treinador" virtual da Arena (NPC/solto). Sempre
+   sorteia até o nível-teto do RPG (PVP_LEVEL=16) pros Movimentos
+   disponíveis -- não existe um "nível" de NPC/Pokémon solto separado. */
+function randomizePokemonInPlace(p, categoria){
+  if(!PVP_RANDOM_STAGE_LABELS[categoria]) return false;
   var pool = SPECIES_DEX.filter(function(sp){ return speciesMatchesStageFilter(sp, categoria); });
-  if(!pool.length) return; /* não deveria acontecer -- toda categoria tem gente (ver o comentário de EVO_STAGE) */
+  if(!pool.length) return false; /* não deveria acontecer -- toda categoria tem gente (ver o comentário de EVO_STAGE) */
   var sp = pool[Math.floor(Math.random()*pool.length)];
   applySpeciesData(p, sp);
   p.apelido = ''; /* sorteio novo -- Espécie totalmente diferente, não faz sentido herdar o apelido de antes */
@@ -13285,8 +13681,14 @@ DT.pvpGerarAleatorio = function(pid, categoria){
       p.moves[idx] = {nome:"",tipo:"",categoria:"Físico",poder:0,pp:0,ppBase:0,ppAtual:0,precisao:"",prioridade:0,efeito:"",metodo:"normal"};
     }
   }
-
-  SESSION.notice = 'Sorteado: '+sp.name+' (#'+sp.num+') — Habilidade, Natureza e Movimentos também sorteados. Personalize à vontade antes de usar numa sala.';
+  return true;
+}
+DT.pvpGerarAleatorio = function(pid, categoria){
+  if(SESSION.role!=='player') return;
+  var p = pvpGetFicha(SESSION.trainerId, pid); if(!p || p.emBatalha) return;
+  var sp = randomizePokemonInPlace(p, categoria);
+  if(!sp) return;
+  SESSION.notice = 'Sorteado: '+p.especie+' — Habilidade, Natureza e Movimentos também sorteados. Personalize à vontade antes de usar numa sala.';
   mutate();
 };
 
