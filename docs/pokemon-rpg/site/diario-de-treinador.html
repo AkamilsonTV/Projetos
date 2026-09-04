@@ -2570,7 +2570,8 @@ var ABILITY_MECH_SET = {
   'Aftermath':1,'Poison Touch':1,'Wonder Guard':1,'Teravolt':1,'Turboblaze':1,'Storm Drain':1,
   'Sheer Force':1,'Run Away':1,'Beast Boost':1,'Protosynthesis':1,'Quark Drive':1,'Healer':1,'Justified':1,
   'Fluffy':1,'Adaptability':1,'Download':1,'Super Luck':1,'Sweet Veil':1,'Strong Jaw':1,'Wonder Skin':1,
-  'Huge Power':1,'Pure Power':1,'Magic Guard':1,'No Guard':1,'Defeatist':1,'Heatproof':1,'Pressure':1
+  'Huge Power':1,'Pure Power':1,'Magic Guard':1,'No Guard':1,'Defeatist':1,'Heatproof':1,'Pressure':1,
+  'Corrosion':1
 };
 /* Só as Habilidades reais da Espécie que TÊM gatilho mecânico (objetos
    {n,h} originais, preserva a marca de Oculta) -- [] se nenhuma das reais
@@ -4549,7 +4550,11 @@ var MOVE_TARGETS = {
   'Last Resort':'any',
   'Worry Seed':'any',
   'Sucker Punch':'any',
-  'Toxic Spikes':'field',
+  /* Mesmo caso de Stealth Rock (ver o comentário grande logo antes dela,
+     mais abaixo): "field" nunca pedia alvo nenhum (eligibleMoveTargets
+     devolvia []), então Toxic Spikes nunca tinha o que fazer. Vira 'foe'
+     -- mira um inimigo, o motor arma a armadilha no TIME dele inteiro. */
+  'Toxic Spikes':'foe',
   'Heart Swap':'any',
   'Aqua Ring':'self',
   'Magnet Rise':'self',
@@ -6539,6 +6544,18 @@ function resetStages(poke){
   poke.leechSeed = null;
   poke.outrageLock = null;
   poke.flinched = false;
+  /* Pedido do usuário: "Veneno grave tem que voltar do início quando o
+     pokémon é retirado e colocado em campo, igual acontece no jogo
+     original... quando trocamos ele volta a estaca zero e então começa a
+     contar e consumir aumentando de novo." -- reseta só o CONTADOR
+     (p.statusTurns, o 1,2,3,4... de applyEndOfTurnStatusAndLog), nunca a
+     Condição em si (poke.status continua veneno_grave -- ele ainda
+     VOLTA envenenado, só a contagem de dano reinicia do zero). Guardado
+     por status==='veneno_grave' de propósito -- p.statusTurns também é
+     reaproveitado pro contador de Sono (ver arenaStatusActionPreCheck),
+     que NUNCA reseta ao trocar no jogo oficial (a sonolência sorteada
+     continua contando raiz mesmo fora de campo). */
+  if(poke.status==='veneno_grave') poke.statusTurns = 0;
 }
 function arenaLog(text){
   if(!STATE.arena) return;
@@ -6599,6 +6616,37 @@ function abilityBlocksStatus(poke, statusKey){
   if(statusKey==='confuso') return ab==='Own Tempo';
   if(STATUS_IMUNE_TOTAL[ab]) return weatherTipo()==='sol';
   return STATUS_IMUNE_HABILIDADE[ab]===statusKey;
+}
+/* Imunidade a Veneno por TIPO (Cap. 13/Bulbapedia) -- pedido do usuário:
+   "pokémons de veneno e metal estão tomando ataque venenosos, metal é
+   imune a ataque venenoso e não fica envenenado." Aço e Venenoso nunca
+   ficam com veneno OU veneno_grave, por NENHUM caminho -- golpe direto,
+   retaliação de contato (Poison Point/Effect Spore), Poison Touch ou
+   Synchronize ("nem bounce nem synchronize podem deixar ele atingido").
+   Única exceção (Bulbapedia, Corrosion): "This Pokémon can inflict
+   poison on Poison and Steel Pokémon" -- só quando quem está ENVENENANDO
+   (poisonerAbility, a Habilidade de quem originou o veneno -- nunca a de
+   quem está recebendo) tem essa Habilidade, a imunidade de TIPO é
+   ignorada. A imunidade de HABILIDADE (Immunity etc., abilityBlocksStatus)
+   nunca é afetada por Corrosion -- ela é sobre a Habilidade do próprio
+   alvo, Corrosion só fala de Tipo. */
+function pokeTypeImmuneToPoison(poke){
+  return !!poke && (poke.tipo1==='Aço' || poke.tipo2==='Aço' || poke.tipo1==='Venenoso' || poke.tipo2==='Venenoso');
+}
+/* "No chão" pra fins de armadilha de campo (Toxic Spikes, Spikes...) --
+   Bulbapedia: Voador e Levitate nunca são afetados por esse tipo de
+   armadilha, do mesmo jeito que já são imunes a golpes de Tipo Terra
+   (ver abilityTypeAbsorb, moveTipo==='Terra' && defAbility==='Levitate'). */
+function pokeIsGrounded(poke){
+  if(!poke) return false;
+  if(poke.tipo1==='Voador' || poke.tipo2==='Voador') return false;
+  if(poke.habilidade==='Levitate') return false;
+  return true;
+}
+function statusBlocked(poke, statusKey, poisonerAbility){
+  if(abilityBlocksStatus(poke, statusKey)) return true;
+  if(statusKey==='veneno' && pokeTypeImmuneToPoison(poke) && poisonerAbility!=='Corrosion') return true;
+  return false;
 }
 /* Absorção/imunidade de Tipo por Habilidade (Levitate, Water Absorb...),
    aplicada dentro de resolveAttack -- devolve null se essa Habilidade não
@@ -6946,7 +6994,7 @@ function applyAttackResult(defTrainer, defPoke, result, attPoke, move){
          while the harsh sunlight is active"), com a exceção de sempre,
          Freeze-Dry (Tipo Gelo que ignora essa proteção). */
       var bloqueadoPeloSol = ailmentNorm==='congelamento' && weatherTipo()==='sol' && (!move || move.nome!=='Freeze-Dry');
-      if(!abilityBlocksStatus(defPoke, ailmentNorm) && !bloqueadoPeloSol){
+      if(!statusBlocked(defPoke, ailmentNorm, attPoke && attPoke.habilidade) && !bloqueadoPeloSol){
         defPoke.status = result.efeito.ailment;
         defPoke.statusTurns = 0;
         info.statusApplied = result.efeito.ailment;
@@ -7099,13 +7147,13 @@ function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPok
   /* --- Habilidade do DEFENSOR, disparada por ser atingido --- */
   if(dealt && contact && attAbility!=='Shield Dust'){
     var CONTACT_AILMENT = { Static:'paralisia', 'Poison Point':'veneno', 'Flame Body':'queimadura' };
-    if(CONTACT_AILMENT[defAbility] && !attPoke.status && rollDie(10)<=3 && !abilityBlocksStatus(attPoke, CONTACT_AILMENT[defAbility])){
+    if(CONTACT_AILMENT[defAbility] && !attPoke.status && rollDie(10)<=3 && !statusBlocked(attPoke, CONTACT_AILMENT[defAbility], defAbility)){
       attPoke.status = CONTACT_AILMENT[defAbility]; attPoke.statusTurns = 0;
       arenaLog(esc(defNome)+' tem '+defAbility+' — deu '+CONTACT_AILMENT[defAbility]+' em '+esc(attNome)+' no contato!');
     }
     if(defAbility==='Effect Spore' && !attPoke.status && rollDie(10)<=3){
       var pick = ['paralisia','veneno','sono'][rollDie(3)-1];
-      if(!abilityBlocksStatus(attPoke, pick)){
+      if(!statusBlocked(attPoke, pick, defAbility)){
         attPoke.status = pick; attPoke.statusTurns = 0;
         arenaLog(esc(defNome)+' tem Effect Spore — grudou '+pick+' em '+esc(attNome)+'!');
       }
@@ -7137,7 +7185,7 @@ function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPok
   }
 
   /* --- Habilidade do ATACANTE, disparada por acertar --- */
-  if(dealt && contact && attAbility==='Poison Touch' && defAbility!=='Shield Dust' && !defPoke.status && rollDie(10)<=3 && !abilityBlocksStatus(defPoke,'veneno')){
+  if(dealt && contact && attAbility==='Poison Touch' && defAbility!=='Shield Dust' && !defPoke.status && rollDie(10)<=3 && !statusBlocked(defPoke,'veneno',attAbility)){
     defPoke.status = 'veneno'; defPoke.statusTurns = 0;
     arenaLog(esc(attNome)+' tem Poison Touch — envenenou '+esc(defNome)+' no contato!');
   }
@@ -7149,7 +7197,7 @@ function applyAbilityHooksAfterHit(attTrainer, attPoke, move, defTrainer, defPok
   }
   if(info.statusApplied && SYNCHRONIZE_AILMENTS[info.statusApplied] && defAbility==='Synchronize' && !attPoke.status && attAbility!=='Shield Dust'){
     var synced = info.statusApplied==='veneno_grave' ? 'veneno' : info.statusApplied;
-    if(!abilityBlocksStatus(attPoke, synced)){
+    if(!statusBlocked(attPoke, synced, defAbility)){
       attPoke.status = synced; attPoke.statusTurns = 0;
       arenaLog(esc(defNome)+' tem Synchronize — devolveu a Condição pra '+esc(attNome)+'.');
     }
@@ -7339,6 +7387,27 @@ function resolveMoveUse(attTrainer, attPoke, move, targets){
       } else {
         STATE.arena.hazards[srTeamId].stealthRock = true;
         arenaLog(esc(pokeNome(attPoke))+' ('+esc(attTrainer.name)+') usou Stealth Rock — pedras levitantes cercam o campo de '+esc(srTimeNome)+'.');
+      }
+    }
+    /* Toxic Spikes (Cap. mecânica nova) -- pedido do usuário: "já temos
+       mecanismos pra deixar ele funcionando pois a mecânica se parece com
+       o Stealth Rock", Bulbapedia como base. MESMO padrão de Stealth
+       Rock -- só marca a armadilha aqui (armar não afeta o alvo em si,
+       Substituto incluso -- efeito de campo). Diferença: empilha até 2
+       camadas (1ª = veneno normal, 2ª = veneno grave ao entrar -- ver
+       applyToxicSpikesOnSwitchIn) em vez de um booleano único. */
+    if(move.nome==='Toxic Spikes' && result.hit){
+      var tsTeamId = tgt.entry.teamId;
+      if(!STATE.arena.hazards) STATE.arena.hazards = {};
+      if(!STATE.arena.hazards[tsTeamId]) STATE.arena.hazards[tsTeamId] = {};
+      var tsTimeNome = (STATE.arena.teams||[]).find(function(tm){ return tm.id===tsTeamId; });
+      tsTimeNome = tsTimeNome ? tsTimeNome.nome : tsTeamId;
+      var tsAtual = STATE.arena.hazards[tsTeamId].toxicSpikes||0;
+      if(tsAtual>=2){
+        arenaLog(esc(pokeNome(attPoke))+' ('+esc(attTrainer.name)+') tentou usar Toxic Spikes no campo de '+esc(tsTimeNome)+', mas já tem o máximo de 2 camadas lá.');
+      } else {
+        STATE.arena.hazards[tsTeamId].toxicSpikes = tsAtual+1;
+        arenaLog(esc(pokeNome(attPoke))+' ('+esc(attTrainer.name)+') usou Toxic Spikes — espinhos venenosos cercam o campo de '+esc(tsTimeNome)+' ('+(tsAtual+1)+' camada'+(tsAtual+1>1?'s':'')+').');
       }
     }
     if(info.substituteHit){
@@ -9556,6 +9625,54 @@ function applyStealthRockOnSwitchIn(trainer, poke, teamId){
     resetStages(poke);
   }
 }
+/* Toxic Spikes (Cap. mecânica nova) -- pedido do usuário: "já temos
+   mecanismos pra deixar ele funcionando pois a mecânica se parece com o
+   Stealth Rock", Bulbapedia como base. Regras oficiais (Bulbapedia):
+     - 1 camada -> envenena (veneno normal) quem entra em campo.
+     - 2 camadas -> envenena GRAVE (veneno_grave) quem entra em campo.
+     - Voador ou Levitate: nunca são afetados (não estão "no chão").
+     - Já com alguma Condição Principal: a armadilha não faz nada (igual
+       o jogo oficial -- não empilha em cima de Queimadura etc.).
+     - Um Pokémon do Tipo Venenoso que entra em campo ABSORVE e REMOVE a
+       armadilha inteira do próprio Time (mesmo se ele mesmo não pudesse
+       ficar envenenado por outro motivo) -- comportamento único, sem
+       equivalente em Stealth Rock.
+     - Aço (sem ser também Venenoso) simplesmente não é afetado -- imune
+       a Veneno por Tipo (ver pokeTypeImmuneToPoison/statusBlocked) -- mas
+       NÃO remove a armadilha (só o Tipo Venenoso remove). */
+function applyToxicSpikesOnSwitchIn(trainer, poke, teamId){
+  if(!STATE.arena.hazards || !STATE.arena.hazards[teamId]) return;
+  var camadas = STATE.arena.hazards[teamId].toxicSpikes||0;
+  if(camadas<=0) return;
+  var max = hpMax(trainer, poke);
+  var cur = (poke.currentHP===null||poke.currentHP===undefined) ? max : poke.currentHP;
+  if(cur<=0) return; /* já desmaiado */
+  var nome = pokeNome(poke);
+  var ehVenenoso = poke.tipo1==='Venenoso' || poke.tipo2==='Venenoso';
+  if(ehVenenoso){
+    STATE.arena.hazards[teamId].toxicSpikes = 0;
+    arenaLog(esc(nome)+' é do Tipo Venenoso — absorveu e removeu Toxic Spikes do próprio campo.');
+    return;
+  }
+  if(!pokeIsGrounded(poke)){
+    arenaLog(esc(nome)+' está no ar (Voador/Levitate) — Toxic Spikes não o afeta.');
+    return;
+  }
+  if(poke.status){
+    return; /* já tem outra Condição Principal -- a armadilha não sobrescreve */
+  }
+  if(statusBlocked(poke, 'veneno', null)){
+    arenaLog(esc(nome)+' é imune a Veneno — Toxic Spikes não o afeta.');
+    return;
+  }
+  if(camadas>=2){
+    poke.status = 'veneno_grave'; poke.statusTurns = 0;
+    arenaLog(esc(nome)+' entrou em campo e foi Gravemente Envenenado por Toxic Spikes (2 camadas)!');
+  } else {
+    poke.status = 'veneno'; poke.statusTurns = 0;
+    arenaLog(esc(nome)+' entrou em campo e foi Envenenado por Toxic Spikes!');
+  }
+}
 /* O que de fato troca um Pokémon em campo -- reaproveitado tanto pela
    resolução de uma troca ESCOLHIDA (arenaExecuteQueuedSwap) quanto por
    uma FORÇADA (DT.arenaSwapIn acima). Nunca mexe na fila da Rodada --
@@ -9606,6 +9723,7 @@ DT.arenaSwapInResolved = function(oldEntry, newPokemonId){
     arenaLog((STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '')+esc(oldT.name)+' recebeu a cura de '+(hwPend.pp?'Lunar Dance':'Healing Wish')+' — '+esc(newP.apelido||newP.especie||'Pokémon')+' entra com PV cheio, sem Condições'+(hwPend.pp?' e PP restaurado':'')+'.');
   }
   applyStealthRockOnSwitchIn(oldT, newP, oldEntry.teamId); /* pedras primeiro (Cap. mecânica nova) -- se isso já desmaiar o recém-entrado, Habilidade de entrada (Intimidate etc.) nem deveria disparar */
+  applyToxicSpikesOnSwitchIn(oldT, newP, oldEntry.teamId); /* espinhos depois das pedras (Cap. mecânica nova) -- mesma ordem, mesmo motivo: se as pedras já desmaiarem quem entrou, a função já devolve sem fazer nada (checa currentHP de novo) */
   if(((newP.currentHP===null||newP.currentHP===undefined) ? hpMax(oldT,newP) : newP.currentHP) > 0) applyOnSwitchInAbility(oldT, newP, oldEntry.teamId);
 
   arenaLog((STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '')+esc(oldT.name)+' trocou '+esc(oldP.apelido||oldP.especie||'Pokémon')+' por '+esc(newP.apelido||newP.especie||'Pokémon')+'.');
@@ -9852,6 +9970,14 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
     if(STATE.arena.hazards && STATE.arena.hazards[rsTeamId] && STATE.arena.hazards[rsTeamId].stealthRock){
       STATE.arena.hazards[rsTeamId].stealthRock = false;
       arenaLog(esc(attPoke.apelido||attPoke.especie||'Pokémon')+' tem Rapid Spin — removeu Stealth Rock do próprio campo.');
+    }
+    /* Mesma varredura pra Toxic Spikes (Cap. mecânica nova, pedido do
+       usuário: "todos os ataques semelhantes devem ter suas funções
+       ativadas") -- Bulbapedia: Rapid Spin também limpa Toxic Spikes do
+       próprio campo, camadas incluso (as 2 de uma vez, não 1 por uso). */
+    if(STATE.arena.hazards && STATE.arena.hazards[rsTeamId] && STATE.arena.hazards[rsTeamId].toxicSpikes){
+      STATE.arena.hazards[rsTeamId].toxicSpikes = 0;
+      arenaLog(esc(attPoke.apelido||attPoke.especie||'Pokémon')+' tem Rapid Spin — removeu Toxic Spikes do próprio campo.');
     }
   }
 

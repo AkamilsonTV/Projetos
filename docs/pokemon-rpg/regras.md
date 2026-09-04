@@ -210,7 +210,7 @@ Cada Movimento tem uma lógica própria de quem ele pode atingir — a mesma dos
 - **Só inimigo** (ex.: Counter): só um Pokémon de outro Time.
 - **Qualquer um** (a maioria dos Movimentos de dano, ex.: Thunderbolt, Tackle): qualquer outro Pokémon em campo, aliado ou inimigo — igual às batalhas em dupla dos jogos oficiais, nada impede mirar no próprio time.
 - **Área** (ex.: Earthquake, Discharge): atinge todo mundo de uma categoria de uma vez só — pode incluir aliados junto com inimigos, dependendo do Movimento (ver abaixo). Não tira ninguém como alvo manualmente — é automático.
-- **Campo** (ex.: Spikes, Sticky Web): não mira em nenhum Pokémon específico — afeta o campo/lado da batalha. Mecânica ainda em aberto (Cap. 25), exceto os Movimentos de clima (Cap. 26.9) e Stealth Rock, já implementados. Stealth Rock é a exceção quanto ao ALVO: embora seja conceitualmente um efeito de campo, no site ele pede um alvo — "só inimigo" — pra saber EM QUAL lado plantar a armadilha (ver Cap. 26.6).
+- **Campo** (ex.: Spikes, Sticky Web): não mira em nenhum Pokémon específico — afeta o campo/lado da batalha. Mecânica ainda em aberto (Cap. 25), exceto os Movimentos de clima (Cap. 26.9), Stealth Rock (Cap. 26.6) e Toxic Spikes (Cap. 26.6-bis), já implementados. Os dois são a exceção quanto ao ALVO: embora sejam conceitualmente um efeito de campo, no site pedem um alvo — "só inimigo" — pra saber EM QUAL lado plantar a armadilha.
 
 Um Movimento de Área pode ser: todos os inimigos, todos os aliados (sem contar você), você e seus aliados, todo mundo menos você, ou literalmente todo mundo em campo — depende do Movimento específico, seguindo o mesmo dado oficial de Tipo/Poder/Precisão.
 
@@ -383,8 +383,10 @@ Um Pokémon nunca tem duas Condições Principais simultâneas. **Confusão** é
 ### 20.2 Veneno
 −2 PV ao final de cada turno. Não reduz atributos.
 
+**Imunidade por Tipo (Bulbapedia)**: Pokémon dos Tipos **Aço** e **Venenoso** nunca ficam com Veneno ou Veneno Grave, por nenhum caminho — golpe direto, retaliação de contato (ex.: Poison Point), Poison Touch ou Synchronize. Única exceção: quem está causando o veneno tem a Habilidade **Corrosion** ("this Pokémon can inflict poison on Poison and Steel Pokémon"), que ignora só essa imunidade de Tipo (nunca a imunidade por Habilidade, tipo Immunity).
+
 ### 20.3 Veneno Grave
-Dano crescente por turno: 1 → 2 → 3 → 4 → 5...
+Dano crescente por turno: 1 → 2 → 3 → 4 → 5... O contador **volta a zero** sempre que o Pokémon sai de campo (troca, forçada ou escolhida) e reinicia a contagem do 1 quando ele retorna — a Condição em si continua (ele volta Gravemente Envenenado), só a contagem de dano reinicia, igual no jogo oficial.
 
 ### 20.4 Paralisia
 Anula o bônus de Agilidade do Treinador e aplica −10 Velocidade (não cai abaixo de 0). No início da ação: 1–2 no 1d6 perde a ação; 3–6 age normalmente.
@@ -426,7 +428,7 @@ Na Arena do site, os passos 1 e 2 (Prioridade e quem age primeiro) também já s
 - **Cura e Recuperação**: Recover, Roost, Synthesis, Rest e todo o resto dos Movimentos de cura (Cap. 8.5) já restauram PV de verdade, na porcentagem oficial de cada um, aplicada ao PV Máximo de quem for o alvo resolvido do golpe (o próprio usuário na maioria, um aliado escolhido em Heal Pulse). Jungle Healing e Purify (efeito duplo — cura + cura de Condição de quem não é o alvo do dano) ainda ficam de fora, regra em aberto.
 - **Recuo e Dreno**: golpes de recuo (Take Down, Double-Edge, Brave Bird, Flare Blitz...) já tiram PV do próprio atacante de verdade, na porcentagem oficial sobre o dano causado; golpes de dreno (Absorb, Giga Drain, Drain Punch...) já curam o atacante em cima do dano causado, virando dano nele em vez de cura se o alvo tiver Liquid Ooze. Struggle e Clangorous Soul (custo fixo de PV só por usar o Movimento, não proporcional ao dano) ficam de fora — mecânica diferente, rara.
 - **Movimentos que trocam depois de atacar**: U-turn, Volt Switch e Parting Shot já trocam o usuário de campo de verdade depois de resolver o próprio efeito — se sobrar alguém pra entrar, a troca vira a continuação obrigatória da mesma ação. Baton Pass fica de fora por enquanto (também passa os Estágios pro que entrar, em vez de resetar — mecânica diferente de qualquer troca hoje no sistema).
-- **Regras específicas de Movimentos**: múltiplos acertos, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5), o PP (Cap. 8.6) e a mudança de Estágio (Cap. 15.1) já seguem o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano, Condição de status, mudança de Estágio, Recuo/Dreno/Cura, Condição Volátil (Cap. 26) nem armadilha de campo (Helping Hand, Aromatherapy, Spikes, Toxic Spikes, Sticky Web — Stealth Rock e Clima já estão implementados, Cap. 26.6 e 26.9). Não existe Struggle automático quando um Pokémon fica sem PP em nenhum Movimento — o Mestre adjudica.
+- **Regras específicas de Movimentos**: múltiplos acertos, Peso, Velocidade, dano variável e outras exceções. O ALVO de cada Movimento (Cap. 8.5), o PP (Cap. 8.6) e a mudança de Estágio (Cap. 15.1) já seguem o dado oficial; o que ainda falta é o EFEITO específico de Movimentos que não causam dano, Condição de status, mudança de Estágio, Recuo/Dreno/Cura, Condição Volátil (Cap. 26) nem armadilha de campo (Helping Hand, Aromatherapy, Spikes, Sticky Web — Stealth Rock, Toxic Spikes e Clima já estão implementados, Cap. 26.6, 26.6-bis e 26.9). Não existe Struggle automático quando um Pokémon fica sem PP em nenhum Movimento — o Mestre adjudica.
 - **Captura**: sistema definitivo de Poké Balls ainda precisa ser desenvolvido.
 - **Habilidades**: 93 das 373 já têm gatilho mecânico automático (Cap. 6.3) — as outras ~280 continuam só texto de referência.
 - **Efeito de Itens**: a Mochila existe na ficha do Treinador e aparece na Arena para cada um usar o que é seu (o Mestre vê a de todo mundo), organizada em cinco abas (Poções e Berries, Pokébolas, Itens de Missão, TM, Inventário Geral). Existe um catálogo com os itens oficiais mais reconhecíveis dos jogos — cada um com **descrição em português**, com o valor de cura real do NOSSO sistema (não o número oficial do jogo — ex.: Potion diz "Restaura 5 PV.", não os 20 HP oficiais), que autocompleta sozinha ao escolher o item numa lista — organizado por categoria (Poções, Curas de Status, Revives, Pokébolas, Itens de Batalha, Itens de Evolução, Berries, Itens Segurados, Itens-Chave, Recuperação de PP, TMs — as 229 TMs vigentes de Scarlet/Violet), sempre disponível por inteiro (não dá mais pra desligar categoria pra mesa). Um botão "Usar" em cada linha da Mochila (ou o "Usar Item" da Arena) já pergunta direto em qual Pokémon aplicar, sem passo a mais. Cinco tipos já têm efeito de verdade, tanto fora de batalha quanto na Arena: **Vida** (cura PV — quantidade fixa ou cura total), **Condição** (cura Queimadura/Veneno/Paralisia/Sono/Congelamento/Confusão, um específico ou qualquer um, tipo Full Heal), **Reviver** (só funciona em quem está desmaiado, Cap. 19), **Vida + Condição** (cura os dois juntos numa unidade só, tipo Full Restore) e **PP** (Ether/Max Ether/Elixir/Max Elixir/PP Up/PP Max, Cap. 8.6.1). Itens de batalha/evolução, itens segurados, itens-chave e TMs seguem o mesmo fluxo de escolher um Pokémon pra usar nele (mesmo desmaiado, já que não tem trava de PV associada), mas continuam só consumindo 1 unidade e registrando o uso, sem efeito mecânico de verdade — evolução por item, slot de item equipado, ensinar um Movimento por TM de verdade e buffs temporários de batalha ainda são regras em aberto. **Pokébolas são a exceção**: não têm essa opção de uso — servem pra capturar um Pokémon selvagem/alheio, não pra "usar" num Pokémon que já é do próprio Treinador, então ficam sem função de uso até existir um sistema de captura de verdade (envolvendo a Arena) — regra em aberto.
@@ -468,6 +470,23 @@ Movimento próprio de alvo "só inimigo" (mira um Pokémon específico pra saber
 | 1/4× (dois Tipos resistem) | 1/32 do PV Máximo |
 
 Pedra não tem imunidade de Tipo nenhuma, então todo Pokémon cai numa dessas 5 faixas. Só um por Time por vez (usar de novo não empilha nem estica); **Rapid Spin remove Stealth Rock do próprio campo do usuário** quando acerta (nunca do campo adversário) — Tidy Up continua em aberto (Cap. 25).
+
+### 26.6-bis Toxic Spikes
+
+Mesmo padrão de Stealth Rock (Cap. 26.6, incluindo o ALVO "só inimigo" pra escolher o Time): armadilha que empilha até **2 camadas** — usar de novo com só 1 camada arma a 2ª; com as 2 já armadas, uma 3ª tentativa não faz nada além de avisar. Efeito de entrada, por camada (Bulbapedia):
+
+| Camadas | Efeito de entrada |
+|---|---|
+| 1 | Envenena (Veneno normal) |
+| 2 | Envenena Gravemente (Veneno Grave) |
+
+Regras de entrada (Bulbapedia):
+- Só afeta Pokémon **no chão** — Tipo Voador e Habilidade Levitate nunca são afetados (mesmo critério de "no chão" que já vale pra golpe de Tipo Terra, Cap. 13).
+- Já respeita a imunidade de Veneno por Tipo e por Habilidade (Cap. 20.2) — Aço/Venenoso, ou qualquer Habilidade tipo Immunity, não são afetados.
+- Um Pokémon que já tem outra Condição Principal não é afetado (a armadilha não sobrescreve).
+- Um Pokémon do **Tipo Venenoso** que entra em campo **absorve e remove a armadilha inteira** do próprio Time (as 2 camadas de uma vez, se houver) — comportamento único, sem equivalente em Stealth Rock. Aço (sem ser também Venenoso) só não é afetado, mas não remove nada.
+
+**Rapid Spin remove Toxic Spikes do próprio campo do usuário** quando acerta (as camadas somem de uma vez), igual faz com Stealth Rock.
 
 ### 26.7 Foul Play
 
@@ -513,9 +532,9 @@ Quatro Habilidades reais passam a depender do clima certo pra funcionar: **Leaf 
 
 **PP**: 1 por uso (2 se o alvo tiver Pressure) · 0 PP bloqueia o Movimento, sem Struggle automático · só o Mestre edita à mão · Ether/Max Ether/Elixir/Max Elixir/PP Up/PP Max recuperam/aumentam automaticamente (Cap. 8.6.1)
 
-**Condições**: Queimadura (−2 Atq, −1 PV/turno) · Veneno (−2 PV/turno) · Veneno Grave (1,2,3,4...) · Paralisia (remove Agilidade do Treinador, −10 Vel., 1–2 perde ação) · Sono (1 turno obrigatório, depois 5–6 acorda, máx. 3 turnos) · Congelamento (5–6 descongela) · Confusão (5–6 cura; senão 1–2 perde ação e sofre 1 PV)
+**Condições**: Queimadura (−2 Atq, −1 PV/turno) · Veneno (−2 PV/turno; imune p/ Tipo Aço/Venenoso, exceto Corrosion) · Veneno Grave (1,2,3,4... — reseta a 0 sempre que sai e volta de campo) · Paralisia (remove Agilidade do Treinador, −10 Vel., 1–2 perde ação) · Sono (1 turno obrigatório, depois 5–6 acorda, máx. 3 turnos) · Congelamento (5–6 descongela) · Confusão (5–6 cura; senão 1–2 perde ação e sofre 1 PV)
 
-**Condições Voláteis (Cap. 26)**: Atordoado (perde a ação só nessa Rodada) · Leech Seed (1/8 PV Máx./turno) · Substitute (custa 25% PV Máx.) · Fúria/Outrage (2-3 turnos, trava e depois confunde) · Stealth Rock (1/8 PV Máx. de entrada, por Efetividade de Tipo Pedra — Rapid Spin remove do próprio campo)
+**Condições Voláteis (Cap. 26)**: Atordoado (perde a ação só nessa Rodada) · Leech Seed (1/8 PV Máx./turno) · Substitute (custa 25% PV Máx.) · Fúria/Outrage (2-3 turnos, trava e depois confunde) · Stealth Rock (1/8 PV Máx. de entrada, por Efetividade de Tipo Pedra — Rapid Spin remove do próprio campo) · Toxic Spikes (1 camada envenena, 2 envenena grave quem entra e é do chão — Tipo Venenoso absorve e remove, Rapid Spin remove do próprio campo)
 
 **Clima (Cap. 26.9)**: começa Neutro · Movimento dura 5 turnos (troca sempre substitui) · Mestre troca na mão, permanente · Chuva/Sol Forte (±2 dano fixo Água/Fogo) · Areia/Granizo (1/16 PV Máx./turno, Magic Guard bloqueia) · Areia +2 SpD Pedra · Neve +2 Def Gelo
 
