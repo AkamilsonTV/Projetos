@@ -266,6 +266,7 @@
   .arena-slot, .arena-slot-hidden{ width:84px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; position:relative; padding-top:4px; }
   .arena-info-btn{ position:absolute; top:-6px; right:-6px; width:20px; height:20px; padding:0; border-radius:50%; background:var(--surface); border:1px solid var(--line); font-size:.66rem; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); }
   .arena-info-btn:hover{ border-color:var(--accent); }
+  .nick .arena-info-btn{ position:static; display:inline-flex; vertical-align:middle; margin:0 0 2px 6px; }
   .arena-pokeball{ width:40px; height:40px; opacity:.85; }
   .arena-pokeball svg{ width:100%; height:100%; }
   .arena-slot-name{ font-size:.7rem; font-weight:600; line-height:1.2; }
@@ -11459,6 +11460,12 @@ function arenaEntryHTML(e){
   var pct = max>0 ? Math.round(cur/max*100) : 0;
   var fainted = cur<=0;
   var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'')+(!fainted && p.carregando?'🌀':'');
+  /* Pedido do usuário: mostrar a vida do boneco do Substitute embaixo do
+     Pokémon que o usou, pra facilitar a visualização -- some sozinho quando
+     o boneco quebra (poke.substituto vira null lá no motor de combate). */
+  var subHTML = (p.substituto && !fainted)
+    ? '<div class="muted" style="font-size:.6rem;">🟤 Boneco: '+p.substituto.hp+' PV</div>'
+    : '';
 
   var interaction = arenaEntryInteraction(e);
   var slotClass = 'arena-slot' + interaction.slotClass;
@@ -11504,6 +11511,7 @@ function arenaEntryHTML(e){
     '<div class="arena-slot-name">'+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+'</div>'+
     '<span class="muted" style="font-size:.62rem;">'+esc(t.name)+'</span>'+
     (icons ? '<div class="arena-icons">'+icons+'</div>' : '')+
+    subHTML+
     stageBadgesHTML(p)+
     controls+
   '</div>';
@@ -13488,16 +13496,16 @@ function pvpMiniCardHTML(t,p,label,statsBtnArgs){
   var statsBtn = statsBtnArgs
     ? '<button type="button" class="arena-info-btn" title="Ver atributos" onclick="event.stopPropagation();DT.pvpStatsShow(\''+statsBtnArgs[0]+'\',\''+statsBtnArgs[1]+'\')">📊</button>'
     : '';
-  return '<div class="poke-card" style="position:relative;"><div class="poke-head">'+
-    statsBtn+
+  return '<div class="poke-card"><div class="poke-head">'+
     '<div class="identity">'+spriteHTML+
       '<div style="min-width:0;">'+
-        '<div class="nick">'+esc(label)+': '+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+(cur<=0?' <span class="badge status-bad">Desmaiado</span>':'')+(p.status?'<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>':'')+(p.confuso?'<span class="badge status-bad">Confuso</span>':'')+'</div>'+
+        '<div class="nick">'+esc(label)+': '+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+statsBtn+(cur<=0?' <span class="badge status-bad">Desmaiado</span>':'')+(p.status?'<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>':'')+(p.confuso?'<span class="badge status-bad">Confuso</span>':'')+'</div>'+
         '<div class="species">'+esc(p.especie||'')+' · '+typeTags(p)+'</div>'+
       '</div>'+
     '</div>'+
   '</div><div class="poke-body">'+
     '<div class="hp-row"><span class="num">'+cur+'</span><span class="muted">/ '+max+' PV</span><div class="hp-bar'+hpBarTier(pct)+'"><i style="width:'+pct+'%"></i></div></div>'+
+    (p.substituto && cur>0 ? '<div class="muted" style="font-size:.72rem;">🟤 Boneco: '+p.substituto.hp+' PV</div>' : '')+
     stageBadgesHTML(p)+
   '</div></div>';
 }
