@@ -340,6 +340,18 @@
   @keyframes dice-pop-in{ 0%{ transform:scale(.5) rotate(-8deg); opacity:0; } 70%{ transform:scale(1.08) rotate(3deg); opacity:1; } 100%{ transform:scale(1) rotate(0); } }
   @keyframes dice-spin{ 0%{ transform:rotate(0deg) scale(1); } 50%{ transform:rotate(180deg) scale(1.18); } 100%{ transform:rotate(360deg) scale(1); } }
   @keyframes dice-flicker{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+  /* Pedido do usuário: "cada animação de rolagem dele ele fica abrindo e
+     fechando o popup dele rapidão até dar o resultado. Queria algo
+     contínuo que simularia aí uma suavidade." O #diceOverlay inteiro é
+     recriado (innerHTML) a cada tick da animação do dado, então sem isto
+     o fade/pop de entrada replay a cada tick. diceOverlayHTML() (JS) só
+     acrescenta as classes abaixo quando NÃO é a primeira vez que essa
+     mesma rolagem (mesmo .ts) aparece -- aí a entrada anima normal só uma
+     vez, e os ticks seguintes ficam parados/contínuos. Seletor composto
+     (classe base + -noanim juntas no mesmo elemento) pra garantir que
+     ganha da regra base independente de ordem/especificidade. */
+  .dice-overlay.dice-overlay-noanim{ animation:none; }
+  .dice-overlay-card.dice-overlay-noanim{ animation:none; }
 
   /* ---- Quadro de dado da Área PVP: 100% separado do #diceOverlay da
      Arena (nem globals, nem CSS, nem função em comum além de utilitários
@@ -354,6 +366,12 @@
      nunca atrasa nem arrisca travar a resolução de verdade. */
   .pvp-dice-overlay{ position:fixed; inset:0; background:rgba(10,14,22,.62); display:flex; align-items:center; justify-content:center; z-index:200; padding:20px; animation:dice-fade-in .15s ease-out; }
   .pvp-dice-card{ background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); padding:22px 26px 18px; max-width:380px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.4); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
+  /* Mesma ideia do .dice-overlay-noanim acima (ver o comentário grande lá),
+     só que pro quadro de dado 3D do PVP: pvpDiceOverlayHTML() (JS) só
+     acrescenta estas classes quando o mesmo roll.ts já apareceu antes,
+     pra entrada não fazer fade/pop de novo a cada tick da animação 3D. */
+  .pvp-dice-overlay.pvp-dice-overlay-noanim{ animation:none; }
+  .pvp-dice-card.pvp-dice-overlay-noanim{ animation:none; }
   .pvp-dice-table{ height:96px; display:flex; align-items:flex-end; justify-content:center; gap:22px; margin-bottom:10px; }
   .pvp-die3d-scene{ width:60px; height:60px; perspective:340px; }
   .pvp-die3d-cube{ position:relative; width:60px; height:60px; margin:0 auto; transform-style:preserve-3d; transform:rotateX(var(--restX,0deg)) rotateY(var(--restY,0deg)); }
@@ -438,6 +456,15 @@
      dice-fade-in de novo -- só o de cima). */
   .arena-action-overlay-resolving{ background:transparent; animation:none; }
   .arena-action-overlay-card{ background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); max-width:560px; width:100%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
+  /* Pedido do usuário: "toda vez que eu clico, dentro do popup dele, pra
+     fazer outra coisa, ele fecha o popup rápido e abre outro... Queria
+     algo contínuo". Mesma lógica do .dice-overlay-noanim (ver comentário
+     lá): arenaActionPanelHTML() (JS) só acrescenta estas classes quando o
+     popup continua aberto pra MESMA entrada (SESSION.arenaAttacker
+     inalterado) -- aí não entra/sai de novo ao trocar de passo dentro
+     dele (menu -> Movimento -> alvo). */
+  .arena-action-overlay.arena-action-overlay-noanim{ animation:none; }
+  .arena-action-overlay-card.arena-action-overlay-noanim{ animation:none; }
   .arena-action-overlay-head{ display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); flex-shrink:0; }
   .arena-action-overlay-head h2{ flex:1; margin:0; font-size:1rem; }
   .arena-action-overlay-close{ background:none; border:none; font-size:1.2rem; line-height:1; cursor:pointer; color:var(--ink-dim); padding:2px 6px; }
@@ -10003,6 +10030,26 @@ window.DT = DT;
    abrir o overlay pra ESSE aparelho, com um timer local pra fechar sozinho. */
 var LAST_SHOWN_ROLL_TS = 0;
 var rollHideTimer = null;
+/* Pedido do usuário: "cada animação de rolagem dele ele fica abrindo e
+   fechando o popup dele rapidão até dar o resultado. Queria algo
+   contínuo que simularia aí uma suavidade." Causa raiz: screenHTML()/
+   diceOverlayHTML() reconstroem a MARCAÇÃO inteira do zero a cada
+   render() (é uma troca de innerHTML, não um diff de DOM de verdade) --
+   então toda vez que um <div> com `animation:...` no CSS é recriado (o
+   navegador não sabe que "é o mesmo popup de antes", só vê um elemento
+   NOVO sendo inserido), a animação de entrada (dice-fade-in/dice-pop-in)
+   toca de novo do zero, dando essa aparência de "fechou e abriu" a cada
+   render -- e a rolagem do dado chama render()/renderDiceOverlay() a
+   cada ~90ms enquanto anima (startDiceRollAnimation), então piscava
+   bastante. Guarda a "identidade" do que está aberto AGORA (o ts da
+   própria rolagem) -- se for a MESMA rolagem de antes (só mudou de
+   estágio: d6 -> 1d10 -> resultado), marca a classe *-noanim nela (ver
+   diceOverlayHTML) pra não tocar a animação de entrada de novo; só toca
+   quando é uma rolagem DE VERDADE nova (ts diferente do que já tava
+   marcado). Zera pra null quando o quadro fecha de vez, pra próxima
+   rolagem (mesmo que aconteça rapidinho depois) sempre entrar animando
+   normal. */
+var DICE_OVERLAY_OPEN_FOR = null;
 /* Só mostra/anima uma rolagem se ela aconteceu "agora" — sem isso, toda vez
    que a página é recarregada (ou reaberta depois de um tempo), o primeiro
    snapshot do Firebase traz o STATE.arena.lastRoll de QUALQUER ataque
@@ -10356,7 +10403,7 @@ function rollLogLine(lr){
   return parts.join(' · ');
 }
 function diceOverlayHTML(){
-  if(!SESSION.showRollOverlay) return '';
+  if(!SESSION.showRollOverlay){ DICE_OVERLAY_OPEN_FOR = null; return ''; }
   /* Checa nascer de novo (não só na hora de INICIAR, ver checkArenaRoll):
      cobre quem estava vendo a animação e navegou pra outra tela/deixou de
      participar NO MEIO da rolagem -- o timer de animação (startDiceRollAnimation)
@@ -10365,6 +10412,15 @@ function diceOverlayHTML(){
   if(!arenaDiceViewerAllowed()) return '';
   var lr = STATE.arena && STATE.arena.lastRoll;
   if(!lr) return '';
+  /* Pedido do usuário: "algo contínuo... uma suavidade" -- só toca a
+     animação de entrada (dice-fade-in/dice-pop-in) quando é uma
+     rolagem DE VERDADE nova (ts diferente da última já marcada); pra
+     quadros seguintes da MESMA rolagem (d6 -> 1d10 -> assentado), o
+     popup fica "parado" (ver DICE_OVERLAY_OPEN_FOR, comentário grande
+     lá em cima). */
+  var freshRoll = DICE_OVERLAY_OPEN_FOR !== lr.ts;
+  DICE_OVERLAY_OPEN_FOR = lr.ts;
+  var noAnimClass = freshRoll ? '' : ' dice-overlay-noanim';
   var anim = (DICE_ROLL_ANIM && DICE_ROLL_ANIM.ts===lr.ts) ? DICE_ROLL_ANIM : null;
   var curStage = anim ? anim.stages[anim.stageIdx] : null; /* 'd6' | 'd10a' | 'd10b' | null (já assentou) */
   /* Quais estágios EXISTEM pra essa rolagem (independe de estar animando ou
@@ -10412,8 +10468,8 @@ function diceOverlayHTML(){
     summaryHTML = '<div class="dice-summary">'+rollSummaryLines(lr).join('<br>')+'</div>';
   }
 
-  return '<div class="dice-overlay" onclick="DT.dismissRoll()">'+
-    '<div class="dice-overlay-card" onclick="event.stopPropagation()">'+
+  return '<div class="dice-overlay'+noAnimClass+'" onclick="DT.dismissRoll()">'+
+    '<div class="dice-overlay-card'+noAnimClass+'" onclick="event.stopPropagation()">'+
       d6HTML+
       d10Line+
       summaryHTML+
@@ -10795,14 +10851,40 @@ function arenaActionBattlefieldHTML(){
    arenaTrainerSourceHTML) -- esses não estão em campo, então não fazem
    parte do "lado a lado" dos Times. Um self/campo/área continua
    resolvendo na hora, sem pedir clique nenhum. */
+/* Mesma ideia de DICE_OVERLAY_OPEN_FOR (ver o comentário grande lá) pro
+   popup de Ação -- pedido do usuário: "toda vez que eu clico, dentro do
+   popup dele, pra fazer outra coisa, ele fecha o popup rápido e abre
+   outro". Chave = SESSION.arenaAttacker (a entrada de quem está agindo)
+   -- enquanto continuar a MESMA entrada, é o mesmo popup pro usuário,
+   mesmo trocando de passo (menu -> Movimento -> alvo -> Resolvendo). */
+var ARENA_ACTION_POPUP_OPEN_FOR = null;
 function arenaActionPanelHTML(){
-  if(!SESSION.arenaAttacker) return '';
+  if(!SESSION.arenaAttacker){ ARENA_ACTION_POPUP_OPEN_FOR = null; return ''; }
   var atkEntry = findArenaEntry(SESSION.arenaAttacker);
   if(!atkEntry){ arenaResetActionState(); return ''; }
   var attTrainer = findTrainer(atkEntry.trainerId);
   var attPoke = attTrainer && getPoke(attTrainer.id, atkEntry.pokemonId);
   if(!attPoke) return '';
   var name = attPoke.apelido || attPoke.especie || 'Pokémon';
+
+  /* Pedido do usuário: "toda vez que eu clico, dentro do popup dele, pra
+     fazer outra coisa, ele fecha o popup rápido e abre outro... Não tem
+     como isso ser tudo feito dentro de um popup só?" -- já ERA um popup
+     só (o mesmo <div> cobre menu -> escolher Movimento -> escolher alvo
+     -> Resolvendo, tudo via SESSION.arenaAction/arenaMoveIdx/etc., sem
+     nenhum popup fechando de vez e outro abrindo no meio do caminho) --
+     só que screenHTML() reconstrói o HTML inteiro do zero a cada
+     render(), então o navegador vê um elemento NOVO a cada clique e
+     REPETE a animação de entrada (dice-fade-in/dice-pop-in) toda vez,
+     dando a impressão de "fechou e abriu". A identidade de verdade do
+     popup é SESSION.arenaAttacker (a entrada de quem está agindo) --
+     enquanto for a mesma entrada, é a MESMA "sessão" de popup pro
+     usuário, não importa se mudou de passo (menu/Movimento/alvo) ou
+     entrou em Resolvendo; só quando troca de Pokémon (ou fecha de vez)
+     é que conta como um popup novo de verdade. */
+  var freshOpen = ARENA_ACTION_POPUP_OPEN_FOR !== SESSION.arenaAttacker;
+  ARENA_ACTION_POPUP_OPEN_FOR = SESSION.arenaAttacker;
+  var noAnimClass = freshOpen ? '' : ' arena-action-overlay-noanim';
 
   /* Rolagem de verdade já saiu (SESSION.arenaResolving, setado no fim de
      DT.resolveArenaMove) e o #diceOverlay está subindo por cima AGORA,
@@ -10812,7 +10894,7 @@ function arenaActionPanelHTML(){
      quando a animação assentar (startDiceRollAnimation chama
      arenaResetActionState() nesse instante). */
   if(SESSION.arenaResolving){
-    return '<div class="arena-action-overlay arena-action-overlay-resolving"><div class="arena-action-overlay-card">'+
+    return '<div class="arena-action-overlay arena-action-overlay-resolving'+noAnimClass+'"><div class="arena-action-overlay-card'+noAnimClass+'">'+
       '<div class="arena-action-overlay-head"><h2>⚔️ Ação</h2></div>'+
       '<div class="arena-action-overlay-body">'+
         arenaActionBattlefieldHTML()+
@@ -10938,7 +11020,7 @@ function arenaActionPanelHTML(){
 
   if(!body) return '';
 
-  return '<div class="arena-action-overlay"><div class="arena-action-overlay-card">'+
+  return '<div class="arena-action-overlay'+noAnimClass+'"><div class="arena-action-overlay-card'+noAnimClass+'">'+
     '<div class="arena-action-overlay-head"><h2>⚔️ Ação</h2>'+closeBtn+'</div>'+
     '<div class="arena-action-overlay-body">'+body+'</div>'+
   '</div></div>';
@@ -12385,6 +12467,13 @@ function pvpQueueRoll(sala, roll){
 var PVP_DICE_SEEN_TS = {}; /* salaId -> ts da última rolagem já mostrada nessa aba */
 var PVP_DICE_PENDING = []; /* rolagens (cópias de sala.rollQueue) ainda não animadas nessa aba */
 var PVP_DICE_ANIM = null; /* { roll, stages, stageIdx, restX, restY } */
+/* Mesma ideia de DICE_OVERLAY_OPEN_FOR (Arena, ver o comentário grande
+   lá) pro quadro de dado 3D do PVP -- pedido do usuário: "algo contínuo
+   que simularia aí uma suavidade". Chave = roll.ts (o `anim.roll` em si
+   já é o MESMO objeto em todos os estágios de uma rolagem -- só o
+   stageIdx muda -- mas mesmo assim rastreia pelo ts, não por referência,
+   igual a Arena, por segurança). */
+var PVP_DICE_OVERLAY_OPEN_FOR = null;
 var pvpDiceTimer = null;
 var PVP_DIE_TUMBLE_MS = 1100; /* d6 caindo/girando até assentar */
 var PVP_DIE10_TUMBLE_MS = 900; /* d10 (Efeito Percentual) -- gira só em Y, tipo moeda */
@@ -12480,10 +12569,16 @@ function pvpRenderDiceOverlay(){
    nenhuma); o quadro em si (o que aparece na tela) é resolvido igual ao
    da Arena, só na hora de desenhar. */
 function pvpDiceOverlayHTML(){
-  if(!SESSION.showPvpRollOverlay || !PVP_DICE_ANIM) return '';
+  if(!SESSION.showPvpRollOverlay || !PVP_DICE_ANIM){ PVP_DICE_OVERLAY_OPEN_FOR = null; return ''; }
   if(!SESSION.showPvp) return '';
   var anim = PVP_DICE_ANIM;
   var roll = anim.roll;
+  /* Pedido do usuário: "algo contínuo... uma suavidade" -- mesma ideia
+     de diceOverlayHTML (Arena): animação de entrada só na 1ª vez que
+     ESSA rolagem aparece, não em cada estágio dela. */
+  var freshRoll = PVP_DICE_OVERLAY_OPEN_FOR !== roll.ts;
+  PVP_DICE_OVERLAY_OPEN_FOR = roll.ts;
+  var noAnimClass = freshRoll ? '' : ' pvp-dice-overlay-noanim';
   var curStage = anim.stages[anim.stageIdx]; /* 'd6' | 'd10a' | 'd10b' | undefined (assentou de vez) */
   var settled = anim.stageIdx>=anim.stages.length;
 
@@ -12538,8 +12633,8 @@ function pvpDiceOverlayHTML(){
 
   var queueHint = PVP_DICE_PENDING.length ? '<div class="pvp-dice-queue-hint">+'+PVP_DICE_PENDING.length+' rolagem(ns) na fila…</div>' : '';
 
-  return '<div class="pvp-dice-overlay" onclick="DT.pvpDismissRoll()">'+
-    '<div class="pvp-dice-card" onclick="event.stopPropagation()">'+
+  return '<div class="pvp-dice-overlay'+noAnimClass+'" onclick="DT.pvpDismissRoll()">'+
+    '<div class="pvp-dice-card'+noAnimClass+'" onclick="event.stopPropagation()">'+
       '<div class="pvp-dice-table">'+d6HTML+d10HTML+'</div>'+
       summaryHTML+
       queueHint+
