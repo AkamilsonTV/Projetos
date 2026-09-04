@@ -116,6 +116,12 @@
   .card-body{ padding:16px; }
   .card-body.tight{ padding:10px 16px; }
 
+  /* ---- Clima (Cap. mecânica nova) -- exibição na Arena e no PVP ---- */
+  .weather-card{ margin-bottom:14px; }
+  .weather-card-body{ padding:10px 16px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .weather-icon{ font-size:1.3rem; line-height:1; }
+  .weather-select{ margin-left:auto; font-size:.78rem; padding:4px 6px; border-radius:6px; border:1px solid var(--line); background:var(--surface); color:var(--ink); }
+
   .center-stage{ display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:66vh; text-align:center; gap:22px; padding:20px; }
   .center-stage h1{ font-size:1rem; }
   .center-stage .lede{ color:var(--ink-dim); max-width:42ch; font-size:.92rem; line-height:1.5; }
@@ -4067,6 +4073,88 @@ var CHARGE_MOVE_MSG = {
    boneco absorve, ver applyAttackResult) em vez de reimplementar o
    próprio teste de auto-dano da Confusão. */
 var THRASH_MOVES = { 'Outrage':1, 'Thrash':1, 'Petal Dance':1 };
+
+/* =================== CLIMA (Cap. mecânica nova) ===================
+   Pedido do usuário: "Vamos aproveitar e colocar a diferenciação de
+   efeito de clima... sempre vamos começar com clima neutro e isso vai
+   ser alterado com as habilidades e moves que alteram isso ou se o
+   mestre definir." Convertido do Bulbapedia/PokemonDB pras condições
+   deste RPG (motor de dano ADITIVO, bônus fixos pequenos, igual STAB/
+   Habilidade -- nunca multiplicador ×1.5): 5 climas reais + Neutro
+   (padrão). Vive em STATE.arena.weather (Arena) e sala.weather (cada
+   sala do PVP, mesmo padrão de STATE.arena.hazards -- withArenaContext
+   troca STATE.arena por inteiro, então todo o motor abaixo funciona
+   pros dois sem duplicar nada) como {tipo, turnsLeft}: turnsLeft é um
+   número (conta 5→0 no fim de cada turno, ver applyEndOfTurnStatusAndLog,
+   e volta sozinho pro Neutro) quando foi um MOVIMENTO que armou, ou null
+   quando foi o Mestre que setou na mão (permanente até ele trocar nas
+   Arena; a Área PVP não tem Mestre, então só chega a null se um dia
+   alguém setar por fora do jogo -- na prática toda sala de PVP só recebe
+   turnsLeft numérico, vindo de Movimento). */
+var WEATHER_LABELS = { neutro:'Neutro', chuva:'Chuva', sol:'Sol Forte', areia:'Tempestade de Areia', granizo:'Granizo', neve:'Neve' };
+var WEATHER_ICONS = { neutro:'⛅', chuva:'🌧️', sol:'☀️', areia:'🏜️', granizo:'🌨️', neve:'❄️' };
+/* Golpe -> clima que ele arma, ao ser resolvido em DT.resolveFieldMove
+   (categoria 'field' -- os 6 golpes de clima reais do MOVES_DEX). Chilly
+   Reception oficialmente também troca de lugar com um Pokémon da equipe
+   em espera (mecânica de troca forçada, tipo Baton Pass) -- fica de fora
+   de propósito, mesma lógica do Cap. 25 (SWITCH_OUT_MOVES): só a parte
+   de clima foi implementada aqui, o golpe ainda gasta o turno normal. */
+var WEATHER_SET_MOVES = { 'Rain Dance':'chuva', 'Sunny Day':'sol', 'Sandstorm':'areia', 'Hail':'granizo', 'Snowscape':'neve', 'Chilly Reception':'neve' };
+/* Duração oficial de todo Movimento de clima: 5 turnos, revertendo pro
+   Neutro sozinho (Cap. confirmado com o usuário -- "5 turnos, como no
+   jogo oficial"). */
+var WEATHER_MOVE_DURATION = 5;
+/* Dano residual de fim de turno (Areia/Granizo): 1/16 do PV Máximo,
+   igual ao jogo oficial, em quem não é imune por Tipo. Sturdy não entra
+   aqui (não é "sobreviver a UM golpe", é dano por turno normal, igual
+   Condição Principal) -- só Magic Guard bloqueia (ver
+   applyEndOfTurnStatusAndLog, mesmo padrão do dano de Condição/Leech
+   Seed). */
+var WEATHER_CHIP_IMMUNE = { areia: { 'Pedra':1, 'Terra':1, 'Aço':1 }, granizo: { 'Gelo':1 } };
+/* Bônus/penalidade FIXA de dano por Tipo do golpe, sob cada clima --
+   mesmo espírito de STAB/Habilidade (+1/+2 fixo), nunca multiplicador,
+   pra ficar consistente com o resto do motor (Cap. 6.3). */
+var WEATHER_TYPE_DAMAGE = {
+  chuva: { 'Água':2, 'Fogo':-2 },
+  sol: { 'Fogo':2, 'Água':-2 }
+};
+/* Bônus fixo de Defesa/Defesa Especial EFETIVA por Tipo, sob o clima
+   certo -- versão aditiva do "1.5× SpD de Pedra na Areia" / "1.5× Def de
+   Gelo na Neve" oficiais (mesmo motivo de WEATHER_TYPE_DAMAGE: motor
+   aditivo, não multiplicador). Consultado dentro de effectiveStat. */
+var WEATHER_STAT_BONUS = {
+  areia: { tipo:'Pedra', stat:'spd', bonus:2 },
+  neve: { tipo:'Gelo', stat:'def', bonus:2 }
+};
+/* % de cura de Moonlight/Synthesis/Morning Sun por clima -- os únicos 3
+   Movimentos de cura oficialmente sensíveis ao clima (os outros de
+   MOVE_HEAL ficam fixos em 50%/100%, sem mudar). Sol cura mais (2/3),
+   qualquer clima "ruim" (Chuva/Areia/Granizo) cura menos (1/4); Neutro e
+   Neve mantêm os 50% padrão (Neve não é um clima "ruim" oficial pra
+   esse efeito). */
+var WEATHER_SUN_HEAL_MOVES = { 'Moonlight':1, 'Synthesis':1, 'Morning Sun':1 };
+function weatherHealPct(weatherTipo){
+  if(weatherTipo==='sol') return 67;
+  if(weatherTipo==='chuva' || weatherTipo==='areia' || weatherTipo==='granizo') return 25;
+  return 50;
+}
+/* Tipo/poder de Weather Ball muda com o clima ativo -- oficialmente
+   também DOBRA de poder sob qualquer clima não-Neutro; nesse motor
+   (poder pequeno, escala própria) isso vira poder+2 em vez de ×2, mesmo
+   espírito aditivo de tudo o mais aqui. */
+var WEATHER_BALL_TYPE = { chuva:'Água', sol:'Fogo', areia:'Pedra', granizo:'Gelo', neve:'Gelo' };
+function weatherTipo(){
+  return (STATE.arena && STATE.arena.weather && STATE.arena.weather.tipo) || 'neutro';
+}
+/* Centraliza trocar de clima -- usado tanto pelos 6 Movimentos
+   (WEATHER_SET_MOVES, turnsLeft=5) quanto pelo seletor do Mestre na
+   Arena (DT.arenaSetWeather, turnsLeft=null=permanente). Trocar de
+   clima SUBSTITUI o anterior por completo (reseta a contagem pro novo),
+   igual ao jogo oficial -- nunca soma duração. */
+function setArenaWeather(tipo, turnsLeft, logMsg){
+  STATE.arena.weather = { tipo: tipo, turnsLeft: (turnsLeft===undefined ? null : turnsLeft) };
+  if(logMsg) arenaLog(logMsg);
+}
 /* ---- Categoria de alvo de cada Movimento (self/aliado/inimigo/área) ----
    Gerada a partir do CSV oficial do PokeAPI (moves.csv target_id + move_targets.csv),
    mesma fonte de SPECIES_DEX/MOVES_DEX/LEARNSETS/TYPE_CHART/MOVE_EFFECTS. ---- */
@@ -6166,11 +6254,13 @@ function migrateState(){
     if(s.fugaTravada===undefined) s.fugaTravada = true;
     if(s.round===undefined) s.round = null;
     if(!s.hazards || typeof s.hazards!=='object') s.hazards = {}; /* Stealth Rock etc. por Time -- ver STEALTH_ROCK_DAMAGE_FRACTION */
+    if(!s.weather || typeof s.weather!=='object' || !WEATHER_LABELS.hasOwnProperty(s.weather.tipo)) s.weather = { tipo:'neutro', turnsLeft:null }; /* Clima (Cap. mecânica nova) -- por sala, mesmo padrão de hazards */
   });
   if(!STATE.arena || typeof STATE.arena!=='object') STATE.arena = {teams:[], entries:[]};
   if(!Array.isArray(STATE.arena.teams)) STATE.arena.teams = [];
   if(!Array.isArray(STATE.arena.entries)) STATE.arena.entries = [];
   if(!STATE.arena.hazards || typeof STATE.arena.hazards!=='object') STATE.arena.hazards = {}; /* Stealth Rock etc. por Time -- ver STEALTH_ROCK_DAMAGE_FRACTION */
+  if(!STATE.arena.weather || typeof STATE.arena.weather!=='object' || !WEATHER_LABELS.hasOwnProperty(STATE.arena.weather.tipo)) STATE.arena.weather = { tipo:'neutro', turnsLeft:null }; /* Clima (Cap. mecânica nova) */
   if(STATE.arena.lastRoll===undefined) STATE.arena.lastRoll = null;
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   if(STATE.arena.round===undefined) STATE.arena.round = null;
@@ -6317,24 +6407,36 @@ function highestNaturalStat(poke){
    Atributo. Guts/Hustle/Huge Power/Pure Power só valem no Atq (é o que a
    Habilidade real afeta); Defeatist tira do Atq E do AEsp quando o PV
    já está na metade ou menos; Protosynthesis/Quark Drive somam no
-   Atributo mais alto -- oficialmente depende de Sol Forte/item, aqui fica
-   sempre ativo por simplificação (a gente não tem clima nem item
-   equipado ainda). */
+   Atributo mais alto. Pedido do usuário ("condicionar ao clima real"):
+   Protosynthesis agora exige Sol Forte de verdade (Clima já existe no
+   motor); Quark Drive continua sempre ativo por simplificação -- o
+   gatilho oficial dela é Terreno Elétrico/item segurado, que a gente
+   ainda não modela (só Clima). */
 function abilityFlatStatBonus(trainer, poke, stat){
+  if(stat==='hp') return 0;
   var ab = poke.habilidade;
-  if(!ab || stat==='hp') return 0;
   var bonus = 0;
-  if(stat==='atk'){
-    if(ab==='Guts' && poke.status) bonus += 2;
-    if(ab==='Hustle') bonus += 2;
-    if(ab==='Huge Power' || ab==='Pure Power') bonus += 2;
+  if(ab){
+    if(stat==='atk'){
+      if(ab==='Guts' && poke.status) bonus += 2;
+      if(ab==='Hustle') bonus += 2;
+      if(ab==='Huge Power' || ab==='Pure Power') bonus += 2;
+    }
+    if((stat==='atk' || stat==='spa') && ab==='Defeatist'){
+      var max = hpMax(trainer, poke);
+      var cur = (poke.currentHP===null||poke.currentHP===undefined) ? max : poke.currentHP;
+      if(cur <= Math.ceil(max/2)) bonus -= 2;
+    }
+    if(ab==='Protosynthesis' && weatherTipo()==='sol' && stat===highestNaturalStat(poke)) bonus += 2;
+    if(ab==='Quark Drive' && stat===highestNaturalStat(poke)) bonus += 2;
   }
-  if((stat==='atk' || stat==='spa') && ab==='Defeatist'){
-    var max = hpMax(trainer, poke);
-    var cur = (poke.currentHP===null||poke.currentHP===undefined) ? max : poke.currentHP;
-    if(cur <= Math.ceil(max/2)) bonus -= 2;
-  }
-  if((ab==='Protosynthesis' || ab==='Quark Drive') && stat===highestNaturalStat(poke)) bonus += 2;
+  /* Bônus de Defesa/Defesa Especial por Tipo sob o clima certo (Areia
+     pra Pedra, Neve pra Gelo -- ver WEATHER_STAT_BONUS) -- versão aditiva
+     da mesma ideia oficial (1.5× SpD/Def), independe de Habilidade (por
+     isso fica FORA do "if(ab)" acima -- vale pra qualquer Pokémon do
+     Tipo certo, com ou sem Habilidade nenhuma escolhida). */
+  var wsb = WEATHER_STAT_BONUS[weatherTipo()];
+  if(wsb && wsb.stat===stat && (poke.tipo1===wsb.tipo || poke.tipo2===wsb.tipo)) bonus += wsb.bonus;
   return bonus;
 }
 function effectiveStat(trainer, poke, stat){
@@ -6484,15 +6586,17 @@ var MOLD_BREAKER_ABILITIES = { 'Mold Breaker':1, 'Teravolt':1, 'Turboblaze':1 };
 var INTIMIDATE_BLOCK = { 'Clear Body':1,'White Smoke':1,'Full Metal Body':1,'Hyper Cutter':1,'Inner Focus':1,'Own Tempo':1,'Oblivious':1,'Scrappy':1 };
 var INTIMIDATE_REVERSE = { 'Contrary':1, 'Guard Dog':1 };
 /* Imunidade a Condição/Confuso por Habilidade -- Cap. 20/23. Leaf Guard
-   bloqueia as 5 Condições Principais de uma vez (oficialmente só com Sol
-   Forte; aqui fica sempre ativo, mesma simplificação do Protosynthesis). */
+   bloqueia as 5 Condições Principais de uma vez -- SÓ sob Sol Forte
+   (pedido do usuário: "condicionar ao clima real", agora que Clima
+   existe de verdade -- antes ficava sempre ativo, simplificação
+   proposital enquanto não tinha clima nenhum no motor). */
 var STATUS_IMUNE_HABILIDADE = { 'Immunity':'veneno','Limber':'paralisia','Insomnia':'sono','Vital Spirit':'sono','Water Veil':'queimadura','Magma Armor':'congelamento','Sweet Veil':'sono' };
 var STATUS_IMUNE_TOTAL = { 'Leaf Guard':1 };
 function abilityBlocksStatus(poke, statusKey){
   var ab = poke && poke.habilidade;
   if(!ab) return false;
   if(statusKey==='confuso') return ab==='Own Tempo';
-  if(STATUS_IMUNE_TOTAL[ab]) return true;
+  if(STATUS_IMUNE_TOTAL[ab]) return weatherTipo()==='sol';
   return STATUS_IMUNE_HABILIDADE[ab]===statusKey;
 }
 /* Absorção/imunidade de Tipo por Habilidade (Levitate, Water Absorb...),
@@ -6559,7 +6663,20 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
   // silêncio, exatamente igual um Movimento de Status.
   if(!hit){ result.dano = 0; result.typeMod = null; return result; }
 
-  var tm = typeModifier(move.tipo, defPoke.tipo1, defPoke.tipo2);
+  /* Weather Ball (Cap. clima): Tipo e poder mudam com o clima ativo --
+     oficialmente também DOBRA de poder sob qualquer clima não-Neutro;
+     aqui vira +2 de poder fixo, mesmo espírito aditivo do resto do motor
+     (ver WEATHER_BALL_TYPE). Calculado AQUI, antes de qualquer conta de
+     Efetividade/STAB, pra tudo abaixo (typeModifier, Thick Fat, Scrappy,
+     STAB) já enxergar o Tipo certo. */
+  var moveTipoEfetivo = move.tipo;
+  var movePoderEfetivo = move.poder;
+  if(move.nome==='Weather Ball' && WEATHER_BALL_TYPE[weatherTipo()]){
+    moveTipoEfetivo = WEATHER_BALL_TYPE[weatherTipo()];
+    movePoderEfetivo = (move.poder||0)+2;
+  }
+
+  var tm = typeModifier(moveTipoEfetivo, defPoke.tipo1, defPoke.tipo2);
   result.immune = tm.immune;
   result.abilityAbsorb = null;
   /* Efetividade de Tipo pro Registro/quadro de dado -- puramente do dado
@@ -6590,16 +6707,16 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
      efeito do golpe", é sobreviver ao dano -- Cap. 6.3). Scrappy/Tinted
      Lens são do atacante e continuam valendo mesmo sem Mold Breaker. */
   if(!moldBreaker){
-    var absorb = abilityTypeAbsorb(defAbility, move.tipo);
+    var absorb = abilityTypeAbsorb(defAbility, moveTipoEfetivo);
     if(absorb){ tm.immune = true; result.immune = true; result.abilityAbsorb = absorb; }
     if(defAbility==='Wonder Guard' && isDamaging && tm.mod<=0){ tm.immune = true; result.immune = true; }
-    if(defAbility==='Thick Fat' && (move.tipo==='Fogo'||move.tipo==='Gelo')) tm.mod -= 2;
+    if(defAbility==='Thick Fat' && (moveTipoEfetivo==='Fogo'||moveTipoEfetivo==='Gelo')) tm.mod -= 2;
   }
   /* Soundproof: imune a golpe baseado em som, por nome (lista curada) --
      não é uma imunidade "esconder o golpe" no mesmo sentido de
      Levitate/Wonder Guard, então Mold Breaker não ignora ela. */
   if(defAbility==='Soundproof' && SOUND_MOVES[move.nome]){ tm.immune = true; result.immune = true; }
-  if(attAbility==='Scrappy' && tm.immune && !result.abilityAbsorb && (move.tipo==='Normal'||move.tipo==='Lutador')){
+  if(attAbility==='Scrappy' && tm.immune && !result.abilityAbsorb && (moveTipoEfetivo==='Normal'||moveTipoEfetivo==='Lutador')){
     tm.immune = false; result.immune = false;
   }
   if(attAbility==='Tinted Lens' && tm.mod<0) tm.mod = 0;
@@ -6619,8 +6736,8 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
       ? ((attAbility==='Unaware') ? effectiveStatIgnoringStage(defTrainer, defPoke, 'atk') : effectiveStat(defTrainer, defPoke, 'atk'))
       : ((defAbility==='Unaware') ? effectiveStatIgnoringStage(attTrainer, attPoke, atkStat) : effectiveStat(attTrainer, attPoke, atkStat));
     var defEff = (attAbility==='Unaware') ? effectiveStatIgnoringStage(defTrainer, defPoke, defStat) : effectiveStat(defTrainer, defPoke, defStat);
-    var base = atkEff + (move.poder||0) - defEff;
-    var stab = (move.tipo && (move.tipo===attPoke.tipo1 || move.tipo===attPoke.tipo2)) ? (attAbility==='Adaptability' ? 2 : 1) : 0;
+    var base = atkEff + (movePoderEfetivo||0) - defEff;
+    var stab = (moveTipoEfetivo && (moveTipoEfetivo===attPoke.tipo1 || moveTipoEfetivo===attPoke.tipo2)) ? (attAbility==='Adaptability' ? 2 : 1) : 0;
 
     /* Bônus fixo de dano por Habilidade do atacante -- Technician (golpe
        fraco), Iron Fist/Strong Jaw (soco/mordida), Sheer Force (perde o
@@ -6643,6 +6760,13 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
     }
     if(attAbility==='Flash Fire' && attPoke.flashFireBoost && move.tipo==='Fogo') bonus += 2;
     if(crit && attAbility==='Sniper') bonus += 2;
+    /* Clima (Cap. mecânica nova): bônus/penalidade FIXA por Tipo do golpe
+       sob Chuva/Sol (WEATHER_TYPE_DAMAGE) -- versão aditiva do ×1.5/×0.5
+       oficial, mesmo espírito de STAB/Habilidade. Usa o Tipo EFETIVO
+       (moveTipoEfetivo), então um Weather Ball virado Água sob Chuva
+       também ganha o bônus normal de golpe de Água. */
+    var wdmg = WEATHER_TYPE_DAMAGE[weatherTipo()];
+    if(wdmg && wdmg[moveTipoEfetivo]) bonus += wdmg[moveTipoEfetivo];
 
     var dano = base + stab + tm.mod + (crit?4:0) + bonus;
     dano = Math.max(1, dano);
@@ -6755,7 +6879,7 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
    e aplica status, respeitando o Cap. 20 (nunca duas Condições Principais ao
    mesmo tempo — Confusão é a exceção e não briga com nenhuma delas). Devolve
    um resumo pro relatório visual (fainted/statusApplied). */
-function applyAttackResult(defTrainer, defPoke, result, attPoke){
+function applyAttackResult(defTrainer, defPoke, result, attPoke, move){
   var info = { fainted:false, statusApplied:null };
   if(!result.hit) return info;
   /* Substitute (boneco) -- pedido do usuário: tem PV própria, baseada no
@@ -6816,7 +6940,12 @@ function applyAttackResult(defTrainer, defPoke, result, attPoke){
       if(!defPoke.confuso && !abilityBlocksStatus(defPoke,'confuso')){ defPoke.confuso = true; info.statusApplied = 'confuso'; }
     } else if(!defPoke.status){
       var ailmentNorm = result.efeito.ailment==='veneno_grave' ? 'veneno' : result.efeito.ailment;
-      if(!abilityBlocksStatus(defPoke, ailmentNorm)){
+      /* Clima (Cap. mecânica nova): sob Sol Forte, ninguém pode ser
+         Congelado de novo -- regra oficial ("Pokémon cannot be frozen
+         while the harsh sunlight is active"), com a exceção de sempre,
+         Freeze-Dry (Tipo Gelo que ignora essa proteção). */
+      var bloqueadoPeloSol = ailmentNorm==='congelamento' && weatherTipo()==='sol' && (!move || move.nome!=='Freeze-Dry');
+      if(!abilityBlocksStatus(defPoke, ailmentNorm) && !bloqueadoPeloSol){
         defPoke.status = result.efeito.ailment;
         defPoke.statusTurns = 0;
         info.statusApplied = result.efeito.ailment;
@@ -7105,7 +7234,11 @@ function applyMoveSelfHealEffects(attTrainer, attPoke, defTrainer, defPoke, move
       }
     }
   }
-  var healPct = MOVE_HEAL[move.nome];
+  /* Clima (Cap. mecânica nova): Moonlight/Synthesis/Morning Sun são os 3
+     únicos golpes de cura oficialmente sensíveis ao clima ativo -- ver
+     weatherHealPct/WEATHER_SUN_HEAL_MOVES. Os outros de MOVE_HEAL (Rest,
+     Recover, Roost...) continuam com a % fixa de sempre. */
+  var healPct = WEATHER_SUN_HEAL_MOVES[move.nome] ? weatherHealPct(weatherTipo()) : MOVE_HEAL[move.nome];
   if(healPct){
     var defMax = hpMax(defTrainer, defPoke);
     var defCur = (defPoke.currentHP===null||defPoke.currentHP===undefined) ? defMax : defPoke.currentHP;
@@ -7162,7 +7295,7 @@ function resolveMoveUse(attTrainer, attPoke, move, targets){
        "tentou" mudar. */
     var beforeAttStages = {}; for(var _sk in attPoke.estagios) beforeAttStages[_sk] = attPoke.estagios[_sk];
     var beforeDefStages = {}; for(var _sk2 in tgt.poke.estagios) beforeDefStages[_sk2] = tgt.poke.estagios[_sk2];
-    var info = applyAttackResult(tgt.trainer, tgt.poke, result, attPoke);
+    var info = applyAttackResult(tgt.trainer, tgt.poke, result, attPoke, move);
     /* Leech Seed (Cap. mecânica nova) -- pedido do usuário, convertido pro
        nosso padrão: "plantar" a semente é só marcar tgt.poke.leechSeed
        (quem se beneficia, por trainerId -- nunca um pokemonId fixo,
@@ -7590,8 +7723,46 @@ function arenaFinishRoundResolution(round){
      Fugir igual qualquer um) -- trocar é só uma opção extra, sempre à
      mão, não uma obrigação. */
   clearAllFlinch();
+  tickArenaWeather(); /* Clima (Cap. mecânica nova) -- dano residual de Areia/Granizo + contagem regressiva, uma vez por Rodada de verdade (nunca por Pokémon, ver comentário na função) */
   STATE.arena.round = arenaBuildSelectingRound(round.number+1, order);
   arenaLog('🔁 Rodada '+STATE.arena.round.number+' começou — escolham as ações.');
+}
+/* Clima (Cap. mecânica nova) -- roda exatamente UMA vez por Rodada
+   completa (chamado só daqui, arenaFinishRoundResolution -- nunca de
+   applyEndOfTurnStatusAndLog, que é por-Pokémon/por-ação e rodaria isso
+   várias vezes por Rodada se tivesse mais de 1 Pokémon agindo). Ordem:
+   primeiro aplica o dano residual do clima que valeu A RODADA INTEIRA que
+   acabou de passar, DEPOIS decrementa/expira -- então mesmo a última
+   Rodada de um clima temporário ainda causa o dano dela normalmente. */
+function tickArenaWeather(){
+  var w = STATE.arena.weather;
+  if(!w || w.tipo==='neutro') return;
+  var immune = WEATHER_CHIP_IMMUNE[w.tipo];
+  if(immune){
+    (STATE.arena.entries||[]).forEach(function(e){
+      var t = findTrainer(e.trainerId);
+      var p = t && getPoke(e.trainerId, e.pokemonId);
+      if(!p) return;
+      var max = hpMax(t,p);
+      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+      if(cur<=0) return;
+      if(immune[p.tipo1] || immune[p.tipo2]) return; /* Tipo imune a esse clima -- Pedra/Terra/Aço na Areia, Gelo no Granizo */
+      if(p.habilidade==='Magic Guard') return; /* mesmo bloqueio total de dano indireto de sempre */
+      var dano = Math.max(1, Math.ceil(max/16));
+      var novoHP = clampInt(cur-dano, 0, max);
+      p.currentHP = novoHP;
+      var nome = pokeNome(p);
+      arenaLog(esc(nome)+' ('+esc(t.name)+') sofreu <strong>'+dano+'</strong> de dano por '+esc(WEATHER_LABELS[w.tipo])+(novoHP<=0?' — 😵 Desmaiou!':''));
+      if(novoHP<=0) resetStages(p);
+    });
+  }
+  if(typeof w.turnsLeft==='number'){
+    w.turnsLeft--;
+    if(w.turnsLeft<=0){
+      arenaLog('O clima voltou ao normal.');
+      STATE.arena.weather = { tipo:'neutro', turnsLeft:null };
+    }
+  }
 }
 /* Rede de segurança do Flinch: nunca deveria sobrar marcado quando uma
    Rodada nova abre (o consumo normal já limpa em arenaExecuteQueuedAttack,
@@ -7714,7 +7885,11 @@ function applyEndOfTurnStatusAndLog(entry){
     arenaLog(esc(nome)+' tem Shed Skin — curou a própria Condição ('+esc(ailmentLabel(p.status))+').');
     p.status=''; p.statusTurns=0;
   }
-  if((ability==='Ice Body' || ability==='Rain Dish') && curNow<max){
+  /* Pedido do usuário ("condicionar ao clima real"): Ice Body só cura sob
+     Granizo, Rain Dish só sob Chuva -- oficialmente cada uma dependia do
+     próprio clima, simplificado antes (sempre ativas) só porque não
+     existia clima nenhum no motor ainda. */
+  if(((ability==='Ice Body' && weatherTipo()==='granizo') || (ability==='Rain Dish' && weatherTipo()==='chuva')) && curNow<max){
     var curaTick = Math.max(1, Math.ceil(max/16));
     p.currentHP = clampInt(curNow+curaTick, 0, max);
     arenaLog(esc(nome)+' tem '+ability+' — recuperou '+curaTick+' PV.');
@@ -8487,6 +8662,17 @@ DT.arenaToggleFugaLock = function(){
   if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
   STATE.arena.log.push({ ts: Date.now(), text: STATE.arena.fugaTravada ? '🔒 O Mestre travou a fuga nesta batalha.' : '🔓 O Mestre destravou a fuga nesta batalha.' });
   if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
+  mutate();
+};
+/* Clima (Cap. mecânica nova) -- pedido do usuário: "Na Arena o mestre
+   poderá ter uma chave para mudar isso." Setar na mão é sempre
+   PERMANENTE (turnsLeft:null) -- diferente dos 5 turnos de um Movimento
+   de clima, o Mestre está declarando o clima da mesa por um motivo de
+   história, não simulando o golpe; substitui qualquer clima anterior. */
+DT.arenaSetWeather = function(tipo){
+  if(SESSION.role!=='gm' || !STATE.arena) return;
+  if(!WEATHER_LABELS.hasOwnProperty(tipo)) return;
+  setArenaWeather(tipo, null, '🎛️ O Mestre mudou o clima pra '+esc(WEATHER_LABELS[tipo])+'.');
   mutate();
 };
 /* Modo Espectador: um Treinador que não vai lutar entra na Arena só pra
@@ -9483,7 +9669,19 @@ DT.resolveFieldMove = function(atkEntry, move){
   if(!attTrainer || !attPoke){ arenaApplyPostActionEffects(atkEntry.id); mutate(); return; }
   var nome = attPoke.apelido || attPoke.especie || 'Pokémon';
   if((move.pp||0)>0) move.ppAtual = Math.max(0, (move.ppAtual||0)-1); /* Movimento de campo também gasta PP normal */
-  arenaLog((STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '')+esc(nome)+' ('+esc(attTrainer.name)+') usou '+esc(move.nome)+' — efeito de campo, ainda não simulado (Cap. 25).');
+  /* Clima (Cap. mecânica nova) -- pedido do usuário: "pegue tudo que
+     temos de clima no nosso rpg... vamos implementar essa mecânica".
+     6 dos golpes de campo (WEATHER_SET_MOVES) já existiam no MOVES_DEX
+     sem fazer nada -- agora armam o clima de verdade, 5 turnos (mesmo
+     valor oficial), SUBSTITUINDO qualquer clima anterior (nunca soma
+     duração, igual ao jogo). */
+  var wTipo = WEATHER_SET_MOVES[move.nome];
+  if(wTipo){
+    var wLabel = WEATHER_LABELS[wTipo];
+    setArenaWeather(wTipo, WEATHER_MOVE_DURATION, (STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '')+esc(nome)+' ('+esc(attTrainer.name)+') usou '+esc(move.nome)+' — o clima virou '+esc(wLabel)+'.');
+  } else {
+    arenaLog((STATE.arena.round ? ('Rodada '+STATE.arena.round.number+' · ') : '')+esc(nome)+' ('+esc(attTrainer.name)+') usou '+esc(move.nome)+' — efeito de campo, ainda não simulado (Cap. 25).');
+  }
   arenaApplyPostActionEffects(atkEntry.id);
   mutate();
 };
@@ -9546,7 +9744,14 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
      isChargeRelease aqui, a 2ª chamada (o turno de soltar, que já limpou
      poke.carregando antes de chamar) cairia de novo nesse mesmo "if" —
      carregando pra sempre em vez de golpear de verdade. */
-  if(CHARGE_MOVES[move.nome] && !attPoke.carregando && !isChargeRelease){
+  /* Clima (Cap. mecânica nova): Solar Beam/Solar Blade não precisam
+     carregar sob Sol Forte -- regra oficial ("this attack charges on the
+     first turn and executes on the second... unless the weather is
+     harsh sunlight"). Simula pulando o "if" de carga inteiro (a
+     resolução normal, logo abaixo, já cuida do resto -- PP já foi pago
+     acima, igual qualquer golpe comum). */
+  var pulaCargaPeloSol = (move.nome==='Solar Beam' || move.nome==='Solar Blade') && weatherTipo()==='sol';
+  if(CHARGE_MOVES[move.nome] && !attPoke.carregando && !isChargeRelease && !pulaCargaPeloSol){
     attPoke.carregando = {
       moveIdx: (attPoke.moves||[]).indexOf(move),
       moveName: move.nome,
@@ -9632,6 +9837,21 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
   if(move.nome==='Rapid Spin' && first.hit && attPoke.leechSeed){
     attPoke.leechSeed = null;
     arenaLog(esc(attPoke.apelido||attPoke.especie||'Pokémon')+' tem Rapid Spin — livrou-se da própria Leech Seed.');
+  }
+  /* Pedido do usuário: "Rapid spin remove stealth rock do campo que ele
+     foi jogado." -- igual ao jogo oficial, Rapid Spin só limpa o hazard
+     do PRÓPRIO Time do usuário (STATE.arena.hazards[teamId], o mesmo
+     "campo" que Stealth Rock arma, ver applyStealthRockOnSwitchIn) --
+     nunca o de um Time adversário. O dano de Stealth Rock em si continua
+     só na ENTRADA em campo (Cap. mecânica, confirmado com o usuário
+     igual ao Bulbapedia) -- isso aqui só desarma a armadilha, sem curar
+     ninguém que já tomou dano dela antes. */
+  if(move.nome==='Rapid Spin' && first.hit){
+    var rsTeamId = atkEntry.teamId;
+    if(STATE.arena.hazards && STATE.arena.hazards[rsTeamId] && STATE.arena.hazards[rsTeamId].stealthRock){
+      STATE.arena.hazards[rsTeamId].stealthRock = false;
+      arenaLog(esc(attPoke.apelido||attPoke.especie||'Pokémon')+' tem Rapid Spin — removeu Stealth Rock do próprio campo.');
+    }
   }
 
   /* Movimentos de fúria (Outrage/Thrash/Petal Dance, ver THRASH_MOVES):
@@ -10635,12 +10855,42 @@ function arenaErrorPopupHTML(){
     '</div>'+
   '</div>';
 }
+/* Clima (Cap. mecânica nova) -- pedido do usuário: "coloque uma exibição
+   tanto no pvp quanto na arena de qual clima está exibindo e ao alterar,
+   essa exibição deve mudar também. Na Arena o mestre poderá ter uma
+   chave para mudar isso." Recebe o objeto de clima já resolvido (nunca
+   lê STATE.arena/sala sozinha) pra funcionar igual nos dois contextos:
+   a Arena chama com STATE.arena.weather + isGM podendo ser true; a Área
+   PVP chama com sala.weather (a sala não passa por STATE.arena na hora
+   de RENDERIZAR, só durante withArenaContext no motor síncrono) +
+   isGM=false sempre, já que não existe Mestre lá -- só os 6 Movimentos
+   de clima mudam o clima do lado do PVP. */
+function weatherBannerHTML(w, isGM){
+  w = w || { tipo:'neutro', turnsLeft:null };
+  var tipo = WEATHER_LABELS.hasOwnProperty(w.tipo) ? w.tipo : 'neutro';
+  var turnsInfo = (typeof w.turnsLeft==='number')
+    ? ' <span class="muted" style="font-size:.72rem;">('+w.turnsLeft+' '+(w.turnsLeft===1?'turno restante':'turnos restantes')+')</span>'
+    : '';
+  var selector = isGM
+    ? '<select class="weather-select" onchange="DT.arenaSetWeather(this.value)" title="Só o Mestre pode trocar o clima na mão">'+
+        Object.keys(WEATHER_LABELS).map(function(k){
+          return '<option value="'+k+'"'+(k===tipo?' selected':'')+'>'+esc(WEATHER_ICONS[k])+' '+esc(WEATHER_LABELS[k])+'</option>';
+        }).join('')+
+      '</select>'
+    : '';
+  return '<div class="card weather-card"><div class="card-body weather-card-body">'+
+    '<span class="weather-icon">'+WEATHER_ICONS[tipo]+'</span>'+
+    '<strong>Clima: '+esc(WEATHER_LABELS[tipo])+'</strong>'+turnsInfo+
+    selector+
+  '</div></div>';
+}
 function arenaScreen(){
   var isGM = SESSION.role==='gm';
   var out = '<div class="btn-row" style="margin-bottom:14px;"><button class="btn-sm" onclick="DT.toggleArena()">← Voltar</button></div>';
   out += '<div class="card"><div class="card-head"><span class="index">Esboço · v1</span><h2>🏟️ Arena</h2></div><div class="card-body">'+
     '<p class="muted" style="font-size:.82rem;">Entre num Time (▶️ Entrar na Arena, ali embaixo), espere o Mestre liberar a soltura, e solte o seu primeiro Pokémon em segredo — o Mestre revela todo mundo de uma vez quando o resto da mesa também já tiver escolhido. Depois disso, pode arrastar um Pokémon (pelo ⠿) direto pra um Time também, se precisar corrigir algo na mão.</p>'+
   '</div></div>';
+  out += weatherBannerHTML(STATE.arena && STATE.arena.weather, isGM);
   out += arenaSpectatorHTML();
   out += arenaVictoryHTML();
   out += arenaErrorPopupHTML();
@@ -13368,7 +13618,8 @@ function pvpBattleHTML(sala, t){
     '</div></div>';
   }
 
-  return '<div class="card"><div class="card-head"><span class="index">'+esc(sala.nome)+'</span><h2>⚔️ Batalha em andamento</h2></div><div class="card-body">'+
+  return weatherBannerHTML(sala.weather, false)+
+    '<div class="card"><div class="card-head"><span class="index">'+esc(sala.nome)+'</span><h2>⚔️ Batalha em andamento</h2></div><div class="card-body">'+
       '<div class="grid-2">'+meCard+oppCard+'</div>'+
     '</div></div>'+
     painelHTML+
