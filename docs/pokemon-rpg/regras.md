@@ -458,6 +458,10 @@ Movimento próprio: o usuário perde **25% do PV Máximo** (arredondado pra baix
 
 O usuário ataca por **2 ou 3 turnos** (sorteado no 1º acerto), repetindo o mesmo golpe no mesmo alvo automaticamente — sem passar pela escolha de ação de novo, e por isso mesmo **não pode trocar de Pokémon** enquanto durar. Ao completar a duração inteira sem nenhuma interrupção, o usuário fica **Confuso** de exaustão (Cap. 23) assim que a fúria termina — bloqueado se o usuário tiver a Habilidade Own Tempo ou um Substituto de pé (Cap. 26.3), igual qualquer tentativa de causar Confusão nele. Se o golpe for interrompido no meio (erra o alvo, ou o usuário não consegue agir por Paralisia/Sono/Congelamento/Atordoado/Confusão) a fúria acaba na hora **sem** causar Confusão — a única exceção é a interrupção acontecer bem na ÚLTIMA rodada programada da fúria, que ainda assim confunde (a fúria já ia terminar e confundir de qualquer jeito).
 
+### 26.4-bis Movimentos de Recarga (Recharge)
+
+Dez Movimentos oficiais (Blast Burn, Eternabeam, Frenzy Plant, Giga Impact, Hydro Cannon, Hyper Beam, Meteor Assault, Prismatic Laser, Roar of Time, Rock Wrecker) golpeiam com dano normal na hora, mas o usuário **não consegue agir na Rodada seguinte** — perde a ação inteira sem rolar dado nenhum, é garantido. Acontece mesmo que o golpe erre o alvo (Bulbapedia: "This is true even if the move that required recharging did not affect the target"). Igual às demais condições que travam a ação (Paralisia/Sono/Congelamento, Cap. 20.4/21/22), a recarga só bloqueia **Atacar** — Usar Item, Trocar de Pokémon e Fugir continuam liberados normalmente na Rodada de recarga.
+
 ### 26.5 Movimentos de Condição Pura
 
 Movimentos de Status que só existem pra aplicar uma Condição Principal — sem dano nenhum — usam a própria **Precisão oficial do golpe como a chance de 1d10** (o mesmo dado de Efeito Percentual do Cap. 14), em vez de passar pela rolagem normal de Precisão do Cap. 10: "acertar" e "a Condição pegar" são a mesma rolagem, uma coisa só. Exemplos: Thunder Wave, Toxic, Sleep Powder, Spore, Stun Spore, Poison Powder, Glare, Hypnosis, Confuse Ray, Will-O-Wisp, Yawn.
@@ -539,7 +543,7 @@ Quatro Habilidades reais passam a depender do clima certo pra funcionar: **Leaf 
 
 **Condições**: Queimadura (−2 Atq, −1 PV/turno) · Veneno (−2 PV/turno; imune p/ Tipo Aço/Venenoso, exceto Corrosion) · Veneno Grave (1,2,3,4... — reseta a 0 sempre que sai e volta de campo) · Paralisia (remove Agilidade do Treinador, −10 Vel., 1–2 perde ação) · Sono (1 turno obrigatório, depois 5–6 acorda, máx. 3 turnos) · Congelamento (5–6 descongela) · Confusão (5–6 cura; senão 1–2 perde ação e sofre 1 PV)
 
-**Condições Voláteis (Cap. 26)**: Atordoado (perde a ação só nessa Rodada) · Leech Seed (1/8 PV Máx./turno) · Substitute (custa 25% PV Máx.) · Fúria/Outrage (2-3 turnos, trava e depois confunde) · Stealth Rock (1/8 PV Máx. de entrada, por Efetividade de Tipo Pedra — Rapid Spin remove do próprio campo) · Toxic Spikes (1 camada envenena, 2 envenena grave quem entra e é do chão — Tipo Venenoso absorve e remove, Rapid Spin remove do próprio campo)
+**Condições Voláteis (Cap. 26)**: Atordoado (perde a ação só nessa Rodada) · Leech Seed (1/8 PV Máx./turno) · Substitute (custa 25% PV Máx.) · Fúria/Outrage (2-3 turnos, trava e depois confunde) · Recarga/Recharge (Giga Impact e os outros 9, Cap. 26.4-bis — perde a ação garantido na Rodada seguinte, mesmo errando) · Stealth Rock (1/8 PV Máx. de entrada, por Efetividade de Tipo Pedra — Rapid Spin remove do próprio campo) · Toxic Spikes (1 camada envenena, 2 envenena grave quem entra e é do chão — Tipo Venenoso absorve e remove, Rapid Spin remove do próprio campo)
 
 **Clima (Cap. 26.9)**: começa Neutro · Movimento dura 5 turnos (troca sempre substitui) · Mestre troca na mão, permanente · Chuva/Sol Forte (±2 dano fixo Água/Fogo) · Areia/Granizo (1/16 PV Máx./turno, Magic Guard bloqueia) · Areia +2 SpD Pedra · Neve +2 Def Gelo
 

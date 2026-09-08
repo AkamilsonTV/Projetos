@@ -4094,6 +4094,26 @@ var CHARGE_MOVE_MSG = {
    boneco absorve, ver applyAttackResult) em vez de reimplementar o
    próprio teste de auto-dano da Confusão. */
 var THRASH_MOVES = { 'Outrage':1, 'Thrash':1, 'Petal Dance':1 };
+/* Movimentos de "recarga" (Cap. mecânica nova) -- pedido do usuário:
+   "Revise a mecânica do Giga Impact, use o Bulbepedia como base... Ele
+   está dando o dano normal e só." Os 10 golpes oficiais dessa categoria
+   (Bulbapedia, "moves that require recharging") -- todos já tinham o
+   texto certo em `efeito` ("O usuário não consegue se mover no próximo
+   turno"), só faltava a mecânica de verdade rodando por trás. Regra
+   oficial: acontece MESMO que o golpe erre, seja imune por Tipo ou seja
+   bloqueado por Protect -- a única exceção é não ter alvo válido nenhum
+   (o golpe nem chega a ser tentado de verdade, mesmo padrão que
+   CHARGE_MOVES/THRASH_MOVES já seguem aqui: ver o "return" cedo em
+   arenaExecuteQueuedAttack quando manualIds fica vazio). Igual ao
+   Cap. 20.4/21/22 (Paralisia/Sono/Congelamento): só bloqueia ATACAR --
+   Usar Item/Trocar/Fugir continuam liberados na rodada de recarga, sem
+   trava nenhuma (mesma simplificação de mesa já usada pros outros
+   travamentos de ação, ver arenaExecuteQueuedAttack). */
+var RECHARGE_MOVES = {
+  'Blast Burn':1, 'Eternabeam':1, 'Frenzy Plant':1, 'Giga Impact':1,
+  'Hydro Cannon':1, 'Hyper Beam':1, 'Meteor Assault':1, 'Prismatic Laser':1,
+  'Roar of Time':1, 'Rock Wrecker':1
+};
 
 /* =================== CLIMA (Cap. mecânica nova) ===================
    Pedido do usuário: "Vamos aproveitar e colocar a diferenciação de
@@ -6251,6 +6271,7 @@ function migrateState(){
       if(p.leechSeed===undefined) p.leechSeed = null;
       if(p.substituto===undefined) p.substituto = null;
       if(p.outrageLock===undefined) p.outrageLock = null;
+      if(typeof p.recarregando !== 'boolean') p.recarregando = false; /* Recarga (RECHARGE_MOVES) -- mesmo caso de flinched */
     });
   });
   /* Cap. PVP: fichas (Pokémon de PVP, um "box" por Treinador, independente
@@ -6588,6 +6609,7 @@ function resetStages(poke){
   poke.leechSeed = null;
   poke.outrageLock = null;
   poke.flinched = false;
+  poke.recarregando = false; /* mesmo espírito de carregando (Cap. 25) -- não faz sentido continuar "recarregando" um golpe depois de já ter saído de campo */
   /* Pedido do usuário: "Veneno grave tem que voltar do início quando o
      pokémon é retirado e colocado em campo, igual acontece no jogo
      original... quando trocamos ele volta a estaca zero e então começa a
@@ -7753,6 +7775,19 @@ function arenaExecuteQueuedAction(e, t, p, bundle, round){
    chegaria curado. */
 function arenaExecuteQueuedAttack(e, t, p, bundle, round){
   var nome = p.apelido||p.especie||'Pokémon';
+  /* Recarga (RECHARGE_MOVES, ver comentário grande na declaração) --
+     checado ANTES até do Flinch: quem usou Giga Impact/Hyper Beam/etc. no
+     turno anterior perde a ação inteira agora, sem dado nenhum (não é uma
+     chance, é garantido -- Bulbapedia). Consumida (checada E limpa) bem
+     aqui, na hora exata da PRÓPRIA vez dele chegar na Rodada seguinte --
+     mesmo padrão do Flinch logo abaixo. */
+  if(p.recarregando){
+    p.recarregando = false;
+    arenaLog('Rodada '+round.number+' · '+esc(nome)+' ('+esc(t.name)+') está recarregando depois do golpe anterior — perde a ação.');
+    arenaDisruptOutrageLock(p, round);
+    arenaApplyPostActionEffects(e.id);
+    return;
+  }
   /* Flinch (Atordoado) -- pedido do usuário: "só pode ser aplicada no
      turno em que ela for ativada... se eu for o último a atacar e
      aplicar flinched, ele não vai pro próximo turno com a condição."
@@ -10166,6 +10201,19 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
     }
   }
 
+  /* Recarga (RECHARGE_MOVES, ver comentário grande na declaração) -- trava
+     a PRÓXIMA rodada, consumida em arenaExecuteQueuedAttack. Acontece
+     SEMPRE que o golpe é de fato tentado (chegou até aqui de verdade, com
+     PP pago e alvo válido) -- regra oficial: mesmo errando, sendo imune
+     por Tipo ou bloqueado por Protect, o usuário ainda precisa recarregar
+     depois. isChargeRelease nunca é true pra esses 10 golpes (nenhum deles
+     está em CHARGE_MOVES -- são categorias diferentes: "carrega 1 turno
+     antes" vs. "recarrega 1 turno depois"), mas o guard fica aqui mesmo
+     assim, por clareza e defesa. */
+  if(RECHARGE_MOVES[move.nome] && !isChargeRelease){
+    attPoke.recarregando = true;
+  }
+
   STATE.arena.lastRoll = {
     ts: Date.now(),
     round: STATE.arena.round ? STATE.arena.round.number : null,
@@ -11930,7 +11978,7 @@ function arenaEntryHTML(e){
   var cur = (p.currentHP===null || p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
   var pct = max>0 ? Math.round(cur/max*100) : 0;
   var fainted = cur<=0;
-  var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'')+(!fainted && p.carregando?'🌀':'');
+  var icons = (fainted?'😵':(STATUS_ICONS[p.status]||''))+(p.confuso?'💫':'')+(!fainted && p.carregando?'🌀':'')+(!fainted && p.recarregando?'😩':'');
   /* Pedido do usuário: mostrar a vida do boneco do Substitute embaixo do
      Pokémon que o usou, pra facilitar a visualização -- some sozinho quando
      o boneco quebra (poke.substituto vira null lá no motor de combate). */
@@ -12041,7 +12089,8 @@ function arenaWideCardHTML(e){
   var statusBadges = (fainted?' <span class="badge status-bad">Desmaiado</span>':'')+
     (p.status?'<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>':'')+
     (p.confuso?'<span class="badge status-bad">Confuso</span>':'')+
-    (!fainted && p.carregando?'<span class="badge status-bad">🌀 Carregando</span>':'');
+    (!fainted && p.carregando?'<span class="badge status-bad">🌀 Carregando</span>':'')+
+    (!fainted && p.recarregando?'<span class="badge status-bad">😩 Recarregando</span>':'');
   var subHTML = (p.substituto && !fainted)
     ? '<div class="muted" style="font-size:.72rem;">🟤 Boneco: '+p.substituto.hp+' PV</div>'
     : '';
@@ -12169,6 +12218,7 @@ function statsPanelHTML(entryId, idx, t, p, closeOnclickJS){
       (p.status ? '<div>Condição: <span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span></div>' : '')+
       (p.confuso ? '<div>Confuso: <span class="badge status-bad">Sim</span></div>' : '')+
       (p.carregando ? '<div>🌀 Carregando: <strong>'+esc(p.carregando.moveName)+'</strong> — golpeia no próximo turno</div>' : '')+
+      (p.recarregando ? '<div>😩 Recarregando — perde a próxima ação</div>' : '')+
       '<div style="margin-top:6px;">Habilidade: '+(p.habilidade?('<strong>'+esc(p.habilidade)+'</strong>'):'<span class="muted">Nenhuma</span>')+
         (habAtual && habAtual.efeito ? '<div class="muted" style="font-size:.68rem;">'+esc(habAtual.efeito)+'</div>' : '')+'</div>'+
       '<div>Natureza: '+(naturezaAtual ? esc(naturezaAtual.nome) : '<span class="muted">Nenhuma</span>')+'</div>'+
