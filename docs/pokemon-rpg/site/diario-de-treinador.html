@@ -6035,7 +6035,7 @@ var CATEGORY_OPTS = ["Físico","Especial","Status"];
 var BATTLES_PER_LEVEL = 4;
 
 /* =================== ESTADO (sincronizado via Firestore) =================== */
-var STATE = { gmPin: null, trainers: [], arena: {teams:[], entries:[]}, pvp: {fichas:{}, salas:{}} };
+var STATE = { gmPin: null, trainers: [], arena: {teams:[], entries:[]}, pvp: {fichas:{}, salas:{}}, npcTemplates: [] };
 var firestoreReady = false;
 var db = null;
 var stateDocRef = null;
@@ -6353,6 +6353,23 @@ function migrateState(){
   if(STATE.arena.battleActive===undefined) STATE.arena.battleActive = (STATE.arena.entries||[]).length>0;
   if(!STATE.arena.virtuais || typeof STATE.arena.virtuais!=='object') STATE.arena.virtuais = {};
   (STATE.arena.teams||[]).forEach(function(tm){ if(!Array.isArray(tm.trainerIds)) tm.trainerIds = []; });
+  /* Time inteiro vs. 1 só + "quem entra primeiro" (Cap. mecânica nova) --
+     pedido do usuário: "deixar o mestre escolher qual pokémon ele vai
+     lutar... marcar quando a luta for necessária usar mais de 1 pokémon,
+     independente por usuário." Fichas de antes dessa leva nunca tiveram
+     esses dois mapas -- undefined em cada um vale "usa o padrão" (ver
+     arenaMultiEntityAllowed/DT.arenaIniciarCombate), então começar vazio
+     não muda o comportamento de ninguém que já existia. */
+  if(!STATE.arena.multiEntity || typeof STATE.arena.multiEntity!=='object') STATE.arena.multiEntity = {};
+  if(!STATE.arena.leadChoice || typeof STATE.arena.leadChoice!=='object') STATE.arena.leadChoice = {};
+  /* NPCs salvos pelo Mestre (Cap. mecânica nova) -- pedido do usuário:
+     "ter uma opção pra eu, como mestre, salvar o NPC que eu criei... e
+     escolher ele com os pokémon que deixei por último nele." Molde
+     reaproveitável entre batalhas/Times/sessões -- vive fora de
+     STATE.arena de propósito (sobrevive a Reconfigurar, a remover o Time,
+     a qualquer coisa -- é uma biblioteca do Mestre, não parte de UMA
+     batalha específica). */
+  if(!Array.isArray(STATE.npcTemplates)) STATE.npcTemplates = [];
   /* Cap. 86 -- a Negociação de Prioridade (pergunta Sim/Não, Cap.
      17.1-17.3 antigo) saiu de vez: agora TODOS escolhem a ação primeiro
      (STATE.arena.round.phase='selecting') e só depois o site resolve a
@@ -8957,6 +8974,8 @@ DT.arenaUnassignEntity = function(entityId){
   if(!team) return;
   team.trainerIds = team.trainerIds.filter(function(id){ return id!==entityId; });
   if(STATE.arena.virtuais && STATE.arena.virtuais[entityId]) delete STATE.arena.virtuais[entityId];
+  if(STATE.arena.leadChoice) delete STATE.arena.leadChoice[entityId]; /* escolha de líder e toggle de Time inteiro (Cap. mecânica nova) são específicos desse participante NESSA Arena -- some junto com ele */
+  if(STATE.arena.multiEntity) delete STATE.arena.multiEntity[entityId];
   mutate();
 };
 /* + Adicionar NPC: cria um "treinador" virtual vazio (sem Pokémon ainda)
@@ -8975,7 +8994,33 @@ DT.arenaAddNpc = function(teamId, nome){
   var vid = 'npc_'+uid();
   STATE.arena.virtuais[vid] = { id:vid, name:(nome||'').trim()||'NPC', attrPoints:{vigor:5,vontade:5,resistencia:5,mental:5,foco:5,agilidade:5}, pokemons:[], banco:[], isNpc:true };
   team.trainerIds.push(vid);
+  if(SESSION.arenaNpcDraft) delete SESSION.arenaNpcDraft[teamId]; /* nasceu -- o rascunho de "Nome do NPC" (ver DT.arenaNpcDraftInput) já cumpriu o papel dele */
   mutate();
+};
+/* Bug real relatado pelo usuário: "não tá salvando o Nome do NPC quando
+   eu crio. Toda vez que adiciono um pokemon o nome dele some." Causa
+   raiz: o campo "Nome do NPC" (pra criar um NPC novo) é o ÚNICO input
+   desse fluxo que não reflete estado nenhum (de propósito -- nasce em
+   branco pra digitar um nome NOVO) -- mas esse app inteiro re-renderiza
+   com um #app.innerHTML = ... por completo a cada mutate() (Cap. session-
+   wide), e isso DESTRÓI e recria toda a árvore de novo, inclusive esse
+   input. Se o Mestre está com um Time aberto digitando o nome de um NPC
+   novo e clica em QUALQUER outra coisa que dispare um mutate() antes de
+   confirmar com "+ NPC" (adicionar Pokémon a outro NPC já existente,
+   atribuir um Jogador, criar outro Time...) -- bem comum numa tela com
+   vários Times/NPCs em construção ao mesmo tempo -- esse re-render
+   nasceria com o campo vazio de novo, apagando o que já tinha sido
+   digitado sem o Mestre nem perceber (ele só notava depois, quando o NPC
+   já tinha ido pro campo de batalha com o nome genérico "NPC"). Fix:
+   guarda o que for digitado em SESSION.arenaNpcDraft[teamId] a cada
+   tecla (sem chamar mutate()/render() -- o próprio <input> já mostra o
+   que foi digitado sozinho, isso aqui só existe pra esse texto
+   SOBREVIVER ao PRÓXIMO render de outra coisa) e a linha que desenha o
+   input (arenaSetupTeamHTML) passa a ler esse rascunho como value= em vez
+   de nascer sempre em branco. */
+DT.arenaNpcDraftInput = function(teamId, val){
+  if(!SESSION.arenaNpcDraft) SESSION.arenaNpcDraft = {};
+  SESSION.arenaNpcDraft[teamId] = val;
 };
 DT.arenaRenameNpc = function(npcId, el){
   if(SESSION.role!=='gm') return;
@@ -8999,6 +9044,55 @@ DT.arenaRemoveNpcPoke = function(npcId, pokeId){
   var v = STATE.arena.virtuais && STATE.arena.virtuais[npcId];
   if(!v) return;
   v.pokemons = (v.pokemons||[]).filter(function(p){ return p.id!==pokeId; });
+  mutate();
+};
+/* Salvar/carregar NPC (Cap. mecânica nova) -- pedido do usuário: "ter uma
+   opção pra eu, como mestre, salvar o NPC que eu criei na arena. E ter
+   uma opção pra escolher ele com os pokémon que deixei por último nele."
+   STATE.npcTemplates é uma biblioteca do Mestre (não de UMA batalha só) --
+   um molde salvo aqui sobrevive a Reconfigurar, remover o Time, encerrar
+   a batalha, tudo. Salvar tira uma cópia INDEPENDENTE (JSON round-trip,
+   mesmo truque de sanitizeForFirestore) dos Pokémon do NPC no exato
+   estado em que estavam ("os pokémon que eu deixei por último nele") --
+   editar o NPC na Arena depois de salvar nunca mexe no molde, e vice-
+   versa. Carregar cria um NPC NOVO (id novo) nesse Time, com uma cópia
+   fresca dos Pokémon do molde (ids novos, resetStages + PV/PP/Condição
+   de volta ao máximo -- nunca herda dano/status de uma batalha anterior
+   à sua própria criação nesta). */
+DT.arenaSaveNpcTemplate = function(npcId){
+  if(SESSION.role!=='gm') return;
+  var v = STATE.arena.virtuais && STATE.arena.virtuais[npcId];
+  if(!v || !v.isNpc || !(v.pokemons||[]).length) return;
+  if(!Array.isArray(STATE.npcTemplates)) STATE.npcTemplates = [];
+  STATE.npcTemplates.push({
+    id: 'npctpl_'+uid(),
+    name: v.name,
+    pokemons: JSON.parse(JSON.stringify(v.pokemons))
+  });
+  mutate();
+};
+DT.arenaLoadNpcTemplate = function(teamId, tplId){
+  if(SESSION.role!=='gm' || !tplId) return;
+  var team = arenaEnsureTrainerIds((STATE.arena.teams||[]).find(function(x){ return x.id===teamId; }));
+  var tpl = (STATE.npcTemplates||[]).find(function(x){ return x.id===tplId; });
+  if(!team || !tpl) return;
+  if(!STATE.arena.virtuais) STATE.arena.virtuais = {};
+  var vid = 'npc_'+uid();
+  var freshPokes = JSON.parse(JSON.stringify(tpl.pokemons||[])).map(function(p){
+    p.id = uid(); /* nunca reaproveita o id do molde -- cada carregamento é um NPC independente */
+    p.currentHP = null; p.status = ''; p.statusTurns = 0; p.confuso = false; p.flashFireBoost = false;
+    p.arenaRevelado = false;
+    (p.moves||[]).forEach(function(m){ if(m.pp) m.ppAtual = m.pp; });
+    resetStages(p); /* zera Estágio + carregando/substituto/leechSeed/outrageLock/flinched/recarregando -- entra limpo, nunca herda nada de uma batalha anterior a esta */
+    return p;
+  });
+  STATE.arena.virtuais[vid] = { id:vid, name: tpl.name, attrPoints:{vigor:5,vontade:5,resistencia:5,mental:5,foco:5,agilidade:5}, pokemons: freshPokes, banco:[], isNpc:true };
+  team.trainerIds.push(vid);
+  mutate();
+};
+DT.arenaDeleteNpcTemplate = function(tplId){
+  if(SESSION.role!=='gm') return;
+  STATE.npcTemplates = (STATE.npcTemplates||[]).filter(function(x){ return x.id!==tplId; });
   mutate();
 };
 /* + Pokémon solto: sorteia um Pokémon inteiro (mesma rolagem de
@@ -9040,12 +9134,21 @@ DT.arenaIniciarCombate = function(){
     (team.trainerIds||[]).forEach(function(tid){
       var t = findTrainer(tid);
       if(!t) return;
-      var vivo = (t.pokemons||[]).find(function(p){
+      var vivos = (t.pokemons||[]).filter(function(p){
         var max = hpMax(t,p);
         var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
         return cur>0;
       });
-      if(!vivo) return;
+      if(!vivos.length) return;
+      /* Escolha do Mestre (Cap. mecânica nova, arenaSetupRosterRowHTML) --
+         "deixar o mestre escolher qual pokémon ele vai lutar" -- usa o
+         escolhido em STATE.arena.leadChoice se ele ainda existir/estiver
+         vivo (a lista pode ter mudado desde que o Mestre escolheu:
+         removido, desmaiado por edição manual); senão cai no padrão de
+         sempre (o 1º vivo da lista), sem quebrar fichas antigas que nunca
+         escolheram nada. */
+      var escolhidoId = STATE.arena.leadChoice && STATE.arena.leadChoice[tid];
+      var vivo = (escolhidoId && vivos.find(function(p){ return p.id===escolhidoId; })) || vivos[0];
       teamTemVivo = true;
       novasEntries.push({ id: uid(), teamId: team.id, trainerId: tid, pokemonId: vivo.id, revelado: true });
     });
@@ -9242,14 +9345,50 @@ function arenaResetActionState(){
   SESSION.arenaForcedSwitch = false;
   SESSION.arenaResolving = false;
 }
+/* Time inteiro vs. 1 Pokémon só (Cap. mecânica nova) -- pedido do
+   usuário: "deixar o mestre escolher qual pokémon ele vai lutar, em vez
+   de colocar todos os pokémon do npc na arena... ter uma opção para o
+   mestre marcar quando a luta for necessária usar mais de 1 pokémon,
+   independente por usuário. Assim o mestre tem o controle de quem pode
+   entrar com um ou mais pokémon." Sem uma entrada explícita no mapa (a
+   maioria dos casos, sempre que o Mestre nunca mexeu no toggle daquele
+   participante), o padrão depende do TIPO: um Treinador de VERDADE
+   continua exatamente como sempre foi (Time inteiro disponível, Cap.
+   18) -- só NPC e Pokémon solto nascem restritos a 1 só (a luta acaba
+   pra eles assim que esse único Pokémon desmaia, sem convite de troca
+   nenhum e sem opção de Trocar no menu de Ação), até o Mestre marcar
+   explicitamente que aquele participante específico precisa de mais de
+   1 (um chefe de Ginásio, por exemplo). */
+function arenaMultiEntityAllowed(entityId){
+  var m = STATE.arena.multiEntity;
+  if(m && Object.prototype.hasOwnProperty.call(m, entityId)) return !!m[entityId];
+  return (STATE.trainers||[]).some(function(t){ return t.id===entityId; });
+}
+DT.arenaToggleMultiEntity = function(entityId, allow){
+  if(SESSION.role!=='gm') return;
+  if(!STATE.arena.multiEntity) STATE.arena.multiEntity = {};
+  STATE.arena.multiEntity[entityId] = !!allow;
+  mutate();
+};
+DT.arenaSetLeadChoice = function(entityId, pokemonId){
+  if(SESSION.role!=='gm') return;
+  if(!STATE.arena.leadChoice) STATE.arena.leadChoice = {};
+  STATE.arena.leadChoice[entityId] = pokemonId;
+  mutate();
+};
 /* Quem dá pra escolher pra trocar no lugar de quem está em campo agora:
    outro Pokémon vivo da Equipe ativa DESSE Treinador, que ainda não seja
    outra entrada já em campo (ex.: batalha em dupla). Mesma checagem usada
    tanto pro painel de troca (voluntária ou forçada por U-turn/Volt Switch/
    Parting Shot) quanto pra decidir, logo depois de um golpe desses
    resolver, se dá pra abrir esse painel ou se é melhor só passar a vez
-   normal (Cap. 25/59: sem ninguém pra entrar, não tem o que escolher). */
+   normal (Cap. 25/59: sem ninguém pra entrar, não tem o que escolher).
+   Participante marcado como "1 Pokémon só" (arenaMultiEntityAllowed)
+   nunca tem candidato de troca nenhum, mesmo que ainda sobre alguém vivo
+   na Equipe ativa dele -- essa reserva simplesmente não está disponível
+   nesta luta. */
 function arenaHasSwapCandidate(trainer, currentPokeId){
+  if(!arenaMultiEntityAllowed(trainer.id)) return false;
   return (trainer.pokemons||[]).some(function(p){
     if(p.id===currentPokeId) return false;
     var jaEmCampo = (STATE.arena.entries||[]).some(function(x){ return x.trainerId===trainer.id && x.pokemonId===p.id; });
@@ -9282,11 +9421,29 @@ function arenaCheckVictory(){
     if(teamsAlive[e.teamId]) return; /* esse Time já sabe que tem alguém vivo */
     var t = findTrainer(e.trainerId);
     if(!t) return;
-    var algumVivo = (t.pokemons||[]).some(function(p){
-      var max = hpMax(t,p);
-      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
-      return cur>0;
-    });
+    /* Participante marcado "1 Pokémon só" (arenaMultiEntityAllowed) não
+       conta a Equipe ativa inteira aqui -- só o Pokémon que está de fato
+       NESSA entrada, porque o resto da reserva dele nem está disponível
+       nesta luta (Cap. mecânica nova). Sem isso, o Time do outro lado
+       nunca venceria: o motor continuaria achando que ainda "sobra
+       alguém vivo" numa reserva que o participante nunca vai poder usar. */
+    var algumVivo;
+    if(arenaMultiEntityAllowed(t.id)){
+      algumVivo = (t.pokemons||[]).some(function(p){
+        var max = hpMax(t,p);
+        var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+        return cur>0;
+      });
+    } else {
+      var pEntry = getPoke(e.trainerId, e.pokemonId);
+      if(pEntry){
+        var maxE = hpMax(t,pEntry);
+        var curE = (pEntry.currentHP===null||pEntry.currentHP===undefined) ? maxE : pEntry.currentHP;
+        algumVivo = curE>0;
+      } else {
+        algumVivo = false;
+      }
+    }
     if(algumVivo) teamsAlive[e.teamId] = true;
   });
   var aliveTeamIds = Object.keys(teamsAlive);
@@ -11524,6 +11681,7 @@ function arenaActionPanelHTML(){
      tela dedicada de Trocar (mais abaixo) continua existindo só pros
      convites forçados (desmaio, U-turn/Volt Switch/Parting Shot). */
   function swapButtonsHTML(){
+    if(!arenaMultiEntityAllowed(attTrainer.id)) return ''; /* "1 Pokémon só" nesta luta (Cap. mecânica nova) -- sem reserva disponível, sem "Ou trocar" nenhum */
     return (attTrainer.pokemons||[]).filter(function(p){
       if(p.id===attPoke.id) return false;
       var max = hpMax(attTrainer,p);
@@ -11651,6 +11809,36 @@ function arenaUnassignedRealTrainers(){
    formatos bem diferentes por trás do MESMO id (Treinador real, NPC,
    Pokémon solto), mas todos removíveis pelo mesmo botão único
    (DT.arenaUnassignEntity já sabe diferenciar). */
+/* "Entra com" (leadChoice) + "Mais de 1 Pokémon nessa luta" (multiEntity) --
+   Cap. mecânica nova, pedido do usuário: "deixar o mestre escolher qual
+   pokémon ele vai lutar... ter uma opção para o mestre marcar quando a
+   luta for necessária usar mais de 1 pokémon, independente por usuário."
+   Compartilhado entre Treinador real e NPC (mesmo formato de Pokémon,
+   mesma hpMax) -- só o Pokémon solto fica de fora (só tem 1 Pokémon
+   possível, nada pra escolher nem pra alternar). */
+function arenaLeadAndMultiControlsHTML(entityId, trainerLike){
+  var alive = (trainerLike.pokemons||[]).filter(function(p){
+    var max = hpMax(trainerLike,p);
+    var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+    return cur>0;
+  });
+  var leadHTML = '';
+  if(alive.length>1){
+    var chosen = STATE.arena.leadChoice && STATE.arena.leadChoice[entityId];
+    if(!chosen || !alive.some(function(p){ return p.id===chosen; })) chosen = alive[0].id;
+    leadHTML = '<span class="muted" style="font-size:.68rem;">Entra com:</span> '+
+      '<select style="font-size:.7rem; max-width:150px;" onchange="DT.arenaSetLeadChoice(\''+entityId+'\', this.value)">'+
+      alive.map(function(p){ return '<option value="'+p.id+'"'+(p.id===chosen?' selected':'')+'>'+esc(p.apelido||p.especie||'?')+'</option>'; }).join('')+
+      '</select>';
+  }
+  var allowMulti = arenaMultiEntityAllowed(entityId);
+  return '<div class="btn-row" style="flex-wrap:wrap; align-items:center; gap:6px; margin-top:2px;">'+
+    leadHTML+
+    '<label class="muted" style="font-size:.68rem; display:flex; align-items:center; gap:3px;">'+
+      '<input type="checkbox" '+(allowMulti?'checked':'')+' onchange="DT.arenaToggleMultiEntity(\''+entityId+'\', this.checked)"> Mais de 1 Pokémon nessa luta'+
+    '</label>'+
+  '</div>';
+}
 function arenaSetupRosterRowHTML(entityId){
   var isReal = (STATE.trainers||[]).some(function(t){ return t.id===entityId; });
   if(isReal){
@@ -11661,8 +11849,11 @@ function arenaSetupRosterRowHTML(entityId){
       return cur>0;
     }).length;
     return '<div class="arena-setup-row">'+
-      '<span>🧑 <strong>'+esc(t.name)+'</strong> <span class="muted" style="font-size:.72rem;">('+vivos+' vivo(s) na Equipe ativa)</span></span>'+
-      '<button class="btn-ghost btn-sm" onclick="DT.arenaUnassignEntity(\''+entityId+'\')">✕</button>'+
+      '<div class="btn-row" style="justify-content:space-between;">'+
+        '<span>🧑 <strong>'+esc(t.name)+'</strong> <span class="muted" style="font-size:.72rem;">('+vivos+' vivo(s) na Equipe ativa)</span></span>'+
+        '<button class="btn-ghost btn-sm" onclick="DT.arenaUnassignEntity(\''+entityId+'\')">✕</button>'+
+      '</div>'+
+      arenaLeadAndMultiControlsHTML(entityId, t)+
     '</div>';
   }
   var v = STATE.arena.virtuais && STATE.arena.virtuais[entityId];
@@ -11679,8 +11870,11 @@ function arenaSetupRosterRowHTML(entityId){
         '<button class="btn-ghost btn-sm" onclick="DT.arenaUnassignEntity(\''+entityId+'\')">✕ NPC</button>'+
       '</div>'+
       '<div style="margin:4px 0;">'+(npcPokeChips || '<span class="muted" style="font-size:.72rem;">Sem Pokémon ainda.</span>')+'</div>'+
-      '<div class="btn-row"><select id="'+npcSelId+'">'+catOptions+'</select>'+
-      '<button class="btn-sm" onclick="DT.arenaAddNpcPoke(\''+entityId+'\', document.getElementById(\''+npcSelId+'\').value)">🎲 + Pokémon</button></div>'+
+      arenaLeadAndMultiControlsHTML(entityId, v)+
+      '<div class="btn-row" style="margin-top:4px;"><select id="'+npcSelId+'">'+catOptions+'</select>'+
+      '<button class="btn-sm" onclick="DT.arenaAddNpcPoke(\''+entityId+'\', document.getElementById(\''+npcSelId+'\').value)">🎲 + Pokémon</button>'+
+      ((v.pokemons||[]).length ? '<button class="btn-ghost btn-sm" onclick="DT.arenaSaveNpcTemplate(\''+entityId+'\')" title="Salva esse NPC (nome + Pokémon como estão agora) numa biblioteca reaproveitável em qualquer batalha futura">💾 Salvar NPC</button>' : '')+
+      '</div>'+
     '</div>';
   }
   var p0 = (v.pokemons||[])[0];
@@ -11700,7 +11894,22 @@ function arenaSetupTeamHTML(team, livres){
       '</select><button class="btn-sm" onclick="DT.arenaAssignTrainer(\''+team.id+'\', document.getElementById(\'arenaAddPlayer-'+team.id+'\').value)">+ Jogador</button></div>'
     : '<p class="muted" style="font-size:.72rem; margin-top:6px;">Nenhum Treinador livre pra adicionar (todos já estão em algum Time).</p>';
   var npcNameId = 'arenaNpcNome-'+team.id;
-  var addNpc = '<div class="btn-row" style="margin-top:6px;"><input type="text" id="'+npcNameId+'" placeholder="Nome do NPC" style="max-width:160px;"><button class="btn-sm" onclick="DT.arenaAddNpc(\''+team.id+'\', document.getElementById(\''+npcNameId+'\').value)">+ NPC</button></div>';
+  /* value= lido do rascunho em SESSION (ver DT.arenaNpcDraftInput/
+     arenaAddNpc) -- é o ÚNICO input desse fluxo que não nasce de estado
+     nenhum, então é o único vulnerável a um re-render de QUALQUER outra
+     coisa apagar o que já foi digitado antes do Mestre clicar "+ NPC"
+     (bug real relatado: "não tá salvando o Nome do NPC quando eu crio").
+     oninput só GUARDA a tecla (sem mutate/render -- o próprio <input> já
+     mostra sozinho), pra esse texto sobreviver ao PRÓXIMO render de
+     outra coisa em vez de sumir. */
+  var npcDraft = (SESSION.arenaNpcDraft && SESSION.arenaNpcDraft[team.id]) || '';
+  var addNpc = '<div class="btn-row" style="margin-top:6px;"><input type="text" id="'+npcNameId+'" value="'+esc(npcDraft)+'" oninput="DT.arenaNpcDraftInput(\''+team.id+'\', this.value)" placeholder="Nome do NPC" style="max-width:160px;"><button class="btn-sm" onclick="DT.arenaAddNpc(\''+team.id+'\', document.getElementById(\''+npcNameId+'\').value)">+ NPC</button></div>';
+  var npcTemplates = STATE.npcTemplates||[];
+  var loadNpcTpl = npcTemplates.length
+    ? '<div class="btn-row" style="margin-top:6px;"><select id="arenaNpcTpl-'+team.id+'"><option value="">— NPC salvo —</option>'+
+        npcTemplates.map(function(tpl){ return '<option value="'+tpl.id+'">'+esc(tpl.name)+' ('+(tpl.pokemons||[]).length+' Pokémon)</option>'; }).join('')+
+      '</select><button class="btn-sm" onclick="DT.arenaLoadNpcTemplate(\''+team.id+'\', document.getElementById(\'arenaNpcTpl-'+team.id+'\').value)">📂 Carregar NPC salvo</button></div>'
+    : '';
   var looseSelId = 'arenaLooseCat-'+team.id;
   var addLoose = '<div class="btn-row" style="margin-top:6px;"><select id="'+looseSelId+'">'+
       Object.keys(PVP_RANDOM_STAGE_LABELS).map(function(k){ return '<option value="'+k+'">'+esc(PVP_RANDOM_STAGE_LABELS[k])+'</option>'; }).join('')+
@@ -11708,7 +11917,7 @@ function arenaSetupTeamHTML(team, livres){
   return '<div class="arena-setup-team">'+
     '<div class="arena-team-head"><input type="text" value="'+esc(team.nome)+'" onchange="DT.arenaRenameTeam(\''+team.id+'\', this)">'+removeControl+'</div>'+
     (roster || '<p class="muted" style="font-size:.76rem;">Ninguém atribuído ainda.</p>')+
-    addPlayerSel+addNpc+addLoose+
+    addPlayerSel+addNpc+loadNpcTpl+addLoose+
   '</div>';
 }
 /* Tela de configuração "cara de PVP" (Cap. mecânica nova) -- pedido do
@@ -11723,6 +11932,17 @@ function arenaSetupHTML(){
   var out = '<div class="card"><div class="card-head"><span class="index">Mestre</span><h2>🧩 Configurar Times</h2>'+
     '<button class="btn-sm" onclick="DT.arenaAddTeam()">+ Novo Time</button>'+
   '</div><div class="card-body">';
+  /* Biblioteca de NPCs salvos (Cap. mecânica nova) -- gerenciável daqui
+     (só apagar; carregar é por Time, ver arenaSetupTeamHTML) pra não
+     precisar duplicar a lista dentro de cada Time separado. */
+  if((STATE.npcTemplates||[]).length){
+    out += '<div class="muted" style="font-size:.72rem; margin-bottom:8px;">🗂 NPCs salvos: '+
+      STATE.npcTemplates.map(function(tpl){
+        return '<span class="tag" style="font-size:.7rem;">'+esc(tpl.name)+' ('+(tpl.pokemons||[]).length+') '+
+          '<button class="btn-ghost btn-sm" style="padding:0 4px;" onclick="DT.arenaDeleteNpcTemplate(\''+tpl.id+'\')" title="Apagar esse NPC salvo (não mexe em nenhum já colocado numa batalha)">✕</button></span>';
+      }).join(' ')+
+    '</div>';
+  }
   if(teams.length===0){
     out += '<p class="muted">Clique em "+ Novo Time" pra começar -- pode criar mais de 2, cada um com jogadores, NPC ou Pokémon solto.</p>';
   } else {
