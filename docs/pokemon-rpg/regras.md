@@ -197,6 +197,7 @@ Além do aprendizado natural por Nível (8.2), um Pokémon pode ter um Movimento
 - **Evo**: ganho automaticamente ao evoluir pra aquela forma (não depende de Nível do Treinador nem de Maturidade).
 - **TM**: ensinado por Fita de Movimento, desde que a espécie consiga aprender aquele Movimento por essa via nos jogos oficiais — sem depender do Nível do Treinador.
 - **Egg**: ensinado por Breeding, desde que a espécie consiga aprender aquele Movimento por essa via nos jogos oficiais.
+- **Anterior**: qualquer Movimento por Nível de uma pré-evolução da espécie atual (ex.: um Charizard aprender algo do Learnset por Nível do Charmeleon ou do Charmander), respeitando o mesmo teto de Nível da tabela em 8.2. Sempre **retroativo** — vale só o que uma forma ANTERIOR aprende, nunca uma forma posterior ou irmã (evoluções alternativas da mesma pré-evolução, como Vaporeon/Jolteon/Flareon a partir de Eevee, não valem entre si). Um Pokémon sem pré-evolução (primeiro estágio, sem nada abaixo dele na cadeia) nunca tem essa opção disponível.
 
 Um Movimento vindo de qualquer uma dessas formas ocupa um dos 4 slots normalmente, igual a um aprendido por Nível. **HM não existe neste sistema** — o mecanismo foi removido dos jogos oficiais a partir da Geração 9 (já vinha sendo substituído por Pokémon de Montaria desde a Geração 7).
 

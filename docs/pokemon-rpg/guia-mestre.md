@@ -82,7 +82,7 @@ Os Estágios (±6 em Ataque, Defesa, Atq. Especial, Def. Especial, Velocidade, P
 
 ### O que o Treinador escolhe sozinho
 
-Desde já é o próprio Treinador quem escolhe os 4 Movimentos do Pokémon dele — mas de um jeito restrito: pra cada slot, ele escolhe entre **Nível** (só o que a espécie aprende por Nível, e só até o Nível atual dele — Cap. 8.2/8.4 das Regras), **Evo** (ganho ao evoluir pra essa forma), **TM** ou **Egg** (só o que a espécie pode aprender por aquela via). Não existe opção de HM — saiu dos jogos oficiais a partir da Geração 9. Ele nunca digita nada solto — só escolhe de listas geradas a partir da espécie de verdade.
+Desde já é o próprio Treinador quem escolhe os 4 Movimentos do Pokémon dele — mas de um jeito restrito: pra cada slot, ele escolhe entre **Nível** (só o que a espécie aprende por Nível, e só até o Nível atual dele — Cap. 8.2/8.4 das Regras), **Evo** (ganho ao evoluir pra essa forma), **TM**, **Egg** ou **Anterior** (só o que uma pré-evolução da espécie aprende por Nível — ex.: um Charizard pegando algo do Charmeleon ou do Charmander; Cap. 8.4 das Regras). O botão "Anterior" só aparece pra quem tem alguma pré-evolução — quem já é primeiro estágio nunca vê essa opção. Não existe opção de HM — saiu dos jogos oficiais a partir da Geração 9. Ele nunca digita nada solto — só escolhe de listas geradas a partir da espécie de verdade.
 
 PV atual e Apelido o Treinador também edita — não precisa fazer por ele durante o jogo, a menos que queira. Estágios (Cap. 15) e PP dos Movimentos (Cap. 8.6), porém, agora só você edita direto — o Treinador só vê os números, o resto muda sozinho pelo sistema (ver as seções acima).
 
