@@ -6362,6 +6362,16 @@ function migrateState(){
      não muda o comportamento de ninguém que já existia. */
   if(!STATE.arena.multiEntity || typeof STATE.arena.multiEntity!=='object') STATE.arena.multiEntity = {};
   if(!STATE.arena.leadChoice || typeof STATE.arena.leadChoice!=='object') STATE.arena.leadChoice = {};
+  /* leadChoice[id] passou de "1 id (string)" pra "lista de ids (array)"
+     quando "Mais de 1 Pokémon nessa luta" ganhou multi-seleção de verdade
+     (pedido do usuário: "não me deixa escolher mais de um pokémon pra
+     entrar na luta, parece que a opção tá lá de enfeite") -- uma ficha
+     salva na janela em que só existia o seletor único (1ª versão dessa
+     leva) ainda tem uma string pura aqui. Envolve num array de 1 item só,
+     sem perder a escolha que o Mestre já tinha feito. */
+  Object.keys(STATE.arena.leadChoice).forEach(function(id){
+    if(!Array.isArray(STATE.arena.leadChoice[id])) STATE.arena.leadChoice[id] = STATE.arena.leadChoice[id] ? [STATE.arena.leadChoice[id]] : [];
+  });
   /* NPCs salvos pelo Mestre (Cap. mecânica nova) -- pedido do usuário:
      "ter uma opção pra eu, como mestre, salvar o NPC que eu criei... e
      escolher ele com os pokémon que deixei por último nele." Molde
@@ -9141,16 +9151,36 @@ DT.arenaIniciarCombate = function(){
       });
       if(!vivos.length) return;
       /* Escolha do Mestre (Cap. mecânica nova, arenaSetupRosterRowHTML) --
-         "deixar o mestre escolher qual pokémon ele vai lutar" -- usa o
-         escolhido em STATE.arena.leadChoice se ele ainda existir/estiver
-         vivo (a lista pode ter mudado desde que o Mestre escolheu:
-         removido, desmaiado por edição manual); senão cai no padrão de
-         sempre (o 1º vivo da lista), sem quebrar fichas antigas que nunca
-         escolheram nada. */
-      var escolhidoId = STATE.arena.leadChoice && STATE.arena.leadChoice[tid];
-      var vivo = (escolhidoId && vivos.find(function(p){ return p.id===escolhidoId; })) || vivos[0];
+         STATE.arena.leadChoice[tid] é sempre um ARRAY de ids (mesmo em
+         "1 só", só que com no máximo 1 dentro). "Mais de 1 Pokémon nessa
+         luta" ligado (arenaMultiEntityAllowed) faz TODOS os escolhidos
+         entrarem JUNTOS, cada um com a própria entrada -- pedido do
+         usuário, depois de "não me deixa escolher mais de um pokémon pra
+         entrar na luta": "Ele entra com vários DE UMA VEZ... os Pokémon
+         escolhidos entram TODOS juntos em campo já no início do combate,
+         cada um com sua própria entrada/ação na Rodada." Desligado, só o
+         1º escolhido (ou o 1º vivo da lista, sem escolha nenhuma) entra --
+         igual sempre foi. Ids escolhidos que sumiram/desmaiaram desde a
+         escolha (lista mudou) são ignorados; sobrando pelo menos 1 válido
+         entre os escolhidos, usa só esses -- senão cai no padrão de
+         sempre. */
+      var allowMulti = arenaMultiEntityAllowed(tid);
+      var escolhidos = STATE.arena.leadChoice && STATE.arena.leadChoice[tid];
+      var validEscolhidos = Array.isArray(escolhidos)
+        ? vivos.filter(function(p){ return escolhidos.indexOf(p.id)!==-1; })
+        : [];
+      var toField;
+      if(allowMulti && validEscolhidos.length){
+        toField = validEscolhidos;
+      } else if(!allowMulti && validEscolhidos.length){
+        toField = [validEscolhidos[0]];
+      } else {
+        toField = [vivos[0]];
+      }
       teamTemVivo = true;
-      novasEntries.push({ id: uid(), teamId: team.id, trainerId: tid, pokemonId: vivo.id, revelado: true });
+      toField.forEach(function(p){
+        novasEntries.push({ id: uid(), teamId: team.id, trainerId: tid, pokemonId: p.id, revelado: true });
+      });
     });
     if(!teamTemVivo){
       SESSION.error = 'O Time "'+team.nome+'" não tem ninguém vivo atribuído -- coloque pelo menos um jogador, NPC ou Pokémon solto com PV antes de iniciar.';
@@ -9370,10 +9400,30 @@ DT.arenaToggleMultiEntity = function(entityId, allow){
   STATE.arena.multiEntity[entityId] = !!allow;
   mutate();
 };
+/* STATE.arena.leadChoice[entityId] é sempre um ARRAY de ids -- em "1
+   Pokémon só" só cabe 1 dentro (arenaSetLeadChoice SUBSTITUI a escolha
+   inteira, veio do seletor único "Entra com:"); em "Mais de 1 Pokémon
+   nessa luta" (arenaMultiEntityAllowed) cabe quanto o Mestre marcar
+   (arenaToggleLeadChoice ADICIONA/REMOVE um id de cada vez, vindo dos
+   checkboxes). Ver DT.arenaIniciarCombate pra como isso vira uma entrada
+   por Pokémon escolhido, todos entrando juntos. */
 DT.arenaSetLeadChoice = function(entityId, pokemonId){
   if(SESSION.role!=='gm') return;
   if(!STATE.arena.leadChoice) STATE.arena.leadChoice = {};
-  STATE.arena.leadChoice[entityId] = pokemonId;
+  STATE.arena.leadChoice[entityId] = [pokemonId];
+  mutate();
+};
+DT.arenaToggleLeadChoice = function(entityId, pokemonId, checked){
+  if(SESSION.role!=='gm') return;
+  if(!STATE.arena.leadChoice) STATE.arena.leadChoice = {};
+  var cur = Array.isArray(STATE.arena.leadChoice[entityId]) ? STATE.arena.leadChoice[entityId].slice() : [];
+  var idx = cur.indexOf(pokemonId);
+  if(checked){
+    if(idx===-1) cur.push(pokemonId);
+  } else if(idx!==-1){
+    cur.splice(idx,1);
+  }
+  STATE.arena.leadChoice[entityId] = cur;
   mutate();
 };
 /* Quem dá pra escolher pra trocar no lugar de quem está em campo agora:
@@ -11822,16 +11872,35 @@ function arenaLeadAndMultiControlsHTML(entityId, trainerLike){
     var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
     return cur>0;
   });
+  var allowMulti = arenaMultiEntityAllowed(entityId);
+  var chosenArr = (STATE.arena.leadChoice && STATE.arena.leadChoice[entityId]) || [];
   var leadHTML = '';
   if(alive.length>1){
-    var chosen = STATE.arena.leadChoice && STATE.arena.leadChoice[entityId];
-    if(!chosen || !alive.some(function(p){ return p.id===chosen; })) chosen = alive[0].id;
-    leadHTML = '<span class="muted" style="font-size:.68rem;">Entra com:</span> '+
-      '<select style="font-size:.7rem; max-width:150px;" onchange="DT.arenaSetLeadChoice(\''+entityId+'\', this.value)">'+
-      alive.map(function(p){ return '<option value="'+p.id+'"'+(p.id===chosen?' selected':'')+'>'+esc(p.apelido||p.especie||'?')+'</option>'; }).join('')+
-      '</select>';
+    if(allowMulti){
+      /* "Mais de 1 Pokémon nessa luta" ligado -- pedido do usuário, depois
+         de reportar que o seletor único parecia "de enfeite": "Ele entra
+         com vários DE UMA VEZ... os Pokémon escolhidos entram TODOS
+         juntos em campo já no início do combate." Checkbox por Pokémon
+         vivo -- nenhum marcado ainda cai no padrão de sempre (1º vivo)
+         só na hora de Iniciar Combate, não precisa forçar um marcado
+         aqui. */
+      leadHTML = '<div style="width:100%; font-size:.68rem;"><span class="muted">Entram juntos:</span> '+
+        alive.map(function(p){
+          var checked = chosenArr.indexOf(p.id)!==-1;
+          return '<label style="margin-right:8px; display:inline-flex; align-items:center; gap:2px;">'+
+            '<input type="checkbox" '+(checked?'checked':'')+' onchange="DT.arenaToggleLeadChoice(\''+entityId+'\', \''+p.id+'\', this.checked)"> '+esc(p.apelido||p.especie||'?')+
+          '</label>';
+        }).join('')+
+      '</div>';
+    } else {
+      var chosen = chosenArr[0];
+      if(!chosen || !alive.some(function(p){ return p.id===chosen; })) chosen = alive[0].id;
+      leadHTML = '<span class="muted" style="font-size:.68rem;">Entra com:</span> '+
+        '<select style="font-size:.7rem; max-width:150px;" onchange="DT.arenaSetLeadChoice(\''+entityId+'\', this.value)">'+
+        alive.map(function(p){ return '<option value="'+p.id+'"'+(p.id===chosen?' selected':'')+'>'+esc(p.apelido||p.especie||'?')+'</option>'; }).join('')+
+        '</select>';
+    }
   }
-  var allowMulti = arenaMultiEntityAllowed(entityId);
   return '<div class="btn-row" style="flex-wrap:wrap; align-items:center; gap:6px; margin-top:2px;">'+
     leadHTML+
     '<label class="muted" style="font-size:.68rem; display:flex; align-items:center; gap:3px;">'+
