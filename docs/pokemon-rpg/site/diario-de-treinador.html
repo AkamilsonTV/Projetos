@@ -265,11 +265,18 @@
 
   /* ---- Arena (esboço v1) ---- */
   .arena-teams{ display:flex; gap:14px; flex-wrap:wrap; }
-  .arena-team{ flex:1 1 220px; min-width:200px; border:2px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden; }
+  .arena-team{ flex:1 1 260px; min-width:240px; border:2px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden; }
   .arena-team.drop-hover{ outline:2px solid var(--accent); outline-offset:-2px; background:var(--accent-soft); }
   .arena-team-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:var(--surface-2); border-bottom:2px solid var(--line); }
   .arena-team-head input[type=text]{ font-weight:700; padding:4px 6px; }
   .arena-team-body{ display:flex; flex-wrap:wrap; gap:16px; padding:12px; min-height:96px; }
+  /* Cara do PVP (2ª leva do redesenho): dentro de um Time, cada Pokémon em
+     campo é um poke-card LARGO empilhado (arenaWideCardHTML), não mais o
+     grid de slots pequenos -- essa continua sendo só a versão compacta
+     (arenaEntryHTML), reaproveitada no seletor de alvo dentro do popup de
+     Ação (arenaActionBattlefieldHTML). */
+  .arena-team-body-wide{ display:flex; flex-direction:column; gap:10px; padding:12px; }
+  .arena-wide-card{ position:relative; }
   .arena-slot, .arena-slot-hidden{ width:84px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; position:relative; padding-top:4px; }
   .arena-info-btn{ position:absolute; top:-6px; right:-6px; width:20px; height:20px; padding:0; border-radius:50%; background:var(--surface); border:1px solid var(--line); font-size:.66rem; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); }
   .arena-info-btn:hover{ border-color:var(--accent); }
@@ -342,8 +349,8 @@
   /* ---- Overlay de dado (centro da tela, some sozinho) ---- */
   .dice-overlay{ position:fixed; inset:0; background:rgba(20,14,8,.55); display:flex; align-items:center; justify-content:center; z-index:200; padding:20px; animation:dice-fade-in .15s ease-out; }
   .dice-overlay-card{ background:var(--surface); border:2px solid var(--line); border-radius:var(--radius); padding:22px 26px; max-width:360px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.35); animation:dice-pop-in .28s cubic-bezier(.2,1.4,.4,1); }
-  .dice-d6{ font-size:4.4rem; line-height:1; margin-bottom:6px; }
-  .dice-d6.dice-rolling{ display:inline-block; animation:dice-spin .32s linear infinite; }
+  .dice-main{ font-size:4.4rem; line-height:1; margin-bottom:6px; }
+  .dice-main.dice-rolling{ display:inline-block; animation:dice-spin .32s linear infinite; }
   .dice-d10{ font-size:1.3rem; font-weight:700; margin-bottom:10px; color:var(--accent); }
   .dice-d10-val.dice-rolling{ display:inline-block; animation:dice-flicker .14s linear infinite; }
   .dice-d10-label{ font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); vertical-align:middle; margin-right:4px; }
@@ -387,34 +394,34 @@
   .pvp-dice-overlay.pvp-dice-overlay-noanim{ animation:none; }
   .pvp-dice-card.pvp-dice-overlay-noanim{ animation:none; }
   .pvp-dice-table{ height:96px; display:flex; align-items:flex-end; justify-content:center; gap:22px; margin-bottom:10px; }
-  .pvp-die3d-scene{ width:60px; height:60px; perspective:340px; }
-  .pvp-die3d-cube{ position:relative; width:60px; height:60px; margin:0 auto; transform-style:preserve-3d; transform:rotateX(var(--restX,0deg)) rotateY(var(--restY,0deg)); }
-  .pvp-die3d-cube.pvp-die-tumbling{ animation:pvp-die-tumble var(--dur,1100ms) cubic-bezier(.22,.85,.32,1.2) forwards; }
-  .pvp-die3d-face{ position:absolute; inset:0; width:60px; height:60px; background:#f7f3e8; border:2px solid #2a2622; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:2.1rem; line-height:1; color:#2a2622; backface-visibility:hidden; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
-  .pvp-die3d-f1{ transform:translateZ(30px); }
-  .pvp-die3d-f6{ transform:rotateY(180deg) translateZ(30px); }
-  .pvp-die3d-f2{ transform:rotateY(90deg) translateZ(30px); }
-  .pvp-die3d-f5{ transform:rotateY(-90deg) translateZ(30px); }
-  .pvp-die3d-f3{ transform:rotateX(90deg) translateZ(30px); }
-  .pvp-die3d-f4{ transform:rotateX(-90deg) translateZ(30px); }
-  @keyframes pvp-die-tumble{
-    0%{ transform: translateY(-52px) rotateX(0deg) rotateY(0deg); }
-    55%{ transform: translateY(4px) rotateX(calc(var(--restX,0deg) * .7)) rotateY(calc(var(--restY,0deg) * .7)); }
-    78%{ transform: translateY(-8px) rotateX(var(--restX,0deg)) rotateY(var(--restY,0deg)); }
-    100%{ transform: translateY(0) rotateX(var(--restX,0deg)) rotateY(var(--restY,0deg)); }
-  }
-  /* d10 (rolagem de Efeito Percentual): uma "moeda" plana que gira no ar e
-     cai de cara pro alto mostrando o número -- um d10 de verdade não é um
-     cubo (é um trapezoedro pentagonal), então em vez de tentar imitar as
-     10 faces em 3D, gira só em Y (efeito de moeda rodopiando) até
-     assentar mostrando o número, o que já basta pra passar a mesma
-     sensação de "objeto físico rolando e caindo" pedida. */
+  /* d10 (Cap. mecânica nova, redesign d6->d10: TODAS as rolagens do PVP
+     -- a principal de Precisão/Crítico, agora incluída, e a de Efeito
+     Percentual, já era assim -- usam esse MESMO visual): uma "moeda"
+     plana que gira no ar e cai de cara pro alto mostrando o número --
+     um d10 de verdade não é um cubo (é um trapezoedro pentagonal),
+     então em vez de tentar imitar 10 faces em 3D (o antigo .pvp-die3d-*
+     só imitava um CUBO de 6 faces -- fazia sentido enquanto a rolagem
+     principal era 1d6, mas não serve mais agora que ela também é
+     1d10), gira só em Y (efeito de moeda rodopiando) até assentar
+     mostrando o número, o que já basta pra passar a mesma sensação de
+     "objeto físico rolando e caindo" pedida. Um só componente reaproveitado
+     pra tanto a rolagem principal (.pvp-die-main, maior, mais dramática)
+     quanto a de Efeito (.pvp-die10, do jeito que já era). */
   .pvp-die10-scene{ width:52px; height:52px; perspective:260px; }
   .pvp-die10{ position:relative; width:52px; height:52px; margin:0 auto; border-radius:50%; background:linear-gradient(160deg,#f7f3e8,#dcd4c0); border:2px solid #2a2622; display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:700; color:#2a2622; transform:rotateY(var(--restY,0deg)); backface-visibility:hidden; }
   .pvp-die10.pvp-die-tumbling{ animation:pvp-die10-tumble var(--dur,900ms) cubic-bezier(.22,.85,.32,1.2) forwards; }
+  .pvp-die-main-scene{ width:64px; height:64px; perspective:320px; }
+  .pvp-die-main{ position:relative; width:64px; height:64px; margin:0 auto; border-radius:50%; background:linear-gradient(160deg,#f7f3e8,#dcd4c0); border:2px solid #2a2622; display:flex; align-items:center; justify-content:center; font-size:2.1rem; font-weight:700; color:#2a2622; transform:rotateY(var(--restY,0deg)); backface-visibility:hidden; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
+  .pvp-die-main.pvp-die-tumbling{ animation:pvp-die-main-tumble var(--dur,1100ms) cubic-bezier(.22,.85,.32,1.2) forwards; }
   @keyframes pvp-die10-tumble{
     0%{ transform: translateY(-40px) rotateY(0deg) scale(.82); }
     60%{ transform: translateY(2px) rotateY(calc(var(--restY,0deg) * .75)) scale(1.05); }
+    100%{ transform: translateY(0) rotateY(var(--restY,0deg)) scale(1); }
+  }
+  @keyframes pvp-die-main-tumble{
+    0%{ transform: translateY(-52px) rotateY(0deg) scale(.82); }
+    55%{ transform: translateY(4px) rotateY(calc(var(--restY,0deg) * .7)) scale(1.06); }
+    78%{ transform: translateY(-8px) rotateY(calc(var(--restY,0deg) * .95)) scale(1); }
     100%{ transform: translateY(0) rotateY(var(--restY,0deg)) scale(1); }
   }
   .pvp-dice-stage-label{ font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); margin-bottom:2px; }
@@ -6302,17 +6309,6 @@ function migrateState(){
      trazer Pokémon nenhum -- não interfere em nada da batalha, é só um
      "quem está de olho" visível pra mesa toda. */
   if(!Array.isArray(STATE.arena.spectators)) STATE.arena.spectators = [];
-  /* Fluxo de entrada guiado (Cap. 17/55): quem já entrou na Arena e
-     escolheu um Time, mas ainda não soltou nenhum Pokémon (nem revelou) --
-     {trainerId, teamId}, uma linha por Treinador. Uma entrada de combate
-     (STATE.arena.entries) só nasce quando ele solta de verdade
-     (DT.arenaPickLead), e só fica visível pros outros quando o Mestre
-     revela (DT.arenaRevelarTodos) -- por isso entrada com revelado:false
-     agora é um estado válido e esperado, não sobra de migração nenhuma;
-     bem diferente de antes (Cap. 9/12), quando ir pro Time já revelava na
-     hora sempre. */
-  if(!Array.isArray(STATE.arena.presentes)) STATE.arena.presentes = [];
-  if(STATE.arena.solturaAberta===undefined) STATE.arena.solturaAberta = false;
   /* Configuração de Times "cara de PVP" (Cap. mecânica nova) -- pedido do
      usuário: "quero que a Arena fique mais parecida com o PVP... o
      mestre definirá os times... colocará cada jogador em seu time ou
@@ -6507,15 +6503,28 @@ function attrSpent(trainer){ var s=0; ATTR_ORDER.forEach(function(k){ s += train
    o que a regra descreve como "rolagem de ataque". */
 function rollDie(sides){ return 1 + Math.floor(Math.random()*sides); }
 
-/* Cap. 10: tabela de acerto pela Precisão base do Movimento. Precisão >=100%
-   (ou em branco/"—", como em Movimentos que "nunca erram") é automática. */
+/* Cap. 10 (convertido de d6 pra d10 -- pedido do usuário: "Quero mudar
+   todas as rolagens de ataque para D10... Se tiver 90-95% chance de
+   acerto: 1 no dado erra, 80-85%, 1 e 2 no dado erra. E segue sempre
+   essa lógica."): tabela de acerto pela Precisão base do Movimento,
+   agora com 1 ponto de granularidade por faixa de 10% (o d6 antigo só
+   tinha 4 faixas possíveis; o d10 dá uma faixa por dezena de Precisão,
+   igual o pedido descreve). Precisão >=100% (ou em branco/"—", como em
+   Movimentos que "nunca erram") continua automática -- não precisa
+   nem chega a comparar com esse threshold (ver precisao100 em
+   resolveAttack). Fórmula: pega a dezena da Precisão (90-99->9,
+   80-89->8, ... 10-19->1) e devolve 11 menos ela -- é exatamente "erra
+   nos números de 1 até threshold-1": dezena 9 -> threshold 2 -> só o 1
+   erra; dezena 8 -> threshold 3 -> 1 e 2 erram; e assim por diante,
+   até dezena 1 -> threshold 10 -> só acerta num 10 puro. Uma Precisão
+   abaixo de 10% (rara/inexistente nos golpes oficiais) trava no
+   threshold 10 em vez de estourar pra um número impossível de tirar
+   num d10 (o dado tem só até a face 10). */
 function hitThreshold(precisaoStr){
   var n = parseInt(precisaoStr,10);
   if(isNaN(n) || n>=100) return 1;
-  if(n>=90) return 2;
-  if(n>=70) return 3;
-  if(n>=50) return 4;
-  return 5;
+  var dezena = Math.floor(n/10);
+  return Math.min(10, 11 - Math.max(1, dezena));
 }
 /* Cap. 13: soma um modificador por Tipo do defensor (não multiplica) — Fraqueza
    e resistência podem se cancelar. Se QUALQUER Tipo do defensor for imune ao
@@ -6702,29 +6711,25 @@ function abilityTypeAbsorb(defAbility, moveTipo){
 
 /* Resolve um ataque inteiro (Cap. 10-14) sem alterar nada — devolve um
    relatório; quem chama decide aplicar (applyAttackResult) e sincronizar.
-   forcedRoll (opcional) — {d6, efeitoD10a, efeitoD10b} — permite reusar uma
-   rolagem já feita em vez de sortear de novo: usado pelos Movimentos de
-   área (resolveMoveUse), onde a Precisão/Crítico/Efeito é UMA rolagem só
-   pro uso inteiro, aplicada igual a todos os alvos atingidos — só o Dano
-   (que depende do Tipo/Atributos de CADA defensor) varia por alvo. */
+   forcedRoll (opcional) — {d10, efeitoD10a, efeitoD10b} — permite reusar
+   uma rolagem já feita em vez de sortear de novo: usado pelos Movimentos
+   de área (resolveMoveUse), onde a Precisão/Crítico/Efeito é UMA
+   rolagem só pro uso inteiro, aplicada igual a todos os alvos atingidos
+   — só o Dano (que depende do Tipo/Atributos de CADA defensor) varia
+   por alvo. */
 function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRoll){
   var result = { moveName: move.nome, tipo: move.tipo, categoria: move.categoria };
   var isDamaging = move.categoria==='Físico' || move.categoria==='Especial';
   var attAbility = attPoke.habilidade, defAbility = defPoke.habilidade;
   var moldBreaker = !!MOLD_BREAKER_ABILITIES[attAbility];
   var noGuard = attAbility==='No Guard' || defAbility==='No Guard';
-  /* Pedido do usuário: "Vamos trocar a rolagem dos moves que são só pra
-     causar alguma condição para D10 em vez de d6. Aí a aplicação fica
-     idêntica a de condições causadas como consequência de certos
-     ataques." -- CONDITION_ONLY_MOVES (definida mais abaixo, perto de
-     MOVE_EFFECTS) são os 18 Movimentos de Status puros que só existem
-     pra aplicar uma Condição (Thunder Wave, Toxic, Sleep Powder...): em
-     vez do d6 normal de Precisão, a "Precisão" oficial do golpe vira a
-     Chance do MESMO d10 que já decide Efeito Percentual (result.efeito,
-     mais abaixo) -- então "acertou" e "a Condição pegou" viram uma coisa
-     só, exatamente como pedido. isConditionOnly === true faz hit=true
-     sempre aqui em cima (nunca "erra" pelo d6 -- só type immunity, ou o
-     próprio d10 de Chance mais abaixo, decidem se a Condição pega). */
+  /* Golpes de condição pura (Thunder Wave, Toxic, Sleep Powder...) já
+     rolavam o mesmo 1d10 de Efeito Percentual pra decidir Precisão E
+     "a Condição pegou" numa coisa só (pedido de leva anterior, ver
+     CONDITION_ONLY_MOVES perto de MOVE_EFFECTS) -- isConditionOnly
+     continua fazendo hit=true sempre aqui em cima (nunca "erra" pelo
+     dado principal de baixo -- só type immunity, ou o próprio d10 de
+     Chance mais abaixo, decidem se a Condição pega). */
   var isConditionOnly = !!CONDITION_ONLY_MOVES[move.nome];
 
   var precisao100 = !move.precisao || parseInt(move.precisao,10)>=100;
@@ -6732,11 +6737,23 @@ function resolveAttack(attTrainer, attPoke, move, defTrainer, defPoke, forcedRol
   if(attAbility==='Compound Eyes') threshold = Math.max(1, threshold-1);
   if(attAbility==='Hustle' && move.categoria==='Físico') threshold = threshold+1;
   if(defAbility==='Wonder Skin' && move.categoria==='Status') threshold = threshold+1;
-  var d6 = forcedRoll ? forcedRoll.d6 : rollDie(6);
-  result.d6 = d6; /* golpe de condição pura ainda rola (e mostra) o d6 por continuidade visual do quadro de dado, mas ele não decide mais nada -- só o d10 de Chance, logo abaixo, decide */
-  var hit = isConditionOnly ? true : (noGuard ? true : (precisao100 ? true : (d6 >= threshold)));
-  var falhaNatural = isConditionOnly ? false : ((!noGuard) && (!precisao100) && d6===1);
-  var crit = isDamaging && d6===6;
+  /* Pedido do usuário: "Quero mudar todas as rolagens de ataque para
+     D10... Lembrando que 1 é sempre falha crítica e 10 é sempre
+     crítico. Ataques com 100% de precisão (mesmo com a precisão
+     reduzida) nunca caem na falha crítica. O dado é rolado apenas para
+     definir se foi crítico ou não." -- rolagem principal de Precisão/
+     Crítico virou 1d10 (era 1d6): hit/falhaNatural seguem a MESMA
+     estrutura de sempre (golpe garantido -- 100% de Precisão ou
+     No Guard -- nunca "erra" pelo dado, só rola pra saber se critou;
+     Precisão reduzida entra na regra normal de acerto/erro contra o
+     threshold de hitThreshold, incluindo o 1 = falha crítica sempre
+     que o golpe NÃO for garantido). Crítico agora é d10===10, não mais
+     d6===6. */
+  var d10 = forcedRoll ? forcedRoll.d10 : rollDie(10);
+  result.d10 = d10;
+  var hit = isConditionOnly ? true : (noGuard ? true : (precisao100 ? true : (d10 >= threshold)));
+  var falhaNatural = isConditionOnly ? false : ((!noGuard) && (!precisao100) && d10===1);
+  var crit = isDamaging && d10===10;
   if(defAbility==='Shell Armor' || defAbility==='Battle Armor') crit = false;
   result.hit = hit; result.falhaNatural = falhaNatural; result.crit = crit;
 
@@ -7357,7 +7374,7 @@ function resolveMoveUse(attTrainer, attPoke, move, targets){
     var result = resolveAttack(attTrainer, attPoke, move, tgt.trainer, tgt.poke, forced);
     if(!forced){
       forced = {
-        d6: result.d6,
+        d10: result.d10,
         efeitoD10a: result.efeito ? result.efeito.d10a : undefined,
         efeitoD10b: (result.efeito && result.efeito.d10b!==null && result.efeito.d10b!==undefined) ? result.efeito.d10b : undefined,
         estagioD10a: result.estagioEfeito ? result.estagioEfeito.d10a : undefined,
@@ -8972,9 +8989,18 @@ DT.arenaIniciarCombate = function(){
   STATE.arena.vencedor = null;
   STATE.arena.round = null;
   STATE.arena.battleActive = true;
+  /* Mesmas duas passadas de sempre (era arenaRevelarTodos, Cap. 55): marca
+     arenaRevelado=true em TODO MUNDO primeiro, só DEPOIS dispara Habilidade
+     de entrada (Intimidate/Download etc.) -- assim quem tiver Intimidate já
+     enxerga os outros Times que também acabaram de entrar juntos, igual
+     uma entrada simultânea de verdade. */
   (novasEntries||[]).forEach(function(e){
     var t = findTrainer(e.trainerId), p = t && getPoke(e.trainerId, e.pokemonId);
     if(t && p) p.arenaRevelado = true;
+  });
+  (novasEntries||[]).forEach(function(e){
+    var t = findTrainer(e.trainerId), p = t && getPoke(e.trainerId, e.pokemonId);
+    if(t && p) applyOnSwitchInAbility(t, p, e.teamId);
   });
   arenaLog('⚔️ O Mestre iniciou o combate — cada Time entra com o próprio Pokémon ativo.');
   mutate();
@@ -8986,8 +9012,9 @@ DT.arenaIniciarCombate = function(){
    (troca rápida pro próximo confronto), só limpa o que era só DAQUELA
    batalha (entradas, hazards, vencedor, Rodada). Reseta arenaRevelado do
    time INTEIRO (Equipe ativa + Banco) de cada Treinador/NPC/solto que
-   participou -- mesmo motivo de sempre do DT.arenaLeave antigo (Cap. 55,
-   ver o comentário grande lá): "essa participação acabou" é o limite
+   participou -- mesmo motivo de sempre do antigo "Sair da Arena" (Cap.
+   55, abolido de vez -- ver comentário grande em arenaScreen): "essa
+   participação acabou" é o limite
    natural de revelação aqui também, senão um Pokémon que já lutou uma
    vez ficaria com nome/sprite público pra sempre em qualquer combate
    futuro, sem soltura nenhuma pra "escondê-lo" de novo. */
@@ -9106,180 +9133,6 @@ DT.arenaRemoveEntry = function(entryId){
   STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.id!==entryId; });
   mutate();
 };
-/* ---- Fluxo guiado de entrada na Arena (Cap. 17/55): Entrar (escolhe o
-   Time, sem trazer nenhum Pokémon ainda) -> o Mestre libera a Soltura
-   quando achar que já está todo mundo -> cada Treinador solta UM Pokémon
-   por vez, em segredo (DT.arenaPickLead) -> quando todo mundo que entrou
-   já soltou o seu, o Mestre revela todos de uma vez (DT.arenaRevelarTodos)
-   -- surpresa pros outros até esse momento. Depois de revelado, um
-   Pokémon que caia em batalha é reposto na hora, sem passar por essa
-   sincronia de novo (arenaSelectFainted/arenaSwapIn, Cap. 59). ---- */
-function arenaPresente(trainerId){
-  return (STATE.arena.presentes||[]).find(function(pr){ return pr.trainerId===trainerId; });
-}
-/* Entrar na Arena: só registra presença + Time escolhido -- não traz
-   nenhum Pokémon pro campo ainda (isso só acontece em arenaPickLead, e só
-   fica visível pros outros depois de arenaRevelarTodos). Se só existe 1
-   Time, entra direto nele; com 2+, pede pra escolher qual
-   (SESSION.enterArenaTeamPick). */
-DT.arenaEnterPick = function(trainerId){
-  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
-  if(SESSION.role!=='gm' && !isOwner) return;
-  var teams = (STATE.arena && STATE.arena.teams) || [];
-  if(teams.length===0){ SESSION.error = 'O Mestre ainda não criou nenhum Time nesta Arena.'; render(); return; }
-  if(teams.length===1){ DT.arenaEnter(trainerId, teams[0].id); return; }
-  SESSION.enterArenaTeamPick = trainerId;
-  render();
-};
-DT.arenaCancelEnterPick = function(){ SESSION.enterArenaTeamPick = null; render(); };
-DT.arenaEnter = function(trainerId, teamId){
-  var t = findTrainer(trainerId);
-  if(!STATE.arena || !t) return;
-  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
-  if(SESSION.role!=='gm' && !isOwner) return;
-  var team = (STATE.arena.teams||[]).find(function(x){ return x.id===teamId; });
-  if(!team) return;
-  if(!Array.isArray(STATE.arena.presentes)) STATE.arena.presentes = [];
-  var presente = arenaPresente(trainerId);
-  if(presente){ presente.teamId = teamId; }
-  else { STATE.arena.presentes.push({trainerId:trainerId, teamId:teamId}); }
-  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
-  STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' entrou na Arena, no Time "'+esc(team.nome)+'" — aguardando a soltura dos Pokémon.' });
-  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
-  SESSION.enterArenaTeamPick = null;
-  mutate();
-};
-/* O Mestre libera a Soltura quando achar que já está todo mundo (ou quem
-   for entrar por enquanto) na Arena -- a partir daqui cada Treinador
-   presente já pode soltar o próprio Pokémon (arenaPickLead). Continua
-   aberta pro resto da sessão (não fecha sozinha), então quem entrar depois
-   também consegue soltar o dele a qualquer momento, sem travar tudo de
-   novo -- exatamente o "Mestre supervisiona" de sempre. */
-DT.arenaOpenSoltura = function(){
-  if(SESSION.role!=='gm' || !STATE.arena) return;
-  if(!(STATE.arena.presentes||[]).length) return;
-  if(STATE.arena.solturaAberta) return;
-  STATE.arena.solturaAberta = true;
-  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
-  STATE.arena.log.push({ ts: Date.now(), text: '🔓 O Mestre liberou a soltura dos Pokémon — cada Treinador já pode escolher o seu, em segredo.' });
-  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
-  mutate();
-};
-/* Soltar UM Pokémon (Cap. 55): cria a entrada de combate já com
-   revelado:false -- só o próprio dono e o Mestre veem qual foi, os outros
-   só veem uma Pokébola no Time (mesmo tratamento de sempre pra entrada não
-   revelada). Não dispara Habilidade de entrada nem marca arenaRevelado
-   ainda -- isso só acontece de verdade no momento da revelação
-   (arenaRevelarTodos), pra não vazar pista nenhuma da escolha antes da
-   hora pela Equipe ativa pública. Só um Pokémon por vez nessa soltura
-   inicial -- reposição depois de desmaio usa outro caminho (Cap. 59). */
-DT.arenaPickLead = function(trainerId, pokemonId){
-  if(!STATE.arena || !STATE.arena.solturaAberta) return;
-  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
-  if(SESSION.role!=='gm' && !isOwner) return;
-  var presente = arenaPresente(trainerId);
-  if(!presente) return; /* precisa ter entrado num Time antes */
-  var jaEscolheu = (STATE.arena.entries||[]).some(function(e){ return e.trainerId===trainerId; });
-  if(jaEscolheu) return;
-  var t = findTrainer(trainerId);
-  var p = t && getPoke(trainerId, pokemonId);
-  if(!t || !p || !p.especie) return;
-  var isInEquipeAtiva = (t.pokemons||[]).some(function(x){ return x.id===pokemonId; });
-  if(!isInEquipeAtiva) return;
-  var max = hpMax(t,p);
-  var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
-  if(cur<=0) return; /* não solta um Pokémon desmaiado */
-  STATE.arena.entries.push({id:uid(), teamId:presente.teamId, trainerId:trainerId, pokemonId:pokemonId, revelado:false});
-  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
-  STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' soltou o próprio Pokémon em segredo — aguardando os outros pra revelar.' });
-  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
-  mutate();
-};
-/* Voltar atrás numa escolha ainda secreta (antes da revelação) -- só faz
-   sentido enquanto a entrada continuar revelado:false; depois de revelada,
-   é uma troca de verdade (arenaSwapIn), não um "desfazer". */
-DT.arenaCancelPickLead = function(trainerId){
-  if(!STATE.arena) return;
-  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
-  if(SESSION.role!=='gm' && !isOwner) return;
-  var entry = (STATE.arena.entries||[]).find(function(e){ return e.trainerId===trainerId && !e.revelado; });
-  if(!entry) return;
-  var p = getPoke(entry.trainerId, entry.pokemonId);
-  if(p) resetStages(p);
-  STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.id!==entry.id; });
-  mutate();
-};
-/* O Mestre revela de uma vez só todo mundo que já soltou (Cap. 55) -- só
-   funciona quando NINGUÉM que está presente ainda falta escolher (senão o
-   Mestre pode soltar por ele direto, arenaPickLead, em vez de forçar uma
-   revelação pela metade). Em duas passadas: primeiro revela todo mundo
-   (marca revelado + arenaRevelado), só DEPOIS dispara Habilidade de
-   entrada (Intimidate etc.) -- assim quem tiver Intimidate já enxerga
-   todo mundo que entrou junto nessa mesma soltura, igual uma entrada
-   simultânea de verdade. */
-DT.arenaRevelarTodos = function(){
-  if(SESSION.role!=='gm' || !STATE.arena) return;
-  var presentes = STATE.arena.presentes||[];
-  if(!presentes.length) return;
-  var faltam = presentes.some(function(pr){
-    return !(STATE.arena.entries||[]).some(function(e){ return e.trainerId===pr.trainerId; });
-  });
-  if(faltam) return;
-  var reveladosAgora = (STATE.arena.entries||[]).filter(function(e){
-    return !e.revelado && presentes.some(function(pr){ return pr.trainerId===e.trainerId; });
-  });
-  if(!reveladosAgora.length) return;
-  reveladosAgora.forEach(function(e){
-    e.revelado = true;
-    var p = getPoke(e.trainerId, e.pokemonId);
-    if(p) p.arenaRevelado = true;
-  });
-  reveladosAgora.forEach(function(e){
-    var t = findTrainer(e.trainerId);
-    var p = t && getPoke(e.trainerId, e.pokemonId);
-    if(t && p) applyOnSwitchInAbility(t, p, e.teamId);
-  });
-  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
-  STATE.arena.log.push({ ts: Date.now(), text: '🎉 O Mestre revelou os '+reveladosAgora.length+' Pokémon escolhidos — a batalha pode começar!' });
-  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
-  mutate();
-};
-/* Sair da Arena: tira TODOS os Pokémon desse Treinador da Arena de uma
-   vez, de qualquer Time -- ele fica sem nenhum em campo, e também sai da
-   lista de presença (precisa entrar de novo, escolher Time de novo). */
-DT.arenaLeave = function(trainerId){
-  var t = findTrainer(trainerId);
-  if(!STATE.arena || !t) return;
-  var isOwner = SESSION.role==='player' && SESSION.trainerId===trainerId;
-  if(SESSION.role!=='gm' && !isOwner) return;
-  var antes = STATE.arena.entries.length;
-  var eraPresente = !!arenaPresente(trainerId);
-  (STATE.arena.entries||[]).filter(function(e){ return e.trainerId===trainerId; }).forEach(function(e){
-    var p = getPoke(e.trainerId, e.pokemonId);
-    if(p){ applyOnSwitchOutAbility(t, p); resetStages(p); }
-  });
-  STATE.arena.entries = STATE.arena.entries.filter(function(e){ return e.trainerId!==trainerId; });
-  STATE.arena.presentes = (STATE.arena.presentes||[]).filter(function(pr){ return pr.trainerId!==trainerId; });
-  /* arenaRevelado zera pra TODOS os Pokémon desse Treinador ao sair de vez
-     (Cap. 55): dentro de UMA MESMA batalha, "revelado fica revelado" fazia
-     sentido (evita a sprite sumir de novo só porque trocou e voltou) -- mas
-     sem resetar nunca, essa marca vaza pra fora da batalha: um Pokémon que
-     lutou uma vez ficava com nome/sprite público pra sempre em QUALQUER
-     Soltura futura, mesmo semanas depois, matando a graça da revelação
-     simultânea de novo (é exatamente o "Nessa área também precisa ficar em
-     segredo até o Mestre revelar" reportado -- a Equipe ativa inteira já
-     aparecia destravada antes mesmo da nova Soltura acontecer). "Sair da
-     Arena" é o limite natural de "essa participação acabou" no site --
-     dali pra frente, o time inteiro (Equipe ativa e Banco) volta a
-     precisar ser revelado de novo na próxima batalha. */
-  (t.pokemons||[]).concat(t.banco||[]).forEach(function(p){ p.arenaRevelado = false; });
-  if(STATE.arena.entries.length===antes && !eraPresente) return; /* não tinha nenhum nem tava presente -- nada pra registrar */
-  if(!Array.isArray(STATE.arena.log)) STATE.arena.log = [];
-  STATE.arena.log.push({ ts: Date.now(), text: esc(t.name)+' saiu da Arena, retirando todo o Time.' });
-  if(STATE.arena.log.length>40) STATE.arena.log = STATE.arena.log.slice(-40);
-  arenaResetActionState();
-  mutate();
-};
 /* ---- Fluxo de ação: clica no seu Pokémon já em campo pra selecionar ele
    (revela sozinho se ainda não tiver revelado) -> escolhe Atacar/Item/
    Trocar/Fugir -> se for Atacar, escolhe o Movimento -> se a lógica dele
@@ -9390,12 +9243,14 @@ DT.arenaSelectActor = function(entryId){
   if(cur<=0) return; /* desmaiado, não pode agir */
   if(p.carregando) return; /* Movimento de carga (Cap. 25): a ação de soltar já nasceu pré-escolhida (arenaFinishRoundResolution) -- não passa pela seleção de novo */
 
-  /* Uma entrada revelado:false só existe hoje vinda da Soltura em segredo
-     (Cap. 55, DT.arenaPickLead) -- NUNCA deixa o próprio dono agir com ela
-     e revelar sozinho assim, senão furaria a revelação simultânea (bastava
-     atacar com o Pokémon soltado antes do Mestre clicar Revelar). O Mestre
-     ainda pode, se precisar corrigir algo na mesa -- mesma exceção de
-     sempre ("Mestre supervisiona"). */
+  /* Uma entrada revelado:false só existia vinda da antiga Soltura em
+     segredo (Cap. 55, abolida de vez -- ver comentário grande em
+     arenaScreen); pode sobrar numa ficha salva de antes dessa mudança --
+     NUNCA deixa o próprio dono agir com ela e revelar sozinho assim,
+     senão furaria a revelação simultânea de então (bastava atacar com o
+     Pokémon soltado antes do Mestre clicar Revelar). O Mestre ainda pode,
+     se precisar corrigir algo na mesa -- mesma exceção de sempre ("Mestre
+     supervisiona"). */
   if(!e.revelado){
     if(SESSION.role!=='gm'){
       SESSION.error = 'Esse Pokémon ainda está em segredo — espere o Mestre revelar todo mundo antes de agir.';
@@ -10269,7 +10124,7 @@ DT.resolveArenaMove = function(atkEntry, move, category, manualTargetIds, isChar
     atacante: attPoke.apelido || attPoke.especie || 'Pokémon',
     atacanteTrainer: attTrainer.name,
     move: move.nome,
-    d6: first.d6, hit: first.hit, falhaNatural: first.falhaNatural, crit: first.crit,
+    d10: first.d10, hit: first.hit, falhaNatural: first.falhaNatural, crit: first.crit,
     efeito: first.efeito || null,
     alvos: perTarget.map(function(pt){
       return {
@@ -10614,7 +10469,7 @@ var rollHideTimer = null;
    cada ~90ms enquanto anima (startDiceRollAnimation), então piscava
    bastante. Guarda a "identidade" do que está aberto AGORA (o ts da
    própria rolagem) -- se for a MESMA rolagem de antes (só mudou de
-   estágio: d6 -> 1d10 -> resultado), marca a classe *-noanim nela (ver
+   estágio: 1d10 -> 1d10 de efeito -> resultado), marca a classe *-noanim nela (ver
    diceOverlayHTML) pra não tocar a animação de entrada de novo; só toca
    quando é uma rolagem DE VERDADE nova (ts diferente do que já tava
    marcado). Zera pra null quando o quadro fecha de vez, pra próxima
@@ -10635,10 +10490,10 @@ var DICE_FRESH_MS = 8000;
    isso passasse pelo render() normal, a ficha inteira (sprites e tudo mais
    dentro de #app) seria reconstruída junto a cada quadro — pisca a tela
    toda por nada. Assim só a divzinha do dado se repinta.
-   Quando o ataque tem Efeito Percentual, o dado do ataque (1d6) e o(s) do
+   Quando o ataque tem Efeito Percentual, o dado do ataque (1d10) e o(s) do
    efeito (1d10, e um segundo 1d10 se veio Crítico e o primeiro falhou) não
    giram juntos — cada um roda a vez dele, um de cada vez, e só no fim mostra
-   o resultado dos dois. DICE_ROLL_ANIM guarda a fila de estágios ('d6',
+   o resultado dos dois. DICE_ROLL_ANIM guarda a fila de estágios ('d10',
    'd10a', opcionalmente 'd10b') e o índice do estágio atual; dentro de cada
    estágio, cada repintura (a cada ~90ms) sorteia uma face nova só pra dar o
    efeito visual de "girando" — o valor de verdade já foi decidido lá no
@@ -10660,7 +10515,7 @@ function renderDiceOverlay(){
   if(el) el.innerHTML = diceOverlayHTML();
 }
 function diceStagesFor(lr){
-  var stages = ['d6'];
+  var stages = ['d10'];
   if(lr.efeito){
     stages.push('d10a');
     if(lr.efeito.d10b!==null && lr.efeito.d10b!==undefined) stages.push('d10b');
@@ -10864,7 +10719,6 @@ function wrap(bodyHTML, rightHTML){
 /* ---- Overlay de dado no centro da tela: aparece pra todo mundo conectado
    quando um ataque é resolvido na Arena (STATE.arena.lastRoll), não só pra
    quem está com a aba Arena aberta — é o "dado rolando" da mesa toda. ---- */
-var DIE_FACES = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
 function ailmentLabel(ailment){
   return ailment==='confuso' ? 'Confuso' : (STATUS_LABELS[ailment]||ailment);
 }
@@ -10937,7 +10791,7 @@ function rollLogLine(lr){
   if(lr.round) parts.push('Rodada '+lr.round);
   var nomes = alvos.map(function(a){ return a.nome+' ('+a.trainerNome+')'; }).join(', ') || '—';
   parts.push(esc(lr.atacante)+' ('+esc(lr.atacanteTrainer)+') usou '+esc(lr.move)+' em '+esc(nomes));
-  parts.push('d6: '+lr.d6+(lr.crit?' · Crítico':'')+(lr.falhaNatural?' · Falha Natural':''));
+  parts.push('d10: '+lr.d10+(lr.crit?' · Crítico':'')+(lr.falhaNatural?' · Falha Natural':''));
   if(!lr.hit){
     parts.push('errou');
   } else if(alvos.length===1){
@@ -10993,7 +10847,7 @@ function diceOverlayHTML(){
   DICE_OVERLAY_OPEN_FOR = lr.ts;
   var noAnimClass = freshRoll ? '' : ' dice-overlay-noanim';
   var anim = (DICE_ROLL_ANIM && DICE_ROLL_ANIM.ts===lr.ts) ? DICE_ROLL_ANIM : null;
-  var curStage = anim ? anim.stages[anim.stageIdx] : null; /* 'd6' | 'd10a' | 'd10b' | null (já assentou) */
+  var curStage = anim ? anim.stages[anim.stageIdx] : null; /* 'd10' (principal) | 'd10a' | 'd10b' (efeito) | null (já assentou) */
   /* Quais estágios EXISTEM pra essa rolagem (independe de estar animando ou
      não — vem só de lr.efeito). Usar anim.stages aqui seria um bug: quando
      a animação já terminou (anim===null), "sempre 'done'" faria o código
@@ -11009,9 +10863,14 @@ function diceOverlayHTML(){
     return 'pending';
   }
 
-  var d6Status = stageStatus('d6');
-  var d6Face = d6Status==='rolling' ? rollDie(6) : lr.d6;
-  var d6HTML = '<div class="dice-d6'+(d6Status==='rolling'?' dice-rolling':'')+'">'+(DIE_FACES[d6Face]||d6Face)+'</div>';
+  /* Rolagem principal (Precisão/Crítico, Cap. mecânica nova: convertida de
+     d6 pra d10, pedido do usuário) -- classe própria (.dice-main, não
+     .dice-d10) pra não colidir com a classe do d10 de EFEITO logo abaixo
+     (dice-d10-val etc.), que é outro dado, sempre existiu em d10, e
+     continua com o próprio estilo (número pequeno, não a face grande). */
+  var mainStatus = stageStatus('d10');
+  var mainFace = mainStatus==='rolling' ? rollDie(10) : lr.d10;
+  var mainHTML = '<div class="dice-main'+(mainStatus==='rolling'?' dice-rolling':'')+'">'+mainFace+'</div>';
 
   var d10Line = '';
   if(lr.efeito){
@@ -11030,7 +10889,7 @@ function diceOverlayHTML(){
 
   var summaryHTML;
   if(anim){
-    var stageMsg = curStage==='d6' ? '🎲 Rolando o d6…'
+    var stageMsg = curStage==='d10' ? '🎲 Rolando o d10…'
       : curStage==='d10a' ? '🎲 Rolando o 1d10 (efeito)…'
       : curStage==='d10b' ? '🎲 O ataque foi Crítico — rolando a 2ª tentativa do 1d10…'
       : '🎲 Rolando os dados…';
@@ -11041,7 +10900,7 @@ function diceOverlayHTML(){
 
   return '<div class="dice-overlay'+noAnimClass+'" onclick="DT.dismissRoll()">'+
     '<div class="dice-overlay-card'+noAnimClass+'" onclick="event.stopPropagation()">'+
-      d6HTML+
+      mainHTML+
       d10Line+
       summaryHTML+
       (!anim ? '<button class="btn-sm" onclick="DT.dismissRoll()">Fechar</button>' : '')+
@@ -11243,19 +11102,32 @@ function weatherBannerHTML(w, isGM){
 /* Redesenho "cara do PVP" (Cap. mecânica nova) -- pedido do usuário:
    "quero que a Arena fique mais parecida com o PVP, pois fica mais
    clean... o mestre definirá os times... o jogador não vai ver nada além
-   do registro de eventos e o clima" antes de o Mestre iniciar. O fluxo
-   antigo de Soltura em segredo (Cap. 17/55: arenaSolturaHTML/
-   arenaSourceHTML, DT.arenaEnter/arenaOpenSoltura/arenaRevelarTodos)
-   continua existindo por baixo (várias fichas antigas e alguns testes
-   ainda dependem das funções em si), só não é mais chamado por essa
-   tela -- foi substituído por STATE.arena.battleActive: false é a
-   Configuração de Times (arenaSetupHTML pro Mestre, arenaWaitingHTML pro
-   jogador); true é a batalha em si, com o MESMO motor de sempre
-   (Rodada/Iniciativa/Ataque/hazards/clima intactos), só que o menu de
-   Ação (arenaActionPanelHTML) deixou de ser um popup flutuante e virou
-   um card fixo no fluxo da página, "não flutuante fixo embaixo" igual a
-   Área PVP sempre foi (ver o comentário grande na CSS .arena-action-
-   overlay). Reversível: git checkpoint no commit anterior a essa leva. */
+   do registro de eventos e o clima" antes de o Mestre iniciar.
+   STATE.arena.battleActive: false é a Configuração de Times
+   (arenaSetupHTML pro Mestre, arenaWaitingHTML pro jogador); true é a
+   batalha em si, com o MESMO motor de sempre (Rodada/Iniciativa/Ataque/
+   hazards/clima intactos), só que o menu de Ação (arenaActionPanelHTML)
+   deixou de ser um popup flutuante e virou um card fixo no fluxo da
+   página, "não flutuante fixo embaixo" igual a Área PVP sempre foi (ver
+   o comentário grande na CSS .arena-action-overlay). Segunda leva
+   (pedido do usuário: "cara eu quero abolir a arena antiga... pode
+   rancar essa arena antiga e tudo que tiver sobre ela. Vamos nos basear
+   na arena pvp e partir daí"): o fluxo antigo de Entrar/Soltura em
+   segredo (Cap. 17/55) foi DELETADO de vez (não só desativado) --
+   arenaSolturaHTML/arenaSourceHTML/arenaTrainerSourceHTML,
+   DT.arenaEnter/arenaEnterPick/arenaCancelEnterPick/arenaLeave/
+   arenaOpenSoltura/arenaPickLead/arenaCancelPickLead/arenaRevelarTodos,
+   arenaPresente e STATE.arena.presentes/solturaAberta não existem mais
+   -- ninguém entra mais "escondido", todo mundo já entra revelado via
+   Configuração de Times. E o CARD de batalha em si (arenaTeamsHTML)
+   trocou o grid antigo de slots pequenos (arenaEntryHTML, ainda vivo só
+   pro seletor compacto "quem está em campo" dentro do popup de Ação,
+   arenaActionBattlefieldHTML) por um card largo igual ao poke-card da
+   Área PVP (arenaWideCardHTML, baseado em pvpMiniCardHTML) -- MESMA
+   lógica de clique/elegibilidade de sempre (arenaEntryInteraction), só
+   o visual que virou "cara do PVP" de verdade, inclusive durante a
+   batalha (não só na Configuração). Reversível: git checkpoint no
+   commit anterior a essa leva. */
 function arenaScreen(){
   var isGM = SESSION.role==='gm';
   /* Mesma inferência de migrateState (comentário grande lá): nunca
@@ -11287,37 +11159,6 @@ function arenaScreen(){
   out += arenaLogHTML();
   out += arenaStatsPanelHTML();
   return out;
-}
-/* Painel de Soltura (Cap. 55): mostra quem já entrou (presente) e quem já
-   soltou o próprio Pokémon (sem dizer QUAL -- isso só quando revelar), pra
-   todo mundo acompanhar o andamento. Some sozinho se ninguém entrou ainda. */
-function arenaSolturaHTML(isGM){
-  var presentes = (STATE.arena && STATE.arena.presentes) || [];
-  if(!presentes.length) return '';
-  var entries = (STATE.arena && STATE.arena.entries) || [];
-  var aberta = !!(STATE.arena && STATE.arena.solturaAberta);
-  var linhas = presentes.map(function(pr){
-    var t = findTrainer(pr.trainerId);
-    var team = (STATE.arena.teams||[]).find(function(x){ return x.id===pr.teamId; });
-    var jaEscolheu = entries.some(function(e){ return e.trainerId===pr.trainerId; });
-    var icone = !aberta ? '⏳' : (jaEscolheu ? '✅' : '⏳');
-    return '<li>'+icone+' '+esc(t?t.name:'?')+' <span class="muted">('+esc(team?team.nome:'?')+')</span></li>';
-  }).join('');
-  var todosEscolheram = presentes.every(function(pr){ return entries.some(function(e){ return e.trainerId===pr.trainerId; }); });
-  var acao = '';
-  if(isGM){
-    acao = !aberta
-      ? '<button class="btn-sm" onclick="DT.arenaOpenSoltura()">🔓 Soltar Pokémon</button>'
-      : (todosEscolheram
-          ? '<button class="btn-sm btn-primary" onclick="DT.arenaRevelarTodos()">🎉 Revelar</button>'
-          : '<span class="muted" style="font-size:.78rem;">Aguardando todo mundo soltar o seu antes de revelar (ou solte por eles em "Equipe ativa").</span>');
-  } else if(!aberta){
-    acao = '<span class="muted" style="font-size:.78rem;">Aguardando o Mestre liberar a soltura dos Pokémon.</span>';
-  }
-  return '<div class="card"><div class="card-head"><span class="index">Cap. 17/55</span><h2>🎁 Soltura</h2></div><div class="card-body">'+
-    '<ul style="margin:0 0 8px; padding-left:1.2em; font-size:.82rem;">'+linhas+'</ul>'+
-    acao+
-  '</div></div>';
 }
 /* Modo Espectador: um botão pro próprio jogador entrar/sair (não precisa
    de Pokémon nenhum em campo pra isso) + a lista de quem está assistindo,
@@ -11482,9 +11323,9 @@ function arenaActionBattlefieldHTML(){
    (fica destacado sozinho, igual sempre foi na Arena) -- clicar dispara
    exatamente o mesmo DT.arenaSelectTarget/DT.arenaPickItem de sempre.
    Trocar funciona parecido, mas com um bloco à parte pros candidatos da
-   Equipe ativa (arenaSourceTilesRowHTML, fatorada de
-   arenaTrainerSourceHTML) -- esses não estão em campo, então não fazem
-   parte do "lado a lado" dos Times. Um self/campo/área continua
+   Equipe ativa (arenaSourceTilesRowHTML) -- esses não estão em campo,
+   então não fazem parte do "lado a lado" dos Times. Um self/campo/área
+   continua
    resolvendo na hora, sem pedir clique nenhum. */
 /* Mesma ideia de DICE_OVERLAY_OPEN_FOR (ver o comentário grande lá) pro
    popup de Ação -- pedido do usuário: "toda vez que eu clico, dentro do
@@ -11766,6 +11607,20 @@ function arenaWaitingHTML(){
     '<p class="muted">⏳ Aguardando o Mestre configurar os Times e iniciar o combate.</p>'+
   '</div></div>';
 }
+/* Times durante a batalha, "cara do PVP" (2ª leva do redesenho -- pedido
+   do usuário: "quando eu coloquei os pokémon e os treinadores, a arena
+   voltou a ser a antiga... pode rancar essa arena antiga e tudo que tiver
+   sobre ela"). Cada Time é uma coluna (mesmo container .arena-teams/
+   .arena-team de sempre); dentro dela, cada Pokémon em campo é um
+   card LARGO (arenaWideCardHTML) igual ao poke-card da Área PVP, não mais
+   o grid antigo de slots pequenos (arenaEntryHTML) -- esse continua
+   existindo só pro seletor compacto "quem está em campo" dentro do popup
+   de Ação (arenaActionBattlefieldHTML), onde um grid pequeno ainda faz
+   sentido (é um picker de alvo, não a tela de batalha em si). O
+   data-drop-area="arena-team" continua no container do Time -- é o alvo
+   de soltar um Pokémon arrastado da Equipe ativa (DT.arenaDragStart /
+   DT._dragEnd / DT.arenaSetEntry), mecanismo à parte do clique normal,
+   que continua funcionando igual antes. */
 function arenaTeamsHTML(isGM){
   var teams = (STATE.arena && STATE.arena.teams) || [];
   var travada = !!(STATE.arena && STATE.arena.fugaTravada);
@@ -11788,8 +11643,8 @@ function arenaTeamsHTML(isGM){
         ? '<span class="muted" style="font-size:.7rem;">Remover?</span> <button class="btn-danger btn-sm" onclick="DT.arenaRemoveTeam(\''+team.id+'\')">Sim</button> <button class="btn-ghost btn-sm" onclick="DT.arenaCancelRemoveTeam()">Não</button>'
         : '<button class="btn-ghost btn-sm" onclick="DT.arenaAskRemoveTeam(\''+team.id+'\')">✕</button>';
       var body = entries.length===0
-        ? '<p class="muted" style="font-size:.76rem; padding:8px;">Arraste um Pokémon aqui.</p>'
-        : '<div class="arena-team-body">'+entries.map(arenaEntryHTML).join('')+'</div>';
+        ? '<p class="muted" style="font-size:.76rem; padding:8px;">Nenhum Pokémon em campo por esse Time ainda.</p>'
+        : '<div class="arena-team-body-wide">'+entries.map(arenaWideCardHTML).join('')+'</div>';
       return '<div class="arena-team" data-drop-area="arena-team" data-drop-idx="'+ti+'">'+
         '<div class="arena-team-head">'+head+(isGM?removeControl:'')+'</div>'+
         body+
@@ -11933,7 +11788,7 @@ function arenaEntryHTML(e){
      entrada nova já nasce com revelado:true (DT.arenaSetEntry/arenaSwapIn).
      A Pokébola aqui é só um fallback defensivo pra entrada antiga que
      escapou da migração; a Pokébola de verdade agora mora na Equipe ativa
-     (arenaTrainerSourceHTML), antes do Pokémon ir pro Time pela 1ª vez. */
+     (arenaSourceTilesRowHTML), antes do Pokémon ir pro Time pela 1ª vez. */
   var canSeeReal = isGM || isOwner || e.revelado;
 
   if(!canSeeReal){
@@ -12004,6 +11859,87 @@ function arenaEntryHTML(e){
     subHTML+
     stageBadgesHTML(p)+
     controls+
+  '</div>';
+}
+/* Card largo "cara do PVP" de um Pokémon em campo (2ª leva do redesenho da
+   Arena) -- mesmíssima interação de sempre (arenaEntryInteraction: quem
+   pode agir, quem é alvo elegível, convite de troca de desmaiado/pendente,
+   badge de escolhido/resolvendo), só que desenhada com a marcação do
+   poke-card da Área PVP (pvpMiniCardHTML) em vez do grid antigo de slots
+   pequenos -- é isso que aparece dentro de cada Time (arenaTeamsHTML)
+   durante a batalha de verdade agora, não só na prévia da Configuração.
+   As classes de ESTADO (arena-slot-targetable/-selectable/-attacking/
+   -target-picked/-waiting/-turn) são as mesmas de sempre -- CSS genérica,
+   nunca dependeu da base .arena-slot, então funciona igual em cima da
+   base .poke-card também, sem precisar duplicar nem uma linha de estilo. */
+function arenaWideCardHTML(e){
+  var t = findTrainer(e.trainerId);
+  if(!t) return '';
+  var p = getPoke(e.trainerId, e.pokemonId);
+  if(!p) return '';
+  var isOwner = SESSION.role==='player' && SESSION.trainerId===e.trainerId;
+  var isGM = SESSION.role==='gm';
+  /* Mesmo fallback defensivo de arenaEntryHTML (ver comentário lá) --
+     entrada antiga que escapou da migração sem revelado:true. */
+  var canSeeReal = isGM || isOwner || e.revelado;
+  if(!canSeeReal){
+    return '<div class="poke-card arena-wide-card"><div class="poke-head"><div class="identity">'+
+      '<div class="arena-pokeball" style="width:40px;height:40px;">'+POKEBALL_SVG+'</div>'+
+      '<div class="nick">'+esc(t.name)+'</div>'+
+    '</div></div></div>';
+  }
+
+  var num = pokeSpeciesNum(p);
+  var spriteHTML = num
+    ? '<img class="poke-sprite" src="'+spriteUrl(num)+'" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;poke-sprite-placeholder&quot;>❔</div>\'">'
+    : '<div class="poke-sprite-placeholder">❔</div>';
+  var max = hpMax(t,p);
+  var cur = (p.currentHP===null || p.currentHP===undefined) ? max : Math.min(p.currentHP,max);
+  var pct = max>0 ? Math.round(cur/max*100) : 0;
+  var fainted = cur<=0;
+
+  var interaction = arenaEntryInteraction(e);
+  var cardClass = 'poke-card arena-wide-card' + interaction.slotClass;
+  var cardClick = interaction.onclick;
+  var targetable = interaction.targetable;
+  var canControl = interaction.canControl;
+  var faintedSwappable = interaction.faintedSwappable;
+  var switchOutSwappable = interaction.switchOutSwappable;
+  var jaEscolheu = interaction.jaEscolheu;
+  var resolvingNow = interaction.resolvingNow;
+  var actingNow = SESSION.arenaAttacker;
+
+  var statsBtn = (isOwner || isGM)
+    ? '<button type="button" class="arena-info-btn" title="Ver atributos" onclick="event.stopPropagation();DT.arenaStatsShow(\''+e.id+'\')">📊</button>'
+    : '';
+  var statusBadges = (fainted?' <span class="badge status-bad">Desmaiado</span>':'')+
+    (p.status?'<span class="badge status-bad">'+STATUS_LABELS[p.status]+'</span>':'')+
+    (p.confuso?'<span class="badge status-bad">Confuso</span>':'')+
+    (!fainted && p.carregando?'<span class="badge status-bad">🌀 Carregando</span>':'');
+  var subHTML = (p.substituto && !fainted)
+    ? '<div class="muted" style="font-size:.72rem;">🟤 Boneco: '+p.substituto.hp+' PV</div>'
+    : '';
+  /* Mesmo motivo de arenaEntryHTML: enquanto o card inteiro é o alvo do
+     clique, some com o ✕ pra não competir pela propagação do clique. */
+  var controls = (canControl && !targetable && actingNow!==e.id && !SESSION.arenaResolving)
+    ? '<div class="btn-row" style="gap:4px; justify-content:flex-end;"><button class="btn-ghost btn-sm" onclick="event.stopPropagation();DT.arenaRemoveEntry(\''+e.id+'\')">✕ Remover</button></div>'
+    : '';
+
+  return '<div class="'+cardClass+'"'+cardClick+'>'+
+    (resolvingNow ? '<div class="arena-turn-badge">▶ Resolvendo</div>' : (jaEscolheu ? '<div class="arena-turn-badge arena-turn-badge-done">✅ Escolheu</div>' : ''))+
+    (faintedSwappable ? '<div class="arena-fainted-banner">😵 Escolher próximo</div>' : (switchOutSwappable ? '<div class="arena-fainted-banner">🔁 Pode trocar</div>' : ''))+
+    '<div class="poke-head"><div class="identity">'+spriteHTML+
+      '<div style="min-width:0;">'+
+        '<div class="nick">'+esc(t.name)+': '+(p.apelido?esc(p.apelido):esc(p.especie||'?'))+statsBtn+statusBadges+'</div>'+
+        '<div class="species">'+esc(p.especie||'')+' · '+typeTags(p)+'</div>'+
+      '</div></div>'+
+    '</div>'+
+    '<div class="poke-body">'+
+      '<div class="hp-row"><span class="num">'+cur+'</span><span class="muted">/ '+max+' PV</span><div class="hp-bar'+hpBarTier(pct)+'"><i style="width:'+pct+'%"></i></div></div>'+
+      subHTML+
+      stageBadgesHTML(p)+
+      controls+
+    '</div>'+
   '</div>';
 }
 /* Painel flutuante de atributos (Cap. 15.1): mostra o "preview" de CADA
@@ -12141,19 +12077,13 @@ function pvpStatsPanelHTML(salaId){
    ou Mestre -- isso é informação pública da mesa (quem cada um tem, com
    sprite e nome de verdade). O que continua escondido até "entrar em
    campo" é só o slot dentro do Time (Pokébola até revelar, Cap. 8.5 do
-   guia) -- essa lista aqui nunca teve esse segredo. */
-function arenaSourceHTML(){
-  if((STATE.trainers||[]).length===0){
-    return '<div class="card"><div class="card-body"><p class="muted">Nenhum Treinador criou a ficha ainda.</p></div></div>';
-  }
-  return STATE.trainers.map(arenaTrainerSourceHTML).join('');
-}
-/* Linha de tiles da Equipe ativa de um Treinador -- fatorada da função de
-   baixo pra também poder ser chamada de dentro do popup de Ação (Cap. 18,
-   "Trocar"), sem duplicar a lógica de quem fica clicável. Sempre relê o
-   estado global (canControl/swapEntry/pickingLead) na hora -- não recebe
-   nada por parâmetro -- então dá o mesmo resultado não importa de onde for
-   chamada. */
+   guia) -- essa lista aqui nunca teve esse segredo. Linha de tiles da
+   Equipe ativa de um Treinador -- reaproveitada tanto pelo painel de
+   batalha (arenaTrainerBattlePanelHTML) quanto de dentro do popup de Ação
+   (Cap. 18, "Trocar"), sem duplicar a lógica de quem fica clicável.
+   Sempre relê o estado global (canControl/swapEntry) na hora -- não
+   recebe nada por parâmetro -- então dá o mesmo resultado não importa de
+   onde for chamada. */
 function arenaSourceTilesRowHTML(t){
   var mons = t.pokemons.filter(function(p){ return p.especie; });
   var entries = (STATE.arena && STATE.arena.entries) || [];
@@ -12163,9 +12093,6 @@ function arenaSourceTilesRowHTML(t){
     var actingEntry = findArenaEntry(SESSION.arenaAttacker);
     if(actingEntry && actingEntry.trainerId===t.id) swapEntry = actingEntry;
   }
-  var presente = arenaPresente(t.id);
-  var jaEscolheuLead = entries.some(function(e){ return e.trainerId===t.id; });
-  var pickingLead = canControl && !!presente && !!STATE.arena.solturaAberta && !jaEscolheuLead && !swapEntry;
   if(mons.length===0) return '<p class="muted" style="font-size:.78rem;">Equipe ativa vazia.</p>';
   return '<div class="arena-source-row">'+mons.map(function(p){
     var placed = entries.some(function(e){ return e.trainerId===t.id && e.pokemonId===p.id; });
@@ -12193,10 +12120,8 @@ function arenaSourceTilesRowHTML(t){
     var tileClick = '';
     if(swapEntry && p.id!==swapEntry.pokemonId && !placed){
       if(cur>0){ swappable = true; tileClick = ' onclick="DT.arenaSwapIn(\''+p.id+'\')"'; }
-    } else if(pickingLead && !placed){
-      if(cur>0){ swappable = true; tileClick = ' onclick="DT.arenaPickLead(\''+t.id+'\',\''+p.id+'\')"'; }
     }
-    var handle = (canControl && !swapEntry && !pickingLead)
+    var handle = (canControl && !swapEntry)
       ? '<button type="button" class="drag-handle" title="Arrastar pra um Time" onpointerdown="DT.arenaDragStart(event,\''+t.id+'\',\''+p.id+'\')">⠿</button>'
       : '';
     return '<div class="arena-source-tile'+(placed?' arena-source-tile-used':'')+(swappable?' arena-source-tile-swappable':'')+'"'+tileClick+'>'+
@@ -12208,10 +12133,9 @@ function arenaSourceTilesRowHTML(t){
   }).join('')+'</div>';
 }
 /* Painel de Equipe ativa DURANTE a batalha (Cap. mecânica nova, redesign
-   "cara do PVP") -- versão enxuta de arenaTrainerSourceHTML, sem
-   Entrar/Sair da Arena nem status de Soltura (Cap. 17/55, superado pela
-   tela de Configuração/DT.arenaIniciarCombate): só os tiles da Equipe
-   ativa (bench + quem já está em campo, reaproveitando
+   "cara do PVP") -- sem Entrar/Sair da Arena nem status de Soltura (Cap.
+   17/55, abolido de vez -- ver comentário grande em arenaScreen): só os
+   tiles da Equipe ativa (bench + quem já está em campo, reaproveitando
    arenaSourceTilesRowHTML de sempre, inclusive pro clique de Trocar) e a
    Mochila (🎒), que continuam existindo durante a luta -- sem isso, o
    jogador perderia o próprio acesso aos itens no meio do combate. */
@@ -12229,76 +12153,6 @@ function arenaBattlePanelsHTML(){
   if((STATE.trainers||[]).length===0) return '';
   return STATE.trainers.map(arenaTrainerBattlePanelHTML).join('');
 }
-function arenaTrainerSourceHTML(t){
-  var entries = (STATE.arena && STATE.arena.entries) || [];
-  /* Arrastar (ou usar o seletor de troca) só é liberado pro dono do
-     Treinador ou pro Mestre -- ver a Equipe ativa dos outros é público,
-     mas mexer nela continua restrito. */
-  var canControl = SESSION.role==='gm' || (SESSION.role==='player' && SESSION.trainerId===t.id);
-  /* Modo "Trocar" ativo pra esse Treinador: quem está agindo escolheu
-     Trocar e é um Pokémon dele -- os tiles da Equipe ativa viram o
-     seletor de troca (clique direto, sem arrastar). */
-  var swapEntry = null;
-  if(canControl && SESSION.arenaAttacker && SESSION.arenaAction==='trocar'){
-    var actingEntry = findArenaEntry(SESSION.arenaAttacker);
-    if(actingEntry && actingEntry.trainerId===t.id) swapEntry = actingEntry;
-  }
-  /* Soltura inicial (Cap. 55): presente na Arena, o Mestre já liberou a
-     soltura, e ainda não soltou nenhum Pokémon -- os tiles da Equipe ativa
-     viram o seletor de "qual eu solto", em segredo (só ele e o Mestre
-     enxergam essa tela; os outros só vão ver o resultado quando o Mestre
-     revelar todo mundo de uma vez, arenaRevelarTodos). */
-  var presente = arenaPresente(t.id);
-  var jaEscolheuLead = entries.some(function(e){ return e.trainerId===t.id; });
-  var pickingLead = canControl && !!presente && !!STATE.arena.solturaAberta && !jaEscolheuLead && !swapEntry;
-  var tiles = arenaSourceTilesRowHTML(t);
-  var itens = (t.itens||[]).filter(function(it){ return it.quantidade>0; });
-  var mochila = itens.length
-    ? '<div style="margin-top:10px;"><span class="muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.06em;">🎒 Mochila</span><div class="btn-row" style="margin-top:4px; flex-wrap:wrap;">'+
-        itens.map(function(it){ return '<span class="tag">'+esc(it.nome)+' x'+it.quantidade+'</span>'; }).join('')+
-      '</div></div>'
-    : '';
-
-  /* Entrar/Sair da Arena (Cap. 55): "Entrar" só registra presença + Time
-     -- quem já está presente ou já soltou algum Pokémon mostra "Sair" no
-     lugar. Só o dono ou o Mestre veem esse controle. */
-  var hasEntries = entries.some(function(e){ return e.trainerId===t.id; });
-  var emArena = hasEntries || !!presente;
-  var enterLeaveBtn = canControl
-    ? (emArena
-        ? '<button class="btn-sm btn-danger" onclick="DT.arenaLeave(\''+t.id+'\')">⏏️ Sair da Arena</button>'
-        : '<button class="btn-sm" onclick="DT.arenaEnterPick(\''+t.id+'\')">▶️ Entrar na Arena</button>')
-    : '';
-  var teamPicker = '';
-  if(canControl && SESSION.enterArenaTeamPick===t.id){
-    var teamBtns = (STATE.arena.teams||[]).map(function(team){
-      return '<button class="btn-sm" onclick="DT.arenaEnter(\''+t.id+'\',\''+team.id+'\')">'+esc(team.nome)+'</button>';
-    }).join('');
-    teamPicker = '<div style="margin-top:8px;"><p class="muted" style="font-size:.78rem;">Entrar em qual Time?</p>'+
-      '<div class="btn-row" style="flex-wrap:wrap;">'+teamBtns+
-      '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelEnterPick()">Cancelar</button></div></div>';
-  }
-  /* Status da Soltura (Cap. 55), só pra quem controla essa ficha (dono ou
-     Mestre) -- os outros na mesa não veem nada disso, só o resultado final
-     depois da revelação. */
-  var solturaStatus = '';
-  if(canControl && presente){
-    if(!STATE.arena.solturaAberta){
-      solturaStatus = '<p class="muted" style="font-size:.78rem; margin-top:8px;">⏳ Aguardando o Mestre liberar a soltura dos Pokémon.</p>';
-    } else if(pickingLead){
-      solturaStatus = '<p class="muted" style="font-size:.78rem; margin-top:8px;">🎁 Clique em um Pokémon da Equipe ativa acima pra soltá-lo, em segredo.</p>';
-    } else if(jaEscolheuLead){
-      var leadEntry = entries.find(function(e){ return e.trainerId===t.id; });
-      if(leadEntry && !leadEntry.revelado){
-        solturaStatus = '<p class="muted" style="font-size:.78rem; margin-top:8px;">🤫 Você já soltou seu Pokémon — está em segredo até o Mestre revelar. '+
-          '<button class="btn-ghost btn-sm" onclick="DT.arenaCancelPickLead(\''+t.id+'\')">↩️ Escolher outro</button></p>';
-      }
-    }
-  }
-
-  return '<div class="card"><div class="card-head"><span class="index">Equipe ativa</span><h2>'+esc(t.name)+'</h2>'+enterLeaveBtn+'</div><div class="card-body">'+tiles+mochila+teamPicker+solturaStatus+'</div></div>';
-}
-
 function setupScreen(){
   return '<div class="center-stage"><div><h1>Falta configurar o banco de dados</h1>'+
     '<p class="lede">O site já está no ar, mas ainda não está ligado a um banco de dados Firebase — por isso as fichas ainda não sincronizam entre os aparelhos.</p></div>'+
@@ -13245,12 +13099,9 @@ var PVP_DICE_ANIM = null; /* { roll, stages, stageIdx, restX, restY } */
    igual a Arena, por segurança). */
 var PVP_DICE_OVERLAY_OPEN_FOR = null;
 var pvpDiceTimer = null;
-var PVP_DIE_TUMBLE_MS = 1100; /* d6 caindo/girando até assentar */
-var PVP_DIE10_TUMBLE_MS = 900; /* d10 (Efeito Percentual) -- gira só em Y, tipo moeda */
+var PVP_DIE_MAIN_TUMBLE_MS = 1100; /* d10 principal (Precisão/Crítico) caindo/girando até assentar */
+var PVP_DIE10_TUMBLE_MS = 900; /* d10 de Efeito Percentual -- gira só em Y, tipo moeda */
 var PVP_RESULT_HOLD_MS = 1900; /* pausa mostrando o resultado assentado antes de ir pra próxima rolagem (ou fechar) */
-var PVP_DIE_FACE_ROT = { /* rotação do CUBO (rotateX/rotateY, em graus) que deixa cada face voltada pra câmera */
-  1:{x:0,y:0}, 2:{x:0,y:-90}, 3:{x:-90,y:0}, 4:{x:90,y:0}, 5:{x:0,y:90}, 6:{x:0,y:180}
-};
 function pvpCheckRoll(){
   if(SESSION.role!=='player' || !SESSION.trainerId) return;
   var sala = pvpSalaDoJogador(SESSION.trainerId);
@@ -13273,14 +13124,17 @@ function pvpCheckRoll(){
 function pvpAdvanceDiceQueue(){
   if(PVP_DICE_ANIM || !PVP_DICE_PENDING.length) return; /* já tem uma rolagem animando, ou não sobrou nenhuma -- nada a fazer agora */
   var roll = PVP_DICE_PENDING.shift();
-  var faceRot = PVP_DIE_FACE_ROT[roll.d6] || PVP_DIE_FACE_ROT[1];
   PVP_DICE_ANIM = {
     roll: roll,
-    stages: diceStagesFor(roll), /* reaproveita a mesma função pura da Arena: ['d6', 'd10a'?, 'd10b'?] */
+    stages: diceStagesFor(roll), /* reaproveita a mesma função pura da Arena: ['d10', 'd10a'?, 'd10b'?] */
     stageIdx: 0,
-    restX: faceRot.x + 720, /* +2 voltas inteiras só pra dar a sensação de "rolando" antes de assentar -- fixo, não aleatório (mantém a animação estável/testável) */
-    restY: faceRot.y + 720,
-    d10RestY: 720 /* o "d10" (moeda) não precisa apontar pra face nenhuma -- só gira e para */
+    /* Nenhum dos dois "moeda" (nem o principal, nem o de Efeito) precisa
+       apontar pra face nenhuma -- só gira e para, o valor vem como texto
+       (roll.d10/roll.efeito.d10a/d10b), não da rotação em si. +2 voltas
+       inteiras só pra dar a sensação de "rolando" antes de assentar --
+       fixo, não aleatório (mantém a animação estável/testável). */
+    mainRestY: 720,
+    d10RestY: 720
   };
   SESSION.showPvpRollOverlay = true;
   pvpRenderDiceOverlay();
@@ -13290,7 +13144,7 @@ function pvpScheduleDiceStage(){
   if(pvpDiceTimer){ clearTimeout(pvpDiceTimer); pvpDiceTimer = null; }
   var anim = PVP_DICE_ANIM; if(!anim) return;
   var stageName = anim.stages[anim.stageIdx];
-  var dur = stageName==='d6' ? PVP_DIE_TUMBLE_MS : PVP_DIE10_TUMBLE_MS;
+  var dur = stageName==='d10' ? PVP_DIE_MAIN_TUMBLE_MS : PVP_DIE10_TUMBLE_MS;
   pvpDiceTimer = setTimeout(function(){
     if(!PVP_DICE_ANIM || PVP_DICE_ANIM!==anim) return; /* dispensado (DT.pvpDismissRoll) enquanto o timer esperava */
     anim.stageIdx++;
@@ -13349,7 +13203,7 @@ function pvpDiceOverlayHTML(){
   var freshRoll = PVP_DICE_OVERLAY_OPEN_FOR !== roll.ts;
   PVP_DICE_OVERLAY_OPEN_FOR = roll.ts;
   var noAnimClass = freshRoll ? '' : ' pvp-dice-overlay-noanim';
-  var curStage = anim.stages[anim.stageIdx]; /* 'd6' | 'd10a' | 'd10b' | undefined (assentou de vez) */
+  var curStage = anim.stages[anim.stageIdx]; /* 'd10' (principal) | 'd10a' | 'd10b' (efeito) | undefined (assentou de vez) */
   var settled = anim.stageIdx>=anim.stages.length;
 
   function stageStatus(name){
@@ -13360,38 +13214,37 @@ function pvpDiceOverlayHTML(){
     return 'pending';
   }
 
-  var d6Status = stageStatus('d6');
-  var d6Tumbling = d6Status==='rolling';
-  var d6HTML = '<div class="pvp-die3d-scene"><div class="pvp-die3d-cube'+(d6Tumbling?' pvp-die-tumbling':'')+'" style="--restX:'+anim.restX+'deg; --restY:'+anim.restY+'deg; --dur:'+PVP_DIE_TUMBLE_MS+'ms;">'+
-    '<div class="pvp-die3d-face pvp-die3d-f1">⚀</div>'+
-    '<div class="pvp-die3d-face pvp-die3d-f2">⚁</div>'+
-    '<div class="pvp-die3d-face pvp-die3d-f3">⚂</div>'+
-    '<div class="pvp-die3d-face pvp-die3d-f4">⚃</div>'+
-    '<div class="pvp-die3d-face pvp-die3d-f5">⚄</div>'+
-    '<div class="pvp-die3d-face pvp-die3d-f6">⚅</div>'+
-  '</div></div>';
+  /* Rolagem principal (Precisão/Crítico), agora também um d10 -- reaproveita
+     o MESMO componente "moeda" do d10 de Efeito (ver o comentário grande
+     na CSS .pvp-die10, perto de .pvp-die-main), só um pouco maior/mais
+     dramático (.pvp-die-main). Igual o de Efeito já fazia, fica em branco
+     enquanto gira (não sorteia faces aleatórias quadro a quadro -- só
+     revela o número de verdade quando o estágio termina). */
+  var mainStatus = stageStatus('d10');
+  var mainTumbling = mainStatus==='rolling';
+  var mainLabel = mainTumbling ? '' : String(roll.d10);
+  var mainHTML = '<div class="pvp-die-main-scene"><div class="pvp-die-main'+(mainTumbling?' pvp-die-tumbling':'')+'" style="--restY:'+anim.mainRestY+'deg; --dur:'+PVP_DIE_MAIN_TUMBLE_MS+'ms;">'+esc(mainLabel)+'</div></div>';
 
   var d10HTML = '';
   if(roll.efeito){
     var st1 = stageStatus('d10a'), st2 = stageStatus('d10b');
-    /* Só desenha o d10 depois que o PRÓPRIO estágio dele começou -- 'pending'
-       (ainda no estágio do d6) não entra aqui, senão o valor de verdade
-       (roll.efeito.d10a/d10b, já decidido de antemão em resolveAttack)
-       vazaria na tela antes da hora (mesmo cuidado que a Arena já toma:
-       ver diceOverlayHTML/d10Parts lá em cima, que só empilha algo pra
-       'rolling'/'done', nunca pra 'pending'). */
+    /* Só desenha o d10 de Efeito depois que o PRÓPRIO estágio dele começou
+       -- 'pending' (ainda no estágio do dado principal) não entra aqui,
+       senão o valor de verdade (roll.efeito.d10a/d10b, já decidido de
+       antemão em resolveAttack) vazaria na tela antes da hora (mesmo
+       cuidado que a Arena já toma: ver diceOverlayHTML/d10Parts lá em
+       cima, que só empilha algo pra 'rolling'/'done', nunca pra 'pending'). */
     if(st1==='rolling' || st1==='done'){
       var showingSecond = st2==='rolling' || st2==='done';
       var d10Tumbling = st1==='rolling' || st2==='rolling';
       var d10Val = showingSecond ? roll.efeito.d10b : roll.efeito.d10a;
-      /* Enquanto ainda tá girando, não faz sentido mostrar um número parado -- mas como esse dado não sorteia faces aleatórias quadro a quadro (a diferença do d6 da Arena), só troca pro valor real quando o estágio termina. */
       var d10Label = d10Tumbling ? '' : String(d10Val);
       d10HTML = '<div class="pvp-die10-scene"><div class="pvp-die10'+(d10Tumbling?' pvp-die-tumbling':'')+'" style="--restY:'+(anim.d10RestY)+'deg; --dur:'+PVP_DIE10_TUMBLE_MS+'ms;">'+esc(d10Label)+'</div></div>';
     }
   }
 
   var stageLabel = !settled
-    ? (curStage==='d6' ? '🎲 Rolando o d6…' : curStage==='d10a' ? '🎲 Rolando o 1d10 (efeito)…' : '🎲 Crítico — 2ª tentativa do 1d10…')
+    ? (curStage==='d10' ? '🎲 Rolando o d10…' : curStage==='d10a' ? '🎲 Rolando o 1d10 (efeito)…' : '🎲 Crítico — 2ª tentativa do 1d10…')
     : '';
 
   var summaryHTML;
@@ -13405,7 +13258,7 @@ function pvpDiceOverlayHTML(){
 
   return '<div class="pvp-dice-overlay'+noAnimClass+'" onclick="DT.pvpDismissRoll()">'+
     '<div class="pvp-dice-card'+noAnimClass+'" onclick="event.stopPropagation()">'+
-      '<div class="pvp-dice-table">'+d6HTML+d10HTML+'</div>'+
+      '<div class="pvp-dice-table">'+mainHTML+d10HTML+'</div>'+
       summaryHTML+
       queueHint+
       (settled ? '<button class="btn-sm" onclick="DT.pvpDismissRoll()">Fechar</button>' : '<button class="btn-ghost btn-sm" onclick="DT.pvpDismissRoll()">Pular</button>')+

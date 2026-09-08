@@ -10,7 +10,7 @@ O objetivo não é reproduzir todas as fórmulas dos jogos eletrônicos. Os valo
 
 A regra fundamental é simples: **simplificar Pokémon sem apagar aquilo que torna cada Pokémon diferente.**
 
-O sistema utiliza principalmente **1d6** para testes de combate e **1d10** para efeitos percentuais.
+O sistema utiliza principalmente **1d10** — Precisão/Crítico do ataque (Cap. 10/11) e Efeitos Percentuais (Cap. 14) — e **1d6** para testes secundários (Iniciativa em empate, Paralisia/Sono/Congelamento/Confusão, atributo por nível).
 
 Não existem níveis individuais para Pokémon. O crescimento é dividido entre três elementos:
 
@@ -214,7 +214,7 @@ Cada Movimento tem uma lógica própria de quem ele pode atingir — a mesma dos
 
 Um Movimento de Área pode ser: todos os inimigos, todos os aliados (sem contar você), você e seus aliados, todo mundo menos você, ou literalmente todo mundo em campo — depende do Movimento específico, seguindo o mesmo dado oficial de Tipo/Poder/Precisão.
 
-**Rolagem de um Movimento de Área**: a Precisão/Crítico (1d6, Cap. 10/11) e o Efeito Percentual (1d10, Cap. 14) são **uma rolagem só pro uso inteiro**, valendo igual pra todos os alvos atingidos — só o Dano (Cap. 12/13) é calculado de novo pra cada um, porque depende do Tipo e dos Atributos de cada defensor. Isso é uma simplificação deliberada pra esse sistema (o Cap. 25 já lista "múltiplos alvos" como mecânica sem regra própria) — sem isso, seria uma rolagem inteira repetida pra cada Pokémon atingido, toda vez.
+**Rolagem de um Movimento de Área**: a Precisão/Crítico (1d10, Cap. 10/11) e o Efeito Percentual (1d10, Cap. 14) são **uma rolagem só pro uso inteiro**, valendo igual pra todos os alvos atingidos — só o Dano (Cap. 12/13) é calculado de novo pra cada um, porque depende do Tipo e dos Atributos de cada defensor. Isso é uma simplificação deliberada pra esse sistema (o Cap. 25 já lista "múltiplos alvos" como mecânica sem regra própria) — sem isso, seria uma rolagem inteira repetida pra cada Pokémon atingido, toda vez.
 
 ### 8.6 PP (Pontos de Poder)
 
@@ -257,19 +257,24 @@ Exemplos: Tackle 40 → 2, Flamethrower 90 → 4, Earthquake 100 → 5, Close Co
 
 ## Capítulo 10 — Rolagem de Ataque
 
-Dado básico: **1d6**.
+Dado básico: **1d10** (Cap. mecânica nova — era 1d6; mais faces dão mais granularidade de Precisão, principalmente nas faixas baixas).
 
 | Precisão | Acerto |
 |---|---|
 | 100% | Automático em condições normais |
-| 90–99% | 2–6 |
-| 70–89% | 3–6 |
-| 50–69% | 4–6 |
-| Abaixo de 50% | 5–6 |
+| 90–99% | 2–10 |
+| 80–89% | 3–10 |
+| 70–79% | 4–10 |
+| 60–69% | 5–10 |
+| 50–59% | 6–10 |
+| 40–49% | 7–10 |
+| 30–39% | 8–10 |
+| 20–29% | 9–10 |
+| Abaixo de 20% | 10 (só um natural 10 acerta) |
 
 ### 10.1 Precisão 100%
 
-Acerta automaticamente; ainda assim role 1d6 só para crítico (1–5 normal, 6 crítico). Resultado 1 não provoca falha.
+Acerta automaticamente; ainda assim role 1d10 só para crítico (1–9 normal, 10 crítico). Resultado 1 não provoca falha.
 
 ### 10.2 Falha Natural
 
@@ -277,7 +282,7 @@ O natural 1 só é Falha Natural quando a Precisão Base original é < 100%. Um 
 
 ## Capítulo 11 — Crítico
 
-Em movimentos com dano: **6 natural = crítico**, concede **+4 ao Dano Final** (não multiplica). Movimentos sem dano não possuem crítico — um 6 não concede bônus.
+Em movimentos com dano: **10 natural = crítico**, concede **+4 ao Dano Final** (não multiplica). Movimentos sem dano não possuem crítico — um 10 não concede bônus.
 
 ## Capítulo 12 — Dano
 
@@ -455,7 +460,7 @@ O usuário ataca por **2 ou 3 turnos** (sorteado no 1º acerto), repetindo o mes
 
 ### 26.5 Movimentos de Condição Pura
 
-Movimentos de Status que só existem pra aplicar uma Condição Principal — sem dano nenhum — usam a própria **Precisão oficial do golpe como a chance de 1d10** (o mesmo dado de Efeito Percentual do Cap. 14), em vez do 1d6 normal de Precisão: "acertar" e "a Condição pegar" são a mesma rolagem, uma coisa só. Exemplos: Thunder Wave, Toxic, Sleep Powder, Spore, Stun Spore, Poison Powder, Glare, Hypnosis, Confuse Ray, Will-O-Wisp, Yawn.
+Movimentos de Status que só existem pra aplicar uma Condição Principal — sem dano nenhum — usam a própria **Precisão oficial do golpe como a chance de 1d10** (o mesmo dado de Efeito Percentual do Cap. 14), em vez de passar pela rolagem normal de Precisão do Cap. 10: "acertar" e "a Condição pegar" são a mesma rolagem, uma coisa só. Exemplos: Thunder Wave, Toxic, Sleep Powder, Spore, Stun Spore, Poison Powder, Glare, Hypnosis, Confuse Ray, Will-O-Wisp, Yawn.
 
 ### 26.6 Stealth Rock
 
@@ -514,7 +519,7 @@ Quatro Habilidades reais passam a depender do clima certo pra funcionar: **Leaf 
 
 ## Referência Rápida
 
-**Dados**: 1d6 (ataques, crítico, iniciativa, diversos efeitos) · 1d10 (porcentagens)
+**Dados**: 1d10 (ataques, crítico, porcentagens) · 1d6 (iniciativa em empate, Paralisia/Sono/Congelamento/Confusão, atributo por nível)
 
 **Treinador**: Nível máximo 16 · Atributos 0–5 · sobe 1 Nível a cada 4 batalhas vencidas (contador só do Mestre)
 
