@@ -9067,8 +9067,20 @@ DT.arenaReconfigurar = function(){
   STATE.arena.vencedor = null;
   STATE.arena.round = null;
   STATE.arena.battleActive = false;
+  SESSION.confirmArenaReconfigurar = false;
   mutate();
 };
+/* Botão de escape pra uma batalha travada -- pedido do usuário depois de
+   ficar preso numa tela de batalha com os dois Times vazios (uma ficha
+   salva de ANTES desta leva, com battleActive:true mas STATE.arena.vencedor
+   nunca preenchido -- ver migrateState): até aqui, DT.arenaReconfigurar só
+   tinha um botão real dentro do banner de vitória (arenaVictoryHTML), então
+   sem um vencedor não existia NENHUM jeito de voltar pra Configuração. Esses
+   dois só pedem a confirmação -- a reconfiguração de fato é a mesma função
+   de sempre, chamável a qualquer momento durante a batalha (não checa
+   vencedor nenhum), então não tem lógica nova pra testar aqui. */
+DT.arenaAskReconfigurar = function(){ if(SESSION.role==='gm'){ SESSION.confirmArenaReconfigurar = true; render(); } };
+DT.arenaCancelReconfigurar = function(){ SESSION.confirmArenaReconfigurar = false; render(); };
 /* Habilidades de entrada em campo (Intimidate, Download) -- disparam toda
    vez que uma entrada NOVA nasce num Time (arenaSetEntry, arenaEnter,
    arenaSwapIn), não quando uma entrada já existente só troca de Time. */
@@ -11730,9 +11742,20 @@ function arenaTeamsHTML(isGM){
   var fugaBtn = isGM
     ? '<button class="btn-sm'+(travada?' btn-danger':' btn-ghost')+'" onclick="DT.arenaToggleFugaLock()" title="Bloqueia toda fuga nesta batalha -- use quando algo (Movimento, Habilidade, motivo de história) estiver prendendo os Pokémon em campo.">'+(travada?'🔒 Fuga travada':'🔓 Travar Fuga')+'</button>'
     : (travada ? '<span class="tag" style="font-size:.7rem;">🔒 Fuga travada pelo Mestre</span>' : '');
+  /* Botão de escape (Mestre só) -- sem isso, uma batalha travada (Times
+     vazios, ninguém vivo, ou o Mestre só quer recomeçar) nunca tinha
+     volta: o único caminho de volta pra Configuração era o banner de
+     vitória (arenaVictoryHTML), que só aparece com um vencedor de
+     verdade. DT.arenaReconfigurar já era chamável a qualquer momento --
+     só faltava um botão fora do banner de vitória pra chamar ela. */
+  var reconfigBtn = isGM
+    ? (SESSION.confirmArenaReconfigurar
+        ? '<span class="muted" style="font-size:.7rem;">Descartar a Rodada atual e voltar pra Configuração?</span> <button class="btn-danger btn-sm" onclick="DT.arenaReconfigurar()">Sim</button> <button class="btn-ghost btn-sm" onclick="DT.arenaCancelReconfigurar()">Não</button>'
+        : '<button class="btn-ghost btn-sm" onclick="DT.arenaAskReconfigurar()" title="Volta pra Configuração de Times, mantendo os Times já montados -- use se a batalha travou ou pra recomeçar sem esperar uma vitória.">🔄 Voltar à Configuração</button>')
+    : '';
   var out = '<div class="card"><div class="card-head"><span class="index">Mesa</span><h2>Times</h2>'+
     (isGM ? '<button class="btn-sm" onclick="DT.arenaAddTeam()">+ Novo Time</button>' : '')+
-    fugaBtn+
+    fugaBtn+reconfigBtn+
   '</div><div class="card-body">';
   if(teams.length===0){
     out += '<p class="muted">'+(isGM ? 'Clique em "+ Novo Time" pra começar — pode criar quantos quiser (não precisa ser só 2).' : 'O Mestre ainda não criou nenhum Time nesta Arena.')+'</p>';
