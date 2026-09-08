@@ -8876,6 +8876,42 @@ DT.arenaAssignTrainer = function(teamId, trainerId){
   team.trainerIds.push(trainerId);
   mutate();
 };
+/* Auto-serviço do próprio jogador (pedido do usuário: "a arena ainda tá
+   errada... quero que ela seja inspirada no pvp... até mesmo para iniciar
+   a batalha, quero que faça algo parecido com o pvp... isso facilitaria
+   pra começar a batalha" -- o que pesava não era o Pokémon que entra (já
+   pega a Equipe ativa sozinho, DT.arenaIniciarCombate), era o Mestre ter
+   que fazer "+ Jogador" um por um antes de poder iniciar). Cada jogador
+   escolhe o próprio Time direto na tela de espera (arenaWaitingHTML),
+   igual escolher o próprio time na Área PVP -- o Mestre continua podendo
+   montar tudo na mão do jeito de sempre (arenaSetupTeamHTML, "+ Jogador"
+   continua existindo, útil pra colocar alguém que não está na mesa/de
+   NPC/Pokémon solto), os dois caminhos escrevem no MESMO team.trainerIds,
+   sem conflito -- só que agora, mais forgiving que arenaAssignTrainer:
+   trocar de Time é só clicar em outro, sem precisar sair primeiro. */
+DT.arenaJoinTeam = function(teamId){
+  if(SESSION.role!=='player' || !SESSION.trainerId) return;
+  var team = arenaEnsureTrainerIds((STATE.arena.teams||[]).find(function(x){ return x.id===teamId; }));
+  if(!team) return;
+  var current = arenaAssignedTeamOf(SESSION.trainerId);
+  if(current){
+    if(current.id===teamId) return; /* já está nesse Time -- nada a fazer */
+    current.trainerIds = current.trainerIds.filter(function(id){ return id!==SESSION.trainerId; });
+  }
+  team.trainerIds.push(SESSION.trainerId);
+  mutate();
+};
+/* Sair do próprio Time -- volta a ficar sem Time nenhum, pra escolher de
+   novo (ou deixar o Mestre atribuir na mão). Só o próprio jogador, nunca
+   mexe em NPC/Pokémon solto (esses continuam só o Mestre, via
+   DT.arenaUnassignEntity). */
+DT.arenaLeaveTeam = function(){
+  if(SESSION.role!=='player' || !SESSION.trainerId) return;
+  var team = arenaAssignedTeamOf(SESSION.trainerId);
+  if(!team) return;
+  team.trainerIds = (team.trainerIds||[]).filter(function(id){ return id!==SESSION.trainerId; });
+  mutate();
+};
 /* Tira um id (Treinador real, NPC ou Pokémon solto) do Time que ele
    estiver -- pra NPC/solto isso também apaga o "treinador" virtual de
    vez (não existe fora de um Time); um Treinador de verdade só perde a
@@ -11140,8 +11176,8 @@ function arenaScreen(){
   if(!battleActive){
     out += '<div class="card"><div class="card-head"><span class="index">Cara do PVP</span><h2>🏟️ Arena</h2></div><div class="card-body">'+
       '<p class="muted" style="font-size:.82rem;">'+(isGM
-        ? 'Monte os Times abaixo (jogador, NPC ou Pokémon solto) e clique em "▶️ Iniciar Combate" quando estiver tudo pronto — cada um entra automaticamente com o próprio Pokémon ativo da Equipe ativa, sem soltura em segredo.'
-        : 'Aguardando o Mestre montar os Times e iniciar o combate.')+
+        ? 'Crie os Times abaixo — cada jogador já escolhe o próprio direto na tela dele (ou você atribui na mão com "+ Jogador"), além de NPC e Pokémon solto. Clique em "▶️ Iniciar Combate" quando estiver tudo pronto — cada um entra automaticamente com o próprio Pokémon ativo da Equipe ativa, sem soltura em segredo.'
+        : 'Escolha o seu Time assim que o Mestre criar algum, e aguarde ele iniciar o combate.')+
     '</p></div></div>';
   }
   out += weatherBannerHTML(STATE.arena && STATE.arena.weather, isGM);
@@ -11394,29 +11430,81 @@ function arenaActionPanelHTML(){
 
   var body = '';
 
+  /* Botões de Movimento -- fatorados aqui pra reaproveitar tanto no menu
+     achatado (logo abaixo) quanto na tela dedicada de "escolha o
+     Movimento" (que continua existindo por baixo, alcançável só via
+     DT.arenaChooseAction('atacar') -- nenhum clique de usuário chega mais
+     lá, mas o andaime de teste antigo ainda usa esse caminho, então a
+     função em si não muda nada, só ganhou um nome). */
+  function moveButtonsHTML(){
+    return (attPoke.moves||[]).map(function(m, i){
+      if(!m.nome) return '';
+      var cat = moveTargetCategory(m.nome);
+      var detail = [m.tipo||'?', m.categoria||'', m.poder?('Poder '+m.poder):'', m.prioridade ? ('Prioridade '+(m.prioridade>0?'+':'')+m.prioridade) : '', 'Alvo: '+(MOVE_TARGET_LABELS[cat]||cat)].filter(Boolean).join(' · ');
+      return '<button class="btn-sm" onclick="DT.arenaPickMove('+i+')">'+esc(m.nome)+'<br><span class="muted" style="font-size:.66rem;">'+esc(detail)+'</span></button>';
+    }).join('');
+  }
+  /* Idem, pros grupos de item por tipo -- mesmo motivo. */
+  function itemGroupsHTML(){
+    var itemBtn = function(it, i){
+      return '<button class="btn-sm" onclick="DT.arenaPickItem('+i+')">'+esc(it.nome)+'<br><span class="muted" style="font-size:.66rem;">x'+it.quantidade+' · '+esc(itemCuraDetailText(it))+'</span></button>';
+    };
+    return ['vida','condicao','revive','ambos','pp','outro'].map(function(tipo){
+      var btns = (attTrainer.itens||[]).map(function(it,i){ return (it.quantidade>0 && it.tipo===tipo && itemUsavelEmEquipe(it)) ? itemBtn(it,i) : ''; }).join('');
+      if(!btns) return '';
+      return '<p class="muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; margin:8px 0 4px;">'+ITEM_TIPO_LABELS[tipo]+'</p>'+
+        '<div class="btn-row" style="flex-wrap:wrap;">'+btns+'</div>';
+    }).join('');
+  }
+  /* Botões de Trocar voluntária -- lista simples (igual a Área PVP,
+     pvpBattleHTML/switchBtns), chamando DT.arenaSwapIn direto, sem passar
+     por SESSION.arenaAction='trocar' nenhum: DT.arenaSwapIn só depende de
+     SESSION.arenaAttacker (ver o comentário grande nela), então um clique
+     aqui já basta -- essa troca é sempre out-of-band (nunca forçada), a
+     tela dedicada de Trocar (mais abaixo) continua existindo só pros
+     convites forçados (desmaio, U-turn/Volt Switch/Parting Shot). */
+  function swapButtonsHTML(){
+    return (attTrainer.pokemons||[]).filter(function(p){
+      if(p.id===attPoke.id) return false;
+      var max = hpMax(attTrainer,p);
+      var cur = (p.currentHP===null||p.currentHP===undefined) ? max : p.currentHP;
+      return cur>0;
+    }).map(function(p){
+      return '<button class="btn-sm btn-ghost" onclick="DT.arenaSwapIn(\''+p.id+'\')">🔁 '+esc(p.apelido||p.especie||'Pokémon')+'</button>';
+    }).join('');
+  }
+
+  /* Menu achatado, "cara do PVP" (pedido do usuário: "quero que liste
+     tudo direto... [como] o pvp faz hoje" -- pvpBattleHTML nunca teve um
+     1º passo de "que TIPO de ação", já lista os Movimentos com "Atacar"
+     de rótulo e o Trocar logo abaixo, com "Ou trocar"). Sumiu o passo de
+     escolher Atacar/Usar Item/Trocar/Fugir antes de ver as opções de
+     verdade -- Movimento, Item e Trocar aparecem juntos, de cara, na
+     mesma tela; só Fugir continua um botão à parte (não tem uma "lista"
+     pra mostrar, é uma decisão só). Escolher um Movimento que precise de
+     alvo manual (ou um Item) ainda cai numa 2ª tela pedindo o clique no
+     alvo -- isso é inerente à Arena ter mais de 2 lados em campo (a Área
+     PVP nunca precisa disso, é sempre só você contra o adversário). */
   if(SESSION.arenaAction==='menu' || !SESSION.arenaAction){
+    var flatMoveBtns = moveButtonsHTML();
+    var flatItemGroups = itemGroupsHTML();
+    var flatSwapBtns = swapButtonsHTML();
     body = battlefield+
       '<div class="arena-action-overlay-section">'+
       '<p>O que <strong>'+esc(name)+'</strong> vai fazer?</p>'+
-      '<div class="btn-row" style="flex-wrap:wrap;">'+
-        '<button class="btn-sm" onclick="DT.arenaChooseAction(\'atacar\')">⚔️ Atacar</button>'+
-        '<button class="btn-sm" onclick="DT.arenaChooseAction(\'item\')">🎒 Usar Item</button>'+
-        '<button class="btn-sm" onclick="DT.arenaChooseAction(\'trocar\')">🔁 Trocar</button>'+
-        '<button class="btn-sm" onclick="DT.arenaChooseAction(\'fugir\')">🏃 Fugir</button>'+
-      '</div>'+cancelBtn+
+      '<p class="muted" style="font-size:.75rem; margin-bottom:4px;">⚔️ Atacar</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap;">'+(flatMoveBtns || '<span class="muted">Esse Pokémon não tem Movimentos definidos.</span>')+'</div>'+
+      (flatItemGroups ? '<p class="muted" style="font-size:.75rem; margin:8px 0 4px;">🎒 Usar Item</p>'+flatItemGroups : '')+
+      (flatSwapBtns ? '<p class="muted" style="font-size:.75rem; margin:8px 0 4px;">🔁 Ou trocar</p><div class="btn-row" style="flex-wrap:wrap;">'+flatSwapBtns+'</div>' : '')+
+      '<div class="btn-row" style="margin-top:8px;"><button class="btn-sm btn-ghost" onclick="DT.arenaChooseAction(\'fugir\')">🏃 Fugir</button></div>'+
+      cancelBtn+
       '</div>';
   } else if(SESSION.arenaAction==='move'){
     if(SESSION.arenaMoveIdx===null || SESSION.arenaMoveIdx===undefined){
-      var moveBtns = (attPoke.moves||[]).map(function(m, i){
-        if(!m.nome) return '';
-        var cat = moveTargetCategory(m.nome);
-        var detail = [m.tipo||'?', m.categoria||'', m.poder?('Poder '+m.poder):'', m.prioridade ? ('Prioridade '+(m.prioridade>0?'+':'')+m.prioridade) : '', 'Alvo: '+(MOVE_TARGET_LABELS[cat]||cat)].filter(Boolean).join(' · ');
-        return '<button class="btn-sm" onclick="DT.arenaPickMove('+i+')">'+esc(m.nome)+'<br><span class="muted" style="font-size:.66rem;">'+esc(detail)+'</span></button>';
-      }).join('');
       body = battlefield+
         '<div class="arena-action-overlay-section">'+
         '<p><strong>⚔️ '+esc(name)+'</strong> vai atacar — escolha o Movimento:</p>'+
-        '<div class="btn-row" style="flex-wrap:wrap;">'+(moveBtns || '<span class="muted">Esse Pokémon não tem Movimentos definidos.</span>')+'</div>'+
+        '<div class="btn-row" style="flex-wrap:wrap;">'+(moveButtonsHTML() || '<span class="muted">Esse Pokémon não tem Movimentos definidos.</span>')+'</div>'+
         cancelBtn+
         '</div>';
     } else {
@@ -11431,19 +11519,10 @@ function arenaActionPanelHTML(){
     }
   } else if(SESSION.arenaAction==='item'){
     if(SESSION.arenaItemIdx===null || SESSION.arenaItemIdx===undefined){
-      var itemBtn = function(it, i){
-        return '<button class="btn-sm" onclick="DT.arenaPickItem('+i+')">'+esc(it.nome)+'<br><span class="muted" style="font-size:.66rem;">x'+it.quantidade+' · '+esc(itemCuraDetailText(it))+'</span></button>';
-      };
-      var groups = ['vida','condicao','revive','ambos','pp','outro'].map(function(tipo){
-        var btns = (attTrainer.itens||[]).map(function(it,i){ return (it.quantidade>0 && it.tipo===tipo && itemUsavelEmEquipe(it)) ? itemBtn(it,i) : ''; }).join('');
-        if(!btns) return '';
-        return '<p class="muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; margin:8px 0 4px;">'+ITEM_TIPO_LABELS[tipo]+'</p>'+
-          '<div class="btn-row" style="flex-wrap:wrap;">'+btns+'</div>';
-      }).join('');
       body = battlefield+
         '<div class="arena-action-overlay-section">'+
         '<p><strong>🎒 '+esc(name)+'</strong> vai usar um item — escolha na mochila de '+esc(attTrainer.name)+':</p>'+
-        (groups || '<span class="muted">A mochila está vazia.</span>')+
+        (itemGroupsHTML() || '<span class="muted">A mochila está vazia.</span>')+
         cancelBtn+
         '</div>';
     } else {
@@ -11601,11 +11680,35 @@ function arenaSetupHTML(){
    do usuário: "quando os jogadores entrarem na sala eles não vão ver
    nada além do registro de eventos embaixo e o clima." (weatherBannerHTML
    e arenaLogHTML continuam vindo de fora, em arenaScreen -- esse card
-   aqui é só o recado no meio, no lugar de qualquer coisa de Time/Soltura.) */
+   aqui é só o recado no meio, no lugar de qualquer coisa de Time/Soltura.)
+   2ª leva (pedido do usuário: "até mesmo para iniciar a batalha, quero
+   que faça algo parecido com o pvp... isso facilitaria pra começar"):
+   se já existe Time pra escolher, o jogador escolhe o próprio direto
+   aqui (DT.arenaJoinTeam/arenaLeaveTeam) -- sem precisar esperar o
+   Mestre fazer "+ Jogador" por ele. Continua minimalista de propósito
+   (só o essencial pra se posicionar), nada de Mochila/NPC/Pokémon
+   solto aqui -- isso segue exclusivo da tela do Mestre. */
 function arenaWaitingHTML(){
-  return '<div class="card"><div class="card-body" style="text-align:center; padding:26px 16px;">'+
-    '<p class="muted">⏳ Aguardando o Mestre configurar os Times e iniciar o combate.</p>'+
-  '</div></div>';
+  var teams = STATE.arena.teams||[];
+  var myTeam = SESSION.trainerId ? arenaAssignedTeamOf(SESSION.trainerId) : null;
+  var body;
+  if(teams.length===0){
+    body = '<p class="muted">⏳ Aguardando o Mestre criar os Times e iniciar o combate.</p>';
+  } else if(myTeam){
+    var otherTeams = teams.filter(function(tm){ return tm.id!==myTeam.id; });
+    body = '<p>Você está no <strong>'+esc(myTeam.nome)+'</strong>.</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap; justify-content:center; margin-top:8px;">'+
+        '<button class="btn-ghost btn-sm" onclick="DT.arenaLeaveTeam()">🚪 Sair do Time</button>'+
+        otherTeams.map(function(tm){ return '<button class="btn-ghost btn-sm" onclick="DT.arenaJoinTeam(\''+tm.id+'\')">🔁 Trocar pro '+esc(tm.nome)+'</button>'; }).join('')+
+      '</div>'+
+      '<p class="muted" style="font-size:.78rem; margin-top:10px;">Aguardando o Mestre iniciar o combate.</p>';
+  } else {
+    body = '<p>Escolha o seu Time:</p>'+
+      '<div class="btn-row" style="flex-wrap:wrap; justify-content:center;">'+
+        teams.map(function(tm){ return '<button class="btn-sm" onclick="DT.arenaJoinTeam(\''+tm.id+'\')">'+esc(tm.nome)+'</button>'; }).join('')+
+      '</div>';
+  }
+  return '<div class="card"><div class="card-body" style="text-align:center; padding:26px 16px;">'+body+'</div></div>';
 }
 /* Times durante a batalha, "cara do PVP" (2ª leva do redesenho -- pedido
    do usuário: "quando eu coloquei os pokémon e os treinadores, a arena
