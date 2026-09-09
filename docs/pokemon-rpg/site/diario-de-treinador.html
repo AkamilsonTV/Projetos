@@ -6535,6 +6535,253 @@ function newPokemon(){
   };
 }
 
+/* ============================================================
+   Exportar/Importar Pokémon em CSV (pedido do usuário: "Quero criar
+   um sistema de CSV onde podemos exportar e importar os pokémon que
+   queremos com todas as configs que temos num pokémon atual...
+   habilidade, natureza, moves etc... deixar um modelo disponível
+   para download no site, montadinho com 6 espaços... conforme formos
+   acrescentando coisas que o pokémon precise, que ele seja
+   atualizado." + "Isso para pvp e arena, nos dois... que eles sejam
+   independentes pra eu subir quem eu quiser e quando quiser. O pvp
+   deve ter uma pra ele também." + resposta ao esclarecimento: import
+   SUBSTITUI a lista inteira (com Exportar sempre disponível como
+   backup antes de importar); a Arena aqui é o elenco de NPC que o
+   Mestre monta na Configuração de Times (o Time normal do Treinador
+   já usa a mesma exportação/importação da ficha RPG); o CSV guarda
+   só a "montagem" (Espécie/Natureza/Habilidade/Atributos
+   Naturais/Vínculo/Maturidade/Movimentos) -- nunca PV atual nem
+   Condição, que voltam sempre "descansados" ao importar.
+
+   Três contextos, cada um independente (import num não mexe nos
+   outros): 'rpg' (Equipe do Treinador, até 6), 'pvp' (Fichas de PVP
+   do próprio Treinador, até 20) e 'npc' (elenco de um NPC na
+   Configuração da Arena, sem limite). Cada Pokémon é uma linha; cada
+   contexto usa só as colunas que fazem sentido nele (ex.: Vínculo/
+   Maturidade só existem no RPG -- no PVP e no NPC ficam sempre no
+   padrão já em vigor no site; Atributo Natural não existe no PVP,
+   travado igual em toda ficha de PVP).
+
+   POKEMON_CSV_FIELDS é a ÚNICA fonte de verdade das colunas
+   "simples" (1 valor = 1 coluna) -- Espécie e os 4 Movimentos (cada
+   um com 2 colunas: Método + Nome) ficam de fora dela e são tratados
+   à parte logo abaixo, porque já têm formato fixo próprio no
+   resto do site (Movimento sempre em pares Método/Nome). Pra
+   adicionar um atributo novo do Pokémon ao CSV -- export, import E
+   modelo em branco, nos 3 contextos que fizerem sentido -- só é
+   preciso um item novo aqui, com "contexts" dizendo em qual(is)
+   contexto(s) essa coluna existe. Nada mais no código precisa mudar. */
+var POKEMON_CSV_FIELDS = [
+  { key:'apelido', header:'Apelido', contexts:['rpg','pvp','npc'],
+    get:function(p){ return p.apelido||''; },
+    set:function(p, v){ p.apelido = v; } },
+  { key:'natureza', header:'Natureza', contexts:['rpg','pvp','npc'],
+    get:function(p){ return p.natureza||''; },
+    set:function(p, v, warn){
+      var nat = NATURES_DEX.filter(function(n){ return n.nome.toLowerCase()===v.toLowerCase(); })[0];
+      if(nat) p.natureza = nat.nome; else warn('Natureza "'+v+'" não reconhecida — deixada em branco.');
+    } },
+  { key:'habilidade', header:'Habilidade', contexts:['rpg','pvp','npc'],
+    get:function(p){ return p.habilidade||''; },
+    set:function(p, v, warn){
+      var hab = ABILITIES_DEX.filter(function(a){ return a.name.toLowerCase()===v.toLowerCase(); })[0];
+      if(hab) p.habilidade = hab.name; else warn('Habilidade "'+v+'" não reconhecida — deixada em branco.');
+    } },
+  { key:'vinculo', header:'Vínculo (0-25)', contexts:['rpg'],
+    get:function(p){ return String(p.vinculo||0); },
+    set:function(p, v){ p.vinculo = clampInt(v,0,25); } },
+  { key:'maturidade', header:'Maturidade', contexts:['rpg'],
+    get:function(p){ return String(p.maturidade||0); },
+    set:function(p, v){ p.maturidade = clampInt(v,0,999); } }
+].concat(STAT_ORDER.map(function(stat){
+  return { key:'natural_'+stat, header:'Natural '+STAT_LABELS[stat], contexts:['rpg','npc'],
+    get:function(p){ return String(p.natural[stat]); },
+    set:function(p, v){ p.natural[stat] = clampInt(v,0,20); } };
+}));
+/* Rótulo de cada Método na coluna do CSV (igual ao texto que já
+   aparece nos botões Nível/Evo/TM/Egg/Anterior da própria ficha),
+   pra quem preenche o modelo à mão reconhecer de cara -- por baixo o
+   valor continua sendo 'normal'/'evo'/'tm'/'egg'/'anterior' de
+   sempre. */
+var METODO_CSV_LABELS = {normal:'Nível', evo:'Evo', tm:'TM', egg:'Egg', anterior:'Anterior'};
+function metodoFromCsvLabel(raw){
+  raw = (raw||'').trim().toLowerCase();
+  if(!raw || raw==='nível' || raw==='nivel' || raw==='normal') return 'normal';
+  if(raw==='evo') return 'evo';
+  if(raw==='tm') return 'tm';
+  if(raw==='egg') return 'egg';
+  if(raw==='anterior') return 'anterior';
+  return null;
+}
+function csvHeadersForContext(ctx){
+  var headers = ['Slot','Espécie'];
+  POKEMON_CSV_FIELDS.forEach(function(f){ if(f.contexts.indexOf(ctx)!==-1) headers.push(f.header); });
+  for(var i=0;i<4;i++){ headers.push('Movimento '+(i+1)+' Método'); headers.push('Movimento '+(i+1)+' Nome'); }
+  return headers;
+}
+function pokemonToCSVRow(p, ctx, slotNum){
+  var row = [String(slotNum), p.especie||''];
+  POKEMON_CSV_FIELDS.forEach(function(f){ if(f.contexts.indexOf(ctx)!==-1) row.push(f.get(p)); });
+  for(var i=0;i<4;i++){
+    var m = (p.moves && p.moves[i]) || {};
+    row.push(m.nome ? (METODO_CSV_LABELS[m.metodo||'normal']||'Nível') : '');
+    row.push(m.nome||'');
+  }
+  return row;
+}
+function csvEscapeCell(v){
+  v = (v===null || v===undefined) ? '' : String(v);
+  return /[",\r\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+}
+function csvRowLine(cells){ return cells.map(csvEscapeCell).join(','); }
+function buildPokemonListCSV(list, ctx){
+  var lines = [csvRowLine(csvHeadersForContext(ctx))];
+  (list||[]).forEach(function(p, i){ lines.push(csvRowLine(pokemonToCSVRow(p, ctx, i+1))); });
+  return lines.join('\r\n');
+}
+function buildPokemonCSVTemplate(ctx, numSlots){
+  var headers = csvHeadersForContext(ctx);
+  var lines = [csvRowLine(headers)];
+  for(var i=1;i<=numSlots;i++){
+    var row = headers.map(function(){ return ''; });
+    row[0] = String(i);
+    lines.push(csvRowLine(row));
+  }
+  return lines.join('\r\n');
+}
+/* Parser de CSV mínimo (aspas, aspas escapadas "" dentro de campo,
+   CRLF/LF, BOM do Excel) -- não é uma lib inteira de RFC4180, mas dá
+   conta de tudo que um Nome/Movimento/Espécie real precisa. */
+function parseCSVText(text){
+  text = text || '';
+  if(text.charCodeAt(0)===0xFEFF) text = text.slice(1);
+  var rows = [], row = [], cell = '', inQuotes = false;
+  for(var i=0;i<text.length;i++){
+    var c = text[i];
+    if(inQuotes){
+      if(c==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else { inQuotes=false; } }
+      else cell += c;
+    } else if(c==='"'){ inQuotes = true; }
+    else if(c===','){ row.push(cell); cell=''; }
+    else if(c==='\n'){ row.push(cell); cell=''; rows.push(row); row=[]; }
+    else if(c==='\r'){ /* ignora -- \n (CRLF) ou \r sozinho tratado no fim */ }
+    else cell += c;
+  }
+  if(cell!=='' || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(function(r){ return !(r.length===1 && r[0].trim()===''); });
+}
+/* Lê um CSV (export anterior OU o modelo em branco preenchido à mão)
+   e devolve os Pokémon prontos pra entrar na lista de destino --
+   nunca muta nada sozinho, quem chama decide o que fazer com o
+   resultado (ver DT.confirmCsvImport). Casa colunas pelo NOME do
+   cabeçalho, não pela posição -- um arquivo com colunas fora de
+   ordem, ou faltando uma coluna nova que esse contexto nem usa,
+   continua importando normal. Linha com Espécie vazia = slot vazio
+   de propósito (não gera Pokémon nenhum, não é erro). Método/Nome de
+   Movimento inválidos pra essa Espécie/teto de Nível viram um aviso
+   e ficam de fora, sem travar o resto da linha. */
+function parsePokemonListCSV(text, ctx, ceiling){
+  var rows = parseCSVText(text);
+  if(!rows.length) return {list:[], warnings:['Arquivo vazio ou sem cabeçalho.']};
+  var idx = {};
+  rows[0].forEach(function(h,i){ idx[(h||'').trim()] = i; });
+  function cellAt(cells, headerName){
+    var i = idx[headerName];
+    return (i===undefined || i>=cells.length) ? '' : (cells[i]||'').trim();
+  }
+  var fields = POKEMON_CSV_FIELDS.filter(function(f){ return f.contexts.indexOf(ctx)!==-1; });
+  var warnings = [], list = [];
+  for(var r=1; r<rows.length && list.length<200; r++){
+    var cells = rows[r];
+    var especieRaw = cellAt(cells,'Espécie');
+    if(!especieRaw) continue;
+    var slotLabel = cellAt(cells,'Slot') || String(r);
+    var sp = findSpeciesByName(especieRaw);
+    if(!sp){ warnings.push('Linha '+slotLabel+': Espécie "'+especieRaw+'" não encontrada na Pokédex — linha ignorada.'); continue; }
+    var p = newPokemon();
+    applySpeciesData(p, sp);
+    fields.forEach(function(f){
+      var raw = cellAt(cells, f.header);
+      if(raw==='') return;
+      f.set(p, raw, function(msg){ warnings.push('Linha '+slotLabel+' ('+especieRaw+'): '+msg); });
+    });
+    for(var mi=0; mi<4; mi++){
+      var nomeRaw = cellAt(cells,'Movimento '+(mi+1)+' Nome');
+      if(!nomeRaw) continue;
+      var metodo = metodoFromCsvLabel(cellAt(cells,'Movimento '+(mi+1)+' Método'));
+      if(metodo===null){ warnings.push('Linha '+slotLabel+' ('+especieRaw+'): método do Movimento '+(mi+1)+' não reconhecido (use Nível/Evo/TM/Egg/Anterior) — deixado vazio.'); continue; }
+      var opts = movePickOptions(LEARNSETS[sp.num], metodo, ceiling, sp.num);
+      var match = opts.filter(function(o){ return o.name.toLowerCase()===nomeRaw.toLowerCase(); })[0];
+      if(!match){ warnings.push('Linha '+slotLabel+' ('+especieRaw+'): Movimento "'+nomeRaw+'" ('+METODO_CSV_LABELS[metodo]+') não está disponível pra essa Espécie/teto de Nível — Movimento '+(mi+1)+' deixado vazio.'); continue; }
+      var found = findMoveByName(match.name);
+      if(found){ var mv = {metodo:metodo}; applyMoveData(mv, found); p.moves[mi] = mv; }
+    }
+    list.push(p);
+  }
+  return {list:list, warnings:warnings};
+}
+function sanitizeFilenamePart(s){
+  return (String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')) || 'pokemon';
+}
+/* Disparo real do download (Blob + link temporário) -- só roda em
+   navegador de verdade; os testes chamam build/parsePokemonListCSV
+   direto, sem passar por aqui. */
+function triggerCSVDownload(filename, csvText){
+  var blob = new Blob(['﻿'+csvText], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+/* Popup de confirmação (Cap. import substitui tudo -- pedido do
+   usuário: "Substitui tudo, mas é bom ter uma opção pra baixarmos o
+   time atual", já coberto pelo botão Exportar sempre disponível ao
+   lado do Importar). SESSION.pendingCsvImport guarda o resultado já
+   parseado + um "apply" que só mexe no estado de verdade quando o
+   usuário confirma -- nada é substituído só por escolher o arquivo. */
+function csvImportPopupHTML(){
+  var imp = SESSION.pendingCsvImport;
+  if(!imp) return '';
+  var warnHTML = imp.warnings.length
+    ? '<div style="text-align:left; font-size:.72rem; margin-top:8px; max-height:160px; overflow-y:auto;"><strong>Avisos ('+imp.warnings.length+'):</strong><ul style="margin:4px 0 0; padding-left:18px;">'+
+        imp.warnings.slice(0,10).map(function(w){ return '<li>'+esc(w)+'</li>'; }).join('')+
+        (imp.warnings.length>10 ? '<li>… e mais '+(imp.warnings.length-10)+'.</li>' : '')+
+      '</ul></div>'
+    : '';
+  return '<div class="arena-error-overlay" onclick="DT.dismissCsvImport()">'+
+    '<div class="arena-error-overlay-card" onclick="event.stopPropagation()" style="max-width:440px;">'+
+      '<div class="arena-error-overlay-text" style="text-align:left;">📄 Importar CSV em <strong>'+esc(imp.targetLabel)+'</strong><br>'+
+        'Isso vai <strong>substituir</strong> os '+imp.currentCount+' Pokémon atuais por '+imp.list.length+' do arquivo'+
+        (imp.list.length===0 ? ' — <strong>ficaria vazio</strong>, confira o arquivo se não era essa a intenção' : '')+'.'+
+      '</div>'+
+      warnHTML+
+      '<div class="btn-row" style="margin-top:10px; justify-content:center;">'+
+        '<button class="btn-sm btn-primary" onclick="DT.confirmCsvImport()">Confirmar</button>'+
+        '<button class="btn-sm btn-ghost" onclick="DT.dismissCsvImport()">Cancelar</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+/* DT.confirmCsvImport/DT.dismissCsvImport moram perto de "var DT = {}"
+   mais abaixo (não dá pra atribuir em DT aqui em cima -- esse trecho
+   inteiro roda ANTES de "var DT = {}" existir). */
+/* Botões compartilhados (Exportar/Importar/Baixar modelo) -- os 3
+   contextos (RPG/PVP/NPC) só diferem no id do <input type=file>
+   escondido, no rótulo mostrado e em qual onclick de import chamar;
+   centralizar aqui evita repetir a mesma parede de HTML 3 vezes. */
+function csvButtonsHTML(inputId, exportOnclick, importFileOnclick, templateOnclick){
+  return '<div class="btn-row" style="flex-wrap:wrap;">'+
+    '<button type="button" class="btn-sm" onclick="'+exportOnclick+'">⬇️ Exportar CSV</button>'+
+    '<button type="button" class="btn-sm" onclick="document.getElementById(\''+inputId+'\').click()">⬆️ Importar CSV</button>'+
+    '<input type="file" id="'+inputId+'" accept=".csv,text/csv" style="display:none;" onchange="'+importFileOnclick+'">'+
+    '<button type="button" class="btn-ghost btn-sm" onclick="'+templateOnclick+'" title="Planilha em branco com as colunas certas, pronta pra preencher à mão">📄 Modelo</button>'+
+  '</div>';
+}
+
 /* ---- regras: Vínculo, Efetivos, PV ---- */
 function liberatedTier(vinculo){
   vinculo = clampInt(vinculo,0,25);
@@ -8460,6 +8707,21 @@ function bootFirebase(){
 /* =================== AÇÕES (expostas em DT.*) =================== */
 var DT = {};
 
+/* Confirmar/cancelar o popup de import de CSV (Cap. CSV) -- fica logo
+   aqui, colado em "var DT = {}", porque csvImportPopupHTML/
+   SESSION.pendingCsvImport (definidos mais acima, perto do resto do
+   motor de CSV) só geram HTML; o "apply" de verdade -- que muda
+   Equipe/Fichas de PVP/elenco de NPC -- só pode acontecer depois que
+   DT existe. */
+DT.confirmCsvImport = function(){
+  var imp = SESSION.pendingCsvImport;
+  if(!imp) return;
+  imp.apply(imp.list);
+  SESSION.pendingCsvImport = null;
+  mutate();
+};
+DT.dismissCsvImport = function(){ SESSION.pendingCsvImport = null; render(); };
+
 DT.toggleTheme = function(){
   CURRENT_THEME = (CURRENT_THEME==='dark') ? 'light' : 'dark';
   applyTheme(CURRENT_THEME);
@@ -8610,6 +8872,37 @@ DT.addPokemon = function(id){
   if(t.pokemons.length<6){ t.pokemons.push(newPokemon()); }
   else { t.banco.push(newPokemon()); }
   mutate();
+};
+/* Exportar/Importar CSV da Equipe (Cap. CSV) -- só a Equipe (até 6),
+   não o Banco (fora do pedido original: "modelo... com 6 espaços").
+   Import SUBSTITUI a Equipe inteira -- por isso Exportar fica sempre
+   ao lado, pra dar pra baixar o que já existe antes de trocar. */
+DT.rpgExportCsv = function(id){
+  var t = findTrainer(id); if(!t) return;
+  triggerCSVDownload(sanitizeFilenamePart(t.name)+'-equipe.csv', buildPokemonListCSV(t.pokemons, 'rpg'));
+};
+DT.rpgDownloadCsvTemplate = function(){
+  triggerCSVDownload('modelo-equipe-rpg.csv', buildPokemonCSVTemplate('rpg', 6));
+};
+DT.rpgImportCsvFile = function(id, inputEl){
+  if(SESSION.role!=='gm') return;
+  var file = inputEl.files && inputEl.files[0];
+  inputEl.value = '';
+  if(!file) return;
+  var t = findTrainer(id); if(!t) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var result = parsePokemonListCSV(String(reader.result), 'rpg', officialLevelCeiling(t.level));
+    SESSION.pendingCsvImport = {
+      targetLabel: 'Equipe de ' + t.name,
+      currentCount: t.pokemons.length,
+      list: result.list.slice(0,6),
+      warnings: result.warnings.concat(result.list.length>6 ? ['O arquivo tinha '+result.list.length+' Pokémon — só os 6 primeiros entram na Equipe.'] : []),
+      apply: function(list){ t.pokemons = list; }
+    };
+    render();
+  };
+  reader.readAsText(file, 'UTF-8');
 };
 DT.askRemovePokemon = function(pid){ SESSION.confirmRemovePoke = pid; render(); };
 DT.cancelRemovePokemon = function(){ SESSION.confirmRemovePoke = null; render(); };
@@ -9136,6 +9429,43 @@ DT.arenaRemoveNpcPoke = function(npcId, pokeId){
   if(!v) return;
   v.pokemons = (v.pokemons||[]).filter(function(p){ return p.id!==pokeId; });
   mutate();
+};
+/* Exportar/Importar CSV do elenco de um NPC (Cap. CSV) -- pedido do
+   usuário: "isso pra pvp e arena, nos dois... que eles sejam
+   independentes". Antes disso o único jeito de montar um NPC era o
+   sorteio aleatório (🎲 + Pokémon) -- CSV vira o primeiro jeito de
+   definir Espécie/Movimentos/Natureza/Habilidade/Atributos exatos
+   sem depender de sorte nenhuma. Import SUBSTITUI o elenco inteiro
+   desse NPC (nunca mexe em outro NPC/Time). Sem limite de tamanho
+   (igual o roster de NPC já não tem hoje). */
+DT.arenaExportNpcCsv = function(npcId){
+  var v = STATE.arena.virtuais && STATE.arena.virtuais[npcId];
+  if(!v) return;
+  triggerCSVDownload(sanitizeFilenamePart(v.name)+'-npc.csv', buildPokemonListCSV(v.pokemons, 'npc'));
+};
+DT.arenaDownloadNpcCsvTemplate = function(){
+  triggerCSVDownload('modelo-npc-arena.csv', buildPokemonCSVTemplate('npc', 6));
+};
+DT.arenaImportNpcCsvFile = function(npcId, inputEl){
+  if(SESSION.role!=='gm') return;
+  var file = inputEl.files && inputEl.files[0];
+  inputEl.value = '';
+  if(!file) return;
+  var v = STATE.arena.virtuais && STATE.arena.virtuais[npcId];
+  if(!v) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var result = parsePokemonListCSV(String(reader.result), 'npc', officialLevelCeiling(PVP_LEVEL));
+    SESSION.pendingCsvImport = {
+      targetLabel: 'NPC: ' + v.name,
+      currentCount: (v.pokemons||[]).length,
+      list: result.list.map(function(p){ p.vinculo = 25; return p; }),
+      warnings: result.warnings,
+      apply: function(list){ v.pokemons = list; }
+    };
+    render();
+  };
+  reader.readAsText(file, 'UTF-8');
 };
 /* Salvar/carregar NPC (Cap. mecânica nova) -- pedido do usuário: "ter uma
    opção pra eu, como mestre, salvar o NPC que eu criei na arena. E ter
@@ -11098,7 +11428,7 @@ function screenHTML(){
   }
 }
 function wrap(bodyHTML, rightHTML){
-  return '<div class="shell">'+topbar(rightHTML)+banners()+bodyHTML+legalFooter()+'</div>'+typeDatalist('typeList')+speciesDatalist('speciesDexList')+moveDatalist('movesDexList')+rulesPopupHTML();
+  return '<div class="shell">'+topbar(rightHTML)+banners()+bodyHTML+legalFooter()+'</div>'+typeDatalist('typeList')+speciesDatalist('speciesDexList')+moveDatalist('movesDexList')+rulesPopupHTML()+csvImportPopupHTML();
 }
 /* ---- Overlay de dado no centro da tela: aparece pra todo mundo conectado
    quando um ataque é resolvido na Arena (STATE.arena.lastRoll), não só pra
@@ -12025,6 +12355,7 @@ function arenaSetupRosterRowHTML(entityId){
       '<button class="btn-sm" onclick="DT.arenaAddNpcPoke(\''+entityId+'\', document.getElementById(\''+npcSelId+'\').value)">🎲 + Pokémon</button>'+
       ((v.pokemons||[]).length ? '<button class="btn-ghost btn-sm" onclick="DT.arenaSaveNpcTemplate(\''+entityId+'\')" title="Salva esse NPC (nome + Pokémon como estão agora) numa biblioteca reaproveitável em qualquer batalha futura">💾 Salvar NPC</button>' : '')+
       '</div>'+
+      csvButtonsHTML('arenaNpcCsvInput-'+entityId, "DT.arenaExportNpcCsv('"+entityId+"')", "DT.arenaImportNpcCsvFile('"+entityId+"', this)", 'DT.arenaDownloadNpcCsvTemplate()')+
     '</div>';
   }
   var p0 = (v.pokemons||[])[0];
@@ -12904,6 +13235,18 @@ function trainerSheetHTML(t, mode){
     (canGM ? '<button class="btn-sm" onclick="DT.addPokemon(\''+t.id+'\')">+ Adicionar Pokémon</button>' : '')+
   '</div>';
   if(editable) out += '<p class="muted" style="margin:-4px 0 10px;">'+(canGM ? 'Arraste pelo ⠿ pra reorganizar a Equipe ou trocar com o Banco.' : 'Arraste pelo ⠿ pra reorganizar a Equipe ou trocar com o Banco. Só o Mestre escolhe qual Pokémon entra na ficha.')+'</p>';
+  /* CSV (Cap. CSV) -- Exportar é inofensivo (só leitura), fica pra
+     quem puder ver a Equipe editável; Importar mexe em Espécie/
+     Natureza/Habilidade/Atributos -- campos que só o Mestre edita em
+     qualquer outro lugar da ficha -- então fica GM-only aqui também,
+     igual o resto desses campos. */
+  if(editable){
+    out += '<div style="margin:-2px 0 10px;">'+
+      (canGM
+        ? csvButtonsHTML('rpgCsvInput-'+t.id, "DT.rpgExportCsv('"+t.id+"')", "DT.rpgImportCsvFile('"+t.id+"', this)", 'DT.rpgDownloadCsvTemplate()')
+        : '<button type="button" class="btn-sm" onclick="DT.rpgExportCsv(\''+t.id+'\')">⬇️ Exportar CSV</button>')+
+    '</div>';
+  }
 
   out += '<div class="poke-grid">';
   for(var slotIdx=0; slotIdx<6; slotIdx++){
@@ -13918,6 +14261,41 @@ DT.pvpAddFicha = function(){
   list.push(p);
   mutate();
 };
+/* Exportar/Importar CSV das Fichas de PVP (Cap. CSV) -- independente
+   da Equipe do RPG (pedido do usuário: "que eles sejam independentes
+   pra eu subir quem eu quiser e quando quiser. O pvp deve ter uma pra
+   ele também"). Import SUBSTITUI a lista inteira -- bloqueado se
+   qualquer ficha já estiver numa batalha em andamento, mesmo padrão
+   de DT.pvpRemoveFicha. */
+DT.pvpExportCsv = function(){
+  if(SESSION.role!=='player') return;
+  triggerCSVDownload(sanitizeFilenamePart(SESSION.trainerId)+'-fichas-pvp.csv', buildPokemonListCSV(pvpFichaList(SESSION.trainerId), 'pvp'));
+};
+DT.pvpDownloadCsvTemplate = function(){
+  triggerCSVDownload('modelo-fichas-pvp.csv', buildPokemonCSVTemplate('pvp', 6));
+};
+DT.pvpImportCsvFile = function(inputEl){
+  if(SESSION.role!=='player') return;
+  var file = inputEl.files && inputEl.files[0];
+  inputEl.value = '';
+  if(!file) return;
+  var list = pvpFichaList(SESSION.trainerId);
+  if(list.some(function(p){ return p.emBatalha; })){ SESSION.error = 'Uma ou mais fichas estão numa batalha em andamento — espere terminar antes de importar.'; render(); return; }
+  var trainerId = SESSION.trainerId;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var result = parsePokemonListCSV(String(reader.result), 'pvp', officialLevelCeiling(PVP_LEVEL));
+    SESSION.pendingCsvImport = {
+      targetLabel: 'Fichas de PVP',
+      currentCount: list.length,
+      list: result.list.slice(0,20).map(function(p){ p.vinculo = 25; p.emBatalha = null; return p; }),
+      warnings: result.warnings.concat(result.list.length>20 ? ['O arquivo tinha '+result.list.length+' Pokémon — só os 20 primeiros entram nas Fichas de PVP.'] : []),
+      apply: function(listResolved){ STATE.pvp.fichas[trainerId] = listResolved; }
+    };
+    render();
+  };
+  reader.readAsText(file, 'UTF-8');
+};
 /* Botão de emergência (pedido do usuário: "Se não conseguir resolver isso
    de forma automática, coloque uma forma de forçar a saída para cada
    jogador") -- rede de segurança pro caso de uma ficha ficar travada
@@ -14396,6 +14774,7 @@ function pvpFichasHTML(t){
     '<p class="muted" style="font-size:.8rem;">Independentes do seu Time do RPG. Nível fixo, Atributos sempre no máximo — escolha só Espécie, Movimentos, Natureza e Habilidade.</p>'+
     cards+
     '<div class="btn-row" style="margin-top:10px;"><button class="btn-sm btn-primary" onclick="DT.pvpAddFicha()">+ Nova Ficha</button></div>'+
+    '<div style="margin-top:8px;">'+csvButtonsHTML('pvpCsvInput', 'DT.pvpExportCsv()', 'DT.pvpImportCsvFile(this)', 'DT.pvpDownloadCsvTemplate()')+'</div>'+
   '</div></div>';
 }
 function pvpLobbyHTML(t){
