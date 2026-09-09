@@ -6600,19 +6600,31 @@ var POKEMON_CSV_FIELDS = [
    valor continua sendo 'normal'/'evo'/'tm'/'egg'/'anterior' de
    sempre. */
 var METODO_CSV_LABELS = {normal:'Nível', evo:'Evo', tm:'TM', egg:'Egg', anterior:'Anterior'};
-function metodoFromCsvLabel(raw){
-  raw = (raw||'').trim().toLowerCase();
-  if(!raw || raw==='nível' || raw==='nivel' || raw==='normal') return 'normal';
-  if(raw==='evo') return 'evo';
-  if(raw==='tm') return 'tm';
-  if(raw==='egg') return 'egg';
-  if(raw==='anterior') return 'anterior';
+/* Método do Movimento saiu do CSV (pedido do usuário: "tira também
+   método, eu devo colocar o move e ele reconhecer de qual que é.") --
+   o CSV só guarda o NOME do Movimento agora; o Método é descoberto
+   sozinho no import, testando nessa ordem de prioridade (a mesma
+   ordem dos botões Nível/Evo/TM/Egg/Anterior na própria ficha) até
+   achar o primeiro método em que essa Espécie realmente aprende esse
+   Movimento (respeitando o teto de Nível, via movePickOptions -- a
+   MESMA fonte de sempre, nunca inventa). Devolve null se nenhum dos 5
+   métodos reconhecer o nome (Movimento que a Espécie não aprende de
+   jeito nenhum, ou erro de digitação). */
+var METODO_CSV_PRIORIDADE = ['normal','evo','tm','egg','anterior'];
+function detectMoveMethod(speciesNum, ceiling, moveName){
+  var alvo = moveName.toLowerCase();
+  for(var i=0;i<METODO_CSV_PRIORIDADE.length;i++){
+    var metodo = METODO_CSV_PRIORIDADE[i];
+    var opts = movePickOptions(LEARNSETS[speciesNum], metodo, ceiling, speciesNum);
+    var match = opts.filter(function(o){ return o.name.toLowerCase()===alvo; })[0];
+    if(match) return {metodo:metodo, name:match.name};
+  }
   return null;
 }
 function csvHeadersForContext(ctx){
   var headers = ['Slot','Espécie'];
   POKEMON_CSV_FIELDS.forEach(function(f){ if(f.contexts.indexOf(ctx)!==-1) headers.push(f.header); });
-  for(var i=0;i<4;i++){ headers.push('Movimento '+(i+1)+' Método'); headers.push('Movimento '+(i+1)+' Nome'); }
+  for(var i=0;i<4;i++){ headers.push('Movimento '+(i+1)); }
   return headers;
 }
 function pokemonToCSVRow(p, ctx, slotNum){
@@ -6620,7 +6632,6 @@ function pokemonToCSVRow(p, ctx, slotNum){
   POKEMON_CSV_FIELDS.forEach(function(f){ if(f.contexts.indexOf(ctx)!==-1) row.push(f.get(p)); });
   for(var i=0;i<4;i++){
     var m = (p.moves && p.moves[i]) || {};
-    row.push(m.nome ? (METODO_CSV_LABELS[m.metodo||'normal']||'Nível') : '');
     row.push(m.nome||'');
   }
   return row;
@@ -6673,9 +6684,12 @@ function parseCSVText(text){
    cabeçalho, não pela posição -- um arquivo com colunas fora de
    ordem, ou faltando uma coluna nova que esse contexto nem usa,
    continua importando normal. Linha com Espécie vazia = slot vazio
-   de propósito (não gera Pokémon nenhum, não é erro). Método/Nome de
-   Movimento inválidos pra essa Espécie/teto de Nível viram um aviso
-   e ficam de fora, sem travar o resto da linha. */
+   de propósito (não gera Pokémon nenhum, não é erro). O Método de
+   cada Movimento não vem do arquivo -- é descoberto sozinho por
+   detectMoveMethod (ver acima); um Nome que essa Espécie não aprende
+   de jeito nenhum (nem por Nível/Evo/TM/Egg/Anterior), respeitando o
+   teto de Nível, vira um aviso e fica de fora, sem travar o resto da
+   linha. */
 function parsePokemonListCSV(text, ctx, ceiling){
   var rows = parseCSVText(text);
   if(!rows.length) return {list:[], warnings:['Arquivo vazio ou sem cabeçalho.']};
@@ -6702,15 +6716,12 @@ function parsePokemonListCSV(text, ctx, ceiling){
       f.set(p, raw, function(msg){ warnings.push('Linha '+slotLabel+' ('+especieRaw+'): '+msg); });
     });
     for(var mi=0; mi<4; mi++){
-      var nomeRaw = cellAt(cells,'Movimento '+(mi+1)+' Nome');
+      var nomeRaw = cellAt(cells,'Movimento '+(mi+1));
       if(!nomeRaw) continue;
-      var metodo = metodoFromCsvLabel(cellAt(cells,'Movimento '+(mi+1)+' Método'));
-      if(metodo===null){ warnings.push('Linha '+slotLabel+' ('+especieRaw+'): método do Movimento '+(mi+1)+' não reconhecido (use Nível/Evo/TM/Egg/Anterior) — deixado vazio.'); continue; }
-      var opts = movePickOptions(LEARNSETS[sp.num], metodo, ceiling, sp.num);
-      var match = opts.filter(function(o){ return o.name.toLowerCase()===nomeRaw.toLowerCase(); })[0];
-      if(!match){ warnings.push('Linha '+slotLabel+' ('+especieRaw+'): Movimento "'+nomeRaw+'" ('+METODO_CSV_LABELS[metodo]+') não está disponível pra essa Espécie/teto de Nível — Movimento '+(mi+1)+' deixado vazio.'); continue; }
-      var found = findMoveByName(match.name);
-      if(found){ var mv = {metodo:metodo}; applyMoveData(mv, found); p.moves[mi] = mv; }
+      var achado = detectMoveMethod(sp.num, ceiling, nomeRaw);
+      if(!achado){ warnings.push('Linha '+slotLabel+' ('+especieRaw+'): Movimento "'+nomeRaw+'" não está disponível pra essa Espécie/teto de Nível em nenhum Método (Nível/Evo/TM/Egg/Anterior) — Movimento '+(mi+1)+' deixado vazio.'); continue; }
+      var found = findMoveByName(achado.name);
+      if(found){ var mv = {metodo:achado.metodo}; applyMoveData(mv, found); p.moves[mi] = mv; }
     }
     list.push(p);
   }
