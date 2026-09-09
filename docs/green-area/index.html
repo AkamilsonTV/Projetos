@@ -69,7 +69,7 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-bar{ height:10px; border-radius:999px; background:var(--bg2); overflow:hidden; border:1px solid var(--line); }
 .ga-bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--accent-dim),var(--accent)); }
 .ga-badges{ display:flex; flex-wrap:wrap; gap:6px; }
-.ga-badge-icon{ font-size:1.1rem; opacity:.25; filter:grayscale(1); }
+.ga-badge-icon{ width:28px; height:28px; image-rendering:pixelated; opacity:.25; filter:grayscale(1); }
 .ga-badge-icon.on{ opacity:1; filter:none; }
 .ga-quicknav{ display:flex; flex-wrap:wrap; gap:10px; }
 
@@ -88,6 +88,15 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-dex-tile.caught img{ filter:none; opacity:1; }
 .ga-dex-tile.caught{ border-color:var(--accent-dim); }
 .ga-dex-num{ display:block; font-size:.6rem; color:var(--ink-dim); }
+
+.ga-dex-filtros{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
+.ga-dex-filtros input[type="text"]{ flex:1; min-width:160px; }
+.ga-dex-filtros .ga-tabs{ margin:0; display:flex; gap:4px; }
+.ga-dex-filtros .ga-tabs button{ padding:5px 10px; font-size:.74rem; }
+
+.ga-wiki-secao{ margin-bottom:16px; }
+.ga-wiki-secao p{ margin:4px 0; color:var(--ink-dim); font-size:.86rem; line-height:1.4; }
+.ga-wiki-secao code{ background:var(--bg2); padding:1px 5px; border-radius:4px; font-size:.82rem; }
 
 .ga-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
 .ga-overlay-card{ background:var(--panel); border:1px solid var(--accent-dim); border-radius:var(--radius); padding:20px; max-width:360px; width:100%; text-align:center; position:relative; }
@@ -121,7 +130,12 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 
 .ga-leader-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
 .ga-leader-row:last-child{ border-bottom:none; }
-.ga-leader-emoji{ font-size:1.4rem; }
+.ga-leader-emoji{ width:36px; height:36px; image-rendering:pixelated; vertical-align:middle; }
+
+.ga-item-icon{ width:22px; height:22px; image-rendering:pixelated; vertical-align:middle; }
+.ga-item-row{ display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; }
+.ga-item-row .ga-item-icon{ margin-left:6px; }
+.ga-item-row .ga-item-icon:first-child{ margin-left:0; }
 .ga-leader-info{ display:flex; flex-direction:column; flex:1; min-width:180px; }
 .ga-leader-row.done{ opacity:.7; }
 .ga-leader-row.locked{ opacity:.45; }
@@ -3541,6 +3555,318 @@ var LEGENDARY_NUMS = [144,145,146,150,151,243,244,245,249,250,251,377,378,379,38
 /* ---- CAPTURE_RATE (extraído de docs/pokemon-rpg/site/diario-de-treinador.html) ---- */
 var CAPTURE_RATE = {"1":45,"2":45,"3":45,"4":45,"5":45,"6":45,"7":45,"8":45,"9":45,"10":255,"11":120,"12":45,"13":255,"14":120,"15":45,"16":255,"17":120,"18":45,"19":255,"20":127,"21":255,"22":90,"23":255,"24":90,"25":190,"26":75,"27":255,"28":90,"29":235,"30":120,"31":45,"32":235,"33":120,"34":45,"35":150,"36":25,"37":190,"38":75,"39":170,"40":50,"41":255,"42":90,"43":255,"44":120,"45":45,"46":190,"47":75,"48":190,"49":75,"50":255,"51":50,"52":255,"53":90,"54":190,"55":75,"56":190,"57":75,"58":190,"59":75,"60":255,"61":120,"62":45,"63":200,"64":100,"65":50,"66":180,"67":90,"68":45,"69":255,"70":120,"71":45,"72":190,"73":60,"74":255,"75":120,"76":45,"77":190,"78":60,"79":190,"80":75,"81":190,"82":60,"83":45,"84":190,"85":45,"86":190,"87":75,"88":190,"89":75,"90":190,"91":60,"92":190,"93":90,"94":45,"95":45,"96":190,"97":75,"98":225,"99":60,"100":190,"101":60,"102":90,"103":45,"104":190,"105":75,"106":45,"107":45,"108":45,"109":190,"110":60,"111":120,"112":60,"113":30,"114":45,"115":45,"116":225,"117":75,"118":225,"119":60,"120":225,"121":60,"122":45,"123":45,"124":45,"125":45,"126":45,"127":45,"128":45,"129":255,"130":45,"131":45,"132":35,"133":45,"134":45,"135":45,"136":45,"137":45,"138":45,"139":45,"140":45,"141":45,"142":45,"143":25,"144":3,"145":3,"146":3,"147":45,"148":45,"149":45,"150":3,"151":45,"152":45,"153":45,"154":45,"155":45,"156":45,"157":45,"158":45,"159":45,"160":45,"161":255,"162":90,"163":255,"164":90,"165":255,"166":90,"167":255,"168":90,"169":90,"170":190,"171":75,"172":190,"173":150,"174":170,"175":190,"176":75,"177":190,"178":75,"179":235,"180":120,"181":45,"182":45,"183":190,"184":75,"185":65,"186":45,"187":255,"188":120,"189":45,"190":45,"191":235,"192":120,"193":75,"194":255,"195":90,"196":45,"197":45,"198":30,"199":70,"200":45,"201":225,"202":45,"203":60,"204":190,"205":75,"206":190,"207":60,"208":25,"209":190,"210":75,"211":45,"212":25,"213":190,"214":45,"215":60,"216":120,"217":60,"218":190,"219":75,"220":225,"221":75,"222":60,"223":190,"224":75,"225":45,"226":25,"227":25,"228":120,"229":45,"230":45,"231":120,"232":60,"233":45,"234":45,"235":45,"236":75,"237":45,"238":45,"239":45,"240":45,"241":45,"242":30,"243":3,"244":3,"245":3,"246":45,"247":45,"248":45,"249":3,"250":3,"251":45,"252":45,"253":45,"254":45,"255":45,"256":45,"257":45,"258":45,"259":45,"260":45,"261":255,"262":127,"263":255,"264":90,"265":255,"266":120,"267":45,"268":120,"269":45,"270":255,"271":120,"272":45,"273":255,"274":120,"275":45,"276":200,"277":45,"278":190,"279":45,"280":235,"281":120,"282":45,"283":200,"284":75,"285":255,"286":90,"287":255,"288":120,"289":45,"290":255,"291":120,"292":45,"293":190,"294":120,"295":45,"296":180,"297":200,"298":150,"299":255,"300":255,"301":60,"302":45,"303":45,"304":180,"305":90,"306":45,"307":180,"308":90,"309":120,"310":45,"311":200,"312":200,"313":150,"314":150,"315":150,"316":225,"317":75,"318":225,"319":60,"320":125,"321":60,"322":255,"323":150,"324":90,"325":255,"326":60,"327":255,"328":255,"329":120,"330":45,"331":190,"332":60,"333":255,"334":45,"335":90,"336":90,"337":45,"338":45,"339":190,"340":75,"341":205,"342":155,"343":255,"344":90,"345":45,"346":45,"347":45,"348":45,"349":255,"350":60,"351":45,"352":200,"353":225,"354":45,"355":190,"356":90,"357":200,"358":45,"359":30,"360":125,"361":190,"362":75,"363":255,"364":120,"365":45,"366":255,"367":60,"368":60,"369":25,"370":225,"371":45,"372":45,"373":45,"374":3,"375":3,"376":3,"377":3,"378":3,"379":3,"380":3,"381":3,"382":3,"383":3,"384":45,"385":3,"386":3,"387":45,"388":45,"389":45,"390":45,"391":45,"392":45,"393":45,"394":45,"395":45,"396":255,"397":120,"398":45,"399":255,"400":127,"401":255,"402":45,"403":235,"404":120,"405":45,"406":255,"407":75,"408":45,"409":45,"410":45,"411":45,"412":120,"413":45,"414":45,"415":120,"416":45,"417":200,"418":190,"419":75,"420":190,"421":75,"422":190,"423":75,"424":45,"425":125,"426":60,"427":190,"428":60,"429":45,"430":30,"431":190,"432":75,"433":120,"434":225,"435":60,"436":255,"437":90,"438":255,"439":145,"440":130,"441":30,"442":100,"443":45,"444":45,"445":45,"446":50,"447":75,"448":45,"449":140,"450":60,"451":120,"452":45,"453":140,"454":75,"455":200,"456":190,"457":75,"458":25,"459":120,"460":60,"461":45,"462":30,"463":30,"464":30,"465":30,"466":30,"467":30,"468":30,"469":30,"470":45,"471":45,"472":30,"473":50,"474":30,"475":45,"476":60,"477":45,"478":75,"479":45,"480":3,"481":3,"482":3,"483":3,"484":3,"485":3,"486":3,"487":3,"488":3,"489":30,"490":3,"491":3,"492":45,"493":3,"494":3,"495":45,"496":45,"497":45,"498":45,"499":45,"500":45,"501":45,"502":45,"503":45,"504":255,"505":255,"506":255,"507":120,"508":45,"509":255,"510":90,"511":190,"512":75,"513":190,"514":75,"515":190,"516":75,"517":190,"518":75,"519":255,"520":120,"521":45,"522":190,"523":75,"524":255,"525":120,"526":45,"527":190,"528":45,"529":120,"530":60,"531":255,"532":180,"533":90,"534":45,"535":255,"536":120,"537":45,"538":45,"539":45,"540":255,"541":120,"542":45,"543":255,"544":120,"545":45,"546":190,"547":75,"548":190,"549":75,"550":25,"551":180,"552":90,"553":45,"554":120,"555":60,"556":255,"557":190,"558":75,"559":180,"560":90,"561":45,"562":190,"563":90,"564":45,"565":45,"566":45,"567":45,"568":190,"569":60,"570":75,"571":45,"572":255,"573":60,"574":200,"575":100,"576":50,"577":200,"578":100,"579":50,"580":190,"581":45,"582":255,"583":120,"584":45,"585":190,"586":75,"587":200,"588":200,"589":75,"590":190,"591":75,"592":190,"593":60,"594":75,"595":190,"596":75,"597":255,"598":90,"599":130,"600":60,"601":30,"602":190,"603":60,"604":30,"605":255,"606":90,"607":190,"608":90,"609":45,"610":75,"611":60,"612":45,"613":120,"614":60,"615":25,"616":200,"617":75,"618":75,"619":180,"620":45,"621":45,"622":190,"623":90,"624":120,"625":45,"626":45,"627":190,"628":60,"629":190,"630":60,"631":90,"632":90,"633":45,"634":45,"635":45,"636":45,"637":15,"638":3,"639":3,"640":3,"641":3,"642":3,"643":3,"644":3,"645":3,"646":3,"647":3,"648":3,"649":3,"650":45,"651":45,"652":45,"653":45,"654":45,"655":45,"656":45,"657":45,"658":45,"659":255,"660":127,"661":255,"662":120,"663":45,"664":255,"665":120,"666":45,"667":220,"668":65,"669":225,"670":120,"671":45,"672":200,"673":45,"674":220,"675":65,"676":160,"677":190,"678":75,"679":180,"680":90,"681":45,"682":200,"683":140,"684":200,"685":140,"686":190,"687":80,"688":120,"689":45,"690":225,"691":55,"692":225,"693":55,"694":190,"695":75,"696":45,"697":45,"698":45,"699":45,"700":45,"701":100,"702":180,"703":60,"704":45,"705":45,"706":45,"707":75,"708":120,"709":60,"710":120,"711":60,"712":190,"713":55,"714":190,"715":45,"716":45,"717":45,"718":3,"719":3,"720":3,"721":3,"722":45,"723":45,"724":45,"725":45,"726":45,"727":45,"728":45,"729":45,"730":45,"731":255,"732":120,"733":45,"734":255,"735":127,"736":255,"737":120,"738":45,"739":225,"740":60,"741":45,"742":190,"743":75,"744":190,"745":90,"746":60,"747":190,"748":75,"749":190,"750":60,"751":200,"752":100,"753":190,"754":75,"755":190,"756":75,"757":120,"758":45,"759":140,"760":70,"761":235,"762":120,"763":45,"764":60,"765":45,"766":45,"767":90,"768":45,"769":140,"770":60,"771":60,"772":3,"773":3,"774":30,"775":45,"776":70,"777":180,"778":45,"779":80,"780":70,"781":25,"782":45,"783":45,"784":45,"785":3,"786":3,"787":3,"788":3,"789":45,"790":45,"791":45,"792":45,"793":45,"794":45,"795":45,"796":45,"797":45,"798":45,"799":45,"800":255,"801":3,"802":3,"803":45,"804":45,"805":30,"806":30,"807":3,"808":3,"809":3,"810":45,"811":45,"812":45,"813":45,"814":45,"815":45,"816":45,"817":45,"818":45,"819":255,"820":90,"821":255,"822":120,"823":45,"824":255,"825":120,"826":45,"827":255,"828":127,"829":190,"830":75,"831":255,"832":127,"833":255,"834":75,"835":255,"836":45,"837":255,"838":120,"839":45,"840":255,"841":45,"842":45,"843":255,"844":120,"845":45,"846":255,"847":60,"848":75,"849":45,"850":190,"851":75,"852":180,"853":45,"854":120,"855":60,"856":235,"857":120,"858":45,"859":255,"860":120,"861":45,"862":45,"863":90,"864":30,"865":45,"866":45,"867":90,"868":200,"869":100,"870":45,"871":75,"872":190,"873":75,"874":60,"875":60,"876":30,"877":180,"878":190,"879":90,"880":45,"881":45,"882":45,"883":45,"884":45,"885":45,"886":45,"887":45,"888":10,"889":10,"890":255,"891":3,"892":3,"893":3,"894":3,"895":3,"896":3,"897":3,"898":3,"899":135,"900":115,"901":75,"902":135,"903":135,"904":135,"905":3,"906":45,"907":45,"908":45,"909":45,"910":45,"911":45,"912":45,"913":45,"914":45,"915":255,"916":100,"917":255,"918":120,"919":190,"920":30,"921":190,"922":80,"923":45,"924":150,"925":75,"926":190,"927":90,"928":255,"929":120,"930":45,"931":190,"932":255,"933":120,"934":45,"935":90,"936":25,"937":25,"938":190,"939":50,"940":180,"941":90,"942":150,"943":75,"944":190,"945":90,"946":190,"947":45,"948":190,"949":90,"950":120,"951":190,"952":75,"953":190,"954":45,"955":120,"956":60,"957":190,"958":90,"959":45,"960":255,"961":50,"962":25,"963":200,"964":45,"965":190,"966":75,"967":190,"968":25,"969":70,"970":25,"971":120,"972":60,"973":100,"974":150,"975":50,"976":100,"977":25,"978":100,"979":45,"980":90,"981":45,"982":45,"983":25,"984":30,"985":50,"986":50,"987":30,"988":30,"989":30,"990":30,"991":50,"992":50,"993":30,"994":30,"995":30,"996":45,"997":25,"998":10,"999":45,"1000":45,"1001":6,"1002":6,"1003":6,"1004":6,"1005":10,"1006":10,"1007":3,"1008":3,"1009":5,"1010":5,"1011":45,"1012":120,"1013":60,"1014":3,"1015":3,"1016":3,"1017":5,"1018":10,"1019":10,"1020":10,"1021":10,"1022":10,"1023":10,"1024":255,"1025":3};
 
+/* ---- LORE_PT_DEX (extraído de docs/pokemon-rpg/site/diario-de-treinador.html) ---- */
+/* Lore em pt-BR (Cap. "a lore dos pokémon tem que ser traduzida pra
+   pt-br... vá atrás das informações no bulbapedia"): 1 entrada real
+   da Pokédex por Espécie, traduzida à mão a partir do texto oficial
+   em inglês (mesmo conteúdo que aparece no Bulbapedia -- PokeAPI é
+   só o CDN que hospeda o texto oficial dos jogos, não uma fonte
+   paralela). Nunca gerado/inventado -- sempre a tradução de uma
+   entrada real de algum jogo (preferindo a mais recente disponível
+   pra cada Espécie). */
+var LORE_PT_DEX = {
+1:"Enquanto é jovem, usa os nutrientes armazenados na semente que carrega nas costas para crescer.",
+2:"A exposição à luz do sol aumenta sua força. A luz do sol também faz o broto em suas costas crescer.",
+3:"Um aroma sedutor emana de sua flor. A fragrância acalma os que estão em batalha.",
+4:"Desde que nasce, uma chama arde na ponta de seu rabo. Sua vida terminaria se a chama se apagasse.",
+5:"Se fica agitado durante uma batalha, solta chamas intensas, incinerando tudo ao redor.",
+6:"Suas asas conseguem levá-lo a quase 1.400 metros de altitude. Ele expele fogo em temperaturas altíssimas.",
+7:"Quando se sente ameaçado, recolhe os membros para dentro da concha e esguicha água pela boca.",
+8:"Controla com habilidade suas orelhas e cauda peludas para manter o equilíbrio enquanto nada.",
+9:"Os canhões em forma de foguete em sua concha disparam jatos de água capazes de furar aço grosso.",
+10:"Suas patas curtas têm ventosas na ponta, o que permite subir encostas e paredes sem cansar.",
+11:"Mesmo protegido por uma casca resistente, o corpo por dentro é macio. Não aguenta um ataque forte.",
+12:"Coleta mel todos os dias. Espalha o mel nos pelos das patas para levá-lo de volta ao ninho.",
+13:"Cuidado com o ferrão afiado na cabeça. Esconde-se na grama e nos arbustos, onde come folhas.",
+14:"Consegue se mover só um pouco. Quando em perigo, pode projetar o ferrão para envenenar o inimigo.",
+15:"Tem três ferrões venenosos nas patas dianteiras e na cauda. São usados para golpear o inimigo repetidas vezes.",
+16:"Muito dócil. Se atacado, costuma levantar areia pra se proteger em vez de revidar.",
+17:"Cheio de vitalidade, esse Pokémon voa sem parar por seu grande território em busca de presas.",
+18:"Voa em velocidade Mach 2 atrás de presas. Suas garras grandes são temidas como armas cruéis.",
+19:"Rói qualquer coisa com suas presas. Se você vir um, pode ter certeza de que outros 40 vivem por perto.",
+20:"Suas patas traseiras têm membranas. Funcionam como nadadeiras, então ele consegue nadar em rios para caçar.",
+21:"Não é bom em voar alto. Porém, consegue voar muito rápido para proteger seu território.",
+22:"Um Pokémon que existe há muitos anos. Se sente perigo, voa alto e para longe instantaneamente.",
+23:"Quanto mais velho fica, mais comprido cresce. À noite, enrola seu corpo longo em galhos de árvore para descansar.",
+24:"Os padrões assustadores em sua barriga já foram estudados. Seis variações foram confirmadas.",
+25:"Tem bolsas nas bochechas onde guarda eletricidade. Esse esperto morador da floresta assa frutinhas duras com um choque elétrico antes de comê-las.",
+26:"Consegue descarregar rajadas de eletricidade acima de 100.000 volts — um único golpe com essa potência derrubaria um Copperajah da minha terra natal.",
+27:"Escava a terra para fazer seu ninho. Se pedras duras atrapalham a escavação, usa as garras afiadas para quebrá-las e continua cavando.",
+28:"Sobe em árvores fincando as garras afiadas. Sandslash compartilha as frutinhas que coleta, deixando-as cair para os Sandshrew que esperam embaixo da árvore.",
+29:"Usa os incisivos duros para triturar e comer frutinhas. A ponta do chifre da fêmea de Nidoran é um pouco mais arredondada que a do macho.",
+30:"Se o grupo é ameaçado, esses Pokémon se unem para atacar inimigos com um coro de ondas ultrassônicas.",
+31:"Acalma os filhotes colocando-os entre os espinhos nas costas. Os espinhos nunca secretam veneno enquanto há filhotes por perto.",
+32:"Pequeno mas corajoso, esse Pokémon mantém sua posição e arrisca até a vida em batalha para proteger a fêmea de quem é amigo.",
+33:"É nervoso e reage com agressividade rapidamente. A potência do seu veneno aumenta junto com o nível de adrenalina no corpo.",
+34:"Nidoking tem orgulho da própria força. É agressivo e cheio de energia em batalha, usando a cauda grossa e o chifre capaz de esmagar diamantes.",
+35:"Pode ser encontrado em áreas tranquilas nas montanhas em noites de lua cheia. Sua dança e suas asinhas que brilham fracamente dão a ele um charme mágico.",
+36:"Diz a lenda que, em noites claras e silenciosas, ele escuta as vozes de seus parentes que vivem na lua. Eu também penso com frequência na minha terra natal, tão distante.",
+37:"Em sua barriga arde um fogo, que Vulpix expele em forma de bolas de fogo. Quando jovem, esse Pokémon tem apenas uma cauda branca. Ao amadurecer, essa cauda única se divide em seis.",
+38:"A pelagem dourada e brilhante é magnífica. Diz-se que essa espécie guarda um poder sagrado em suas nove caudas longas e vive por um milênio.",
+39:"Mudando livremente o comprimento de onda da voz, Jigglypuff canta uma melodia misteriosa capaz de deixar qualquer ouvinte com sono.",
+40:"Tem orgulho do seu pelo, fino e delicado. Em especial, o cacho na testa tem uma textura perfeitamente celestial.",
+41:"Faz seu lar em cavernas sombrias. Seus olhos atrofiados o deixaram cego, então ele mapeia os arredores por ondas sonoras que emite pela boca enquanto voa.",
+42:"Crava suas presas afiadas em outras criaturas e suga o sangue delas. Um olhar mais atento às presas revela que são ocas, como canudos.",
+43:"Durante o dia, fica no subsolo frio para evitar o sol. Cresce se banhando na luz da lua.",
+44:"O que parece baba é na verdade um mel doce. É bem grudento e gruda com teimosia se você tocar.",
+45:"Quanto maiores as pétalas, mais tóxico é o pólen que contêm. Sua cabeça grande é pesada e difícil de sustentar.",
+46:"Às vezes visto na base de árvores em florestas úmidas. Os cogumelos nas costas — chamados tochukaso — não aparecem em espécimes recém-nascidos, e sim conforme Paras amadurece.",
+47:"Espécimes sem cogumelo desse Pokémon ficam parados na floresta sem se mexer, o que reforça a hipótese de que o cogumelo grande controla as ações de Parasect.",
+48:"Seus olhos grandes funcionam como radar. Num lugar iluminado, dá pra ver que são aglomerados de muitos olhinhos.",
+49:"As escamas em pó de suas asas são difíceis de tirar da pele. Também contêm veneno que vaza ao contato.",
+50:"Cava pela terra a pouca profundidade. Deixa terra revirada no rastro, o que facilita encontrá-lo.",
+51:"Esses trigêmeos de Diglett cavam mais de 100 quilômetros abaixo do nível do mar. Ninguém sabe como é lá embaixo.",
+52:"Lava o rosto com frequência pra manter a moeda na testa impecável. Não se dá bem com o Meowth de Galar.",
+53:"Seu comportamento elegante e refinado choca com o de Perrserker, mais selvagem. A relação entre os dois é de desdém mútuo.",
+54:"Sofre de dores de cabeça constantes. Se a agonia fica grande demais, o poder latente de Psyduck explode, contra a vontade dele. Por isso, estou pesquisando formas de aliviar a dor.",
+55:"Tem um corpo forte, com membranas nas mãos e nos pés. Golduck nada com facilidade em mares agitados, abrindo caminho pelas ondas altas com as garras.",
+56:"Um Pokémon ágil que vive em árvores. Fica com raiva com facilidade e não hesita em atacar qualquer coisa.",
+57:"Só para de ficar com raiva quando não tem mais ninguém por perto. Presenciar esse momento é muito difícil.",
+58:"Patrulham o território em duplas. Acredito que os componentes de rocha ígnea no pelo dessa espécie sejam resultado da atividade vulcânica do habitat.",
+59:"Ataca os inimigos com presas envoltas em chamas ardentes. Apesar do seu porte, ele finta com agilidade para todos os lados, levando os oponentes numa perseguição enganosamente alegre enquanto quase dança ao redor deles.",
+60:"Em rios de água corrente rápida, esse Pokémon se agarra a uma pedra usando seus lábios grossos, que funcionam como ventosa.",
+61:"O suor desse Pokémon é um muco escorregadio. Quando capturado, Poliwhirl consegue escapulir das mãos dos inimigos e fugir.",
+62:"Poliwrath é habilidoso tanto na natação quanto nas artes marciais. Usa os braços bem treinados para desferir socos poderosos.",
+63:"Passa 18 horas do dia dormindo. Mesmo dormindo, Abra consegue controlar seus poderes psíquicos — se o perigo se aproximar, o Pokémon simplesmente se teleporta para longe.",
+64:"Há rumores de que uma criança com poderes místicos se transformou em Kadabra; porém, isso nunca foi confirmado. Suspeito que a colher que Kadabra segura amplifica suas ondas cerebrais.",
+65:"Quanto mais tempo Alakazam vive, maior e mais pesada fica sua cabeça. Nossos testes mostraram que a força dos seus poderes psíquicos se relaciona diretamente com o peso da cabeça.",
+66:"Apesar de pequeno como uma criança, tem força suficiente para arremessar facilmente um adulto robusto. Buscando ficar cada vez mais forte, Machop treina carregando um Graveler nos ombros.",
+67:"Uma criatura resistente, de físico robusto e resistência sem limites. Ama treinar acima de tudo e ajuda voluntariamente em tarefas como construção e desmatamento.",
+68:"No combate corpo a corpo, seus quatro braços garantem domínio ofensivo e defensivo. Num piscar de olhos, esse Pokémon valente consegue esmagar os inimigos com mais de 1.000 golpes de seus punhos.",
+69:"Prefere lugares quentes e úmidos. Captura insetos pequenos com seus tentáculos e os devora.",
+70:"Quando está com fome, engole qualquer coisa que se mova. Sua presa infeliz é dissolvida por ácidos fortes.",
+71:"Atrai presas com o aroma doce de mel. Engolida inteira, a presa é dissolvida em um dia, ossos e tudo.",
+72:"Disparam raios dos orbes vítreos e magenta que lembram olhos no topo da cabeça, e boiam em mares rasos. Durante a maré baixa, às vezes são encontrados ressecados nas praias.",
+73:"Tem 80 tentáculos, cada um com a ponta venenosa. Esses tentáculos também se esticam, alongando-se quando Tentacruel tenta capturar uma presa. Tenha cuidado.",
+74:"Vive em regiões montanhosas, usando os braços para escalar trilhas íngremes. Pode dar trabalho — chutar um sem querer faz com que ele fique furioso e saia atrás de você.",
+75:"Habita buracos cavados em paredes de pedra a pique. Gosta de rolar morro abaixo como se fosse uma pedra numa queda de rochas, então fique de olho pra cima ao atravessar trilhas de montanha.",
+76:"A casca rochosa é trocada todo ano. A casca descartada então se desfaz, virando um monte de terra que pode ser espalhada pelos campos para estimular o crescimento das plantações.",
+77:"Esses Pokémon vivem em manadas nas pastagens. Os potrinhos recém-nascidos não têm a crina flamejante, que se desenvolve cerca de uma hora após o nascimento.",
+78:"Com a crina flamejante brilhando, Rapidash dispara como uma flecha pela terra. Essa criatura prodigiosamente veloz consegue atravessar a vasta região de Hisui em um dia e meio.",
+79:"Quando a cauda desse Pokémon é molhada, um doce escorre dela. Slowpoke usa esse traço para atrair e fisgar outros Pokémon.",
+80:"Uma mordida de Shellder chocou esse Pokémon a ponto de fazê-lo ficar em pé sobre duas pernas. Se o Shellder soltar, parece que Slowbro volta a ser um Slowpoke.",
+81:"Um Pokémon bizarro, com um único olho embutido numa esfera de ferro. Suspeito que essa criatura levita por causa do magnetismo que emite dos braços, que lembram ímãs em ferradura.",
+82:"Três Magnemite se juntaram para evoluir nesse Pokémon. É motivo de muita irritação da minha parte, já que seu forte magnetismo destrói meus equipamentos de pesquisa.",
+83:"Usam um talo de planta como arma, mas nem todos o usam do mesmo jeito. Vários estilos distintos de luta com o talo já foram observados.",
+84:"Suas asas curtas dificultam o voo. Em vez disso, esse Pokémon corre em alta velocidade com as pernas desenvolvidas.",
+85:"Uma das duas cabeças de Doduo se divide para formar essa espécie única. Corre a quase 65 km/h pelas pradarias.",
+86:"Adora o frio congelante. Curte nadar num clima gélido de cerca de -10 graus Celsius.",
+87:"Seu corpo inteiro é branco como a neve. Imune até ao frio intenso, nada com força em águas geladas.",
+88:"Feito de lodo coagulado. Cheira tão mal que é impossível tocar. Nem o mato cresce por onde ele passa.",
+89:"Cheira tão mal que pode causar desmaios. Por causa da degeneração do nariz, perdeu o olfato.",
+90:"Sua concha dura repele qualquer tipo de ataque. Só fica vulnerável quando a concha está aberta.",
+91:"Depois que fecha a concha com força, é impossível abri-la, mesmo com força sobre-humana.",
+92:"Gasoso e completamente impalpável. Também é bem perigoso — inalar parte do seu corpo venenoso faz a pessoa desmaiar na hora.",
+93:"Esse espírito assustador e malévolo consegue deslizar por paredes, aparecendo onde quiser. Segundo boatos, as vítimas da lambida de um Haunter definham até a morte, dia após dia.",
+94:"Possui as sombras de possíveis vítimas numa tentativa de roubar suas vidas. Se sua sombra começar a rir, você precisa pegar um amuleto de proteção imediatamente!",
+95:"Essa corrente de pedras imensas lembra uma serpente gigante. Tremores sacodem a terra lá em cima enquanto ele cava fundo no subsolo, se alimentando de pedregulhos pelo caminho.",
+96:"Se você dormir perto dele o tempo todo, às vezes ele mostra sonhos que comeu no passado.",
+97:"Evite contato visual se cruzar com um. Ele vai tentar colocá-lo pra dormir usando seu pêndulo.",
+98:"Se sente o perigo se aproximando, se cobre de bolhas que solta pela boca para parecer maior.",
+99:"Sua garra enorme é muito poderosa, mas quando não está em batalha, a garra só atrapalha.",
+100:"Um Pokémon enigmático que por acaso se parece com uma Poké Bola. Quando animado, descarrega a corrente elétrica armazenada na barriga e solta uma grande e estrondosa risada.",
+101:"O tecido na superfície do corpo tem uma composição curiosamente parecida com a de uma Apricórnia. Quando irritado, esse Pokémon libera uma corrente elétrica equivalente a 20 raios.",
+102:"Esses Pokémon ficam nervosos quando não estão num grupo de seis. No minuto em que até um único membro do grupo desaparece, os Exeggcute ficam covardes.",
+103:"Quando trabalham juntas, as três cabeças de Exeggutor conseguem liberar uma energia psíquica poderosa. Dias nublados deixam esse Pokémon lento.",
+104:"Esse Pokémon usa o crânio de sua mãe falecida. Às vezes os sonhos de Cubone o fazem chorar, mas cada lágrima derramada o deixa mais forte.",
+105:"Quando esse Pokémon evoluiu, o crânio de sua mãe se fundiu a ele. O temperamento de Marowak também ficou mais violento na mesma época.",
+106:"As pernas se contraem e esticam livremente. As pernas elásticas permitem acertar um inimigo distante com um chute ascendente.",
+107:"Seus socos cortam o ar. Porém, parece que ele precisa de uma pausa curta depois de lutar por três minutos.",
+108:"Usa a língua comprida com habilidade, como se fosse um braço. A saliva viscosa desse Pokémon, depois de coletada e fervida, rende um adesivo forte e bem útil.",
+109:"Adora ar poluído. Alguns dizem que Koffing costumava ser mais comum na região de Galar do que é hoje.",
+110:"Não consegue sugar ar tão bem quanto um Weezing de Galar, mas as toxinas que cria são mais potentes que as do seu equivalente.",
+111:"Absurdamente forte — quando bate a cabeça numa montanha, é a montanha que se despedaça. Mas suas pernas curtas têm dificuldade em curvas, e ele só consegue parar colidindo com algo.",
+112:"Gira o chifre rapidamente para perfurar a rocha. Ele desfila por regiões vulcânicas, protegido do calor da lava por sua pele resistente, parecida com uma armadura.",
+113:"Esse Pokémon de coração puro divide seus ovos com os feridos.",
+114:"Fica completamente coberto por vinhas azuis, o que impede qualquer vislumbre de sua verdadeira identidade. As vinhas dão uma sensação refrescante quando mastigadas — são úteis como tempero.",
+115:"Há registros de uma criança humana perdida que foi criada por uma Kangaskhan sem filhotes.",
+116:"Nadam com movimentos parecidos com uma dança e provocam a formação de redemoinhos. Os Horsea competem para ver quem consegue gerar o maior redemoinho.",
+117:"A boca de Seadra é fina, mas seu poder de sucção é forte. Num instante, Seadra consegue sugar comida maior que a abertura da própria boca.",
+118:"Suas nadadeiras dorsal e peitoral são fortemente desenvolvidas, como músculos. Consegue nadar a uma velocidade de cinco nós.",
+119:"Usando o chifre, cava buracos em pedregulhos no leito dos rios, criando ninhos para evitar que seus ovos sejam levados pela correnteza.",
+120:"Peixes Pokémon costumam mordiscá-lo, mas Staryu não se incomoda. Seu corpo se regenera rapidamente, mesmo se uma parte for completamente arrancada.",
+121:"Starmie nada girando o corpo em alta velocidade. Enquanto esse Pokémon cruza o oceano, absorve pequenos planctons.",
+122:"O comportamento desse Pokémon parecido com um palhaço lembra uma pantomima. Ele cria paredes invisíveis usando uma força emitida pelas pontas dos dedos.",
+123:"As foices grandes e assustadoramente afiadas em seus antebraços são armas verdadeiramente temíveis. As tentativas de fuga da presa são frustradas sem falha pelos movimentos ágeis desse Pokémon.",
+124:"Os Jynx de Galar costumam ter vozes belas e delicadas. Alguns desses Pokémon até reuniram um grupo de fãs.",
+125:"Alimenta-se de energia elétrica. Durante pancadas de chuva repentinas sob nuvens de tempestade ameaçadoras, é possível ver Electabuzz escalando árvores altas, onde o Pokémon então espera um raio cair.",
+126:"A lenda diz que esse Pokémon nasceu da cratera de um vulcão. Quando ferido, ele se banha em lava para curar o corpo, quase como alguém que mergulha numa fonte termal.",
+127:"Esse Pokémon fecha suas pinças sobre a presa e então a parte ao meio ou a arremessa para longe.",
+128:"Os Tauros da região de Galar têm um temperamento instável e não deixam que ninguém monte em suas costas.",
+129:"Um Pokémon fraco e patético, quase imbecil, mas ainda assim muito resistente. Indiferente a águas turvas, pode ser encontrado vivendo em todo tipo de lugar.",
+130:"Suspeito que esse Pokémon seja a verdadeira identidade de um dragão descrito em textos antigos, que afirmavam que ele arrasou uma vila inteira com raios incandescentes disparados de sua boca.",
+131:"Cruzar mares gelados não é problema para esse Pokémon resistente ao frio. Sua pele lisa é um pouco fria ao toque.",
+132:"Quando encontra outro Ditto, se move mais rápido que o normal para duplicar esse oponente com exatidão.",
+133:"Guarda o potencial de evoluir em várias formas diferentes. Dentro de Eevee está a chave para os mistérios da evolução Pokémon — tenho certeza disso.",
+134:"Testes mostram que suas células se parecem muito com moléculas de água, o que talvez explique sua habilidade de esconder sua forma quando submerso. Acredito que a origem do folclore das sereias venha desse Pokémon.",
+135:"Eriça o pelo em pontas afiadas como agulhas quando está furioso. É possível ouvir a eletricidade crepitando em sua respiração quando ele exala.",
+136:"Chamas ardem dentro de um órgão em forma de bolsa dentro desse Pokémon. Quando Flareon inala, essas chamas crescem em intensidade, chegando a impressionantes 1.650 graus Celsius.",
+137:"Não tem batimento cardíaco perceptível e parece não respirar, mas mesmo assim aparenta funcionar sem problema nenhum. Nem consigo começar a explicar essa anomalia totalmente bizarra.",
+138:"Esse Pokémon é um membro de uma espécie antiga e extinta. Omanyte rema pela água com seus 10 tentáculos, parecendo estar apenas flutuando à deriva.",
+139:"As presas afiadas de Omastar conseguiriam esmagar rocha, mas o Pokémon só consegue atacar as presas que chegam ao alcance de seus tentáculos.",
+140:"Embora alguns digam que essa espécie está extinta, avistamentos de Kabuto aparentemente são bem comuns em alguns lugares.",
+141:"A causa da extinção dessa espécie é desconhecida. Kabutops eram Pokémon agressivos que habitavam mares quentes.",
+142:"As presas de Aerodactyl, parecidas com uma serra, conseguem rasgar a pele em farrapos — até a pele de Pokémon do tipo Aço.",
+143:"Esse glutão aparece em vilarejos sem aviso e devora por completo seus depósitos de arroz — esses acontecimentos há muito tempo são contados entre os mais graves desastres.",
+144:"Esse Pokémon consegue controlar gelo à vontade. Diz-se que Articuno vive em montanhas nevadas cheias de permafrost.",
+145:"Zapdos é um Pokémon-pássaro lendário. Diz-se que, quando Zapdos esfrega as penas, um raio cai logo em seguida.",
+146:"Há histórias desse Pokémon usando suas asas radiantes, envoltas em chamas, para iluminar caminhos para quem se perdeu nas montanhas.",
+147:"Por muito tempo, esse Pokémon foi considerado nada mais que um mito. O pequeno caroço na testa de Dratini é na verdade um chifre que ainda está nascendo.",
+148:"Esse Pokémon acumula poder nas esferas de sua cauda e controla o clima. Quando envolto por uma aura, Dragonair tem uma aparência mística.",
+149:"Esse Pokémon é conhecido como a Encarnação do Mar. Mastros de proa parecidos com Dragonite decoram a frente de muitos navios.",
+150:"Seu DNA é quase idêntico ao de Mew. Porém, seu tamanho e temperamento são bem diferentes.",
+151:"Quando observado ao microscópio, é possível ver os pelos curtos, finos e delicados desse Pokémon.",
+152:"Em batalha, Chikorita balança sua folha para manter o inimigo afastado. Porém, um aroma doce também exala da folha, acalmando o Pokémon em combate e criando um clima aconchegante e amigável ao redor.",
+153:"O pescoço de Bayleef é cercado por folhas enroladas. Dentro de cada folha tubular há um pequeno broto de árvore. O aroma desse broto deixa as pessoas animadas.",
+154:"O aroma da flor de Meganium acalma e serena as emoções. Em batalha, esse Pokémon libera ainda mais desse cheiro calmante para amenizar o espírito de luta do inimigo.",
+155:"Vem da região de Johto. Embora costume ficar enrolado numa bola por causa de seu temperamento tímido, guarda um poder de fogo tremendo.",
+156:"O pelo dessa criatura é muito misterioso — é totalmente imune ao toque ardente das chamas. Se Quilava virar as costas pra você, cuidado! Essa postura indica um ataque prestes a acontecer.",
+157:"Diz-se que ele purifica almas perdidas e abandonadas com suas chamas e as guia para a vida após a morte. Acredito que sua forma tenha sido influenciada pela energia da montanha sagrada que se ergue no centro de Hisui.",
+158:"Apesar do corpo pequeno, as mandíbulas de Totodile são muito poderosas. Embora o Pokémon possa achar que está apenas dando uma mordidinha de brincadeira, sua mordida tem força suficiente para causar ferimentos sérios.",
+159:"Depois que Croconaw fecha as mandíbulas sobre o inimigo, não solta de jeito nenhum. Como as pontas de suas presas são curvadas para trás como anzóis farpados, ficam impossíveis de remover depois de cravadas.",
+160:"Feraligatr intimida os inimigos abrindo sua boca enorme. Em batalha, ele chuta o chão com força usando suas patas traseiras grossas e poderosas para investir contra o inimigo numa velocidade incrível.",
+161:"Quando Sentret dorme, faz isso enquanto outro fica de guarda. O sentinela acorda os demais ao primeiro sinal de perigo. Quando esse Pokémon fica separado do seu bando, fica incapaz de dormir de tanto medo.",
+162:"Furret tem um corpo bem esguio. Quando é atacado, consegue se espremer com habilidade por espaços estreitos e escapar. Apesar dos membros curtos, esse Pokémon é muito ágil e veloz.",
+163:"Começa a piar sempre no mesmo horário todo dia. Alguns Treinadores os usam no lugar de um relógio.",
+164:"Quando precisa pensar, gira a cabeça 180 graus para aguçar seu poder intelectual.",
+165:"Esses Pokémon bem covardes se juntam e usam Reflect para proteger o ninho.",
+166:"Voa pelo céu noturno, espalhando um pó brilhante. Segundo alguns, se esse pó grudar em você, coisas boas vão acontecer.",
+167:"Embora o veneno de suas presas não seja tão forte, é potente o bastante para enfraquecer uma presa presa em sua teia.",
+168:"Expele fios pela boca para capturar sua presa. Quando a noite cai, sai da teia para caçar de forma agressiva.",
+169:"Seus membros traseiros viraram outro par de asas. Crobat manobra com maestria suas quatro asas para se lançar de forma primorosa até pelas cavernas mais apertadas, sem perder velocidade.",
+170:"No fundo escuro do oceano, sua única forma de comunicação são as luzes que piscam sem parar.",
+171:"Esse Pokémon emite uma luz forte que cega a presa. Isso cria uma abertura para ele desferir um ataque elétrico.",
+172:"Pichu guarda eletricidade nas bolsas das bochechas, mas descarrega sem querer quando fica agitado ou animado. Por ainda ser imaturo, o Pokémon lida com eletricidade de forma bem desajeitada.",
+173:"Em silhueta, lembram o brilho cintilante de uma estrela. Quando estrelas cadentes caem do céu noturno, os Cleffa se reúnem em número e dançam como se fossem realmente encarnações das estrelas.",
+174:"Aproveitando a maciez do próprio corpo, Igglybuff se move como se estivesse pulando. Seu corpo fica rosa-escuro quando a temperatura sobe.",
+175:"Essa criatura oval é frequentemente confundida com um ovo em movimento quando encontrada nos campos ou nas montanhas. Seu sorriso sincero acalma a alma.",
+176:"Não existem registros de Togetic sendo visto na natureza. Há boatos de que evolui sob o cuidado amoroso de um companheiro humano de confiança, a quem o Pokémon então concede grande alegria.",
+177:"Como suas asas ainda não cresceram totalmente, precisa pular para se locomover. Está sempre encarando alguma coisa.",
+178:"Esse Pokémon estranho consegue ver tanto o passado quanto o futuro. Observa o movimento do sol o dia inteiro.",
+179:"Esfregar sua lã gera eletricidade. Você vai querer fazer carinho nele porque é fofo, mas se usar a mão nua, vai levar um choque doloroso.",
+180:"Guarda eletricidade em sua lã fofa. Se armazena demais, começa a ficar careca naquelas manchas.",
+181:"Sua cauda brilha forte e intensa. É valorizada desde tempos antigos como um farol para os marinheiros.",
+182:"Os Bellossom às vezes se reúnem e parecem dançar. Dizem que a dança é um ritual para invocar o sol.",
+183:"Mesmo depois que Marill nada num mar frio, seu pelo repelente à água seca quase assim que ele sai da água. É por isso que esse Pokémon nunca sente frio.",
+184:"Esses Pokémon criam bolhas cheias de ar. Quando os Azurill brincam nos rios, os Azumarill os cobrem com essas bolhas.",
+185:"Embora finja ser uma árvore, não engana nem as crianças. Ao toque, seu corpo parece mais com rocha do que com casca de árvore. A aversão extrema de Sudowoodo à água merece nota especial.",
+186:"O grito de um macho é mais alto que o de uma fêmea. Machos Politoed com vozes graves e ameaçadoras fazem mais sucesso com o sexo oposto.",
+187:"Esse Pokémon flutua e boia ao sabor do vento. Se sente ventos fortes se aproximando, Hoppip entrelaça suas folhas com outros Hoppip para se preparar contra ser levado pelo vento.",
+188:"A flor de Skiploom desabrocha quando a temperatura passa dos 18 graus Celsius. O quanto a flor se abre depende da temperatura. Por isso, esse Pokémon às vezes é usado como termômetro.",
+189:"Jumpluff cavalga os ventos quentes do sul para cruzar o mar e voar até terras estrangeiras. O Pokémon desce ao chão quando encontra ar frio enquanto está flutuando.",
+190:"Esse morador do topo das árvores tem uma cauda tão hábil quanto uma mão. Escritos antigos descrevem esse Pokémon como uma curiosidade de um braço só.",
+191:"Sunkern tenta se mover o mínimo possível. Faz isso porque tenta conservar todos os nutrientes que armazenou no corpo para sua evolução. Não come nada, sobrevivendo só do orvalho da manhã.",
+192:"Sunflora converte energia solar em nutrição. Se movimenta ativamente durante o dia quando está quente. Para de se mover assim que o sol se põe à noite.",
+193:"Suas asas frágeis são tão finas que dá pra ver através delas. Porém, durante o voo, essas asas exibem o poder de agitar o ar com força suficiente para lançar uma casa pelos ares.",
+194:"Quando caminha em terra, cobre o corpo com uma película venenosa que evita que a pele desidrate.",
+195:"Seu corpo é sempre viscoso. Costuma bater a cabeça no fundo do rio enquanto nada, mas parece não se importar.",
+196:"Detém um poder arcano com o qual consegue prever o clima e até os pensamentos das pessoas. Quando banhado pelo sol, o orbe vermelho em sua testa brilha e acumula energia.",
+197:"É mais ativo nas altas horas da noite, quando o luar banha a terra. Seus olhos grandes conseguem cortar a escuridão e enxergar a presa com clareza absoluta.",
+198:"Amplamente evitado como portador de má sorte. Ao cruzar caminho com essa criatura, me disseram que é preciso recitar 'Workrum, Workrum — má sorte, não venha' como um encantamento protetor.",
+199:"Slowking consegue resolver qualquer problema apresentado a ele, mas ninguém entende nada do que Slowking diz.",
+200:"Se esconde na escuridão, arrepiando viajantes com seu choro infantil. Enquanto observa os viajantes assustados com prazer, os orbes vermelhos em seu peito emitem uma luz sinistra.",
+201:"É difícil acreditar que esses Pokémon de formato estranho sejam criaturas realmente vivas. Já apontei que as várias formas da espécie lembram escritas de outras terras; ninguém me leva a sério.",
+202:"Para manter sua cauda preta como breu escondida, vive quieto na escuridão. Nunca é o primeiro a atacar.",
+203:"A cabeça traseira de Girafarig contém um cérebro pequeno demais para pensar. Porém, a cabeça de trás não precisa dormir, então consegue vigiar os arredores 24 horas por dia.",
+204:"Gruda casca de árvore em si mesmo com a própria saliva, ficando mais grosso e maior. Pineco idosos são absurdamente enormes.",
+205:"No momento em que engole sua presa, o interior de sua concha fica exposto, mas até hoje ninguém jamais viu essa cena.",
+206:"Os ninhos onde os Dunsparce vivem são labirintos de túneis. Nunca se perdem dentro do próprio ninho — conseguem saber onde estão pelo cheiro da terra.",
+207:"Sua cauda termina num ferrão grosso e horrível. Para derrubar a presa, primeiro atrapalha sua visão cobrindo o rosto dela com o corpo, e então usa o ferrão para injetar veneno.",
+208:"Esse Pokémon evoluiu por meio de um item estranho. Seu corpo é coberto por pó de aço e é notavelmente duro — nem diamante consegue deixar um arranhão sequer.",
+209:"Ao contrário da aparência, é bem tímido. Quando brinca com outros Pokémon filhotes, às vezes é intimidado.",
+210:"Embora seja popular entre os jovens, Granbull é tímido e sensível, então é totalmente incompetente como cão de guarda.",
+211:"Pescadores detestam esse Pokémon incômodo porque ele espalha veneno pelos espinhos, sujando tudo. Uma forma diferente de Qwilfish vive em outras regiões.",
+212:"Evoluiu por meio de um item curioso. A concha que cobre seu corpo já se mostrou mais forte que o aço forjado.",
+213:"As frutinhas guardadas em sua concha em forma de vaso acabam virando um suco grosso e polposo.",
+214:"Esse Pokémon tem um chifre incomparável. O próprio Heracross demonstra uma força tremenda — é capaz de arremessar várias pessoas treinadas nas artes marciais tradicionais de uma vez.",
+215:"Suas garras firmes e curvas são ideais para atravessar penhascos íngremes. Da ponta dessas garras escorre um veneno que invade os nervos de qualquer presa presa no aperto de Sneasel.",
+216:"Lambe as patas por causa do mel doce que ficou embebido nelas. É astuto, invadindo os ninhos de Combee e roubando para si o mel que os Combee acumularam.",
+217:"Quando a estação fria chega em Hisui, esse Pokémon vagueia por campos e montanhas em busca de suas frutinhas favoritas. A fome de Ursaring nessa época o torna um perigo feroz.",
+218:"Slugma não tem sangue nenhum no corpo. Em vez disso, magma intensamente quente circula por todo o corpo desse Pokémon, levando nutrientes essenciais e oxigênio aos seus órgãos.",
+219:"A temperatura corporal de Magcargo é de cerca de 10.000 graus Celsius. A água evapora ao contato. Se esse Pokémon é pego na chuva, as gotas viram vapor instantaneamente, cobrindo a área numa névoa espessa.",
+220:"Swinub é ótimo em farejar cogumelos enterrados sob a grama ou a neve. Desde tempos antigos, o povo de Hisui costuma contar com essa habilidade.",
+221:"O pelo comprido desse Pokémon cobre os olhos, as orelhas e até os membros, permitindo que Piloswine resista a condições extremamente geladas. As presas brancas do Pokémon podem ser usadas para derrotar seus inimigos.",
+222:"Esses Pokémon vivem em mares quentes. Em tempos pré-históricos, muitos também viviam nos oceanos ao redor da região de Galar.",
+223:"Cospe água pela boca com precisão incrível. Captura Burmy atirando neles para derrubá-los dos galhos onde ficam pendurados.",
+224:"Embora Octillery ainda cuspa água pela boca, a diferença anatômica drástica entre ele e Remoraid fez com que, por muito tempo, ninguém acreditasse que o primeiro evoluía do segundo.",
+225:"Tem o hábito generoso de compartilhar comida com pessoas e Pokémon, então está sempre catando mais comida por aí.",
+226:"Esse Pokémon calmo e gentil nada graciosamente pelo mar. Depois de ganhar velocidade, consegue saltar para fora da água. Por causa desse comportamento, costuma ser confundido com um Pokémon-pássaro.",
+227:"As pessoas fabricam espadas com as penas que Skarmory perde, então esse Pokémon é um elemento popular em brasões heráldicos.",
+228:"Soltam uivos assustadores repetidas vezes antes do amanhecer para chamar a atenção do bando.",
+229:"Identificável pelos uivos assustadores, há muito tempo as pessoas achavam que era a morte em pessoa e o temiam.",
+230:"As escamas que esse Pokémon perde têm um brilho tão esplêndido que já foram dadas de presente à realeza.",
+231:"Phanpy usa seu nariz comprido para se banhar. Quando outros se reúnem ao redor, se encharcam completamente uns aos outros com água. Esses Pokémon podem ser vistos secando os corpos encharcados na beira da água.",
+232:"Se Donphan investisse com seu corpo duro, até uma casa poderia ser destruída. Usando sua força imensa, o Pokémon ajuda a limpar deslizamentos de rocha e lama que bloqueiam trilhas de montanha.",
+233:"Um item bizarro fez esse Pokémon evoluir. Embora agora exiba muitos gestos e expressões novas, sua biologia continua incompreensível.",
+234:"Seus chifres de formato estranho têm o poder de enfeitiçar quem os vê. Um remédio feito moendo as esferas negras de chifres caídos é um tratamento eficaz contra insônia.",
+235:"Desenha símbolos com o fluido que escorre da ponta de sua cauda. Dependendo do símbolo, fanáticos por Smeargle pagam muito dinheiro por eles.",
+236:"Mesmo sendo pequeno, não pode ser ignorado, porque vai socar qualquer alvo à mão sem aviso.",
+237:"Depois de fazer uma parada de mãos para atrapalhar o ritmo do oponente, apresenta seus golpes de chute chiques.",
+238:"Esse é um Pokémon bem curioso. Smoochum decide do que gosta e do que não gosta tocando as coisas com os lábios.",
+239:"Geram eletricidade girando os braços. Durante uma tempestade, se alguém ouve vozes animadas de crianças no meio do mato, na verdade está ouvindo as vozes dos Elekid.",
+240:"Esse Pokémon vive em áreas vulcânicas. A cada respiração, faíscas saltam de sua boca e nariz. Quando Magby está com boa saúde, suas chamas ganham um tom amarelado.",
+241:"Esse Pokémon precisa ser ordenhado todo dia, ou vai adoecer. O sabor do leite de Miltank muda com as estações.",
+242:"Um Pokémon de bom coração que cuida de qualquer pessoa ou Pokémon doente até a saúde melhorar. Os ovos que põe são deliciosos e trazem boa sorte para quem os come.",
+243:"Raikou encarna a velocidade de um raio. Os rugidos desse Pokémon mandam ondas de choque tremendo pelo ar e sacodem o chão como se raios tivessem caído.",
+244:"Entei encarna a paixão do magma. Acredita-se que esse Pokémon tenha nascido na erupção de um vulcão. Solta explosões enormes de fogo que consomem por completo tudo o que tocam.",
+245:"Suicune encarna a compaixão de uma fonte pura de água. Corre pela terra com graça. Esse Pokémon tem o poder de purificar água suja.",
+246:"Alimenta-se de terra. Depois de comer uma montanha inteira, adormece para poder crescer.",
+247:"Não fica parado, mesmo sendo uma pupa. Já tem braços e pernas sob sua casca sólida.",
+248:"Os tremores causados quando ele caminha fazem até grandes montanhas desmoronarem e mudam o terreno ao redor.",
+249:"As asas de Lugia carregam um poder devastador — um simples esvoaçar pode destruir casas comuns. Por isso, esse Pokémon escolhe viver escondido nas profundezas do mar.",
+250:"As penas de Ho-Oh brilham em sete cores dependendo do ângulo em que a luz as atinge. Diz-se que essas penas trazem felicidade a quem as possui. Diz-se que esse Pokémon vive ao pé de um arco-íris.",
+251:"Esse Pokémon viajou pelo tempo para vir do futuro. Fortalece a grama e as árvores com sua própria força, e também consegue curar feridas.",
+252:"Treecko é frio, calmo e controlado — nunca entra em pânico em situação nenhuma. Se um inimigo maior encarasse esse Pokémon, ele encararia de volta sem ceder um centímetro do território.",
+253:"Esse Pokémon voa com habilidade de galho em galho nas árvores. Numa floresta, nenhum Pokémon consegue esperar alcançar um Grovyle fugindo, por mais rápido que seja.",
+254:"Sceptile tem sementes crescendo nas costas. Dizem que estão repletas de nutrientes que revitalizam as árvores. Esse Pokémon cuida das árvores de uma floresta com carinho.",
+255:"Torchic tem um lugar dentro do corpo onde guarda sua chama. Dê um abraço nele — vai estar brilhando de calor. Esse Pokémon é coberto por uma penugem fofinha.",
+256:"Combusken luta com as chamas intensamente quentes que expele pelo bico e com chutes extremamente destrutivos. O grito desse Pokémon é muito alto e distrai.",
+257:"Blaziken tem pernas incrivelmente fortes — consegue saltar facilmente por cima de um prédio de 30 andares num único pulo. Os socos flamejantes desse Pokémon deixam os inimigos chamuscados e enegrecidos.",
+258:"Na água, Mudkip respira usando as guelras nas bochechas. Se enfrenta uma situação difícil em batalha, esse Pokémon libera seu poder incrível — consegue esmagar pedras maiores que ele mesmo.",
+259:"Marshtomp é bem mais rápido se deslocando pela lama do que nadando. A parte traseira desse Pokémon mostra um desenvolvimento evidente, dando a ele a capacidade de andar só com as patas de trás.",
+260:"Swampert prevê tempestades sentindo diferenças sutis nos sons das ondas e nos ventos das marés com suas nadadeiras. Se uma tempestade está se aproximando, ele empilha pedregulhos para se proteger.",
+261:"Poochyena é onívoro — come qualquer coisa. Uma característica marcante é o tamanho de suas presas comparado ao corpo. Esse Pokémon tenta intimidar os inimigos eriçando o pelo da cauda.",
+262:"Mightyena viaja e age em bando na natureza. A lembrança da vida selvagem faz com que o Pokémon só obedeça Treinadores que reconhece como possuidores de habilidade superior.",
+263:"Os Zigzagoon que se adaptaram a regiões fora de Galar adquiriram essa aparência. Se você perdeu alguma coisa, esse Pokémon provavelmente consegue encontrar.",
+264:"Usa sua velocidade explosiva e garras afiadas como navalha para derrubar presas. Correr por caminhos sinuosos não é seu forte.",
+265:"Gosta de seiva e é abundante na natureza. Por que evolui em formas diferentes é um mistério. Não dá pra saber pela aparência de um Wurmple qual forma ele vai assumir ao evoluir.",
+266:"Se envolve em finos fios de seda enquanto guarda energia para a evolução. Não consegue esticar os membros e seu movimento é lento, mas seus olhos ficam sempre vigilantes — Silcoon está sempre em guarda.",
+267:"Um Pokémon colorido e incrivelmente belo, mas também ganancioso. Numa tentativa de manter sua comida favorita só para si, afugenta os Combee que tentam coletar néctar.",
+268:"A seda que cobre seu corpo é fina, mas resistente o suficiente. A seda de Cascoon tem um brilho e uma textura superiores aos de Silcoon, e roupas feitas com seda de Cascoon são consideradas de primeira linha.",
+269:"Costuma ser atraído por fogueiras em noites escuras. Difícil de afastar de assentamentos por causa do jeito que espalha escamas altamente tóxicas.",
+270:"Sua folha cresceu grande demais para viver em terra. Foi assim que começou a viver flutuando na água.",
+271:"Vive na beira da água, num lugar ensolarado. Dorme numa cama de grama aquática de dia e fica ativo à noite.",
+272:"Se ouve música festiva, começa a se mexer no ritmo para amplificar seu poder.",
+273:"Se prende a um galho de árvore usando o topo da cabeça. Ventos fortes às vezes o fazem cair.",
+274:"Vivem em buracos cavados em árvores grandes. O som da flauta de grama de Nuzleaf enche os ouvintes de pavor.",
+275:"Vive quieto na floresta profunda. Diz-se que cria ventos gelados de inverno com os leques que segura.",
+276:"Taillow é jovem — acabou de deixar o ninho. Por isso, às vezes fica solitário e chora à noite. Esse Pokémon se alimenta de Wurmple que vivem em florestas.",
+277:"Swellow é muito cuidadoso com a manutenção de suas asas brilhantes. Assim que dois Swellow se reúnem, cuidam diligentemente de limpar as asas um do outro.",
+278:"Plana em correntes de ar ascendentes sem bater as asas. Faz o ninho em penhascos a pique na beira do mar.",
+279:"Roçando a superfície da água, mergulha o bico grande no mar, recolhe comida e água, e as carrega.",
+280:"Costuma preferir pessoas de temperamento alegre às mais sombrias, mas não mostra discriminação quanto à idade ou gênero. Precisa de mais pesquisa.",
+281:"Se parece com uma donzela na aparência, mas usa poderes estranhos para projetar visões do paraíso. Suspeito que os ornamentos carmesim na cabeça sejam a chave para suas habilidades.",
+282:"Vai se dedicar a proteger um mestre por quem passou a nutrir carinho. Seu vestido branco puro, que lembra os usados por damas da nobreza, é o vestido de quem está disposto a arriscar a própria vida.",
+283:"Vive em lagoas e pântanos com bastante vida vegetal. Costuma brigar com Dewpider, cujo habitat e dieta são parecidos.",
+284:"Suas antenas finas em forma de asa são altamente absorventes. Espera os dias chuvosos passarem em ocos de árvore.",
+285:"Se Shroomish sente perigo, sacode o corpo e espalha esporos do topo da cabeça. Os esporos desse Pokémon são tão tóxicos que fazem árvores e ervas murcharem.",
+286:"As sementes que cercam a cauda de Breloom são feitas de esporos tóxicos endurecidos. É horrível comer essas sementes. Só uma mordida na semente desse Pokémon já faz seu estômago roncar.",
+287:"O coração de Slakoth bate só uma vez por minuto. Aconteça o que acontecer, ele fica satisfeito só vadiando, imóvel. É raro ver esse Pokémon em movimento.",
+288:"Vigoroth simplesmente não consegue ficar parado. Mesmo quando tenta dormir, o sangue em suas veias fica agitado, forçando esse Pokémon a correr feito louco pela selva antes de conseguir se acalmar.",
+289:"Onde quer que os Slaking vivam, aparecem anéis de mais de um metro de diâmetro em campos gramados. São feitos pelo Pokémon enquanto come toda a grama ao alcance, deitado de bruços no chão.",
+290:"Às vezes consegue viver debaixo da terra por mais de 10 anos. Absorve nutrientes das raízes das árvores.",
+291:"Esse Pokémon é tão rápido que dizem que consegue evitar qualquer ataque. Adora se alimentar de seiva de árvore.",
+292:"Um Pokémon estranho — voa sem mover as asas, tem uma concha oca no lugar do corpo e não respira.",
+293:"Quando Whismur chora, o som da própria voz o assusta, fazendo o Pokémon chorar ainda mais alto. Chora até se esgotar, e então cai no sono.",
+294:"A força da voz alta desse Pokémon não é só o som — é também a onda de pressão de ar que arremessa os oponentes para longe e os machuca.",
+295:"Esse Pokémon consegue fazer mais do que só gritar. Para se comunicar com outros da própria espécie, emite todo tipo de som pelos buracos no corpo.",
+296:"Há um boato de uma receita tradicional de ensopado que os Treinadores usam para criar Makuhita fortes.",
+297:"Hariyama grandes e gordos não são necessariamente fortes. Há alguns pequenos que se movem com agilidade e usam golpes com habilidade.",
+298:"Embora normalmente sejam dóceis, um Azurill irritado balança a bola grande da cauda e tenta esmagar os oponentes.",
+299:"Assim que o povo de Hisui descobriu que seu nariz vermelho sempre aponta para o norte, passou a confiar bastante nele ao viajar para longe. O nariz parece funcionar de forma parecida com bússolas antigas.",
+300:"Sabe-se que Skitty persegue brincando a própria cauda. Na natureza, esse Pokémon vive em buracos nas árvores das florestas. É muito popular como animal de estimação por causa da aparência adorável.",
+};
+
 
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function clampInt(n,min,max){ n=parseInt(n,10); if(isNaN(n)) n=min; return Math.max(min,Math.min(max,n)); }
@@ -3640,23 +3966,37 @@ function rollStarterNum(){
    contra os 15+índice*12 de antes) e o "resto do time" muito mais
    perto do Ace (rel -10/-6/-3/-1/0 contra -6/-3/0 de antes -- 5
    Pokémon fortes em vez de 2 fracos + 1 forte). */
+/* Cap. leva desta sessão: "pode dar uma variada maior nos pokémon
+   deles... não fica repetindo pokémon em um mesmo mestre... pode ter
+   um tipo que ele prefira, mas que os pokémon sejam diferentes...
+   todos tenham 6... TODOS os treinadores enfrentarão os mesmos
+   mestres, com os mesmos times": elenco recuado de 5 pra 6 Pokémon
+   por Mestre, cada um de uma LINHA EVOLUTIVA/família diferente (nunca
+   duas formas da mesma família no mesmo time -- verificado por
+   script contra evolves_from_species_id de verdade da PokeAPI), quase
+   todos com o Tipo do Mestre como principal (1 exceção documentada:
+   o Ace Psíquico usa Metagross, Aço/Psíquico, pela força bruta --
+   não existe Psíquico principal não-lendário nesse patamar de
+   Atributo). Elenco 100% FIXO (nunca sorteado) -- é o mesmo time pra
+   qualquer Treinador que desafiar aquele Mestre, exatamente como
+   pedido. */
 var GYM_LEADERS = [
   { id:'inseto', nome:'Mestre Enxame', tipo:'Inseto', insignia:'Insígnia Casulo', emoji:'🐛',
-    roster:[{num:10,rel:-10},{num:11,rel:-6},{num:49,rel:-3},{num:214,rel:-1},{num:212,rel:0}] },
+    roster:[{num:469,rel:-14},{num:212,rel:-10},{num:214,rel:-6},{num:738,rel:-3},{num:768,rel:-1},{num:637,rel:0}] },
   { id:'pedra', nome:'Mestre Rocha', tipo:'Pedra', insignia:'Insígnia Pedra', emoji:'🪨',
-    roster:[{num:74,rel:-10},{num:75,rel:-6},{num:141,rel:-3},{num:142,rel:-1},{num:76,rel:0}] },
+    roster:[{num:142,rel:-14},{num:526,rel:-10},{num:697,rel:-6},{num:699,rel:-3},{num:476,rel:-1},{num:567,rel:0}] },
   { id:'agua', nome:'Mestre Correnteza', tipo:'Água', insignia:'Insígnia Onda', emoji:'🌊',
-    roster:[{num:54,rel:-10},{num:61,rel:-6},{num:55,rel:-3},{num:73,rel:-1},{num:121,rel:0}] },
+    roster:[{num:121,rel:-14},{num:160,rel:-10},{num:260,rel:-6},{num:230,rel:-3},{num:350,rel:-1},{num:130,rel:0}] },
   { id:'eletrico', nome:'Mestre Voltagem', tipo:'Elétrico', insignia:'Insígnia Raio', emoji:'⚡',
-    roster:[{num:81,rel:-10},{num:100,rel:-6},{num:82,rel:-3},{num:26,rel:-1},{num:181,rel:0}] },
+    roster:[{num:26,rel:-14},{num:181,rel:-10},{num:405,rel:-6},{num:135,rel:-3},{num:462,rel:-1},{num:466,rel:0}] },
   { id:'venenoso', nome:'Mestra Toxina', tipo:'Venenoso', insignia:'Insígnia Veneno', emoji:'☠️',
-    roster:[{num:23,rel:-10},{num:41,rel:-6},{num:24,rel:-3},{num:89,rel:-1},{num:34,rel:0}] },
+    roster:[{num:336,rel:-14},{num:748,rel:-10},{num:89,rel:-6},{num:452,rel:-3},{num:34,rel:-1},{num:169,rel:0}] },
   { id:'psiquico', nome:'Mestre Oráculo', tipo:'Psíquico', insignia:'Insígnia Mente', emoji:'🔮',
-    roster:[{num:63,rel:-10},{num:96,rel:-6},{num:97,rel:-3},{num:65,rel:-1},{num:282,rel:0}] },
+    roster:[{num:579,rel:-14},{num:561,rel:-10},{num:65,rel:-6},{num:282,rel:-3},{num:196,rel:-1},{num:376,rel:0}] },
   { id:'fantasma', nome:'Mestra Sombria', tipo:'Fantasma', insignia:'Insígnia Sombra', emoji:'👻',
-    roster:[{num:92,rel:-10},{num:93,rel:-6},{num:94,rel:-3},{num:429,rel:-1},{num:609,rel:0}] },
+    roster:[{num:429,rel:-14},{num:426,rel:-10},{num:94,rel:-6},{num:781,rel:-3},{num:609,rel:-1},{num:477,rel:0}] },
   { id:'dragao', nome:'Mestre Dracônico', tipo:'Dragão', insignia:'Insígnia Dragão', emoji:'🐉',
-    roster:[{num:371,rel:-10},{num:147,rel:-6},{num:148,rel:-3},{num:372,rel:-1},{num:149,rel:0}] }
+    roster:[{num:612,rel:-14},{num:784,rel:-10},{num:706,rel:-6},{num:373,rel:-3},{num:445,rel:-1},{num:149,rel:0}] }
 ];
 /* Nível do Ace de cada Mestre pela posição na fila (0-based) -- os
    lugares que precisam disso (montar o elenco em startBattle, mostrar
@@ -3665,6 +4005,15 @@ var GYM_LEADERS = [
    Zonas novas (25, 35, 45... 95 -- sempre perto do topo da Zona
    correspondente). */
 function gymAceLevel(idx){ return clampInt(25 + idx*10, 1, NIVEL_MAX); }
+/* Cap. leva desta sessão: "Nas insignias, usa insignias pixeladas...
+   Todos os icones do jogo usa pixelado": não existe uma Insígnia
+   OFICIAL pra "Mestre Enxame"/"Mestra Toxina" etc. (são nomes
+   inventados aqui, não um Mestre de jogo oficial) -- então, em vez de
+   desenhar um selo do zero, o "ícone da Insígnia" usa o sprite REAL
+   (mesmo CDN de sempre) do próprio Pokémon Ace daquele Mestre --
+   pixelado igual todo o resto do jogo, e sempre um Pokémon de
+   verdade, nunca inventado. */
+function gymAceNum(leader){ return leader.roster[leader.roster.length-1].num; }
 
 /* Itens de cura (Cap. "itens de cura, que funcionarão com gatilhos"):
    catálogo bem enxuto de propósito -- não é o ITEM_DEX inteiro do RPG
@@ -3680,11 +4029,22 @@ var HEAL_TRIGGER_PCT = 0.20;
    (Bulbapedia: Potion < Super Potion < Hyper Potion), escalados pro
    tamanho pequeno de número que o resto do protótipo já usa. */
 var GA_ITEMS = [
-  { key:'pocao', nome:'Poção', emoji:'💊', curaPct:0.30, preco:15, desc:'Restaura 30% do PV Máximo do Pokémon.' },
-  { key:'superpocao', nome:'Superpoção', emoji:'💉', curaPct:0.60, preco:35, desc:'Restaura 60% do PV Máximo do Pokémon.' },
-  { key:'hiperpocao', nome:'Hiperpoção', emoji:'🧪', curaPct:1.00, preco:60, desc:'Restaura 100% do PV Máximo do Pokémon (cura total).' }
+  { key:'pocao', nome:'Poção', emoji:'💊', icon:'potion', curaPct:0.30, preco:15, desc:'Restaura 30% do PV Máximo do Pokémon.' },
+  { key:'superpocao', nome:'Superpoção', emoji:'💉', icon:'super-potion', curaPct:0.60, preco:35, desc:'Restaura 60% do PV Máximo do Pokémon.' },
+  { key:'hiperpocao', nome:'Hiperpoção', emoji:'🧪', icon:'hyper-potion', curaPct:1.00, preco:60, desc:'Restaura 100% do PV Máximo do Pokémon (cura total).' }
 ];
 function itemByKey(key){ return GA_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
+/* Cap. leva desta sessão: "Nos itens use os icones originais,
+   pixelados... Todos os icones do jogo usa pixelado pra ficar legal":
+   ícone OFICIAL de cada item (mesmo CDN público de sempre --
+   PokeAPI/sprites, pasta items/ -- nunca desenhado à mão). `icon` é o
+   nome de arquivo oficial (ex.: "potion" -> potion.png); a Super Ball
+   não existe nos jogos oficiais (é o degrau extra criado só aqui,
+   ver comentário de POKEBALLS abaixo), então usa o ícone da Premier
+   Ball como substituto visual mais próximo (mesma "família" de bola
+   premium, documentado aqui pra não parecer engano). */
+function itemIconUrl(icon){ return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/'+icon+'.png'; }
+function itemIconHTML(def, cls){ return '<img class="ga-item-icon'+(cls?' '+cls:'')+'" src="'+itemIconUrl(def.icon)+'" alt="'+esc2(def.nome)+'" loading="lazy">'; }
 
 /* Pokébolas (Cap. "aproveita e adiciona as outras pokébolas
    compráveis no jogo: great, super e ultra... e nelas as descrição
@@ -3697,13 +4057,13 @@ function itemByKey(key){ return GA_ITEMS.filter(function(i){ return i.key===key;
    degrau extra criado só aqui, no meio dos dois, pra dar uma
    progressão de 4 preços em vez de 2. */
 var POKEBALLS = [
-  { key:'pokebola', nome:'Pokébola', emoji:'⚪', preco:10, mult:1.00,
+  { key:'pokebola', nome:'Pokébola', emoji:'⚪', icon:'poke-ball', preco:10, mult:1.00,
     desc:'Multiplicador de captura: ×1,00 sobre a Taxa de Captura da Espécie.' },
-  { key:'greatball', nome:'Great Ball', emoji:'🟡', preco:25, mult:1.50,
+  { key:'greatball', nome:'Great Ball', emoji:'🟡', icon:'great-ball', preco:25, mult:1.50,
     desc:'Multiplicador de captura: ×1,50 sobre a Taxa de Captura da Espécie.' },
-  { key:'superball', nome:'Super Ball', emoji:'🔵', preco:40, mult:1.75,
+  { key:'superball', nome:'Super Ball', emoji:'🔵', icon:'premier-ball', preco:40, mult:1.75,
     desc:'Multiplicador de captura: ×1,75 sobre a Taxa de Captura da Espécie.' },
-  { key:'ultraball', nome:'Ultra Ball', emoji:'🟣', preco:60, mult:2.00,
+  { key:'ultraball', nome:'Ultra Ball', emoji:'🟣', icon:'ultra-ball', preco:60, mult:2.00,
     desc:'Multiplicador de captura: ×2,00 sobre a Taxa de Captura da Espécie.' }
 ];
 
@@ -3949,7 +4309,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, movesOpenFor:null, leaderTeamOpenFor:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'' };
 
 function freshState(trainerName){
   return {
@@ -4170,7 +4530,7 @@ function buildBattlerTrainer(num, level, tag){
   return { key:'t_'+tag+'_'+num, side:'trainer', num:num, level:level, moves: pickMovesForLevel(num, level) };
 }
 
-function startBattle(kind, opts){
+function startBattle(kind, opts, skipDiscrepancia){
   if(STATE.battle){ SESSION.error = 'Já tem uma luta em andamento -- termine ela primeiro.'; render(); return; }
   var leadId = opts.leadPartyId;
   var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
@@ -4195,7 +4555,46 @@ function startBattle(kind, opts){
     custoEnergia = 20 * aceLevel;
     label = leader.nome+' ('+leader.tipo+')';
   }
-  if(STATE.energy < custoEnergia){ SESSION.error = 'Energia insuficiente -- essa luta custa '+custoEnergia+' e você tem '+STATE.energy+'.'; render(); return; }
+  /* Cap. leva desta sessão: "Se uma luta for muito discrepante para o
+     usuário, abra um popup perguntando se ele tem certeza... analise
+     o time dele e veja se ele tem outro pokemon que seja compatível
+     ou se o time dele por completo tem chance. Se não tiver chance ou
+     for muito baixa avisa": olha o MELHOR Pokémon de toda a Equipe
+     (não só o líder escolhido -- trocar de Pokémon no meio da luta já
+     é possível, então só vale avisar se NENHUM deles tem chance real)
+     contra o oponente mais forte dessa luta. "Chance real" usa a
+     MESMA régua de Faixa de Nível do sistema de XP (2+ Faixas de
+     diferença = "muito acima", a mesma fronteira onde xpParaVitoria
+     já considera o adversário fora do alcance normal). */
+  var maxOppLevel = oppTeam.reduce(function(m,b){ return Math.max(m,b.level); }, 1);
+  var melhorNivelDoTime = STATE.party.reduce(function(m,p){ return Math.max(m,p.level); }, 1);
+  if(!skipDiscrepancia && (rangeIndexForLevel(maxOppLevel)-rangeIndexForLevel(melhorNivelDoTime))>=2){
+    SESSION.pendingDiscrepancia = { kind:kind, opts:opts, melhorNivelDoTime:melhorNivelDoTime, maxOppLevel:maxOppLevel };
+    render(); return;
+  }
+  /* Cap. leva desta sessão: "em lutas que vão exigir mais energia que
+     o treinador tem, pergunta se ele vai querer usar os tickets
+     necessários para entrar": em vez de só recusar, se o Treinador
+     tem Pokétickets suficientes pra cobrir a diferença, PAUSA (fora
+     da luta, que ainda nem começou) e pergunta -- ver
+     DT.gaConfirmarUsarTickets/gaCancelarUsarTickets e
+     pendingEnergiaPopupHTML. Acima do teto de 1000 nenhum Pokéticket
+     resolve (não dá pra encher além do máximo), então nem oferece a
+     troca nesse caso -- só avisa. */
+  if(STATE.energy < custoEnergia){
+    if(custoEnergia > 1000){
+      SESSION.error = 'Energia insuficiente -- essa luta custa '+custoEnergia+', mais que o teto de 1000 (nem enchendo o tanque dá pra pagar). Escolha um oponente mais fraco.';
+      render(); return;
+    }
+    var faltando = custoEnergia - STATE.energy;
+    var ticketsNecessarios = Math.ceil(faltando / ENERGIA_POR_TICKET);
+    if((STATE.poketickets||0) >= ticketsNecessarios){
+      SESSION.pendingEnergia = { kind: kind, opts: opts, custo: custoEnergia, faltando: faltando, tickets: ticketsNecessarios };
+      render(); return;
+    }
+    SESSION.error = 'Energia insuficiente -- essa luta custa '+custoEnergia+' e você tem '+STATE.energy+' (faltam '+faltando+', e você não tem os '+ticketsNecessarios+' 🎫 Pokéticket(s) necessário(s) pra completar).';
+    render(); return;
+  }
   STATE.energy -= custoEnergia;
 
   var hp = {};
@@ -4225,6 +4624,26 @@ function startBattle(kind, opts){
   runBattleUntilPause();
   mutate();
 }
+
+/* Responde os dois popups que podem pausar ANTES da luta começar
+   (SESSION.pendingDiscrepancia/pendingEnergia) -- os dois só guardam
+   {kind,opts,...} e re-chamam startBattle com o MESMO opts (então o
+   selvagem/Treinador aleatório já sorteado continua o mesmo, nunca
+   sorteia de novo). */
+DT.gaConfirmarLutaDificil = function(){
+  var pd = SESSION.pendingDiscrepancia; if(!pd) return;
+  SESSION.pendingDiscrepancia = null;
+  startBattle(pd.kind, pd.opts, true);
+};
+DT.gaCancelarLutaDificil = function(){ SESSION.pendingDiscrepancia = null; render(); };
+DT.gaConfirmarUsarTickets = function(){
+  var pe = SESSION.pendingEnergia; if(!pe) return;
+  SESSION.pendingEnergia = null;
+  STATE.poketickets -= pe.tickets;
+  STATE.energy = clampInt(STATE.energy + pe.tickets*ENERGIA_POR_TICKET, 0, 1000);
+  startBattle(pe.kind, pe.opts, true); // já passou pela discrepância (se tinha) -- não pergunta de novo
+};
+DT.gaCancelarUsarTickets = function(){ SESSION.pendingEnergia = null; render(); };
 
 function displayName(battler){
   var sp = speciesByNum(battler.num);
@@ -4751,7 +5170,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, movesOpenFor:null, leaderTeamOpenFor:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'' };
   render();
 };
 
@@ -4935,6 +5354,21 @@ DT.gaDesafiarMestre = function(leadId, leaderId){
    nunca escondido como se fosse mecânica real do jogo). */
 DT.gaDebugEnergia = function(){ STATE.energy = 1000; mutate(); };
 DT.gaDebugPoketicket = function(){ STATE.energy = clampInt(STATE.energy+100,0,1000); mutate(); };
+/* Cap. leva desta sessão: "em energia, ele explica o que é e me
+   explica o tempo que enche, o que usar pra encher" -- isso só faz
+   sentido se "usar Pokéticket pra encher Energia" for um mecanismo
+   DE VERDADE, não só o atalho de debug acima. Mesma taxa que o botão
+   de debug já usava (1 Pokéticket = +100 Energia), só que agora
+   consumindo um Pokéticket de verdade (ganho em batalha, ver
+   ticketReward) em vez de ser de graça. */
+var ENERGIA_POR_TICKET = 100;
+DT.gaTrocarTicketPorEnergia = function(){
+  if((STATE.poketickets||0)<=0){ SESSION.error='Sem Pokétickets pra trocar -- ganhe vencendo lutas.'; render(); return; }
+  STATE.poketickets--;
+  STATE.energy = clampInt(STATE.energy+ENERGIA_POR_TICKET, 0, 1000);
+  SESSION.notice = 'Trocou 1 Pokéticket por '+ENERGIA_POR_TICKET+' de Energia!';
+  mutate();
+};
 DT.gaDebugItens = function(){
   STATE.pokebolas.pokebola+=10; STATE.pokebolas.greatball+=5; STATE.pokebolas.superball+=3; STATE.pokebolas.ultraball+=1;
   STATE.itens.pocao+=5; STATE.itens.superpocao+=3; STATE.itens.hiperpocao+=1;
@@ -5011,20 +5445,36 @@ function render(){
 }
 function esc2(s){ return esc(s); }
 
+/* Cap. leva desta sessão: "Onde for pertinente, coloque informação...
+   quando eu descansar o mouse em cima de algum lugar. Por exemplo,
+   em energia, ele explica o que é e me explica o tempo que enche, o
+   que usar pra encher e etc": tooltips de verdade (atributo `title`,
+   o navegador já mostra sozinho ao passar o mouse -- `\n` dentro do
+   texto quebra linha no balãozinho nativo) em cada estatística do
+   topo e nos cards do Início. O MESMO texto (um pouco mais longo) é
+   reaproveitado na aba 📖 Wiki -- um lugar só de verdade pra cada
+   explicação, nunca duas versões que podem divergir. */
+var TOOLTIPS = {
+  energia: 'Energia (0 a 1000): o que você gasta pra entrar em qualquer luta (selvagem, Treinador aleatório ou Mestre Especialista) -- quanto mais forte o oponente, mais cara a luta.\nRecupera +10 sozinha a cada 10 minutos reais.\nOu troque 1 🎫 Pokéticket por +'+ENERGIA_POR_TICKET+' na hora, quando quiser.',
+  pokedolares: 'Pokédólares: ganhos depois de VENCER uma luta -- selvagem paga pouco, Treinador aleatório de Zona paga mais, Mestre Especialista paga o melhor de todos (soma por CADA oponente derrotado).\nGaste na 🏪 Loja: Pokébolas, Poções e MTs.',
+  poketickets: 'Pokétickets: ganhos vencendo lutas, junto com os Pokédólares -- 1× o Nível do oponente contra selvagem, 2× o Nível de CADA Pokémon de Treinador derrotado.\nTroque por Energia (1 Pokéticket = +'+ENERGIA_POR_TICKET+') quando quiser, sem limite.',
+  insignias: 'Insígnias: conquistadas vencendo os 8 Mestres Especialistas, em ordem -- não dá pra pular nenhum.\nVeja a aba 🎖️ Mestres.',
+  pokedex: 'Pokédex: quantas das 1025 Espécies você já CAPTUROU, do total.\nClique num Pokémon na aba 📕 Pokédex pra ver Área/Movimentos/Habilidades/Lore/Cry dele, mesmo sem ter capturado ainda.'
+};
 function topbarHTML(){
   if(!STATE || !STATE.trainerName) return '';
   var counts = dexCounts();
   return '<div class="ga-topbar">'+
     '<div class="ga-brand" onclick="DT.gaGoto(\'hub\')">🟢 GREEN ÁREA <span class="ga-build">build de testes</span></div>'+
     '<div class="ga-topstats">'+
-      '<span title="Energia">🔋 '+STATE.energy+'/1000</span>'+
-      '<span title="Pokédólares">💰 '+(STATE.pokedolares||0)+'</span>'+
-      '<span title="Pokétickets">🎫 '+(STATE.poketickets||0)+'</span>'+
-      '<span title="Insígnias">🎖️ '+STATE.badges.length+'/'+GYM_LEADERS.length+'</span>'+
-      '<span title="Pokédex">📕 '+counts.caught+'/'+counts.total+'</span>'+
+      '<span title="'+esc2(TOOLTIPS.energia)+'">🔋 '+STATE.energy+'/1000</span>'+
+      '<span title="'+esc2(TOOLTIPS.pokedolares)+'">💰 '+(STATE.pokedolares||0)+'</span>'+
+      '<span title="'+esc2(TOOLTIPS.poketickets)+'">🎫 '+(STATE.poketickets||0)+'</span>'+
+      '<span title="'+esc2(TOOLTIPS.insignias)+'">🎖️ '+STATE.badges.length+'/'+GYM_LEADERS.length+'</span>'+
+      '<span title="'+esc2(TOOLTIPS.pokedex)+'">📕 '+counts.caught+'/'+counts.total+'</span>'+
     '</div>'+
     '<nav class="ga-nav">'+
-      ['hub:🏠 Início','equipe:🎒 Equipe','dex:📕 Pokédex','captura:🌿 Área de Captura','ginasios:🎖️ Mestres','loja:🏪 Loja','debug:🛠️ Testes'].map(function(pair){
+      ['hub:🏠 Início','equipe:🎒 Equipe','dex:📕 Pokédex','captura:🌿 Área de Captura','ginasios:🎖️ Mestres','loja:🏪 Loja','wiki:📖 Wiki','debug:🛠️ Testes'].map(function(pair){
         var kv = pair.split(':');
         return '<button class="'+(SESSION.screen===kv[0]?'active':'')+'" onclick="DT.gaGoto(\''+kv[0]+'\')">'+kv[1]+'</button>';
       }).join('')+
@@ -5046,12 +5496,17 @@ function screenHTML(){
   if(SESSION.dexOpenNum) return wrap(hubScreenHTML() /* mantém o fundo, popup por cima */) + dexPopupHTML(SESSION.dexOpenNum);
   if(SESSION.movesOpenFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + movesPopupHTML(SESSION.movesOpenFor);
   if(SESSION.leaderTeamOpenFor) return wrap(ginasiosScreenHTML() /* mantém o fundo, popup por cima */) + leaderTeamPopupHTML(SESSION.leaderTeamOpenFor);
+  if(SESSION.pendingDiscrepancia || SESSION.pendingEnergia){
+    var bgScreen = SESSION.screen==='ginasios' ? ginasiosScreenHTML() : capturaScreenHTML();
+    return wrap(bgScreen) + (SESSION.pendingDiscrepancia ? pendingDiscrepanciaPopupHTML() : pendingEnergiaPopupHTML());
+  }
   switch(SESSION.screen){
     case 'equipe': return wrap(equipeScreenHTML());
     case 'dex': return wrap(dexScreenHTML());
     case 'captura': return wrap(capturaScreenHTML());
     case 'ginasios': return wrap(ginasiosScreenHTML());
     case 'loja': return wrap(lojaScreenHTML());
+    case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
     case 'debug': return wrap(debugScreenHTML());
     default: return wrap(hubScreenHTML());
@@ -5140,14 +5595,15 @@ function hubScreenHTML(){
       '<p class="ga-hint">'+STATE.badges.length+' Insígnia(s) · '+counts.caught+'/'+counts.total+' na Pokédex</p></div>'+
     '</div>'+
     '<div class="ga-grid3">'+
-      '<div class="ga-card ga-stat-card"><div class="ga-stat-label">🔋 Energia</div><div class="ga-stat-val">'+STATE.energy+' / 1000</div>'+
+      '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.energia)+'"><div class="ga-stat-label">🔋 Energia</div><div class="ga-stat-val">'+STATE.energy+' / 1000</div>'+
         '<div class="ga-bar"><i style="width:'+(STATE.energy/10)+'%"></i></div>'+
-        '<div class="ga-hint">+10 em '+minutesToNextEnergyTick()+' min</div></div>'+
-      '<div class="ga-card ga-stat-card"><div class="ga-stat-label">🎒 Mochila</div>'+
-        '<div class="ga-hint">'+POKEBALLS.map(function(bl){ return bl.emoji+' '+(STATE.pokebolas[bl.key]||0); }).join(' · ')+'</div>'+
-        '<div class="ga-hint">💊 '+STATE.itens.pocao+' · 💉 '+STATE.itens.superpocao+' · 🧪 '+STATE.itens.hiperpocao+'</div></div>'+
+        '<div class="ga-hint">+10 em '+minutesToNextEnergyTick()+' min</div>'+
+        '<button class="ga-btn-sm" '+((STATE.poketickets||0)<1?'disabled':'')+' onclick="DT.gaTrocarTicketPorEnergia()">🎫 Trocar 1 por +'+ENERGIA_POR_TICKET+'</button></div>'+
+      '<div class="ga-card ga-stat-card" title="Itens que a luta automática usa -- Pokébolas pra capturar (depois de vencer um selvagem) e Poções pro gatilho de cura em PV baixo. Compre mais na 🏪 Loja."><div class="ga-stat-label">🎒 Mochila</div>'+
+        '<div class="ga-hint ga-item-row">'+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+(STATE.pokebolas[bl.key]||0); }).join('')+'</div>'+
+        '<div class="ga-hint ga-item-row">'+GA_ITEMS.map(function(it){ return itemIconHTML(it)+' '+(STATE.itens[it.key]||0); }).join('')+'</div></div>'+
       '<div class="ga-card ga-stat-card"><div class="ga-stat-label">🎖️ Insígnias</div>'+
-        '<div class="ga-badges">'+GYM_LEADERS.map(function(l){ return '<span class="ga-badge-icon'+(STATE.badges.indexOf(l.id)!==-1?' on':'')+'" title="'+esc2(l.nome)+'">'+l.emoji+'</span>'; }).join('')+'</div></div>'+
+        '<div class="ga-badges">'+GYM_LEADERS.map(function(l){ return '<img class="ga-badge-icon'+(STATE.badges.indexOf(l.id)!==-1?' on':'')+'" title="'+esc2(l.nome)+' ('+esc2(l.insignia)+')" src="'+spriteUrl(gymAceNum(l))+'" alt="'+esc2(l.insignia)+'" loading="lazy">'; }).join('')+'</div></div>'+
     '</div>'+
     '<div class="ga-quicknav">'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'captura\')">🌿 Área de Captura</button>'+
@@ -5259,9 +5715,46 @@ function movesPopupHTML(pid){
   '</div></div>';
 }
 
+/* Cap. leva desta sessão: "Coloca uma busca na pokédex... um filtro
+   pra vermos só os registrados e outro para os não registrados...
+   outro filtro por tipo de pokémon, tipo 1 e tipo 2": 4 filtros
+   combináveis (nome/número, status de captura, Tipo 1, Tipo 2) --
+   nunca escondem a identidade de quem já foi visto/capturado (a
+   busca por nome só ajuda a achar mais rápido, não é spoiler novo:
+   quem nunca foi visto continua mostrando "?" no quadro, mesmo que
+   apareça na lista filtrada). */
+function todosOsTipos(){
+  if(!todosOsTipos._cache) todosOsTipos._cache = Object.keys(TYPE_CHART).sort();
+  return todosOsTipos._cache;
+}
+DT.gaSetDexSearch = function(el){ SESSION.dexSearch = (el.value||''); render(); };
+DT.gaSetDexFiltroStatus = function(v){ SESSION.dexFiltroStatus = v; render(); };
+DT.gaSetDexFiltroTipo1 = function(el){ SESSION.dexFiltroTipo1 = el.value||''; render(); };
+DT.gaSetDexFiltroTipo2 = function(el){ SESSION.dexFiltroTipo2 = el.value||''; render(); };
+function dexFilteredList(){
+  var q = (SESSION.dexSearch||'').trim().toLowerCase();
+  var status = SESSION.dexFiltroStatus || 'todos';
+  var t1 = SESSION.dexFiltroTipo1 || '';
+  var t2 = SESSION.dexFiltroTipo2 || '';
+  return SPECIES_DEX.filter(function(sp){
+    var d = dexEntry(sp.num);
+    if(status==='capturado' && !d.caught) return false;
+    if(status==='nao_capturado' && d.caught) return false;
+    if(t1 && sp.tipo1!==t1) return false;
+    if(t2 && sp.tipo2!==t2) return false;
+    if(q){
+      var matchNum = String(sp.num).indexOf(q)!==-1;
+      var matchName = sp.name.toLowerCase().indexOf(q)!==-1;
+      if(!matchNum && !matchName) return false;
+    }
+    return true;
+  });
+}
 function dexScreenHTML(){
   var counts = dexCounts();
-  var grid = SPECIES_DEX.map(function(sp){
+  var lista = dexFilteredList();
+  var tipos = todosOsTipos();
+  var grid = lista.map(function(sp){
     var d = dexEntry(sp.num);
     var cls = d.caught ? 'caught' : (d.seen ? 'seen' : 'unseen');
     return '<div class="ga-dex-tile '+cls+'" onclick="DT.gaOpenDex('+sp.num+')" title="'+(d.caught?esc2(sp.name):(d.seen?'Visto':'?'))+'">'+
@@ -5269,9 +5762,29 @@ function dexScreenHTML(){
       '<span class="ga-dex-num">#'+String(sp.num).padStart(4,'0')+'</span>'+
     '</div>';
   }).join('');
-  return '<div class="ga-card"><h2>📕 Pokédex — '+counts.caught+' capturados / '+counts.seen+' vistos / '+counts.total+' no total</h2>'+
+  var statusAtual = SESSION.dexFiltroStatus || 'todos';
+  var out = '<div class="ga-card"><h2>📕 Pokédex — '+counts.caught+' capturados / '+counts.seen+' vistos / '+counts.total+' no total</h2>'+
     '<p class="ga-hint">Cinza = nunca visto ainda. Contorno = já visto em batalha. Colorido = capturado. Clique num quadro pra ver os detalhes.</p>'+
-    '<div class="ga-dex-grid">'+grid+'</div></div>';
+    '<div class="ga-dex-filtros">'+
+      '<input type="text" id="gaDexSearch" placeholder="Nome ou número..." value="'+esc2(SESSION.dexSearch||'')+'" onkeydown="if(event.key===\'Enter\')DT.gaSetDexSearch(document.getElementById(\'gaDexSearch\'))">'+
+      '<button class="ga-btn-sm" onclick="DT.gaSetDexSearch(document.getElementById(\'gaDexSearch\'))">🔍 Buscar</button>'+
+      (SESSION.dexSearch ? '<button class="ga-btn-sm" onclick="DT.gaSetDexSearch({value:\'\'})">✕ Limpar busca</button>' : '')+
+      '<span class="ga-tabs">'+
+        ['todos:Todos','capturado:✅ Capturados','nao_capturado:❌ Não capturados'].map(function(pair){
+          var kv = pair.split(':');
+          return '<button class="'+(statusAtual===kv[0]?'active':'')+'" onclick="DT.gaSetDexFiltroStatus(\''+kv[0]+'\')">'+kv[1]+'</button>';
+        }).join('')+
+      '</span>'+
+      '<select onchange="DT.gaSetDexFiltroTipo1(this)"><option value="">Tipo 1: qualquer</option>'+
+        tipos.map(function(t){ return '<option value="'+esc2(t)+'" '+(SESSION.dexFiltroTipo1===t?'selected':'')+'>'+esc2(t)+'</option>'; }).join('')+
+      '</select>'+
+      '<select onchange="DT.gaSetDexFiltroTipo2(this)"><option value="">Tipo 2: qualquer</option>'+
+        tipos.map(function(t){ return '<option value="'+esc2(t)+'" '+(SESSION.dexFiltroTipo2===t?'selected':'')+'>'+esc2(t)+'</option>'; }).join('')+
+      '</select>'+
+    '</div>'+
+    '<p class="ga-hint">'+lista.length+' de '+counts.total+' espécies com esses filtros.</p>'+
+    '<div class="ga-dex-grid">'+(grid||'<p class="ga-hint">Nenhuma espécie bate com esses filtros.</p>')+'</div></div>';
+  return out;
 }
 /* Cap. leva desta sessão: "Pokédex, quando clicarmos no Pokémon,
    mesmo que não tenhamos capturado, que ele tenha uma informação de
@@ -5290,8 +5803,19 @@ function dexScreenHTML(){
    procurar); quem já foi VISTO (mesmo sem capturar -- a própria tela
    de batalha já mostra o nome dele) libera tudo, Atributos Base à
    parte (esses continuam exigindo captura). */
+/* Cap. leva desta sessão: "a lore dos pokémon tem que ser traduzida
+   pra pt-br... vá atrás das informações no bulbapedia": LORE_PT_DEX
+   (colado acima, extraído/traduzido à mão a partir do texto oficial
+   da Pokédex de cada Espécie -- mesmo conteúdo que o Bulbapedia
+   mostra) é a fonte de verdade, sem depender de rede nenhuma. A
+   tradução ainda está em andamento espécie por espécie (ver
+   README/comentário de LORE_PT_DEX) -- enquanto uma Espécie não tem
+   entrada em LORE_PT_DEX, cai no fallback antigo (busca ao vivo na
+   PokeAPI, em inglês, avisado como temporário na tela) só pra nunca
+   deixar ninguém sem Lore nenhuma. */
 var LORE_CACHE = {};
 function ensureLoreLoaded(num){
+  if(LORE_PT_DEX[num]) return; // já tem tradução real -- nada pra buscar
   if(LORE_CACHE[num]!==undefined) return;
   LORE_CACHE[num] = null; // marca "carregando" -- evita disparar o fetch de novo a cada render
   if(typeof fetch!=='function'){ LORE_CACHE[num] = '(sem acesso à internet neste ambiente)'; return; }
@@ -5333,8 +5857,15 @@ function dexPopupHTML(num){
     out += '<p class="ga-hint">📍 '+esc2(areaHintForSpecies(num))+'</p>'+
       '<p class="ga-hint">Ainda não visto em batalha -- Movimentos, Habilidades, Lore e Cry aparecem aqui depois do primeiro encontro.</p>';
   } else {
-    ensureLoreLoaded(num);
-    var lore = LORE_CACHE[num];
+    var lorePt = LORE_PT_DEX[num];
+    var loreHTML;
+    if(lorePt){
+      loreHTML = '<p class="ga-hint">📜 <strong>Lore:</strong> '+esc2(lorePt)+'</p>';
+    } else {
+      ensureLoreLoaded(num);
+      var lore = LORE_CACHE[num];
+      loreHTML = '<p class="ga-hint">📜 <strong>Lore:</strong> '+esc2(lore===null||lore===undefined ? 'Carregando...' : lore)+' <em>(tradução pt-BR chegando em breve -- por ora, texto original em inglês)</em></p>';
+    }
     out += '<div class="ga-dex-popup-types">'+typeTagsHTML(sp)+'</div>'+
       (caught
         ? ('<table class="ga-stat-table"><tbody>'+STAT_ORDER.map(function(s){ return '<tr><td>'+STAT_LABELS[s]+'</td><td class="num">'+sp.base[s]+'</td></tr>'; }).join('')+'</tbody></table>')
@@ -5342,7 +5873,7 @@ function dexPopupHTML(num){
       '<p class="ga-hint">📍 <strong>Onde encontrar:</strong> '+esc2(areaHintForSpecies(num))+'</p>'+
       '<p class="ga-hint">🗡️ <strong>Movimentos possíveis:</strong> '+esc2(movimentosPossiveisLista(num).join(', ')||'—')+'</p>'+
       '<p class="ga-hint">✨ <strong>Habilidades possíveis:</strong> '+esc2((sp.hab||[]).map(function(h){ return h.n+(h.h?' (oculta)':''); }).join(', ')||'—')+'</p>'+
-      '<p class="ga-hint">📜 <strong>Lore:</strong> '+esc2(lore===null||lore===undefined ? 'Carregando...' : lore)+'</p>'+
+      loreHTML+
       '<audio controls preload="none" src="https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/'+num+'.ogg">Seu navegador não suporta áudio.</audio>';
   }
   out += '</div></div>';
@@ -5390,7 +5921,7 @@ function ginasiosScreenHTML(){
     var bloqueado = idx>0 && STATE.badges.indexOf(GYM_LEADERS[idx-1].id)===-1;
     var aceLevel = gymAceLevel(idx);
     return '<div class="ga-leader-row'+(conquistado?' done':'')+(bloqueado?' locked':'')+'">'+
-      '<span class="ga-leader-emoji">'+l.emoji+'</span>'+
+      '<img class="ga-leader-emoji" src="'+spriteUrl(gymAceNum(l))+'" alt="" loading="lazy" title="'+esc2(l.emoji)+' '+esc2(l.tipo)+'">'+
       '<div class="ga-leader-info"><strong>'+esc2(l.nome)+'</strong><span class="ga-hint">Tipo '+l.tipo+' · Ace Nv. '+aceLevel+' · '+l.roster.length+' Pokémon · custo '+(20*aceLevel)+' energia · '+l.insignia+'</span></div>'+
       '<button class="ga-btn-sm" onclick="DT.gaOpenLeaderTeam(\''+l.id+'\')">👁️ Ver Time</button>'+
       (conquistado ? '<span class="ga-badge-won">🎖️ Conquistada</span>' : (bloqueado ? '<span class="ga-hint">🔒 Vença o Mestre anterior</span>' : '<select id="gaLead-'+l.id+'">'+STATE.party.map(function(p){ return '<option value="'+p.id+'">'+esc2(p.apelido||speciesByNum(p.num).name)+' (Nv. '+p.level+')</option>'; }).join('')+'</select><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaDesafiarMestre(document.getElementById(\'gaLead-'+l.id+'\').value,\''+l.id+'\')">⚔️ Desafiar</button>'))+
@@ -5413,13 +5944,44 @@ function leaderTeamPopupHTML(leaderId){
   var ace = gymAceLevel(idx);
   return '<div class="ga-overlay" onclick="DT.gaCloseLeaderTeam()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCloseLeaderTeam()">✕</button>'+
-    '<h2>'+leader.emoji+' '+esc2(leader.nome)+' — Time</h2>'+
+    '<h2><img class="ga-leader-emoji" src="'+spriteUrl(gymAceNum(leader))+'" alt="" loading="lazy"> '+esc2(leader.nome)+' — Time</h2>'+
     '<p class="ga-hint">Tipo '+esc2(leader.tipo)+' · '+leader.insignia+'</p>'+
     '<div class="ga-poke-grid">'+leader.roster.map(function(slot){
       var lvl = clampInt(ace+slot.rel, 1, NIVEL_MAX);
       var sp = speciesByNum(slot.num);
       return '<div class="ga-poke-card"><img src="'+spriteUrl(slot.num)+'" loading="lazy" alt=""><div class="ga-poke-name">'+esc2(sp.name)+'</div><div class="ga-poke-meta">Nv. '+lvl+' · '+typeTagsHTML(sp)+'</div></div>';
     }).join('')+'</div>'+
+  '</div></div>';
+}
+
+/* Popup "luta muito discrepante" (Cap. leva desta sessão) -- pergunta
+   antes de gastar Energia numa luta que o time inteiro provavelmente
+   não aguenta. */
+function pendingDiscrepanciaPopupHTML(){
+  var pd = SESSION.pendingDiscrepancia;
+  return '<div class="ga-overlay" onclick="DT.gaCancelarLutaDificil()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelarLutaDificil()">✕</button>'+
+    '<h2>⚠️ Luta muito difícil</h2>'+
+    '<p class="ga-hint">Nem o Pokémon mais forte da sua Equipe (Nv. '+pd.melhorNivelDoTime+') chega perto do Nível do oponente mais forte dessa luta (Nv. '+pd.maxOppLevel+') -- é uma diferença grande demais pra ter uma chance real, mesmo trocando de Pokémon no meio da luta. Tem certeza que quer entrar mesmo assim?</p>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarLutaDificil()">⚔️ Entrar mesmo assim</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaCancelarLutaDificil()">Cancelar</button>'+
+    '</div>'+
+  '</div></div>';
+}
+/* Popup "usar Pokétickets pra completar a Energia" (Cap. leva desta
+   sessão). */
+function pendingEnergiaPopupHTML(){
+  var pe = SESSION.pendingEnergia;
+  return '<div class="ga-overlay" onclick="DT.gaCancelarUsarTickets()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelarUsarTickets()">✕</button>'+
+    '<h2>🎫 Energia insuficiente</h2>'+
+    '<p class="ga-hint">Essa luta custa '+pe.custo+' de Energia e você tem '+STATE.energy+' -- faltam '+pe.faltando+'.</p>'+
+    '<p class="ga-hint">Usar '+pe.tickets+' 🎫 Pokéticket(s) (+'+(pe.tickets*ENERGIA_POR_TICKET)+' de Energia) pra completar e entrar na luta?</p>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarUsarTickets()">🎫 Usar e entrar</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaCancelarUsarTickets()">Cancelar</button>'+
+    '</div>'+
   '</div></div>';
 }
 
@@ -5444,7 +6006,7 @@ function lojaScreenHTML(){
       var qtdAtual = STATE.pokebolas[bl.key]||0;
       var podeComprar = (STATE.pokedolares||0) >= bl.preco;
       return '<div class="ga-loja-card">'+
-        '<div class="ga-loja-nome">'+bl.emoji+' '+esc2(bl.nome)+'</div>'+
+        '<div class="ga-loja-nome">'+itemIconHTML(bl)+' '+esc2(bl.nome)+'</div>'+
         '<div class="ga-hint">'+esc2(bl.desc)+'</div>'+
         '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
         '<div class="ga-loja-preco">💰 '+bl.preco+'</div>'+
@@ -5455,7 +6017,7 @@ function lojaScreenHTML(){
       var qtdAtual = STATE.itens[it.key]||0;
       var podeComprar = (STATE.pokedolares||0) >= it.preco;
       return '<div class="ga-loja-card">'+
-        '<div class="ga-loja-nome">'+it.emoji+' '+esc2(it.nome)+'</div>'+
+        '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
         '<div class="ga-hint">'+esc2(it.desc)+'</div>'+
         '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
         '<div class="ga-loja-preco">💰 '+it.preco+'</div>'+
@@ -5500,6 +6062,52 @@ function adminScreenHTML(){
     '</div>';
   }).join('');
   out += '</div></div>';
+  return out;
+}
+
+/* Wiki (Cap. leva desta sessão: "Cria também uma aba onde fica a Wiki
+   do jogo para termos lá informações da mecânica e o que cada coisa
+   funciona"): explicação de cada mecânica num lugar só, sem precisar
+   ficar passando o mouse em cima de cada coisa pra lembrar como
+   funciona -- mesmo texto (um pouco mais longo) dos tooltips
+   (TOOLTIPS) que aparecem nas estatísticas do topo, pra nunca ter
+   duas versões da mesma explicação que podem divergir com o tempo. */
+function wikiSecao(titulo, corpoHTML){
+  return '<div class="ga-wiki-secao"><h3 class="ga-subhead">'+titulo+'</h3>'+corpoHTML+'</div>';
+}
+function wikiScreenHTML(){
+  var out = '<div class="ga-card"><h2>📖 Wiki do Green Área</h2>'+
+    '<p class="ga-hint">Como cada mecânica do jogo funciona, tudo num lugar só. Os mesmos avisos também aparecem passando o mouse em cima das estatísticas no topo da tela.</p>';
+
+  out += wikiSecao('🔋 Energia', '<p>'+esc2(TOOLTIPS.energia).replace(/\n/g,'<br>')+'</p>'+
+    '<p class="ga-hint">Custo por luta: selvagem = 10× o Nível dele; Treinador aleatório de Zona = 15× o Nível do mais forte do time dele; Mestre Especialista = 20× o Nível do Ace. Sem Energia (e sem Pokétickets suficientes pra completar), a luta é recusada.</p>');
+
+  out += wikiSecao('🌿 Zonas de Captura', '<p>10 Zonas nomeadas, uma por Faixa de 10 Níveis (Aprendiz 1-10 até Lendário 91-100). Qualquer Pokémon da Equipe pode liderar em qualquer Zona -- não existe mais trava de Nível mínimo, a responsabilidade de entrar numa Zona forte demais é sua.</p>'+
+    '<p>Quem aparece selvagem em cada Zona é calculado pelo <code>nivelTipico</code> da Espécie (Estágio de evolução + Atributos Base) -- formas iniciais aparecem cedo, evoluções finais tarde. Lendário/Mítico nunca aparece selvagem. A chance de cair num Treinador aleatório em vez de selvagem cresce com a Zona (15% na Aprendiz até 87% na Elite, ou 100% se a base selvagem daquela Zona esgotar).</p>'+
+    '<p>Se a luta for MUITO acima do que sua Equipe aguenta (nem o Pokémon mais forte do time chega perto), um popup avisa e pede confirmação antes de gastar Energia.</p>');
+
+  out += wikiSecao('⭐ XP e Evolução', '<p>Cada Pokémon tem sua própria "Faixa" (o mesmo bloco de 10 Níveis das Zonas). Vencer um oponente na sua Faixa, na anterior ou na seguinte dá 1 XP; vencer alguém 2+ Faixas ACIMA dá XP igual à diferença (2 Faixas acima = 2 XP, 3 = 3 XP...); vencer alguém 2+ Faixas ABAIXO não dá XP nenhum (evita evoluir só farmando fraco). <strong>10 XP fecha 1 Nível.</strong></p>'+
+    '<p>Contra Treinador, o XP conta por CADA Pokémon do time dele que cai, no MEIO da luta -- seu Pokémon pode subir de Nível (e até evoluir) antes da luta terminar.</p>'+
+    '<p>Quando o Nível bate o requisito de evolução da Espécie, a luta pausa perguntando se você quer evoluir. Recusar não é definitivo -- no próximo Nível que também bater o requisito, a pergunta volta. Evoluir nunca muda os Movimentos que o Pokémon já sabe, nem a Natureza.</p>');
+
+  out += wikiSecao('⚪ Pokébolas e Captura', '<p>Só é oferecida depois de VENCER uma luta selvagem (nunca contra Treinador). 4 tipos: Pokébola (×1,00), Great Ball (×1,50), Super Ball (×1,75) e Ultra Ball (×2,00) -- o multiplicador é sobre a Taxa de Captura oficial da Espécie (3 a 255, quanto maior mais fácil).</p>');
+
+  out += wikiSecao('💰 Pokédólares, 🎫 Pokétickets e 🏪 Loja', '<p>'+esc2(TOOLTIPS.pokedolares).replace(/\n/g,'<br>')+'</p>'+
+    '<p>'+esc2(TOOLTIPS.poketickets).replace(/\n/g,'<br>')+'</p>'+
+    '<p>Na Loja dá pra comprar as 4 Pokébolas, as 3 Poções (com a descrição exata de quanto cada uma cura) e MTs.</p>');
+
+  out += wikiSecao('🎖️ Mestres Especialistas', '<p>8 Mestres temáticos por Tipo, 6 Pokémon cada (sempre de famílias/linhas evolutivas DIFERENTES entre si -- nunca duas formas do mesmo Pokémon no mesmo time), na mesma ordem e com o mesmo elenco pra QUALQUER Treinador que desafiar. Progressão sempre sequencial -- não dá pra pular nenhum.</p>'+
+    '<p>Botão "👁️ Ver Time" mostra o elenco de qualquer Mestre (mesmo os que você ainda não pode desafiar), Nível incluso.</p>'+
+    '<p>Vencer dá a Insígnia dele -- e, se sobrar alguma Espécie do time vencido com Movimento de MT, também 1 MT de graça.</p>');
+
+  out += wikiSecao('🔁 Troca de Movimento e 💿 MTs', '<p>Na tela 🎒 Equipe, troca qualquer Movimento do slot por outro que a Espécie JÁ tem liberado por Nível (custa 10 Energia) ou por uma MT que você tem em estoque (grátis, mas consome 1 da Mochila). Nunca um Movimento fora do Learnset real da Espécie. Subir de Nível sozinho NUNCA muda os Movimentos -- é sempre por aqui.</p>');
+
+  out += wikiSecao('✨ Natureza e Habilidade', '<p>Sorteadas 1x quando o Pokémon nasce/é capturado, dentro da limitação real da Espécie (a Habilidade só pode ser uma das que a Espécie realmente pode ter, Oculta incluída). Natureza afeta o Atributo Efetivo de verdade (+1/-1 num Atributo); Habilidade por enquanto é só identidade (ainda não tem gatilho em batalha). Nunca mudam sozinhas -- evoluir remapeia a Habilidade pro slot equivalente, mas não sorteia de novo do zero.</p>');
+
+  out += wikiSecao('📕 Pokédex', '<p>'+esc2(TOOLTIPS.pokedex).replace(/\n/g,'<br>')+'</p>'+
+    '<p>Clique num Pokémon já visto em batalha (mesmo sem capturar) pra ver Área onde encontrar, Movimentos possíveis, Habilidades possíveis, Lore (em português) e o Cry original em áudio.</p>');
+
+  out += '</div>';
   return out;
 }
 
@@ -5550,7 +6158,7 @@ function battleScreenHTML(){
   if(b.pendingHeal){
     var disponiveis = GA_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0; });
     out += '<div class="ga-battle-prompt"><p>💊 '+esc2(playerSp.name)+' está com PV baixo! Usar um item de cura?</p><div class="ga-btn-row">'+
-      disponiveis.map(function(it){ return '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaUsarItemCura(\''+it.key+'\')">'+it.emoji+' '+it.nome+' ('+STATE.itens[it.key]+')</button>'; }).join('')+
+      disponiveis.map(function(it){ return '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaUsarItemCura(\''+it.key+'\')">'+itemIconHTML(it)+' '+it.nome+' ('+STATE.itens[it.key]+')</button>'; }).join('')+
       '<button class="ga-btn-sm" onclick="DT.gaRecusarItemCura()">➡️ Não usar</button>'+
     '</div></div>';
   } else if(b.pendingSwitch){
@@ -5575,7 +6183,7 @@ function battleScreenHTML(){
           (bolasDisponiveis.length
             ? bolasDisponiveis.map(function(bl){
                 var pct = Math.round(catchChance(opp.num, bl.key)*100);
-                return '<button class="ga-btn ga-btn-primary" onclick="DT.gaJogarPokebola(\''+bl.key+'\')">'+bl.emoji+' '+bl.nome+' ('+STATE.pokebolas[bl.key]+') -- '+pct+'%</button>';
+                return '<button class="ga-btn ga-btn-primary" onclick="DT.gaJogarPokebola(\''+bl.key+'\')">'+itemIconHTML(bl)+' '+bl.nome+' ('+STATE.pokebolas[bl.key]+') -- '+pct+'%</button>';
               }).join('')
             : '<span class="ga-hint">Sem nenhuma bola na Mochila -- compre na 🏪 Loja.</span>')+
           '<button class="ga-btn" onclick="DT.gaEncerrarBatalha()">Deixar ir embora</button></div>';
