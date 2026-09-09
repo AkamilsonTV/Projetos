@@ -3975,6 +3975,18 @@ DT.gaMandarPraCaixa = function(pid){
   mutate();
 };
 
+DT.gaIniciarMigracaoLocal = function(){ SESSION.migratingLocal = true; render(); };
+DT.gaCancelarMigracaoLocal = function(){ SESSION.migratingLocal = false; render(); };
+DT.gaDescartarLocalLegado = function(){ try{ localStorage.removeItem(LEGACY_LOCAL_KEY); }catch(e){} render(); };
+DT.gaCancelarDebugReset = function(){ SESSION.confirmReset = false; render(); };
+
+/* Todo onclick inline do HTML roda em escopo GLOBAL do navegador, não
+   dentro desta closure -- sem isso, DT.xxx() em qualquer botão daria
+   "DT is not defined" e NADA na tela responderia a clique nenhum
+   (mesmo padrão exato do Diário de Treinador: só DT.* fica global, e
+   por isso todo onclick usa DT.* -- nunca SESSION/render() direto). */
+window.DT = DT;
+
 /* ============================================================
    Render / telas
    ============================================================ */
@@ -4045,8 +4057,8 @@ function loginScreenHTML(){
 
   if(legacy && !SESSION.migratingLocal){
     out += '<div class="ga-banner ok">📦 Achei um progresso salvo só neste navegador (Treinador "'+esc2(legacy.trainerName)+'"). '+
-      '<button class="ga-btn-sm" onclick="SESSION.migratingLocal=true; render();">Migrar pra conta online</button> '+
-      '<button class="ga-btn-sm danger" onclick="try{localStorage.removeItem(\''+LEGACY_LOCAL_KEY+'\');}catch(e){} render();">Descartar</button></div>';
+      '<button class="ga-btn-sm" onclick="DT.gaIniciarMigracaoLocal()">Migrar pra conta online</button> '+
+      '<button class="ga-btn-sm danger" onclick="DT.gaDescartarLocalLegado()">Descartar</button></div>';
   }
 
   if(legacy && SESSION.migratingLocal){
@@ -4055,7 +4067,7 @@ function loginScreenHTML(){
       '<div class="ga-field"><label>Escolha um PIN (mín. 4 dígitos)</label><input type="password" id="gaMigPin1" inputmode="numeric" maxlength="12"></div>'+
       '<div class="ga-field"><label>Confirme o PIN</label><input type="password" id="gaMigPin2" inputmode="numeric" maxlength="12"></div>'+
       '<button class="ga-btn ga-btn-primary" '+(SESSION.loginBusy?'disabled':'')+' onclick="DT.gaMigrarLocal(document.getElementById(\'gaMigPin1\'),document.getElementById(\'gaMigPin2\'))">📤 Migrar e entrar</button> '+
-      '<button class="ga-btn" onclick="SESSION.migratingLocal=false; render();">Cancelar</button>'+
+      '<button class="ga-btn" onclick="DT.gaCancelarMigracaoLocal()">Cancelar</button>'+
     '</div>';
     return out;
   }
@@ -4211,7 +4223,7 @@ function debugScreenHTML(){
     '</div>'+
     '<hr class="ga-rule">'+
     (SESSION.confirmReset
-      ? '<p>Isso apaga TODO o progresso salvo neste navegador. Confirmar?</p><button class="ga-btn danger" onclick="DT.gaDebugReset()">Sim, apagar tudo</button> <button class="ga-btn" onclick="SESSION.confirmReset=false;render();">Cancelar</button>'
+      ? '<p>Isso apaga TODO o progresso salvo neste navegador. Confirmar?</p><button class="ga-btn danger" onclick="DT.gaDebugReset()">Sim, apagar tudo</button> <button class="ga-btn" onclick="DT.gaCancelarDebugReset()">Cancelar</button>'
       : '<button class="ga-btn danger" onclick="DT.gaDebugReset()">🗑️ Resetar save (recomeçar do zero)</button>')+
   '</div>';
 }
