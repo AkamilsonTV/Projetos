@@ -99,6 +99,22 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-stat-table td{ border-bottom:1px solid var(--line); padding:4px 6px; }
 .ga-stat-table td.num{ text-align:right; font-weight:700; }
 
+.ga-subhead{ margin:16px 0 4px; font-size:.95rem; color:var(--accent); }
+.ga-zona-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:8px; }
+.ga-zona-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; }
+.ga-zona-card.locked{ opacity:.5; }
+.ga-zona-nome{ font-weight:700; font-size:.92rem; margin-bottom:2px; }
+
+.ga-loja-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:10px; }
+.ga-loja-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; }
+.ga-loja-nome{ font-weight:700; font-size:.88rem; margin-bottom:2px; }
+.ga-loja-preco{ font-weight:700; color:var(--accent); margin:4px 0 8px; }
+
+.ga-admin-list{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.ga-admin-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; flex-wrap:wrap; }
+.ga-admin-row.banido{ border-color:var(--danger); opacity:.7; }
+.ga-admin-info{ min-width:220px; }
+
 .ga-leader-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
 .ga-leader-row:last-child{ border-bottom:none; }
 .ga-leader-emoji{ font-size:1.4rem; }
@@ -3197,28 +3213,35 @@ function rollStarterNum(){
    ganhando as insígnias deles") -- 8 Mestres, cada um temático de um
    Tipo, em ordem crescente de dificuldade. Elenco fixo (curado à mão,
    espécies comuns verificadas contra SPECIES_DEX -- nunca lendárias,
-   pra não gastar o "chefão" cedo demais), Nível escalando com a
-   posição (ace = 15 + índice*12). Vencer libera a Insígnia dele e o
-   próximo Mestre da fila (progressão sempre sequencial neste
-   protótipo -- ver comentário grande no topo do arquivo). */
+   pra não gastar o "chefão" cedo demais), Nível do Ace escalando com
+   a posição igualmente espalhado pelo teto de NIVEL_MAX (gymAceLevel):
+   2, 4, 6, 8, 10, 12, 14, 16 -- o 8º Mestre sempre bate no teto do
+   jogo. Vencer libera a Insígnia dele e o próximo Mestre da fila
+   (progressão sempre sequencial neste protótipo -- ver comentário
+   grande no topo do arquivo). */
 var GYM_LEADERS = [
   { id:'inseto', nome:'Mestre Enxame', tipo:'Inseto', insignia:'Insígnia Casulo', emoji:'🐛',
-    roster:[{num:10,rel:-6},{num:11,rel:-3},{num:49,rel:0}] },
+    roster:[{num:10,rel:-2},{num:11,rel:-1},{num:49,rel:0}] },
   { id:'pedra', nome:'Mestre Rocha', tipo:'Pedra', insignia:'Insígnia Pedra', emoji:'🪨',
-    roster:[{num:74,rel:-6},{num:74,rel:-3},{num:75,rel:0}] },
+    roster:[{num:74,rel:-2},{num:74,rel:-1},{num:75,rel:0}] },
   { id:'agua', nome:'Mestre Correnteza', tipo:'Água', insignia:'Insígnia Onda', emoji:'🌊',
-    roster:[{num:54,rel:-6},{num:61,rel:-3},{num:55,rel:0}] },
+    roster:[{num:54,rel:-2},{num:61,rel:-1},{num:55,rel:0}] },
   { id:'eletrico', nome:'Mestre Voltagem', tipo:'Elétrico', insignia:'Insígnia Raio', emoji:'⚡',
-    roster:[{num:81,rel:-6},{num:100,rel:-3},{num:82,rel:0}] },
+    roster:[{num:81,rel:-2},{num:100,rel:-1},{num:82,rel:0}] },
   { id:'venenoso', nome:'Mestra Toxina', tipo:'Venenoso', insignia:'Insígnia Veneno', emoji:'☠️',
-    roster:[{num:23,rel:-6},{num:41,rel:-3},{num:24,rel:0}] },
+    roster:[{num:23,rel:-2},{num:41,rel:-1},{num:24,rel:0}] },
   { id:'psiquico', nome:'Mestre Oráculo', tipo:'Psíquico', insignia:'Insígnia Mente', emoji:'🔮',
-    roster:[{num:63,rel:-6},{num:96,rel:-3},{num:97,rel:0}] },
+    roster:[{num:63,rel:-2},{num:96,rel:-1},{num:97,rel:0}] },
   { id:'fantasma', nome:'Mestra Sombria', tipo:'Fantasma', insignia:'Insígnia Sombra', emoji:'👻',
-    roster:[{num:92,rel:-6},{num:92,rel:-3},{num:93,rel:0}] },
+    roster:[{num:92,rel:-2},{num:92,rel:-1},{num:93,rel:0}] },
   { id:'dragao', nome:'Mestre Dracônico', tipo:'Dragão', insignia:'Insígnia Dragão', emoji:'🐉',
-    roster:[{num:371,rel:-6},{num:147,rel:-3},{num:148,rel:0}] }
+    roster:[{num:371,rel:-2},{num:147,rel:-1},{num:148,rel:0}] }
 ];
+/* Nível do Ace de cada Mestre pela posição na fila (0-based) -- os
+   dois lugares que precisam disso (montar o elenco em startBattle e
+   mostrar na tela de Mestres) usam esta função, nunca uma conta
+   solta, pra nunca divergir. */
+function gymAceLevel(idx){ return clampInt((idx+1)*2, 1, NIVEL_MAX); }
 
 /* Itens de cura (Cap. "itens de cura, que funcionarão com gatilhos"):
    catálogo bem enxuto de propósito -- não é o ITEM_DEX inteiro do RPG
@@ -3233,6 +3256,19 @@ var GA_ITEMS = [
   { key:'hiperpocao', nome:'Hiperpoção', emoji:'🧪', curaPct:1.00 }
 ];
 function itemByKey(key){ return GA_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
+
+/* Loja (Cap. "Cria uma loja também para podermos comprar itens...
+   A moeda será pokedolars"): catálogo enxuto (Pokébola + os 3 itens
+   de cura que a luta automática já usa) com a MESMA ordem relativa de
+   preço do jogo oficial (Bulbapedia: Poké Ball 200 < Potion 300 <
+   Super Potion 700 < Hyper Potion 1200) -- só escalada pra baixo, do
+   tamanho dos números pequenos que o resto do protótipo já usa. */
+var LOJA_ITENS = [
+  { key:'pokebola', nome:'Pokébola', emoji:'⚪', preco:10, tipo:'pokebola' },
+  { key:'pocao', nome:'Poção', emoji:'💊', preco:15, tipo:'item' },
+  { key:'superpocao', nome:'Superpoção', emoji:'💉', preco:35, tipo:'item' },
+  { key:'hiperpocao', nome:'Hiperpoção', emoji:'🧪', preco:60, tipo:'item' }
+];
 
 /* Movimento de reserva -- só entra se um Pokémon muito baixo de Nível
    acabar sem NENHUM Movimento de dano no learnset ainda liberado (só
@@ -3274,9 +3310,9 @@ function findMoveByName(name){
    <= Nível atual, fica com os 4 MAIS ALTOS (os "mais recentes" que
    ele aprendeu, igual jogo oficial) e garante que sobra pelo menos 1
    Movimento de dano (troca o mais fraco por FALLBACK_MOVE se sobrar
-   só Status). Roda 1x na hora de nascer/capturar o Pokémon -- o kit
-   fica fixo depois (não "aprende Movimento novo" ao subir de Nível
-   neste protótipo, ver README). */
+   só Status). Roda na hora de nascer/capturar o Pokémon E de novo
+   toda vez que ele sobe de Nível (ver applyLevelUps) -- assim ele
+   aprende Movimento novo de verdade conforme evolui de Nível. */
 function pickMovesForLevel(num, level){
   var ls = LEARNSETS[num];
   var pool = (ls && ls.levelup ? ls.levelup : []).filter(function(pair){ return pair[1]<=level; });
@@ -3290,8 +3326,13 @@ function pickMovesForLevel(num, level){
   if(picked.length===0) picked.push(FALLBACK_MOVE);
   return picked;
 }
+/* Nível MÁXIMO do jogo inteiro (Cap. "O nível máximo é de 1 a 16") --
+   MESMO teto do Treinador no RPG de mesa (regras.md Cap. 2.4/2.3:
+   "Nível máximo 16"). Todo lugar que decide um Nível de Pokémon
+   nesse protótipo passa por essa constante, nunca um número solto. */
+var NIVEL_MAX = 16;
 function spawnPoke(num, level){
-  return { id: uid(), num: num, level: clampInt(level,1,100), apelido:'', moves: pickMovesForLevel(num, level) };
+  return { id: uid(), num: num, level: clampInt(level,1,NIVEL_MAX), apelido:'', moves: pickMovesForLevel(num, level), vitoriasNivel: 0 };
 }
 
 /* ============================================================
@@ -3316,8 +3357,18 @@ var unsubscribeSnapshot = null;
 var SESSION_CACHE_KEY = 'green_area_session_v1'; // {docId, pin} -- NUNCA o progresso em si
 var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só localStorage, antes da conta online)
 
+/* Conta(s) com acesso ao Painel Admin -- reconhecida pelo ID do
+   documento (mesmo saveDocId do login normal), NUNCA um campo à
+   parte no Firestore: dá pra saber quem é admin só olhando o nome
+   com que a pessoa criou a conta. MESMO modelo de segurança "de
+   mesa" do resto do projeto (PIN em texto puro comparado no
+   cliente) -- não é uma trava de verdade contra alguém que abra o
+   DevTools, só evita que qualquer Treinador comum tropece no painel
+   por acidente. */
+var ADMIN_DOC_IDS = ['marcus'];
+
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null };
 
 function freshState(trainerName){
   return {
@@ -3328,6 +3379,7 @@ function freshState(trainerName){
     badges: [],
     pokebolas: 10,
     poketickets: 0,
+    pokedolares: 200,
     itens: { pocao:5, superpocao:2, hiperpocao:0 },
     dex: {},
     party: [],
@@ -3407,9 +3459,13 @@ function detectLegacyLocalSave(){
 function attachSaveListener(docId){
   if(unsubscribeSnapshot) unsubscribeSnapshot();
   currentSaveRef = savesCol.doc(docId);
+  SESSION.currentDocId = docId;
+  SESSION.isAdmin = ADMIN_DOC_IDS.indexOf(docId) !== -1;
   unsubscribeSnapshot = currentSaveRef.onSnapshot(function(doc){
     if(!doc.exists){ SESSION.error='Sua conta sumiu do banco de dados -- tente entrar de novo.'; DT.gaSair(); return; }
-    STATE = doc.data().state;
+    var data = doc.data();
+    if(data.banido){ SESSION.error='Esta conta foi banida.'; DT.gaSair(); return; }
+    STATE = data.state;
     if(SESSION.screen==='login') SESSION.screen = 'hub';
     render();
   }, function(err){
@@ -3431,7 +3487,7 @@ function bootApp(){
   var cached = readCachedSession();
   if(cached && cached.docId){
     savesCol.doc(cached.docId).get().then(function(doc){
-      if(doc.exists && String(doc.data().pin)===String(cached.pin)){
+      if(doc.exists && String(doc.data().pin)===String(cached.pin) && !doc.data().banido){
         attachSaveListener(cached.docId);
       } else {
         clearCachedSession();
@@ -3516,10 +3572,15 @@ function startBattle(kind, opts){
     oppTeam = [buildBattlerWild(opts.wildNum, opts.wildLevel)];
     custoEnergia = 10 * opts.wildLevel;
     label = 'Área de Captura';
+  } else if(kind==='rival'){
+    oppTeam = opts.rivalTeam.map(function(slot,i){ return buildBattlerTrainer(slot.num, slot.level, 'rival_'+i); });
+    var maxLvlRival = opts.rivalTeam.reduce(function(m,s){ return Math.max(m,s.level); }, 1);
+    custoEnergia = 15 * maxLvlRival;
+    label = opts.rivalNome+' te desafiou!';
   } else {
     var leader = GYM_LEADERS.filter(function(l){ return l.id===opts.leaderId; })[0];
-    var aceLevel = 15 + GYM_LEADERS.indexOf(leader)*12;
-    oppTeam = leader.roster.map(function(slot,i){ return buildBattlerTrainer(slot.num, clampInt(aceLevel+slot.rel,1,100), leader.id+'_'+i); });
+    var aceLevel = gymAceLevel(GYM_LEADERS.indexOf(leader));
+    oppTeam = leader.roster.map(function(slot,i){ return buildBattlerTrainer(slot.num, clampInt(aceLevel+slot.rel,1,NIVEL_MAX), leader.id+'_'+i); });
     custoEnergia = 20 * aceLevel;
     label = leader.nome+' ('+leader.tipo+')';
   }
@@ -3639,6 +3700,25 @@ function advanceOpponent(){
   if(b.oppIdx>=b.oppTeam.length){ finishBattle('vitoria'); return; }
   b.log.push('➡️ '+ (b.kind==='wild' ? 'O selvagem caiu!' : b.label+' manda '+displayName(currentOpponent())+'!'));
 }
+/* Cap. "Cria uma loja... o dinheiro vai ser ganho sempre depois de
+   combates. Contra treinadores sempre ganha mais": paga por Nível do
+   oponente (selvagem sempre o mais barato, Treinador aleatório de
+   zona no meio, Mestre Especialista sempre o mais generoso -- pro
+   MESMO Nível de oponente, Treinador SEMPRE paga mais que selvagem,
+   nunca o contrário). */
+function battleReward(b){
+  if(b.kind==='wild'){
+    var wildLevel = b.oppTeam[0] ? b.oppTeam[0].level : 1;
+    return 5 * wildLevel;
+  }
+  if(b.kind==='rival'){
+    var maxLvlR = b.oppTeam.reduce(function(m,o){ return Math.max(m,o.level); }, 1);
+    return 12 * maxLvlR;
+  }
+  var leaderR = GYM_LEADERS.filter(function(l){ return l.id===b.leaderId; })[0];
+  var aceR = gymAceLevel(leaderR ? GYM_LEADERS.indexOf(leaderR) : 0);
+  return 20 * aceR;
+}
 function finishBattle(result){
   var b = STATE.battle;
   b.finished = result;
@@ -3649,9 +3729,46 @@ function finishBattle(result){
       b.log.push('🎖️ Você ganhou a '+GYM_LEADERS.filter(function(l){return l.id===b.leaderId;})[0].insignia+'!');
     }
     if(b.kind==='wild') b.captureDone = false; // ainda não -- pergunta na tela de resultado
+    var premio = battleReward(b);
+    STATE.pokedolares = (STATE.pokedolares||0) + premio;
+    b.log.push('💰 Você ganhou '+premio+' Pokédólares!');
+    applyLevelUps(b);
   } else {
     b.log.push('☠️ Sua Equipe não aguentou -- luta perdida.');
   }
+}
+
+/* Progressão de Nível (Cap. "o sistema de level up é igual o da
+   nossa regra") -- mesma cadência do Treinador no RPG de mesa
+   (regras.md Cap. 2.4): "a cada 4 batalhas completas vencidas, sobe
+   1 Nível automaticamente... não precisa dar o golpe final". Aqui
+   quem sobe é o PRÓPRIO Pokémon (o RPG nunca teve Nível de Pokémon
+   separado do Treinador pra copiar 1:1) -- todo Pokémon que ENTROU
+   em campo nessa luta (tem entrada em b.hp, mesmo que tenha desmaiado
+   no meio) ganha 1 vitória pro contador dele; a cada 4, sobe 1 Nível
+   (até o teto NIVEL_MAX) e o contador zera de novo, exatamente como
+   a regra do Treinador. Re-roda pickMovesForLevel no Nível novo, pra
+   aprender Movimento de verdade em vez de ficar preso no kit da
+   captura pra sempre. */
+function applyLevelUps(b){
+  var subiram = [];
+  STATE.party.forEach(function(p){
+    var key = 'p_'+p.id;
+    if(b.hp[key]===undefined) return; // nunca entrou nessa luta -- não contribuiu pra vitória
+    p.vitoriasNivel = (p.vitoriasNivel||0) + 1;
+    if(p.vitoriasNivel>=4){
+      p.vitoriasNivel = 0;
+      if(p.level<NIVEL_MAX){
+        p.level = clampInt(p.level+1, 1, NIVEL_MAX);
+        p.moves = pickMovesForLevel(p.num, p.level);
+        subiram.push(p);
+      }
+    }
+  });
+  subiram.forEach(function(p){
+    var sp = speciesByNum(p.num);
+    b.log.push('🌟 '+(p.apelido||sp.name)+' subiu para o Nível '+p.level+'!');
+  });
 }
 
 /* Um turno de dano só -- mesma fórmula do resolveAttack do RPG
@@ -3785,6 +3902,7 @@ DT.gaEntrar = function(nomeEl, pinEl){
     if(!doc.exists){ SESSION.error='Não achei esse Treinador -- confira o nome ou crie uma conta nova.'; render(); return; }
     var data = doc.data();
     if(String(data.pin)!==pin){ SESSION.error='PIN incorreto.'; render(); return; }
+    if(data.banido){ SESSION.error='Esta conta foi banida.'; render(); return; }
     cacheSession(docId, pin);
     attachSaveListener(docId);
   }).catch(function(e){
@@ -3816,7 +3934,7 @@ DT.gaCriar = function(nomeEl, pinEl, pin2El){
     var state = freshState(nome);
     state.party = [spawnPoke(num, 5)];
     state.dex[num] = {seen:true, caught:true, caughtAt:Date.now()};
-    savesCol.doc(docId).set({ nameLower:docId, pin:pin, state: sanitizeForFirestore(state), updatedAt: Date.now() }).then(function(){
+    savesCol.doc(docId).set({ nameLower:docId, pin:pin, banido:false, state: sanitizeForFirestore(state), updatedAt: Date.now() }).then(function(){
       SESSION.loginBusy=false;
       cacheSession(docId, pin);
       attachSaveListener(docId);
@@ -3851,7 +3969,7 @@ DT.gaMigrarLocal = function(pinEl, pin2El){
       render();
       return;
     }
-    savesCol.doc(docId).set({ nameLower:docId, pin:pin, state: sanitizeForFirestore(legacy), updatedAt: Date.now() }).then(function(){
+    savesCol.doc(docId).set({ nameLower:docId, pin:pin, banido:false, state: sanitizeForFirestore(legacy), updatedAt: Date.now() }).then(function(){
       SESSION.loginBusy=false;
       try{ localStorage.removeItem(LEGACY_LOCAL_KEY); }catch(e){}
       cacheSession(docId, pin);
@@ -3873,37 +3991,133 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null };
   render();
 };
 
 /* ============================================================
-   Área de Captura (encontro selvagem) -- Cap. "batalhas contra
-   pokémons em área de captura... o jogador escolhe o Pokémon a
-   usar". A Espécie sorteada é filtrada pelo Estágio de evolução
-   (EVO_STAGE, mesma fonte do RPG): quanto mais Insígnia, mais
-   estágios avançados entram no sorteio -- dá a sensação de "a mata
-   fica mais perigosa/interessante" conforme a jornada avança, sem
-   precisar inventar zonas/mapas pro protótipo.
+   Painel Admin (Cap. "cria um login que tenha possibilidade de
+   admin... uma conta onde eu consiga olhar o sistema por dentro,
+   banir, alterar e etc as coisas dentro do jogo") -- só quem loga
+   com um Nome em ADMIN_DOC_IDS vê a aba 🛡️ Admin (ver
+   attachSaveListener). MESMO aviso de sempre: a trava é só no
+   cliente (nada de regra especial no Firestore -- as regras do
+   banco continuam "qualquer um lê/escreve", só ajustadas pra
+   liberar a coleção), então isso NÃO é segurança de verdade contra
+   alguém que abra o DevTools -- é só o painel de administração do
+   ambiente de testes em si.
    ============================================================ */
-function wildPool(){
-  var badges = STATE.badges.length;
-  var maxStage = badges>=5 ? 3 : (badges>=2 ? 2 : 1);
-  if(!wildPool._cache) wildPool._cache = {};
-  if(!wildPool._cache[maxStage]){
-    wildPool._cache[maxStage] = SPECIES_DEX.filter(function(sp){ return (EVO_STAGE[sp.num]||[1])[0] <= maxStage; });
+DT.gaAdminAbrirPainel = function(){
+  if(!SESSION.isAdmin) return;
+  SESSION.screen = 'admin';
+  SESSION.error = '';
+  SESSION.adminLoading = true;
+  render();
+  savesCol.get().then(function(snap){
+    var contas = [];
+    snap.forEach(function(doc){
+      var d = doc.data();
+      contas.push({ docId: doc.id, nome: d.nameLower, banido: !!d.banido, state: d.state||{} });
+    });
+    contas.sort(function(a,b){ return a.docId<b.docId ? -1 : (a.docId>b.docId ? 1 : 0); });
+    SESSION.adminContas = contas;
+    SESSION.adminLoading = false;
+    render();
+  }).catch(function(e){
+    SESSION.adminLoading = false;
+    SESSION.error = 'Não consegui carregar as contas.';
+    render();
+  });
+};
+DT.gaAdminBanir = function(docId){
+  savesCol.doc(docId).update({banido:true}).then(function(){ DT.gaAdminAbrirPainel(); }).catch(function(){ SESSION.error='Não consegui banir essa conta.'; render(); });
+};
+DT.gaAdminDesbanir = function(docId){
+  savesCol.doc(docId).update({banido:false}).then(function(){ DT.gaAdminAbrirPainel(); }).catch(function(){ SESSION.error='Não consegui desbanir essa conta.'; render(); });
+};
+DT.gaAdminExcluir = function(docId){
+  if(SESSION.adminConfirmExcluir!==docId){ SESSION.adminConfirmExcluir = docId; render(); return; }
+  SESSION.adminConfirmExcluir = null;
+  savesCol.doc(docId).delete().then(function(){ DT.gaAdminAbrirPainel(); }).catch(function(){ SESSION.error='Não consegui excluir essa conta.'; render(); });
+};
+DT.gaAdminCancelarExcluir = function(){ SESSION.adminConfirmExcluir = null; render(); };
+
+/* ============================================================
+   Zonas (Cap. "áreas para que ele consiga farmar bem com uma certa
+   dificuldade mas que fique justo... divida as áreas inicialmente
+   por níveis... 1-3, 4-6... até 16... não use números e sim
+   palavras"): 6 zonas de 3 em 3 Níveis (a última, sozinha, no teto
+   NIVEL_MAX -- "assim sucessivamente até 16" sem inventar uma faixa
+   maior só pra fechar redondo). Uma zona libera quando o Pokémon
+   ESCOLHIDO PRA LIDERAR chega no Nível mínimo dela -- zonas já
+   liberadas continuam sempre disponíveis (dá pra voltar pra uma mais
+   fácil e farmar tranquilo com folga de Nível).
+
+   Cap. (mensagem seguinte) "quanto mais fortes, eles podem ser
+   evoluídos... de 1 a 3 pode não ter evolução, só as primárias
+   mesmo... Pode até ter evolução, mas desde que ela seja próximo aos
+   que estão naquela classe": o Estágio de evolução (EVO_STAGE, mesma
+   fonte do RPG) sobe junto com a zona -- Aprendiz/Iniciante só
+   Estágio 1 (nunca evoluído), Moderado/Avançado liberam até Estágio
+   2 (1ª evolução), Experiente/Lendário liberam até Estágio 3 (linha
+   evolutiva completa) -- nunca um Pokémon MUITO evoluído aparecendo
+   numa zona de Nível baixo. */
+var ZONAS = [
+  { id:'aprendiz',   nome:'Aprendiz',   min:1,  max:3,  stage:1 },
+  { id:'iniciante',  nome:'Iniciante',  min:4,  max:6,  stage:1 },
+  { id:'moderado',   nome:'Moderado',   min:7,  max:9,  stage:2 },
+  { id:'avancado',   nome:'Avançado',   min:10, max:12, stage:2 },
+  { id:'experiente', nome:'Experiente', min:13, max:15, stage:3 },
+  { id:'lendario',   nome:'Lendário',   min:16, max:16, stage:3 }
+];
+function zonaByStatus(id){ return ZONAS.filter(function(z){ return z.id===id; })[0] || null; }
+function wildPoolForZona(zona){
+  if(!wildPoolForZona._cache) wildPoolForZona._cache = {};
+  if(!wildPoolForZona._cache[zona.stage]){
+    wildPoolForZona._cache[zona.stage] = SPECIES_DEX.filter(function(sp){ return (EVO_STAGE[sp.num]||[1])[0] <= zona.stage; });
   }
-  return wildPool._cache[maxStage];
+  return wildPoolForZona._cache[zona.stage];
 }
-function wildLevelForBadges(){
-  var badges = STATE.badges.length;
-  var base = 5 + badges*7;
-  return clampInt(base + rollDie(6) - 1, 1, 100);
+
+/* Cap. "Nas áreas de caça, também inclua uma chance de encontrar
+   treinadores de acordo com o nível da área": todo "Entrar na mata"
+   tem CHANCE_TREINADOR_ZONA de chance de virar um duelo contra um
+   Treinador aleatório (1-2 Pokémon sorteados da MESMA piscina/faixa
+   de Nível da zona -- nunca mais forte que o que a zona já permite)
+   em vez do encontro selvagem de sempre. Paga mais Pokédólares que
+   selvagem (ver battleReward), mas nunca oferece Pokébola (não dá
+   pra capturar o Pokémon de um Treinador). */
+var CHANCE_TREINADOR_ZONA = 0.25;
+var RIVAL_NOMES = ['Caminhante André','Colegial Bia','Escoteiro Caio','Excursionista Duda','Pescador Enzo','Ciclista Fê','Acampante Gil','Patinadora Ivy','Motociclista Juca','Passageira Kira'];
+function rollRivalNome(){ return RIVAL_NOMES[Math.floor(Math.random()*RIVAL_NOMES.length)]; }
+function rollRivalTeam(zona){
+  var pool = wildPoolForZona(zona);
+  var qtd = Math.random()<0.5 ? 1 : 2;
+  var time = [];
+  for(var i=0;i<qtd;i++){
+    var sp = pool[Math.floor(Math.random()*pool.length)];
+    var level = zona.min + Math.floor(Math.random()*(zona.max-zona.min+1));
+    time.push({num:sp.num, level:level});
+  }
+  return time;
 }
-DT.gaEntrarCaptura = function(leadId){
-  var pool = wildPool();
+
+DT.gaSetCapturaLead = function(pid){ SESSION.capturaLeadId = pid; render(); };
+DT.gaEntrarCaptura = function(leadId, zonaId){
+  var zona = zonaByStatus(zonaId);
+  if(!zona) return;
+  var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
+  if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar a luta.'; render(); return; }
+  if(lead.level < zona.min){ SESSION.error = 'Esse Pokémon ainda não chegou no Nível '+zona.min+' -- a zona '+zona.nome+' continua trancada pra ele.'; render(); return; }
+  if(Math.random() < CHANCE_TREINADOR_ZONA){
+    var time = rollRivalTeam(zona);
+    time.forEach(function(slot){ markSeen(slot.num); });
+    startBattle('rival', { leadPartyId: leadId, rivalNome: rollRivalNome(), rivalTeam: time });
+    return;
+  }
+  var pool = wildPoolForZona(zona);
   var sp = pool[Math.floor(Math.random()*pool.length)];
-  var level = wildLevelForBadges();
+  var level = zona.min + Math.floor(Math.random()*(zona.max-zona.min+1));
   markSeen(sp.num);
   startBattle('wild', { leadPartyId: leadId, wildNum: sp.num, wildLevel: level });
 };
@@ -3928,6 +4142,7 @@ DT.gaDesafiarMestre = function(leadId, leaderId){
 DT.gaDebugEnergia = function(){ STATE.energy = 1000; mutate(); };
 DT.gaDebugPoketicket = function(){ STATE.energy = clampInt(STATE.energy+100,0,1000); mutate(); };
 DT.gaDebugItens = function(){ STATE.pokebolas+=10; STATE.itens.pocao+=5; STATE.itens.superpocao+=3; STATE.itens.hiperpocao+=1; mutate(); };
+DT.gaDebugPokedolares = function(){ STATE.pokedolares = (STATE.pokedolares||0)+500; mutate(); };
 DT.gaDebugReset = function(){
   if(!SESSION.confirmReset){ SESSION.confirmReset = true; render(); return; }
   SESSION.confirmReset = false;
@@ -4004,14 +4219,16 @@ function topbarHTML(){
     '<div class="ga-brand" onclick="DT.gaGoto(\'hub\')">🟢 GREEN ÁREA <span class="ga-build">build de testes</span></div>'+
     '<div class="ga-topstats">'+
       '<span title="Energia">🔋 '+STATE.energy+'/1000</span>'+
+      '<span title="Pokédólares">💰 '+(STATE.pokedolares||0)+'</span>'+
       '<span title="Insígnias">🎖️ '+STATE.badges.length+'/'+GYM_LEADERS.length+'</span>'+
       '<span title="Pokédex">📕 '+counts.caught+'/'+counts.total+'</span>'+
     '</div>'+
     '<nav class="ga-nav">'+
-      ['hub:🏠 Início','equipe:🎒 Equipe','dex:📕 Pokédex','captura:🌿 Área de Captura','ginasios:🎖️ Mestres','debug:🛠️ Testes'].map(function(pair){
+      ['hub:🏠 Início','equipe:🎒 Equipe','dex:📕 Pokédex','captura:🌿 Área de Captura','ginasios:🎖️ Mestres','loja:🏪 Loja','debug:🛠️ Testes'].map(function(pair){
         var kv = pair.split(':');
         return '<button class="'+(SESSION.screen===kv[0]?'active':'')+'" onclick="DT.gaGoto(\''+kv[0]+'\')">'+kv[1]+'</button>';
       }).join('')+
+      (SESSION.isAdmin ? '<button class="'+(SESSION.screen==='admin'?'active':'')+'" onclick="DT.gaAdminAbrirPainel()">🛡️ Admin</button>' : '')+
       '<button title="Sair da conta" onclick="DT.gaSair()">🚪 Sair</button>'+
     '</nav>'+
   '</div>';
@@ -4032,6 +4249,8 @@ function screenHTML(){
     case 'dex': return wrap(dexScreenHTML());
     case 'captura': return wrap(capturaScreenHTML());
     case 'ginasios': return wrap(ginasiosScreenHTML());
+    case 'loja': return wrap(lojaScreenHTML());
+    case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
     case 'debug': return wrap(debugScreenHTML());
     default: return wrap(hubScreenHTML());
   }
@@ -4095,10 +4314,12 @@ function loginScreenHTML(){
 
 function pokeCardMini(poke, actionsHTML){
   var sp = speciesByNum(poke.num);
+  var progresso = poke.level>=NIVEL_MAX ? 'Nível máximo' : ((poke.vitoriasNivel||0)+'/4 vitórias pro próximo Nível');
   return '<div class="ga-poke-card">'+
     '<img src="'+spriteUrl(poke.num)+'" loading="lazy" alt="">'+
     '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+'</div>'+
     '<div class="ga-poke-meta">Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
+    '<div class="ga-hint">'+progresso+'</div>'+
     (actionsHTML||'')+
   '</div>';
 }
@@ -4187,15 +4408,35 @@ function dexPopupHTML(num){
 
 function capturaScreenHTML(){
   if(STATE.party.length===0) return '<div class="ga-card"><p>Sua Equipe está vazia.</p></div>';
-  var maxStage = STATE.badges.length>=5?3:(STATE.badges.length>=2?2:1);
-  var lvl = wildLevelForBadges();
-  return '<div class="ga-card"><h2>🌿 Área de Captura</h2>'+
-    '<p class="ga-hint">Estágio de evolução liberado até agora: '+maxStage+'/3 (mais Insígnias liberam espécies mais avançadas). Nível esperado do selvagem: ~'+lvl+'. Custo: 10 × Nível do selvagem.</p>'+
-    '<p>Escolha quem vai liderar a luta:</p>'+
+  if(!SESSION.capturaLeadId || !STATE.party.some(function(p){ return p.id===SESSION.capturaLeadId; })){
+    SESSION.capturaLeadId = STATE.party[0].id;
+  }
+  var lead = STATE.party.filter(function(p){ return p.id===SESSION.capturaLeadId; })[0];
+  var leadSp = speciesByNum(lead.num);
+  var leadNome = lead.apelido || leadSp.name;
+
+  var out = '<div class="ga-card"><h2>🌿 Área de Captura</h2>'+
+    '<p class="ga-hint">Escolha quem vai liderar a luta -- cada zona libera pra ele quando chega no Nível mínimo dela (zonas já liberadas continuam sempre disponíveis, dá pra voltar e farmar com folga). '+Math.round(CHANCE_TREINADOR_ZONA*100)+'% de chance de cair num Treinador aleatório em vez de um selvagem -- paga mais Pokédólares, mas não dá pra capturar o Pokémon dele.</p>'+
     '<div class="ga-poke-grid">'+STATE.party.map(function(p){
-      return pokeCardMini(p, '<div class="ga-poke-actions"><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntrarCaptura(\''+p.id+'\')">⚔️ Entrar na mata</button></div>');
+      var sel = p.id===lead.id;
+      return pokeCardMini(p, '<div class="ga-poke-actions"><button class="ga-btn-sm'+(sel?' ga-btn-primary':'')+'" onclick="DT.gaSetCapturaLead(\''+p.id+'\')">'+(sel?'✔️ Liderando':'Escolher')+'</button></div>');
     }).join('')+'</div>'+
+    '<h3 class="ga-subhead">Zonas — '+esc2(leadNome)+' (Nv. '+lead.level+')</h3>'+
+    '<div class="ga-zona-grid">'+
+    ZONAS.map(function(z){
+      var liberada = lead.level >= z.min;
+      var faixa = z.min===z.max ? ('Nível '+z.min) : ('Níveis '+z.min+'–'+z.max);
+      return '<div class="ga-zona-card'+(liberada?'':' locked')+'">'+
+        '<div class="ga-zona-nome">'+esc2(z.nome)+'</div>'+
+        '<div class="ga-hint">'+faixa+' · até Estágio '+z.stage+' de evolução</div>'+
+        (liberada
+          ? '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntrarCaptura(\''+lead.id+'\',\''+z.id+'\')">⚔️ Entrar na mata</button>'
+          : '<div class="ga-hint">🔒 '+esc2(leadNome)+' precisa chegar no Nível '+z.min+'</div>')+
+      '</div>';
+    }).join('')+
+    '</div>'+
   '</div>';
+  return out;
 }
 
 function ginasiosScreenHTML(){
@@ -4203,7 +4444,7 @@ function ginasiosScreenHTML(){
   var rows = GYM_LEADERS.map(function(l, idx){
     var conquistado = STATE.badges.indexOf(l.id)!==-1;
     var bloqueado = idx>0 && STATE.badges.indexOf(GYM_LEADERS[idx-1].id)===-1;
-    var aceLevel = 15 + idx*12;
+    var aceLevel = gymAceLevel(idx);
     return '<div class="ga-leader-row'+(conquistado?' done':'')+(bloqueado?' locked':'')+'">'+
       '<span class="ga-leader-emoji">'+l.emoji+'</span>'+
       '<div class="ga-leader-info"><strong>'+esc2(l.nome)+'</strong><span class="ga-hint">Tipo '+l.tipo+' · Ace Nv. '+aceLevel+' · custo '+(20*aceLevel)+' energia · '+l.insignia+'</span></div>'+
@@ -4213,6 +4454,63 @@ function ginasiosScreenHTML(){
   return '<div class="ga-card"><h2>🎖️ Mestres Especialistas</h2><p class="ga-hint">Progressão sequencial — vença um Mestre pra liberar o próximo.</p>'+rows+'</div>';
 }
 
+DT.gaComprarItem = function(key){
+  var def = LOJA_ITENS.filter(function(i){ return i.key===key; })[0];
+  if(!def) return;
+  if((STATE.pokedolares||0) < def.preco){ SESSION.error = 'Pokédólares insuficientes -- '+def.nome+' custa '+def.preco+' e você tem '+(STATE.pokedolares||0)+'.'; render(); return; }
+  STATE.pokedolares -= def.preco;
+  if(def.tipo==='pokebola') STATE.pokebolas = (STATE.pokebolas||0) + 1;
+  else STATE.itens[key] = (STATE.itens[key]||0) + 1;
+  SESSION.notice = 'Comprou 1 '+def.nome+'!';
+  mutate();
+};
+
+function lojaScreenHTML(){
+  var out = '<div class="ga-card"><h2>🏪 Loja</h2>'+
+    '<p class="ga-hint">💰 '+(STATE.pokedolares||0)+' Pokédólares — ganhos depois de vencer lutas (Treinadores sempre pagam mais que selvagens do mesmo Nível, Mestres Especialistas pagam o melhor de todos).</p>'+
+    '<div class="ga-loja-grid">'+
+    LOJA_ITENS.map(function(it){
+      var qtdAtual = it.tipo==='pokebola' ? (STATE.pokebolas||0) : (STATE.itens[it.key]||0);
+      var podeComprar = (STATE.pokedolares||0) >= it.preco;
+      return '<div class="ga-loja-card">'+
+        '<div class="ga-loja-nome">'+it.emoji+' '+esc2(it.nome)+'</div>'+
+        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
+        '<div class="ga-loja-preco">💰 '+it.preco+'</div>'+
+        '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\')">Comprar</button>'+
+      '</div>';
+    }).join('')+
+    '</div></div>';
+  return out;
+}
+
+function adminScreenHTML(){
+  var out = '<div class="ga-card"><h2>🛡️ Painel Admin</h2>'+
+    '<p class="ga-hint">Acesso restrito — ver, banir/desbanir e excluir qualquer conta de Treinador. Trava só no cliente (mesmo modelo do resto do jogo), não é segurança de verdade.</p>';
+  if(SESSION.adminLoading){ out += '<p>Carregando contas...</p></div>'; return out; }
+  var contas = SESSION.adminContas || [];
+  out += '<p class="ga-hint">'+contas.length+' conta(s) no total.</p>';
+  out += '<div class="ga-admin-list">';
+  out += contas.map(function(c){
+    var s = c.state || {};
+    var maiorNivel = (s.party||[]).reduce(function(m,p){ return Math.max(m, p.level||0); }, 0);
+    return '<div class="ga-admin-row'+(c.banido?' banido':'')+'">'+
+      '<div class="ga-admin-info"><strong>'+esc2(s.trainerName||c.docId)+'</strong> ('+esc2(c.docId)+')'+
+        '<div class="ga-hint">Maior Nível: '+maiorNivel+' · Insígnias: '+((s.badges||[]).length)+' · Energia: '+(s.energy||0)+' · 💰 '+(s.pokedolares||0)+(c.banido?' · 🚫 BANIDO':'')+'</div>'+
+      '</div>'+
+      '<div class="ga-btn-row">'+
+        (c.banido
+          ? '<button class="ga-btn-sm" onclick="DT.gaAdminDesbanir(\''+c.docId+'\')">Desbanir</button>'
+          : '<button class="ga-btn-sm danger" onclick="DT.gaAdminBanir(\''+c.docId+'\')">Banir</button>')+
+        (SESSION.adminConfirmExcluir===c.docId
+          ? '<button class="ga-btn-sm danger" onclick="DT.gaAdminExcluir(\''+c.docId+'\')">Confirmar exclusão</button><button class="ga-btn-sm" onclick="DT.gaAdminCancelarExcluir()">Cancelar</button>'
+          : '<button class="ga-btn-sm danger" onclick="DT.gaAdminExcluir(\''+c.docId+'\')">🗑️ Excluir</button>')+
+      '</div>'+
+    '</div>';
+  }).join('');
+  out += '</div></div>';
+  return out;
+}
+
 function debugScreenHTML(){
   return '<div class="ga-card"><h2>🛠️ Ferramentas de Teste</h2>'+
     '<p class="ga-hint">Green Área é um ambiente de testes — estes botões existem pra testar rápido, sem esperar a Energia recarregar de verdade ou coletar Pokéticket nenhum. Nunca fazem parte do jogo "de verdade".</p>'+
@@ -4220,6 +4518,7 @@ function debugScreenHTML(){
       '<button class="ga-btn" onclick="DT.gaDebugEnergia()">🔋 Encher Energia (1000)</button>'+
       '<button class="ga-btn" onclick="DT.gaDebugPoketicket()">🎫 +1 Pokéticket (+100 Energia)</button>'+
       '<button class="ga-btn" onclick="DT.gaDebugItens()">🎒 +Itens (10 Pokébola, 5 Poção, 3 Superpoção, 1 Hiperpoção)</button>'+
+      '<button class="ga-btn" onclick="DT.gaDebugPokedolares()">💰 +500 Pokédólares</button>'+
     '</div>'+
     '<hr class="ga-rule">'+
     (SESSION.confirmReset
