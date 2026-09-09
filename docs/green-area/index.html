@@ -44,6 +44,9 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-hero{ font-size:3rem; }
 .ga-sub{ color:var(--accent); font-weight:600; margin:0 0 4px; }
 .ga-tag{ color:var(--ink-dim); font-size:.82rem; }
+.ga-tabs{ display:flex; gap:8px; justify-content:center; margin:14px 0 4px; }
+.ga-tabs button{ background:transparent; border:1px solid var(--line); color:var(--ink-dim); border-radius:999px; padding:6px 18px; font-size:.82rem; font-weight:600; }
+.ga-tabs button.active{ background:var(--accent-dim); color:#04170c; border-color:var(--accent-dim); }
 .ga-field{ text-align:left; margin:16px 0; display:flex; flex-direction:column; gap:4px; }
 .ga-field label{ font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); }
 .ga-field input{ padding:10px; font-size:1rem; }
@@ -125,6 +128,8 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 </head>
 <body>
 <div id="app"><div style="padding:40px;text-align:center;color:#8fb3a2;font-family:sans-serif;">Carregando Green Área...</div></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
 /* ============================================================
    GREEN ÁREA — Jornada Pokémon (protótipo)
@@ -156,9 +161,13 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    Acerto/Crítico; sem PP (Movimento nunca "acaba" numa luta);
    captura só depois de VENCER (pedido explícito do usuário,
    diferente dos jogos oficiais); progressão de Insígnia é sempre
-   sequencial (não dá pra pular Mestre); salvamento é só
-   localStorage (por navegador/aparelho -- sem Firebase ainda,
-   ver README). Tudo isso dá pra evoluir depois. */
+   sequencial (não dá pra pular Mestre). Tudo isso dá pra evoluir
+   depois.
+
+   Salvamento: Firebase Firestore, MESMO projeto do Diário de
+   Treinador (coleção nova `green_area_saves`) -- login por
+   Nome+PIN, 1 documento por Treinador, progresso multi-aparelho
+   de verdade (ver README). */
 (function(){
 "use strict";
 
@@ -3286,17 +3295,34 @@ function spawnPoke(num, level){
 }
 
 /* ============================================================
-   Estado persistido (localStorage -- protótipo de 1 aparelho só,
-   ver README pra como isso evolui pra Firebase igual o RPG)
+   Estado persistido (Firebase Firestore -- MESMO projeto do Diário
+   de Treinador, coleção nova `green_area_saves`: 1 documento por
+   Treinador em vez do documento único do RPG, pra dar login
+   Nome+PIN de verdade e progresso multi-aparelho)
    ============================================================ */
-var STORAGE_KEY = 'green_area_save_v1';
-var STATE = null;
-var SESSION = { screen:'boot', notice:'', error:'', confirmRelease:null, dexOpenNum:null, party_pickForBattle:null };
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCAVgOhe_68xTW5peYysItc06t9DHNQwAQ",
+  authDomain: "diario-de-treinador.firebaseapp.com",
+  projectId: "diario-de-treinador",
+  storageBucket: "diario-de-treinador.firebasestorage.app",
+  messagingSenderId: "143856948482",
+  appId: "1:143856948482:web:4fff2e87933651de741e1b"
+};
+var db = null;
+var savesCol = null;
+var currentSaveRef = null;
+var unsubscribeSnapshot = null;
 
-function freshState(){
+var SESSION_CACHE_KEY = 'green_area_session_v1'; // {docId, pin} -- NUNCA o progresso em si
+var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só localStorage, antes da conta online)
+
+var STATE = null;
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null };
+
+function freshState(trainerName){
   return {
     version: 1,
-    trainerName: '',
+    trainerName: trainerName,
     energy: 1000,
     energyUpdatedAt: Date.now(),
     badges: [],
@@ -3309,20 +3335,113 @@ function freshState(){
     battle: null
   };
 }
-function loadState(){
-  var raw = null;
-  try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){}
-  if(!raw){ STATE = freshState(); return; }
+
+/* Nome -> ID de documento: minúsculo, sem acento, só [a-z0-9-] --
+   evita "Ash"/"ash"/"Ash " colidirem ou não por acaso, e evita
+   caracteres que o Firestore não aceita como ID de documento. */
+function sanitizeName(raw){ return (raw||'').trim(); }
+function saveDocId(name){
+  return sanitizeName(name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);
+}
+
+/* Mesma rede de segurança já provada no Diário de Treinador: o SDK
+   de verdade do Firestore REJEITA .set()/.update() se QUALQUER valor
+   `undefined` aparecer em QUALQUER lugar da árvore do objeto --
+   JSON.parse(JSON.stringify()) remove essas chaves de vez (undefined
+   simplesmente some, não vira null), então o documento salvo nunca
+   tem `undefined` escondido em lugar nenhum, venha de onde vier. */
+function sanitizeForFirestore(state){
+  try{ return JSON.parse(JSON.stringify(state)); }
+  catch(e){ return state; }
+}
+
+var saveTimer = null;
+var saveInFlight = false;
+var saveQueuedAfter = false;
+function queueSave(){
+  if(!currentSaveRef) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(doSave, 400);
+}
+function doSave(){
+  if(!currentSaveRef || !STATE) return;
+  if(saveInFlight){ saveQueuedAfter = true; return; }
+  saveInFlight = true;
+  currentSaveRef.update({ state: sanitizeForFirestore(STATE), updatedAt: Date.now() }).catch(function(e){
+    SESSION.error = 'Não consegui salvar no banco de dados (verifique sua internet). Sua alteração pode não ter sido salva -- tente de novo.';
+    render();
+  }).then(function(){
+    saveInFlight = false;
+    if(saveQueuedAfter){ saveQueuedAfter = false; doSave(); }
+  });
+}
+function mutate(){ if(STATE) tickEnergy(); render(); queueSave(); }
+
+/* A "sessão" salva no navegador é só {docId, pin} -- NUNCA o
+   progresso do jogo em si -- pra reabrir e cair direto no jogo sem
+   redigitar; o progresso de verdade sempre vem do Firestore. */
+function cacheSession(docId, pin){
+  try{ localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({docId:docId, pin:pin})); }catch(e){}
+}
+function readCachedSession(){
   try{
+    var raw = localStorage.getItem(SESSION_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function clearCachedSession(){
+  try{ localStorage.removeItem(SESSION_CACHE_KEY); }catch(e){}
+}
+/* Progresso de quando este protótipo ainda era só-localStorage
+   (antes da conta online) -- se existir, a tela de login oferece
+   migrar 1x pro Firestore assim que o jogador escolher um PIN. */
+function detectLegacyLocalSave(){
+  try{
+    var raw = localStorage.getItem(LEGACY_LOCAL_KEY);
+    if(!raw) return null;
     var parsed = JSON.parse(raw);
-    if(parsed && parsed.version===1) STATE = parsed;
-    else STATE = freshState();
-  }catch(e){ STATE = freshState(); }
+    return (parsed && parsed.version===1 && parsed.trainerName) ? parsed : null;
+  }catch(e){ return null; }
 }
-function saveState(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }catch(e){}
+
+function attachSaveListener(docId){
+  if(unsubscribeSnapshot) unsubscribeSnapshot();
+  currentSaveRef = savesCol.doc(docId);
+  unsubscribeSnapshot = currentSaveRef.onSnapshot(function(doc){
+    if(!doc.exists){ SESSION.error='Sua conta sumiu do banco de dados -- tente entrar de novo.'; DT.gaSair(); return; }
+    STATE = doc.data().state;
+    if(SESSION.screen==='login') SESSION.screen = 'hub';
+    render();
+  }, function(err){
+    SESSION.error = 'Não consegui conectar ao banco de dados. Verifique sua internet e recarregue a página. (' + (err && err.message ? err.message : 'erro desconhecido') + ')';
+    render();
+  });
 }
-function mutate(){ tickEnergy(); saveState(); render(); }
+
+function bootApp(){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    savesCol = db.collection('green_area_saves');
+  }catch(e){
+    SESSION.error = 'Erro ao iniciar o Firebase.';
+    render();
+    return;
+  }
+  var cached = readCachedSession();
+  if(cached && cached.docId){
+    savesCol.doc(cached.docId).get().then(function(doc){
+      if(doc.exists && String(doc.data().pin)===String(cached.pin)){
+        attachSaveListener(cached.docId);
+      } else {
+        clearCachedSession();
+        render();
+      }
+    }).catch(function(){ render(); });
+  } else {
+    render();
+  }
+}
 
 /* Energia (Cap. "quantidade de energia para batalhar no dia... a
    barra... limite máximo de 1000... recuperada em 10 a cada 10
@@ -3429,7 +3548,6 @@ function startBattle(kind, opts){
     finished: null,
     captureDone: false
   };
-  saveState();
   runBattleUntilPause();
   mutate();
 }
@@ -3646,19 +3764,117 @@ DT.gaEncerrarBatalha = function(){
 };
 
 /* ============================================================
-   Criação de Treinador (sorteia o inicial na hora, "de qualquer
-   Geração")
+   Login / criação de conta (Firestore, Nome+PIN -- mesmo espírito
+   do Diário de Treinador, mas 1 documento por Treinador em vez de
+   1 documento compartilhado só) -- sorteia o inicial na hora, "de
+   qualquer Geração", só na criação de conta nova.
    ============================================================ */
-DT.gaCriarTreinador = function(nomeEl){
-  var nome = (nomeEl.value||'').trim();
+DT.gaSetLoginMode = function(mode){ SESSION.loginMode = mode; SESSION.error=''; render(); };
+
+DT.gaEntrar = function(nomeEl, pinEl){
+  var nome = sanitizeName(nomeEl.value);
+  var pin = (pinEl.value||'').trim();
+  if(!nome){ SESSION.error='Digite seu nome de Treinador.'; render(); return; }
+  if(!pin){ SESSION.error='Digite seu PIN.'; render(); return; }
+  var docId = saveDocId(nome);
+  if(!docId){ SESSION.error='Nome inválido.'; render(); return; }
+  if(!savesCol){ SESSION.error='Banco de dados ainda não conectou -- espere um instante e tente de novo.'; render(); return; }
+  SESSION.error=''; SESSION.loginBusy=true; render();
+  savesCol.doc(docId).get().then(function(doc){
+    SESSION.loginBusy=false;
+    if(!doc.exists){ SESSION.error='Não achei esse Treinador -- confira o nome ou crie uma conta nova.'; render(); return; }
+    var data = doc.data();
+    if(String(data.pin)!==pin){ SESSION.error='PIN incorreto.'; render(); return; }
+    cacheSession(docId, pin);
+    attachSaveListener(docId);
+  }).catch(function(e){
+    SESSION.loginBusy=false;
+    SESSION.error='Não consegui conectar ao banco de dados. Verifique sua internet.';
+    render();
+  });
+};
+
+DT.gaCriar = function(nomeEl, pinEl, pin2El){
+  var nome = sanitizeName(nomeEl.value);
+  var pin = (pinEl.value||'').trim();
+  var pin2 = (pin2El.value||'').trim();
   if(!nome){ SESSION.error='Digite um nome de Treinador.'; render(); return; }
-  var num = rollStarterNum();
-  STATE.trainerName = nome;
-  STATE.party = [spawnPoke(num, 5)];
-  markCaught(num);
-  SESSION.screen = 'hub';
-  SESSION.error = '';
-  mutate();
+  if(!pin || pin.length<4){ SESSION.error='O PIN precisa ter pelo menos 4 dígitos.'; render(); return; }
+  if(pin!==pin2){ SESSION.error='Os dois PINs não são iguais.'; render(); return; }
+  var docId = saveDocId(nome);
+  if(!docId){ SESSION.error='Nome inválido.'; render(); return; }
+  if(!savesCol){ SESSION.error='Banco de dados ainda não conectou -- espere um instante e tente de novo.'; render(); return; }
+  SESSION.error=''; SESSION.loginBusy=true; render();
+  savesCol.doc(docId).get().then(function(doc){
+    if(doc.exists){
+      SESSION.loginBusy=false;
+      SESSION.error='Já existe um Treinador com esse nome -- escolha outro ou entre na conta existente.';
+      render();
+      return;
+    }
+    var num = rollStarterNum();
+    var state = freshState(nome);
+    state.party = [spawnPoke(num, 5)];
+    state.dex[num] = {seen:true, caught:true, caughtAt:Date.now()};
+    savesCol.doc(docId).set({ nameLower:docId, pin:pin, state: sanitizeForFirestore(state), updatedAt: Date.now() }).then(function(){
+      SESSION.loginBusy=false;
+      cacheSession(docId, pin);
+      attachSaveListener(docId);
+    }).catch(function(e){
+      SESSION.loginBusy=false;
+      SESSION.error='Não consegui criar sua conta -- verifique sua internet e tente de novo.';
+      render();
+    });
+  }).catch(function(e){
+    SESSION.loginBusy=false;
+    SESSION.error='Não consegui conectar ao banco de dados. Verifique sua internet.';
+    render();
+  });
+};
+
+DT.gaMigrarLocal = function(pinEl, pin2El){
+  var legacy = detectLegacyLocalSave();
+  if(!legacy){ SESSION.error='Não achei progresso local pra migrar.'; render(); return; }
+  var pin = (pinEl.value||'').trim();
+  var pin2 = (pin2El.value||'').trim();
+  if(!pin || pin.length<4){ SESSION.error='O PIN precisa ter pelo menos 4 dígitos.'; render(); return; }
+  if(pin!==pin2){ SESSION.error='Os dois PINs não são iguais.'; render(); return; }
+  var nome = sanitizeName(legacy.trainerName);
+  var docId = saveDocId(nome);
+  if(!docId){ SESSION.error='Nome inválido no progresso local.'; render(); return; }
+  if(!savesCol){ SESSION.error='Banco de dados ainda não conectou -- espere um instante e tente de novo.'; render(); return; }
+  SESSION.error=''; SESSION.loginBusy=true; render();
+  savesCol.doc(docId).get().then(function(doc){
+    if(doc.exists){
+      SESSION.loginBusy=false;
+      SESSION.error='Já existe uma conta online com esse nome -- entre nela em vez de migrar (ou descarte o progresso local).';
+      render();
+      return;
+    }
+    savesCol.doc(docId).set({ nameLower:docId, pin:pin, state: sanitizeForFirestore(legacy), updatedAt: Date.now() }).then(function(){
+      SESSION.loginBusy=false;
+      try{ localStorage.removeItem(LEGACY_LOCAL_KEY); }catch(e){}
+      cacheSession(docId, pin);
+      attachSaveListener(docId);
+    }).catch(function(e){
+      SESSION.loginBusy=false;
+      SESSION.error='Não consegui migrar -- verifique sua internet e tente de novo.';
+      render();
+    });
+  }).catch(function(e){
+    SESSION.loginBusy=false;
+    SESSION.error='Não consegui conectar ao banco de dados.';
+    render();
+  });
+};
+
+DT.gaSair = function(){
+  if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot=null; }
+  currentSaveRef = null;
+  STATE = null;
+  clearCachedSession();
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null };
+  render();
 };
 
 /* ============================================================
@@ -3714,8 +3930,15 @@ DT.gaDebugPoketicket = function(){ STATE.energy = clampInt(STATE.energy+100,0,10
 DT.gaDebugItens = function(){ STATE.pokebolas+=10; STATE.itens.pocao+=5; STATE.itens.superpocao+=3; STATE.itens.hiperpocao+=1; mutate(); };
 DT.gaDebugReset = function(){
   if(!SESSION.confirmReset){ SESSION.confirmReset = true; render(); return; }
-  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
-  loadState(); SESSION = { screen:'boot', notice:'', error:'' };
+  SESSION.confirmReset = false;
+  if(!currentSaveRef || !STATE) return;
+  var nome = STATE.trainerName;
+  var num = rollStarterNum();
+  var novo = freshState(nome);
+  novo.party = [spawnPoke(num, 5)];
+  novo.dex[num] = {seen:true, caught:true, caughtAt:Date.now()};
+  STATE = novo;
+  SESSION.screen = 'hub';
   mutate();
 };
 
@@ -3763,7 +3986,7 @@ function render(){
 function esc2(s){ return esc(s); }
 
 function topbarHTML(){
-  if(!STATE.trainerName) return '';
+  if(!STATE || !STATE.trainerName) return '';
   var counts = dexCounts();
   return '<div class="ga-topbar">'+
     '<div class="ga-brand" onclick="DT.gaGoto(\'hub\')">🟢 GREEN ÁREA <span class="ga-build">build de testes</span></div>'+
@@ -3774,9 +3997,10 @@ function topbarHTML(){
     '</div>'+
     '<nav class="ga-nav">'+
       ['hub:🏠 Início','equipe:🎒 Equipe','dex:📕 Pokédex','captura:🌿 Área de Captura','ginasios:🎖️ Mestres','debug:🛠️ Testes'].map(function(pair){
-        var kv = pair.split(':'); 
+        var kv = pair.split(':');
         return '<button class="'+(SESSION.screen===kv[0]?'active':'')+'" onclick="DT.gaGoto(\''+kv[0]+'\')">'+kv[1]+'</button>';
       }).join('')+
+      '<button title="Sair da conta" onclick="DT.gaSair()">🚪 Sair</button>'+
     '</nav>'+
   '</div>';
 }
@@ -3788,8 +4012,8 @@ function bannersHTML(){
 }
 
 function screenHTML(){
+  if(!STATE) return wrap(loginScreenHTML());
   if(STATE.battle) return wrap(battleScreenHTML());
-  if(!STATE.trainerName) return wrap(createTrainerHTML());
   if(SESSION.dexOpenNum) return wrap(hubScreenHTML() /* mantém o fundo, popup por cima */) + dexPopupHTML(SESSION.dexOpenNum);
   switch(SESSION.screen){
     case 'equipe': return wrap(equipeScreenHTML());
@@ -3804,16 +4028,57 @@ function wrap(bodyHTML){
   return '<div class="ga-shell">'+topbarHTML()+'<div class="ga-body">'+bannersHTML()+bodyHTML+'</div></div>';
 }
 
-function createTrainerHTML(){
-  return '<div class="ga-card ga-create">'+
+/* Tela de login/criação de conta (Firestore, Nome+PIN) -- substitui
+   a antiga criação "só nome" agora que o progresso é online e
+   precisa de uma trava simples pra distinguir Treinadores (mesmo
+   modelo de segurança "de mesa" que o Diário de Treinador já usa:
+   PIN comparado em texto puro no cliente, não é criptografia de
+   verdade, é só uma trava contra digitar o nome errado por acaso). */
+function loginScreenHTML(){
+  var legacy = detectLegacyLocalSave();
+  var modo = SESSION.loginMode || 'entrar';
+  var out = '<div class="ga-card ga-create">'+
     '<div class="ga-hero">🟢</div>'+
     '<h1>GREEN ÁREA</h1>'+
     '<p class="ga-sub">Ambiente de testes — Jornada Pokémon (build interna)</p>'+
-    '<p class="ga-tag">Complete a Pokédex, capture Pokémon, vença os 8 Mestres Especialistas.</p>'+
-    '<div class="ga-field"><label>Nome do Treinador</label><input type="text" id="gaNomeInput" maxlength="18" placeholder="ex: Ash"></div>'+
-    '<button class="ga-btn ga-btn-primary" onclick="DT.gaCriarTreinador(document.getElementById(\'gaNomeInput\'))">🎒 Começar a jornada</button>'+
-    '<p class="ga-hint">Você recebe um Pokémon inicial ALEATÓRIO — pode ser de qualquer Geração (1 a 9).</p>'+
+    '<p class="ga-tag">Complete a Pokédex, capture Pokémon, vença os 8 Mestres Especialistas.</p>';
+
+  if(legacy && !SESSION.migratingLocal){
+    out += '<div class="ga-banner ok">📦 Achei um progresso salvo só neste navegador (Treinador "'+esc2(legacy.trainerName)+'"). '+
+      '<button class="ga-btn-sm" onclick="SESSION.migratingLocal=true; render();">Migrar pra conta online</button> '+
+      '<button class="ga-btn-sm danger" onclick="try{localStorage.removeItem(\''+LEGACY_LOCAL_KEY+'\');}catch(e){} render();">Descartar</button></div>';
+  }
+
+  if(legacy && SESSION.migratingLocal){
+    out += '<h2>Migrar progresso local</h2>'+
+      '<p class="ga-hint">Cria uma conta online "'+esc2(legacy.trainerName)+'" com o progresso que já estava salvo neste navegador.</p>'+
+      '<div class="ga-field"><label>Escolha um PIN (mín. 4 dígitos)</label><input type="password" id="gaMigPin1" inputmode="numeric" maxlength="12"></div>'+
+      '<div class="ga-field"><label>Confirme o PIN</label><input type="password" id="gaMigPin2" inputmode="numeric" maxlength="12"></div>'+
+      '<button class="ga-btn ga-btn-primary" '+(SESSION.loginBusy?'disabled':'')+' onclick="DT.gaMigrarLocal(document.getElementById(\'gaMigPin1\'),document.getElementById(\'gaMigPin2\'))">📤 Migrar e entrar</button> '+
+      '<button class="ga-btn" onclick="SESSION.migratingLocal=false; render();">Cancelar</button>'+
+    '</div>';
+    return out;
+  }
+
+  out += '<div class="ga-tabs">'+
+    '<button class="'+(modo==='entrar'?'active':'')+'" onclick="DT.gaSetLoginMode(\'entrar\')">Entrar</button>'+
+    '<button class="'+(modo==='criar'?'active':'')+'" onclick="DT.gaSetLoginMode(\'criar\')">Criar novo</button>'+
   '</div>';
+
+  if(modo==='entrar'){
+    out += '<div class="ga-field"><label>Nome do Treinador</label><input type="text" id="gaNomeInput" maxlength="18" placeholder="ex: Ash"></div>'+
+      '<div class="ga-field"><label>PIN</label><input type="password" id="gaPinInput" inputmode="numeric" maxlength="12"></div>'+
+      '<button class="ga-btn ga-btn-primary" '+(SESSION.loginBusy?'disabled':'')+' onclick="DT.gaEntrar(document.getElementById(\'gaNomeInput\'),document.getElementById(\'gaPinInput\'))">🔓 Entrar</button>'+
+      '<p class="ga-hint">Seu progresso fica salvo online — entre com o mesmo Nome+PIN de qualquer aparelho.</p>';
+  } else {
+    out += '<div class="ga-field"><label>Nome do Treinador</label><input type="text" id="gaNomeInput2" maxlength="18" placeholder="ex: Ash"></div>'+
+      '<div class="ga-field"><label>Escolha um PIN (mín. 4 dígitos)</label><input type="password" id="gaPinInput2a" inputmode="numeric" maxlength="12"></div>'+
+      '<div class="ga-field"><label>Confirme o PIN</label><input type="password" id="gaPinInput2b" inputmode="numeric" maxlength="12"></div>'+
+      '<button class="ga-btn ga-btn-primary" '+(SESSION.loginBusy?'disabled':'')+' onclick="DT.gaCriar(document.getElementById(\'gaNomeInput2\'),document.getElementById(\'gaPinInput2a\'),document.getElementById(\'gaPinInput2b\'))">🎒 Começar a jornada</button>'+
+      '<p class="ga-hint">Você recebe um Pokémon inicial ALEATÓRIO — pode ser de qualquer Geração (1 a 9). Guarde o PIN: é ele que garante que só você acessa esse Treinador de outro aparelho.</p>';
+  }
+  out += '</div>';
+  return out;
 }
 
 function pokeCardMini(poke, actionsHTML){
@@ -4010,11 +4275,10 @@ function battleScreenHTML(){
 /* ============================================================
    Boot
    ============================================================ */
-loadState();
-tickEnergy();
-saveState();
-document.addEventListener('DOMContentLoaded', function(){ render(); });
-if(document.readyState==='complete' || document.readyState==='interactive') render();
+var booted = false;
+function boot(){ if(booted) return; booted = true; render(); bootApp(); }
+document.addEventListener('DOMContentLoaded', boot);
+if(document.readyState==='complete' || document.readyState==='interactive') boot();
 
 })();
 
