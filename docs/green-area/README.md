@@ -1,0 +1,55 @@
+# Green Área — Jornada Pokémon (protótipo)
+
+- **Código-fonte**: [`index.html`](index.html) — página HTML única, sem build, sem servidor (mesmo espírito do [Diário de Treinador](../pokemon-rpg/README.md)).
+- **Site publicado**: `https://<seu-usuário>.github.io/<repositório>/green-area/` (mesma configuração de GitHub Pages já ativada pro resto do repositório — nada novo pra configurar).
+
+Pedido do usuário: um site **independente** do Diário de Treinador — um jogo de completar a Pokédex. O Treinador recebe um Pokémon **inicial aleatório** (de qualquer Geração 1–9), viaja capturando Pokémon selvagens em lutas **automáticas**, enfrenta 8 **Mestres Especialistas** por Insígnias, e tudo isso limitado por uma barra de **Energia** que recarrega com o tempo.
+
+O tema visual pedido pro primeiro teste: **Green Área**, um "ambiente de testes" fictício de uma empresa de jogos — dá o tom pro visual (verde/preto, "build de testes" no canto, um painel `🛠️ Ferramentas de Teste` honesto sobre o que é atalho de debug e o que é jogo de verdade).
+
+## "Usando as regras daqui" — o que foi reaproveitado do RPG
+
+Nada foi digitado de novo: `SPECIES_DEX` (1025 espécies), `TYPE_CHART`, `MOVES_DEX` (847 Movimentos), `LEARNSETS` e `EVO_STAGE` são **extraídos de verdade** do próprio [`docs/pokemon-rpg/site/diario-de-treinador.html`](../pokemon-rpg/site/diario-de-treinador.html) por um script Node (não é uma cópia colada à mão, então nunca diverge dos dados oficiais do RPG por erro de digitação) — ver `EVO_PREV`/`EVO_STAGE` etc. já documentados no [README do RPG](../pokemon-rpg/README.md).
+
+A **fórmula de dano é a mesma do motor de combate do RPG** (`resolveAttack`):
+
+```
+dano = max(1, AtaqueEfetivo + Poder do Movimento − DefesaEfetiva + STAB + mod. de Tipo + (Crítico ? 4 : 0))
+```
+
+— Tipo **soma/subtrai** (não multiplica: TYPE_CHART já vem em 200/100/50/0, convertido em ±2), e Acerto/Crítico usam o mesmo dado 1d10 do RPG (10 sempre crítico, 1 sempre falha se a Precisão não for 100%).
+
+A única peça nova: o RPG nunca teve "Nível de Pokémon" separado do Nível do Treinador (o Atributo Efetivo vem do Vínculo + investimento manual). Aqui, cada Pokémon tem o próprio Nível (1–100), e o Atributo Efetivo é `baseStatToRPG(Stat Base oficial) + Math.floor(Nível/3)` — cresce devagar, mesma filosofia de números pequenos do resto do RPG (não é o `×Nível/50` multiplicativo dos jogos oficiais).
+
+## O que o protótipo já faz
+
+- **Criação de Treinador**: só nome — o inicial é sorteado na hora (1 das 9 Gerações, depois 1 dos 3 daquela Geração — pra dar a mesma chance a cada Geração, não a cada Pokémon).
+- **Pokédex** (`📕`): grade com as 1025 espécies. Nunca visto = cinza escuro e sem contorno; visto em batalha = cinza claro (contorno neutro); **capturado = colorido** (mesma imagem, só o filtro CSS muda — a "foto" é a mesma fonte de sprite já usada e comprovada no Diário de Treinador, PokeAPI/sprites; Bulbapedia em si não tem um CDN estável pra hotlink direto, essa é a mesma substituição confiável que o resto do projeto já usa). Clique num quadro pra ver detalhes (Tipo(s) e Stats Base, se já capturado).
+- **Área de Captura** (`🌿`): escolhe quem lidera, sorteia um selvagem (Estágio de evolução liberado cresce com o número de Insígnias — `EVO_STAGE`, mesma fonte do RPG), luta automática, e só **depois de vencer** oferece jogar Pokébola (pedido explícito do usuário — diferente dos jogos oficiais, aqui a captura não depende de "enfraquecer sem nocautear").
+- **Mestres Especialistas** (`🎖️`): 8 Mestres temáticos por Tipo, elenco fixo curado (nunca lendário), Nível crescente, progressão **sempre sequencial** (não dá pra pular). Vencer dá a Insígnia.
+- **Luta automática**: iniciativa por Velocidade Efetiva, dano pela fórmula acima, log resumido turno a turno. **Gatilho de cura**: com o Pokémon ativo do jogador em ≤20% de PV, a luta pausa e pergunta se quer usar Poção/Superpoção/Hiperpoção (só aparece o que o Treinador realmente tem). Desmaiou e sobra alguém na Equipe? Pausa pra escolher quem entra. **Nunca dá pra desistir** de uma luta já começada. PV é sempre restaurado 100% fora de batalha (não existe dano/condição persistente entre lutas).
+- **Energia** (0–1000): selvagem custa `10 × Nível do selvagem`; Mestre custa `20 × Nível do Ace dele`. Recupera `+10` a cada 10 minutos reais — calculado "de forma preguiçosa" (a cada interação, confere quanto tempo passou e credita os blocos de 10 min inteiros, sem depender de um timer vivo que morreria se a aba fechasse).
+- **Equipe/Caixa**: até 6 na Equipe, excedente vai pra Caixa; soltar (com confirmação) e puxar da Caixa pra Equipe.
+- **Salvamento**: `localStorage` — o progresso fica só nesse navegador/aparelho (ver "Em aberto" abaixo pra como isso evolui).
+- **`🛠️ Ferramentas de Teste`**: encher Energia, +1 Pokéticket (+100 Energia), +itens, resetar o save — tudo marcado como debug, nunca escondido como mecânica real.
+
+## Simplificações deste protótipo (documentadas de propósito)
+
+- **Sem Habilidade/Natureza/Estágio/status persistente** (Queimadura, Veneno, Sono...) nas lutas — só dano puro + Acerto/Crítico. O RPG completo tem tudo isso; aqui ficou de fora pra manter o motor automático simples e rápido de rodar.
+- **Sem PP** — Movimento nunca "acaba" numa luta.
+- **Kit de Movimentos fixo por captura**: escolhido 1x quando o Pokémon nasce/é capturado (os 4 mais altos do Learnset por Nível que ele já tem liberado) — não "aprende Movimento novo" ao subir de Nível neste protótipo (o Nível dele não muda depois de capturado, também não tem sistema de XP ainda).
+- **Chance de captura aproximada**: não existe um "índice de captura" oficial neste dex — a chance usa o Estágio de evolução (`EVO_STAGE`) como aproximação de dificuldade (quanto mais evoluído, mais difícil).
+- **Salvamento só local** (`localStorage`, 1 aparelho) — pra virar multi-aparelho/compartilhado, é o mesmo caminho que o Diário de Treinador já usa: Firebase Firestore (ver a seção "Configurar o banco de dados" do [README do RPG](../pokemon-rpg/README.md) — o mesmo passo a passo serve aqui).
+- **Progressão de Insígnia sempre sequencial** (não dá pra escolher a ordem, diferente dos jogos oficiais que às vezes liberam ordem livre numa região).
+
+## Testado
+
+Suíte própria (fora do repositório, no scratchpad da sessão que criou isto — ver o histórico do commit): criação de Treinador (inicial sempre um dos 27 de verdade); Energia nunca passa de 1000 mesmo com muito tempo simulado; `pickMovesForLevel` varrida em ~150 espécies × 5 Níveis, nunca devolve um kit sem nenhum Movimento de dano; motor de batalha selvagem resolvido até o fim nos dois desfechos (vitória E derrota, não é vitória garantida); custo de Energia descontado de verdade; trava contra 2 lutas simultâneas; bloqueio por Energia insuficiente sem descontar nada; progressão sequencial de Mestre recusando pular; fila completa dos 8 Mestres vencida do 1º ao último (incluindo troca por desmaio de verdade); todas as 6 telas + popup da Pokédex (não visto/visto/capturado) renderizando sem estourar em vários estados; **stress test de 400 ciclos de luta aleatórios** (selvagem e Mestre, Níveis 1–100, decisões de item/troca aleatórias) — 0 estouros, 0 lutas travadas.
+
+## Em aberto (próximos passos possíveis)
+
+- Sistema de XP/subida de Nível pós-captura (hoje o Nível só é definido na hora da captura/spawn).
+- Habilidade/Natureza/status persistente nas lutas (trazer mais do motor completo do RPG).
+- Salvamento em Firebase (multi-aparelho, e dá pra "visitar" o progresso de outro Treinador).
+- Zonas/mapas temáticos em vez de um pool único de selvagens por Estágio.
+- Log de batalha com playback (hoje é tudo calculado e mostrado de uma vez até a próxima pausa; dava pra revelar linha por linha com uma pequena animação).

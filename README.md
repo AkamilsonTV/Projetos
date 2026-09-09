@@ -15,3 +15,4 @@ Veja o passo a passo de configuração (feito uma única vez) em
 ## Projetos
 
 - [Pokémon RPG — Diário de Treinador](docs/pokemon-rpg/README.md): regras de mesa e site de fichas do grupo.
+- [Green Área — Jornada Pokémon (protótipo)](docs/green-area/README.md): jogo de completar a Pokédex com lutas automáticas, reaproveitando os dados e a fórmula de dano do RPG acima.
