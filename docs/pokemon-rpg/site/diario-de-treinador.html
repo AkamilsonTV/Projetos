@@ -6586,18 +6586,14 @@ var POKEMON_CSV_FIELDS = [
     set:function(p, v, warn){
       var hab = ABILITIES_DEX.filter(function(a){ return a.name.toLowerCase()===v.toLowerCase(); })[0];
       if(hab) p.habilidade = hab.name; else warn('Habilidade "'+v+'" não reconhecida — deixada em branco.');
-    } },
-  { key:'vinculo', header:'Vínculo (0-25)', contexts:['rpg'],
-    get:function(p){ return String(p.vinculo||0); },
-    set:function(p, v){ p.vinculo = clampInt(v,0,25); } },
-  { key:'maturidade', header:'Maturidade', contexts:['rpg'],
-    get:function(p){ return String(p.maturidade||0); },
-    set:function(p, v){ p.maturidade = clampInt(v,0,999); } }
-].concat(STAT_ORDER.map(function(stat){
-  return { key:'natural_'+stat, header:'Natural '+STAT_LABELS[stat], contexts:['rpg','npc'],
-    get:function(p){ return String(p.natural[stat]); },
-    set:function(p, v){ p.natural[stat] = clampInt(v,0,20); } };
-}));
+    } }
+  /* Vínculo/Maturidade/Atributos Naturais saíram do CSV (pedido do
+     usuário: "Essas informações podem tirar") -- ficam só editáveis
+     na própria ficha, igual sempre foi. Se um dia voltarem a fazer
+     sentido aqui, é só reintroduzir o item de volta nesta lista (ver
+     o comentário grande no topo do arquivo sobre POKEMON_CSV_FIELDS
+     ser a única fonte de verdade). */
+];
 /* Rótulo de cada Método na coluna do CSV (igual ao texto que já
    aparece nos botões Nível/Evo/TM/Egg/Anterior da própria ficha),
    pra quem preenche o modelo à mão reconhecer de cara -- por baixo o
