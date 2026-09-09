@@ -115,6 +115,10 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-admin-row.banido{ border-color:var(--danger); opacity:.7; }
 .ga-admin-info{ min-width:220px; }
 
+.ga-move-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; text-align:left; }
+.ga-move-row:last-child{ border-bottom:none; }
+.ga-move-atual{ min-width:170px; }
+
 .ga-leader-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
 .ga-leader-row:last-child{ border-bottom:none; }
 .ga-leader-emoji{ font-size:1.4rem; }
@@ -3122,6 +3126,412 @@ var LEARNSETS = {
 };;
 /* ---- EVO_STAGE (extraído de docs/pokemon-rpg/site/diario-de-treinador.html) ---- */
 var EVO_STAGE = {1:[1,3],2:[2,3],3:[3,3],4:[1,3],5:[2,3],6:[3,3],7:[1,3],8:[2,3],9:[3,3],10:[1,3],11:[2,3],12:[3,3],13:[1,3],14:[2,3],15:[3,3],16:[1,3],17:[2,3],18:[3,3],19:[1,2],20:[2,2],21:[1,2],22:[2,2],23:[1,2],24:[2,2],25:[2,3],26:[3,3],27:[1,2],28:[2,2],29:[1,3],30:[2,3],31:[3,3],32:[1,3],33:[2,3],34:[3,3],35:[2,3],36:[3,3],37:[1,2],38:[2,2],39:[2,3],40:[3,3],41:[1,3],42:[2,3],43:[1,3],44:[2,3],45:[3,3],46:[1,2],47:[2,2],48:[1,2],49:[2,2],50:[1,2],51:[2,2],52:[1,2],53:[2,2],54:[1,2],55:[2,2],56:[1,3],57:[2,3],58:[1,2],59:[2,2],60:[1,3],61:[2,3],62:[3,3],63:[1,3],64:[2,3],65:[3,3],66:[1,3],67:[2,3],68:[3,3],69:[1,3],70:[2,3],71:[3,3],72:[1,2],73:[2,2],74:[1,3],75:[2,3],76:[3,3],77:[1,2],78:[2,2],79:[1,2],80:[2,2],81:[1,3],82:[2,3],83:[1,2],84:[1,2],85:[2,2],86:[1,2],87:[2,2],88:[1,2],89:[2,2],90:[1,2],91:[2,2],92:[1,3],93:[2,3],94:[3,3],95:[1,2],96:[1,2],97:[2,2],98:[1,2],99:[2,2],100:[1,2],101:[2,2],102:[1,2],103:[2,2],104:[1,2],105:[2,2],106:[2,2],107:[2,2],108:[1,2],109:[1,2],110:[2,2],111:[1,3],112:[2,3],113:[2,3],114:[1,2],115:[1,1],116:[1,3],117:[2,3],118:[1,2],119:[2,2],120:[1,2],121:[2,2],122:[2,3],123:[1,2],124:[2,2],125:[2,3],126:[2,3],127:[1,1],128:[1,1],129:[1,2],130:[2,2],131:[1,1],132:[1,1],133:[1,2],134:[2,2],135:[2,2],136:[2,2],137:[1,3],138:[1,2],139:[2,2],140:[1,2],141:[2,2],142:[1,1],143:[2,2],144:[1,1],145:[1,1],146:[1,1],147:[1,3],148:[2,3],149:[3,3],150:[1,1],151:[1,1],152:[1,3],153:[2,3],154:[3,3],155:[1,3],156:[2,3],157:[3,3],158:[1,3],159:[2,3],160:[3,3],161:[1,2],162:[2,2],163:[1,2],164:[2,2],165:[1,2],166:[2,2],167:[1,2],168:[2,2],169:[3,3],170:[1,2],171:[2,2],172:[1,3],173:[1,3],174:[1,3],175:[1,3],176:[2,3],177:[1,2],178:[2,2],179:[1,3],180:[2,3],181:[3,3],182:[3,3],183:[2,3],184:[3,3],185:[2,2],186:[3,3],187:[1,3],188:[2,3],189:[3,3],190:[1,2],191:[1,2],192:[2,2],193:[1,2],194:[1,2],195:[2,2],196:[2,2],197:[2,2],198:[1,2],199:[2,2],200:[1,2],201:[1,1],202:[2,2],203:[1,2],204:[1,2],205:[2,2],206:[1,2],207:[1,2],208:[2,2],209:[1,2],210:[2,2],211:[1,2],212:[2,2],213:[1,1],214:[1,1],215:[1,2],216:[1,3],217:[2,3],218:[1,2],219:[2,2],220:[1,3],221:[2,3],222:[1,2],223:[1,2],224:[2,2],225:[1,1],226:[2,2],227:[1,1],228:[1,2],229:[2,2],230:[3,3],231:[1,2],232:[2,2],233:[2,3],234:[1,2],235:[1,1],236:[1,2],237:[2,2],238:[1,2],239:[1,3],240:[1,3],241:[1,1],242:[3,3],243:[1,1],244:[1,1],245:[1,1],246:[1,3],247:[2,3],248:[3,3],249:[1,1],250:[1,1],251:[1,1],252:[1,3],253:[2,3],254:[3,3],255:[1,3],256:[2,3],257:[3,3],258:[1,3],259:[2,3],260:[3,3],261:[1,2],262:[2,2],263:[1,3],264:[2,3],265:[1,3],266:[2,3],267:[3,3],268:[2,3],269:[3,3],270:[1,3],271:[2,3],272:[3,3],273:[1,3],274:[2,3],275:[3,3],276:[1,2],277:[2,2],278:[1,2],279:[2,2],280:[1,3],281:[2,3],282:[3,3],283:[1,2],284:[2,2],285:[1,2],286:[2,2],287:[1,3],288:[2,3],289:[3,3],290:[1,2],291:[2,2],292:[2,2],293:[1,3],294:[2,3],295:[3,3],296:[1,2],297:[2,2],298:[1,3],299:[1,2],300:[1,2],301:[2,2],302:[1,1],303:[1,1],304:[1,3],305:[2,3],306:[3,3],307:[1,2],308:[2,2],309:[1,2],310:[2,2],311:[1,1],312:[1,1],313:[1,1],314:[1,1],315:[2,3],316:[1,2],317:[2,2],318:[1,2],319:[2,2],320:[1,2],321:[2,2],322:[1,2],323:[2,2],324:[1,1],325:[1,2],326:[2,2],327:[1,1],328:[1,3],329:[2,3],330:[3,3],331:[1,2],332:[2,2],333:[1,2],334:[2,2],335:[1,1],336:[1,1],337:[1,1],338:[1,1],339:[1,2],340:[2,2],341:[1,2],342:[2,2],343:[1,2],344:[2,2],345:[1,2],346:[2,2],347:[1,2],348:[2,2],349:[1,2],350:[2,2],351:[1,1],352:[1,1],353:[1,2],354:[2,2],355:[1,3],356:[2,3],357:[1,1],358:[2,2],359:[1,1],360:[1,2],361:[1,2],362:[2,2],363:[1,3],364:[2,3],365:[3,3],366:[1,2],367:[2,2],368:[2,2],369:[1,1],370:[1,1],371:[1,3],372:[2,3],373:[3,3],374:[1,3],375:[2,3],376:[3,3],377:[1,1],378:[1,1],379:[1,1],380:[1,1],381:[1,1],382:[1,1],383:[1,1],384:[1,1],385:[1,1],386:[1,1],387:[1,3],388:[2,3],389:[3,3],390:[1,3],391:[2,3],392:[3,3],393:[1,3],394:[2,3],395:[3,3],396:[1,3],397:[2,3],398:[3,3],399:[1,2],400:[2,2],401:[1,2],402:[2,2],403:[1,3],404:[2,3],405:[3,3],406:[1,3],407:[3,3],408:[1,2],409:[2,2],410:[1,2],411:[2,2],412:[1,2],413:[2,2],414:[2,2],415:[1,2],416:[2,2],417:[1,1],418:[1,2],419:[2,2],420:[1,2],421:[2,2],422:[1,2],423:[2,2],424:[2,2],425:[1,2],426:[2,2],427:[1,2],428:[2,2],429:[2,2],430:[2,2],431:[1,2],432:[2,2],433:[1,2],434:[1,2],435:[2,2],436:[1,2],437:[2,2],438:[1,2],439:[1,3],440:[1,3],441:[1,1],442:[1,1],443:[1,3],444:[2,3],445:[3,3],446:[1,2],447:[1,2],448:[2,2],449:[1,2],450:[2,2],451:[1,2],452:[2,2],453:[1,2],454:[2,2],455:[1,1],456:[1,2],457:[2,2],458:[1,2],459:[1,2],460:[2,2],461:[2,2],462:[3,3],463:[2,2],464:[3,3],465:[2,2],466:[3,3],467:[3,3],468:[3,3],469:[2,2],470:[2,2],471:[2,2],472:[2,2],473:[3,3],474:[3,3],475:[3,3],476:[2,2],477:[3,3],478:[2,2],479:[1,1],480:[1,1],481:[1,1],482:[1,1],483:[1,1],484:[1,1],485:[1,1],486:[1,1],487:[1,1],488:[1,1],489:[1,2],490:[2,2],491:[1,1],492:[1,1],493:[1,1],494:[1,1],495:[1,3],496:[2,3],497:[3,3],498:[1,3],499:[2,3],500:[3,3],501:[1,3],502:[2,3],503:[3,3],504:[1,2],505:[2,2],506:[1,3],507:[2,3],508:[3,3],509:[1,2],510:[2,2],511:[1,2],512:[2,2],513:[1,2],514:[2,2],515:[1,2],516:[2,2],517:[1,2],518:[2,2],519:[1,3],520:[2,3],521:[3,3],522:[1,2],523:[2,2],524:[1,3],525:[2,3],526:[3,3],527:[1,2],528:[2,2],529:[1,2],530:[2,2],531:[1,1],532:[1,3],533:[2,3],534:[3,3],535:[1,3],536:[2,3],537:[3,3],538:[1,1],539:[1,1],540:[1,3],541:[2,3],542:[3,3],543:[1,3],544:[2,3],545:[3,3],546:[1,2],547:[2,2],548:[1,2],549:[2,2],550:[1,2],551:[1,3],552:[2,3],553:[3,3],554:[1,2],555:[2,2],556:[1,1],557:[1,2],558:[2,2],559:[1,2],560:[2,2],561:[1,1],562:[1,2],563:[2,2],564:[1,2],565:[2,2],566:[1,2],567:[2,2],568:[1,2],569:[2,2],570:[1,2],571:[2,2],572:[1,2],573:[2,2],574:[1,3],575:[2,3],576:[3,3],577:[1,3],578:[2,3],579:[3,3],580:[1,2],581:[2,2],582:[1,3],583:[2,3],584:[3,3],585:[1,2],586:[2,2],587:[1,1],588:[1,2],589:[2,2],590:[1,2],591:[2,2],592:[1,2],593:[2,2],594:[1,1],595:[1,2],596:[2,2],597:[1,2],598:[2,2],599:[1,3],600:[2,3],601:[3,3],602:[1,3],603:[2,3],604:[3,3],605:[1,2],606:[2,2],607:[1,3],608:[2,3],609:[3,3],610:[1,3],611:[2,3],612:[3,3],613:[1,2],614:[2,2],615:[1,1],616:[1,2],617:[2,2],618:[1,1],619:[1,2],620:[2,2],621:[1,1],622:[1,2],623:[2,2],624:[1,3],625:[2,3],626:[1,1],627:[1,2],628:[2,2],629:[1,2],630:[2,2],631:[1,1],632:[1,1],633:[1,3],634:[2,3],635:[3,3],636:[1,2],637:[2,2],638:[1,1],639:[1,1],640:[1,1],641:[1,1],642:[1,1],643:[1,1],644:[1,1],645:[1,1],646:[1,1],647:[1,1],648:[1,1],649:[1,1],650:[1,3],651:[2,3],652:[3,3],653:[1,3],654:[2,3],655:[3,3],656:[1,3],657:[2,3],658:[3,3],659:[1,2],660:[2,2],661:[1,3],662:[2,3],663:[3,3],664:[1,3],665:[2,3],666:[3,3],667:[1,2],668:[2,2],669:[1,3],670:[2,3],671:[3,3],672:[1,2],673:[2,2],674:[1,2],675:[2,2],676:[1,1],677:[1,2],678:[2,2],679:[1,3],680:[2,3],681:[3,3],682:[1,2],683:[2,2],684:[1,2],685:[2,2],686:[1,2],687:[2,2],688:[1,2],689:[2,2],690:[1,2],691:[2,2],692:[1,2],693:[2,2],694:[1,2],695:[2,2],696:[1,2],697:[2,2],698:[1,2],699:[2,2],700:[2,2],701:[1,1],702:[1,1],703:[1,1],704:[1,3],705:[2,3],706:[3,3],707:[1,1],708:[1,2],709:[2,2],710:[1,2],711:[2,2],712:[1,2],713:[2,2],714:[1,2],715:[2,2],716:[1,1],717:[1,1],718:[1,1],719:[1,1],720:[1,1],721:[1,1],722:[1,3],723:[2,3],724:[3,3],725:[1,3],726:[2,3],727:[3,3],728:[1,3],729:[2,3],730:[3,3],731:[1,3],732:[2,3],733:[3,3],734:[1,2],735:[2,2],736:[1,3],737:[2,3],738:[3,3],739:[1,2],740:[2,2],741:[1,1],742:[1,2],743:[2,2],744:[1,2],745:[2,2],746:[1,1],747:[1,2],748:[2,2],749:[1,2],750:[2,2],751:[1,2],752:[2,2],753:[1,2],754:[2,2],755:[1,2],756:[2,2],757:[1,2],758:[2,2],759:[1,2],760:[2,2],761:[1,3],762:[2,3],763:[3,3],764:[1,1],765:[1,1],766:[1,1],767:[1,2],768:[2,2],769:[1,2],770:[2,2],771:[1,1],772:[1,2],773:[2,2],774:[1,1],775:[1,1],776:[1,1],777:[1,1],778:[1,1],779:[1,1],780:[1,1],781:[1,1],782:[1,3],783:[2,3],784:[3,3],785:[1,1],786:[1,1],787:[1,1],788:[1,1],789:[1,3],790:[2,3],791:[3,3],792:[3,3],793:[1,1],794:[1,1],795:[1,1],796:[1,1],797:[1,1],798:[1,1],799:[1,1],800:[1,1],801:[1,1],802:[1,1],803:[1,2],804:[2,2],805:[1,1],806:[1,1],807:[1,1],808:[1,1],809:[1,1],810:[1,3],811:[2,3],812:[3,3],813:[1,3],814:[2,3],815:[3,3],816:[1,3],817:[2,3],818:[3,3],819:[1,2],820:[2,2],821:[1,3],822:[2,3],823:[3,3],824:[1,3],825:[2,3],826:[3,3],827:[1,2],828:[2,2],829:[1,2],830:[2,2],831:[1,2],832:[2,2],833:[1,2],834:[2,2],835:[1,2],836:[2,2],837:[1,3],838:[2,3],839:[3,3],840:[1,3],841:[2,3],842:[2,3],843:[1,2],844:[2,2],845:[1,1],846:[1,2],847:[2,2],848:[1,2],849:[2,2],850:[1,2],851:[2,2],852:[1,2],853:[2,2],854:[1,2],855:[2,2],856:[1,3],857:[2,3],858:[3,3],859:[1,3],860:[2,3],861:[3,3],862:[3,3],863:[2,2],864:[2,2],865:[2,2],866:[3,3],867:[2,2],868:[1,2],869:[2,2],870:[1,1],871:[1,1],872:[1,2],873:[2,2],874:[1,1],875:[1,1],876:[1,1],877:[1,1],878:[1,2],879:[2,2],880:[1,1],881:[1,1],882:[1,1],883:[1,1],884:[1,2],885:[1,3],886:[2,3],887:[3,3],888:[1,1],889:[1,1],890:[1,1],891:[1,2],892:[2,2],893:[1,1],894:[1,1],895:[1,1],896:[1,1],897:[1,1],898:[1,1],899:[2,2],900:[2,2],901:[3,3],902:[2,2],903:[2,2],904:[2,2],905:[1,1],906:[1,3],907:[2,3],908:[3,3],909:[1,3],910:[2,3],911:[3,3],912:[1,3],913:[2,3],914:[3,3],915:[1,2],916:[2,2],917:[1,2],918:[2,2],919:[1,2],920:[2,2],921:[1,3],922:[2,3],923:[3,3],924:[1,2],925:[2,2],926:[1,2],927:[2,2],928:[1,3],929:[2,3],930:[3,3],931:[1,1],932:[1,3],933:[2,3],934:[3,3],935:[1,2],936:[2,2],937:[2,2],938:[1,2],939:[2,2],940:[1,2],941:[2,2],942:[1,2],943:[2,2],944:[1,2],945:[2,2],946:[1,2],947:[2,2],948:[1,2],949:[2,2],950:[1,1],951:[1,2],952:[2,2],953:[1,2],954:[2,2],955:[1,2],956:[2,2],957:[1,3],958:[2,3],959:[3,3],960:[1,2],961:[2,2],962:[1,1],963:[1,2],964:[2,2],965:[1,2],966:[2,2],967:[1,1],968:[1,1],969:[1,2],970:[2,2],971:[1,2],972:[2,2],973:[1,1],974:[1,2],975:[2,2],976:[1,1],977:[1,1],978:[1,1],979:[3,3],980:[2,2],981:[2,2],982:[2,2],983:[3,3],984:[1,1],985:[1,1],986:[1,1],987:[1,1],988:[1,1],989:[1,1],990:[1,1],991:[1,1],992:[1,1],993:[1,1],994:[1,1],995:[1,1],996:[1,3],997:[2,3],998:[3,3],999:[1,2],1000:[2,2],1001:[1,1],1002:[1,1],1003:[1,1],1004:[1,1],1005:[1,1],1006:[1,1],1007:[1,1],1008:[1,1],1009:[1,1],1010:[1,1],1011:[2,3],1012:[1,2],1013:[2,2],1014:[1,1],1015:[1,1],1016:[1,1],1017:[1,1],1018:[2,2],1019:[3,3],1020:[1,1],1021:[1,1],1022:[1,1],1023:[1,1],1024:[1,1],1025:[1,1]};;
+/* ---- NATURES_DEX (extraído de docs/pokemon-rpg/site/diario-de-treinador.html) ---- */
+var NATURES_DEX = [
+  {nome:'Hardy',mais:null,menos:null},
+  {nome:'Lonely',mais:'atk',menos:'def'},
+  {nome:'Brave',mais:'atk',menos:'spe'},
+  {nome:'Adamant',mais:'atk',menos:'spa'},
+  {nome:'Naughty',mais:'atk',menos:'spd'},
+  {nome:'Bold',mais:'def',menos:'atk'},
+  {nome:'Docile',mais:null,menos:null},
+  {nome:'Relaxed',mais:'def',menos:'spe'},
+  {nome:'Impish',mais:'def',menos:'spa'},
+  {nome:'Lax',mais:'def',menos:'spd'},
+  {nome:'Timid',mais:'spe',menos:'atk'},
+  {nome:'Hasty',mais:'spe',menos:'def'},
+  {nome:'Serious',mais:null,menos:null},
+  {nome:'Jolly',mais:'spe',menos:'spa'},
+  {nome:'Naive',mais:'spe',menos:'spd'},
+  {nome:'Modest',mais:'spa',menos:'atk'},
+  {nome:'Mild',mais:'spa',menos:'def'},
+  {nome:'Quiet',mais:'spa',menos:'spe'},
+  {nome:'Bashful',mais:null,menos:null},
+  {nome:'Rash',mais:'spa',menos:'spd'},
+  {nome:'Calm',mais:'spd',menos:'atk'},
+  {nome:'Gentle',mais:'spd',menos:'def'},
+  {nome:'Sassy',mais:'spd',menos:'spe'},
+  {nome:'Careful',mais:'spd',menos:'spa'},
+  {nome:'Quirky',mais:null,menos:null}
+];
+
+/* ---- ABILITIES_DEX (extraído de docs/pokemon-rpg/site/diario-de-treinador.html) ---- */
+var ABILITIES_DEX = [
+  {name:'Stench',efeito:'Has a 10% chance of making target Pokémon flinch with each hit.'},
+  {name:'Drizzle',efeito:'Summons rain that lasts indefinitely upon entering battle.'},
+  {name:'Speed Boost',efeito:'Raises Speed one stage after each turn.'},
+  {name:'Battle Armor',efeito:'Protects against critical hits.'},
+  {name:'Sturdy',efeito:'Prevents being KOed from full HP, leaving 1 HP instead. Protects against the one-hit KO moves regardless of HP.'},
+  {name:'Damp',efeito:'Prevents Self-Destruct, Explosion, and Aftermath from working while the Pokémon is in battle.'},
+  {name:'Limber',efeito:'Prevents paralysis.'},
+  {name:'Sand Veil',efeito:'Increases evasion to 1.25× during a sandstorm. Protects against sandstorm damage.'},
+  {name:'Static',efeito:'Has a 30% chance of paralyzing attacking Pokémon on contact.'},
+  {name:'Volt Absorb',efeito:'Absorbs Electric moves, healing for 1/4 max HP.'},
+  {name:'Water Absorb',efeito:'Absorbs Water moves, healing for 1/4 max HP.'},
+  {name:'Oblivious',efeito:'Prevents infatuation and protects against Captivate.'},
+  {name:'Cloud Nine',efeito:'Negates all effects of weather, but does not prevent the weather itself.'},
+  {name:'Compound Eyes',efeito:'Increases moves\' accuracy to 1.3×.'},
+  {name:'Insomnia',efeito:'Prevents sleep.'},
+  {name:'Color Change',efeito:'Changes type to match when hit by a damaging move.'},
+  {name:'Immunity',efeito:'Prevents poison.'},
+  {name:'Flash Fire',efeito:'Protects against Fire moves. Once one has been blocked, the Pokémon\'s own Fire moves inflict 1.5× damage until it leaves battle.'},
+  {name:'Shield Dust',efeito:'Protects against incoming moves\' extra effects.'},
+  {name:'Own Tempo',efeito:'Prevents confusion.'},
+  {name:'Suction Cups',efeito:'Prevents being forced out of battle by other Pokémon\'s moves.'},
+  {name:'Intimidate',efeito:'Lowers opponents\' Attack one stage upon entering battle.'},
+  {name:'Shadow Tag',efeito:'Prevents opponents from fleeing or switching out.'},
+  {name:'Rough Skin',efeito:'Damages attacking Pokémon for 1/8 their max HP on contact.'},
+  {name:'Wonder Guard',efeito:'Protects against damaging moves that are not super effective.'},
+  {name:'Levitate',efeito:'Evades Ground moves.'},
+  {name:'Effect Spore',efeito:'Has a 30% chance of inflcting either paralysis, poison, or sleep on attacking Pokémon on contact.'},
+  {name:'Synchronize',efeito:'Copies burns, paralysis, and poison received onto the Pokémon that inflicted them.'},
+  {name:'Clear Body',efeito:'Prevents stats from being lowered by other Pokémon.'},
+  {name:'Natural Cure',efeito:'Cures any major status ailment upon switching out.'},
+  {name:'Lightning Rod',efeito:'Redirects single-target Electric moves to this Pokémon where possible. Absorbs Electric moves, raising Special Attack one stage.'},
+  {name:'Serene Grace',efeito:'Doubles the chance of moves\' extra effects occurring.'},
+  {name:'Swift Swim',efeito:'Doubles Speed during rain.'},
+  {name:'Chlorophyll',efeito:'Doubles Speed during strong sunlight.'},
+  {name:'Illuminate',efeito:'Doubles the wild encounter rate.'},
+  {name:'Trace',efeito:'Copies an opponent\'s ability upon entering battle.'},
+  {name:'Huge Power',efeito:'Doubles Attack in battle.'},
+  {name:'Poison Point',efeito:'Has a 30% chance of poisoning attacking Pokémon on contact.'},
+  {name:'Inner Focus',efeito:'Prevents flinching.'},
+  {name:'Magma Armor',efeito:'Prevents freezing.'},
+  {name:'Water Veil',efeito:'Prevents burns.'},
+  {name:'Magnet Pull',efeito:'Prevents Steel opponents from fleeing or switching out.'},
+  {name:'Soundproof',efeito:'Protects against sound-based moves.'},
+  {name:'Rain Dish',efeito:'Heals for 1/16 max HP after each turn during rain.'},
+  {name:'Sand Stream',efeito:'Summons a sandstorm that lasts indefinitely upon entering battle.'},
+  {name:'Pressure',efeito:'Increases the PP cost of moves targetting the Pokémon by one.'},
+  {name:'Thick Fat',efeito:'Halves damage from Fire and Ice moves.'},
+  {name:'Early Bird',efeito:'Makes sleep pass twice as quickly.'},
+  {name:'Flame Body',efeito:'Has a 30% chance of burning attacking Pokémon on contact.'},
+  {name:'Run Away',efeito:'Ensures success fleeing from wild battles.'},
+  {name:'Keen Eye',efeito:'Prevents accuracy from being lowered.'},
+  {name:'Hyper Cutter',efeito:'Prevents Attack from being lowered by other Pokémon.'},
+  {name:'Pickup',efeito:'Picks up other Pokémon\'s used and Flung held items. May also pick up an item after battle.'},
+  {name:'Truant',efeito:'Skips every second turn.'},
+  {name:'Hustle',efeito:'Strengthens physical moves to inflict 1.5× damage, but decreases their accuracy to 0.8×.'},
+  {name:'Cute Charm',efeito:'Has a 30% chance of infatuating attacking Pokémon on contact.'},
+  {name:'Plus',efeito:'Increases Special Attack to 1.5× when a friendly Pokémon has Plus or Minus.'},
+  {name:'Minus',efeito:'Increases Special Attack to 1.5× when a friendly Pokémon has Plus or Minus.'},
+  {name:'Forecast',efeito:'Changes Castform\'s type and form to match the weather.'},
+  {name:'Sticky Hold',efeito:'Prevents a held item from being removed by other Pokémon.'},
+  {name:'Shed Skin',efeito:'Has a 33% chance of curing any major status ailment after each turn.'},
+  {name:'Guts',efeito:'Increases Attack to 1.5× with a major status ailment.'},
+  {name:'Marvel Scale',efeito:'Increases Defense to 1.5× with a major status ailment.'},
+  {name:'Liquid Ooze',efeito:'Damages opponents using leeching moves for as much as they would heal.'},
+  {name:'Overgrow',efeito:'Strengthens Grass moves to inflict 1.5× damage at 1/3 max HP or less.'},
+  {name:'Blaze',efeito:'Strengthens Fire moves to inflict 1.5× damage at 1/3 max HP or less.'},
+  {name:'Torrent',efeito:'Strengthens Water moves to inflict 1.5× damage at 1/3 max HP or less.'},
+  {name:'Swarm',efeito:'Strengthens Bug moves to inflict 1.5× damage at 1/3 max HP or less.'},
+  {name:'Rock Head',efeito:'Protects against recoil damage.'},
+  {name:'Drought',efeito:'Summons strong sunlight that lasts indefinitely upon entering battle.'},
+  {name:'Arena Trap',efeito:'Prevents opponents from fleeing or switching out. Eluded by Flying-types and Pokémon in the air.'},
+  {name:'Vital Spirit',efeito:'Prevents sleep.'},
+  {name:'White Smoke',efeito:'Prevents stats from being lowered by other Pokémon.'},
+  {name:'Pure Power',efeito:'Doubles Attack in battle.'},
+  {name:'Shell Armor',efeito:'Protects against critical hits.'},
+  {name:'Air Lock',efeito:'Negates all effects of weather, but does not prevent the weather itself.'},
+  {name:'Tangled Feet',efeito:'Doubles evasion when confused.'},
+  {name:'Motor Drive',efeito:'Absorbs Electric moves, raising Speed one stage.'},
+  {name:'Rivalry',efeito:'Increases damage inflicted to 1.25× against Pokémon of the same gender, but decreases damage to 0.75× against the opposite gender.'},
+  {name:'Steadfast',efeito:'Raises Speed one stage upon flinching.'},
+  {name:'Snow Cloak',efeito:'Increases evasion to 1.25× during hail. Protects against hail damage.'},
+  {name:'Gluttony',efeito:'Makes the Pokémon eat any held Berry triggered by low HP below 1/2 its max HP.'},
+  {name:'Anger Point',efeito:'Raises Attack to the maximum of six stages upon receiving a critical hit.'},
+  {name:'Unburden',efeito:'Doubles Speed upon using or losing a held item.'},
+  {name:'Heatproof',efeito:'Halves damage from Fire moves and burns.'},
+  {name:'Simple',efeito:'Doubles the Pokémon\'s stat modifiers. These doubled modifiers are still capped at -6 or 6 stages.'},
+  {name:'Dry Skin',efeito:'Causes 1/8 max HP in damage each turn during strong sunlight, but heals for 1/8 max HP during rain. Increases damage from Fire moves to 1.25×, but absorbs Water moves, healing for 1/4 max HP.'},
+  {name:'Download',efeito:'Raises the attack stat corresponding to the opponents\' weaker defense one stage upon entering battle.'},
+  {name:'Iron Fist',efeito:'Strengthens punch-based moves to 1.2× their power.'},
+  {name:'Poison Heal',efeito:'Heals for 1/8 max HP after each turn when poisoned in place of damage.'},
+  {name:'Adaptability',efeito:'Increases the same-type attack bonus from 1.5× to 2×.'},
+  {name:'Skill Link',efeito:'Extends two-to-five-hit moves and Triple Kick to their full length every time.'},
+  {name:'Hydration',efeito:'Cures any major status ailment after each turn during rain.'},
+  {name:'Solar Power',efeito:'Increases Special Attack to 1.5× but costs 1/8 max HP after each turn during strong sunlight.'},
+  {name:'Quick Feet',efeito:'Increases Speed to 1.5× with a major status ailment.'},
+  {name:'Normalize',efeito:'Makes the Pokémon\'s moves all act Normal-type.'},
+  {name:'Sniper',efeito:'Strengthens critical hits to inflict 3× damage rather than 2×.'},
+  {name:'Magic Guard',efeito:'Protects against damage not directly caused by a move.'},
+  {name:'No Guard',efeito:'Ensures all moves used by and against the Pokémon hit.'},
+  {name:'Stall',efeito:'Makes the Pokémon move last within its move\'s priority bracket.'},
+  {name:'Technician',efeito:'Strengthens moves of 60 base power or less to 1.5× their power.'},
+  {name:'Leaf Guard',efeito:'Protects against major status ailments during strong sunlight.'},
+  {name:'Klutz',efeito:'Prevents the Pokémon from using its held item in battle.'},
+  {name:'Mold Breaker',efeito:'Bypasses targets\' abilities if they could hinder or prevent a move.'},
+  {name:'Super Luck',efeito:'Raises moves\' critical hit rates one stage.'},
+  {name:'Aftermath',efeito:'Damages the attacker for 1/4 its max HP when knocked out by a contact move.'},
+  {name:'Anticipation',efeito:'Notifies all trainers upon entering battle if an opponent has a super-effective move, Self-Destruct, Explosion, or a one-hit KO move.'},
+  {name:'Forewarn',efeito:'Reveals the opponents\' strongest move upon entering battle.'},
+  {name:'Unaware',efeito:'Ignores other Pokémon\'s stat modifiers for damage and accuracy calculation.'},
+  {name:'Tinted Lens',efeito:'Doubles damage inflicted with not-very-effective moves.'},
+  {name:'Filter',efeito:'Decreases damage taken from super-effective moves by 1/4.'},
+  {name:'Slow Start',efeito:'Halves Attack and Speed for five turns upon entering battle.'},
+  {name:'Scrappy',efeito:'Lets the Pokémon\'s Normal and Fighting moves hit Ghost Pokémon.'},
+  {name:'Storm Drain',efeito:'Redirects single-target Water moves to this Pokémon where possible. Absorbs Water moves, raising Special Attack one stage.'},
+  {name:'Ice Body',efeito:'Heals for 1/16 max HP after each turn during hail. Protects against hail damage.'},
+  {name:'Solid Rock',efeito:'Decreases damage taken from super-effective moves by 1/4.'},
+  {name:'Snow Warning',efeito:'Summons hail that lasts indefinitely upon entering battle.'},
+  {name:'Honey Gather',efeito:'The Pokémon may pick up Honey after battle.'},
+  {name:'Frisk',efeito:'Reveals an opponent\'s held item upon entering battle.'},
+  {name:'Reckless',efeito:'Strengthens recoil moves to 1.2× their power.'},
+  {name:'Multitype',efeito:'Changes Arceus\'s type and form to match its held Plate.'},
+  {name:'Flower Gift',efeito:'Increases friendly Pokémon\'s Attack and Special Defense to 1.5× during strong sunlight.'},
+  {name:'Bad Dreams',efeito:'Damages sleeping opponents for 1/8 their max HP after each turn.'},
+  {name:'Pickpocket',efeito:'Steals attacking Pokémon\'s held items on contact.'},
+  {name:'Sheer Force',efeito:'Strengthens moves with extra effects to 1.3× their power, but prevents their extra effects.'},
+  {name:'Contrary',efeito:'Inverts stat changes.'},
+  {name:'Unnerve',efeito:'Prevents opposing Pokémon from eating held Berries.'},
+  {name:'Defiant',efeito:'Raises Attack two stages upon having any stat lowered.'},
+  {name:'Defeatist',efeito:'Halves Attack and Special Attack at 50% max HP or less.'},
+  {name:'Cursed Body',efeito:'Has a 30% chance of Disabling any move that hits the Pokémon.'},
+  {name:'Healer',efeito:'Has a 30% chance of curing each adjacent ally of any major status ailment after each turn.'},
+  {name:'Friend Guard',efeito:'Decreases all direct damage taken by friendly Pokémon to 0.75×.'},
+  {name:'Weak Armor',efeito:'Raises Speed and lowers Defense by one stage each upon being hit by a physical move.'},
+  {name:'Heavy Metal',efeito:'Doubles the Pokémon\'s weight.'},
+  {name:'Light Metal',efeito:'Halves the Pokémon\'s weight.'},
+  {name:'Multiscale',efeito:'Halves damage taken from full HP.'},
+  {name:'Toxic Boost',efeito:'Increases Attack to 1.5× when poisoned.'},
+  {name:'Flare Boost',efeito:'Increases Special Attack to 1.5× when burned.'},
+  {name:'Harvest',efeito:'Has a 50% chance of restoring a used Berry after each turn if the Pokémon has held no items in the meantime.'},
+  {name:'Telepathy',efeito:'Protects against friendly Pokémon\'s damaging moves.'},
+  {name:'Moody',efeito:'Raises a random stat two stages and lowers another one stage after each turn.'},
+  {name:'Overcoat',efeito:'Protects against damage from weather.'},
+  {name:'Poison Touch',efeito:'Has a 30% chance of poisoning target Pokémon upon contact.'},
+  {name:'Regenerator',efeito:'Heals for 1/3 max HP upon switching out.'},
+  {name:'Big Pecks',efeito:'Protects against Defense drops.'},
+  {name:'Sand Rush',efeito:'Doubles Speed during a sandstorm. Protects against sandstorm damage.'},
+  {name:'Wonder Skin',efeito:'Lowers incoming non-damaging moves\' base accuracy to exactly 50%.'},
+  {name:'Analytic',efeito:'Strengthens moves to 1.3× their power when moving last.'},
+  {name:'Illusion',efeito:'Takes the appearance of the last conscious party Pokémon upon being sent out until hit by a damaging move.'},
+  {name:'Imposter',efeito:'Transforms upon entering battle.'},
+  {name:'Infiltrator',efeito:'Bypasses Light Screen, Reflect, and Safeguard.'},
+  {name:'Mummy',efeito:'Changes attacking Pokémon\'s abilities to Mummy on contact.'},
+  {name:'Moxie',efeito:'Raises Attack one stage upon KOing a Pokémon.'},
+  {name:'Justified',efeito:'Raises Attack one stage upon taking damage from a Dark move.'},
+  {name:'Rattled',efeito:'Raises Speed one stage upon being hit by a Dark, Ghost, or Bug move.'},
+  {name:'Magic Bounce',efeito:'Reflects most non-damaging moves back at their user.'},
+  {name:'Sap Sipper',efeito:'Absorbs Grass moves, raising Attack one stage.'},
+  {name:'Prankster',efeito:'Raises non-damaging moves\' priority by one stage.'},
+  {name:'Sand Force',efeito:'Strengthens Rock, Ground, and Steel moves to 1.3× their power during a sandstorm. Protects against sandstorm damage.'},
+  {name:'Iron Barbs',efeito:'Damages attacking Pokémon for 1/8 their max HP on contact.'},
+  {name:'Zen Mode',efeito:'Changes Darmanitan\'s form after each turn depending on its HP: Zen Mode below 50% max HP, and Standard Mode otherwise.'},
+  {name:'Victory Star',efeito:'Increases moves\' accuracy to 1.1× for friendly Pokémon.'},
+  {name:'Turboblaze',efeito:'Bypasses targets\' abilities if they could hinder or prevent moves.'},
+  {name:'Teravolt',efeito:'Bypasses targets\' abilities if they could hinder or prevent moves.'},
+  {name:'Aroma Veil',efeito:'Protects allies against moves that affect their mental state.'},
+  {name:'Flower Veil',efeito:'Protects friendly Grass Pokémon from having their stats lowered by other Pokémon.'},
+  {name:'Cheek Pouch',efeito:'Restores HP upon eating a Berry, in addition to the Berry\'s effect.'},
+  {name:'Protean',efeito:'Changes the bearer\'s type to match each move it uses.'},
+  {name:'Fur Coat',efeito:'Halves damage from physical attacks.'},
+  {name:'Magician',efeito:'Steals the target\'s held item when the bearer uses a damaging move.'},
+  {name:'Bulletproof',efeito:'Protects against bullet, ball, and bomb-based moves.'},
+  {name:'Competitive',efeito:'Raises Special Attack by two stages upon having any stat lowered.'},
+  {name:'Strong Jaw',efeito:'Strengthens biting moves to 1.5× their power.'},
+  {name:'Refrigerate',efeito:'Turns the bearer\'s Normal moves into Ice moves and strengthens them to 1.3× their power.'},
+  {name:'Sweet Veil',efeito:'Prevents friendly Pokémon from sleeping.'},
+  {name:'Stance Change',efeito:'Changes Aegislash to Blade Forme before using a damaging move, or Shield Forme before using King’s Shield.'},
+  {name:'Gale Wings',efeito:'Raises Flying moves\' priority by one stage.'},
+  {name:'Mega Launcher',efeito:'Strengthens aura and pulse moves to 1.5× their power.'},
+  {name:'Grass Pelt',efeito:'Boosts Defense while Grassy Terrain is in effect.'},
+  {name:'Symbiosis',efeito:'Passes the bearer\'s held item to an ally when the ally uses up its item.'},
+  {name:'Tough Claws',efeito:'Strengthens moves that make contact to 1.33× their power.'},
+  {name:'Pixilate',efeito:'Turns the bearer\'s Normal moves into Fairy moves and strengthens them to 1.3× their power.'},
+  {name:'Gooey',efeito:'Lowers attacking Pokémon\'s Speed by one stage on contact.'},
+  {name:'Aerilate',efeito:'Turns the bearer\'s Normal moves into Flying moves and strengthens them to 1.3× their power.'},
+  {name:'Parental Bond',efeito:'Lets the bearer hit twice with damaging moves. The second hit has half power.'},
+  {name:'Dark Aura',efeito:'Strengthens Dark moves to 1.33× their power for all friendly and opposing Pokémon.'},
+  {name:'Fairy Aura',efeito:'Strengthens Fairy moves to 1.33× their power for all friendly and opposing Pokémon.'},
+  {name:'Aura Break',efeito:'Makes Dark Aura and Fairy Aura weaken moves of their respective types.'},
+  {name:'Primordial Sea',efeito:'Creates heavy rain, which has all the properties of Rain Dance, cannot be replaced, and causes damaging Fire moves to fail.'},
+  {name:'Desolate Land',efeito:'Creates extremely harsh sunlight, which has all the properties of Sunny Day, cannot be replaced, and causes damaging Water moves to fail.'},
+  {name:'Delta Stream',efeito:'Creates a mysterious air current, which cannot be replaced and causes moves to never be super effective against Flying Pokémon.'},
+  {name:'Stamina',efeito:'Raises this Pokémon\'s Defense by one stage when it takes damage from a move.'},
+  {name:'Wimp Out',efeito:'This Pokémon automatically switches out when its HP drops below half.'},
+  {name:'Emergency Exit',efeito:'This Pokémon automatically switches out when its HP drops below half.'},
+  {name:'Water Compaction',efeito:'Raises this Pokémon\'s Defense by two stages when it\'s hit by a Water move.'},
+  {name:'Merciless',efeito:'This Pokémon\'s moves critical hit against poisoned targets.'},
+  {name:'Shields Down',efeito:'Transforms this Minior between Core Form and Meteor Form. Prevents major status ailments and drowsiness while in Meteor Form.'},
+  {name:'Stakeout',efeito:'This Pokémon\'s moves have double power against Pokémon that switched in this turn.'},
+  {name:'Water Bubble',efeito:'Halves damage from Fire moves, doubles damage of Water moves, and prevents burns.'},
+  {name:'Steelworker',efeito:'This Pokémon\'s Steel moves have 1.5× power.'},
+  {name:'Berserk',efeito:'Raises this Pokémon\'s Special Attack by one stage every time its HP drops below half.'},
+  {name:'Slush Rush',efeito:'During Hail, this Pokémon has double Speed.'},
+  {name:'Long Reach',efeito:'This Pokémon\'s moves do not make contact.'},
+  {name:'Liquid Voice',efeito:'Sound-based moves become Water-type.'},
+  {name:'Triage',efeito:'This Pokémon\'s healing moves have their priority increased by 3.'},
+  {name:'Galvanize',efeito:'This Pokémon\'s Normal moves are Electric and have their power increased to 1.2×.'},
+  {name:'Surge Surfer',efeito:'Doubles this Pokémon\'s Speed on Electric Terrain.'},
+  {name:'Schooling',efeito:'Wishiwashi becomes Schooling Form when its HP is 25% or higher.'},
+  {name:'Disguise',efeito:'Prevents the first instance of battle damage.'},
+  {name:'Battle Bond',efeito:'Transforms this Pokémon into Ash-Greninja after fainting an opponent. Water Shuriken\'s power is 20 and always hits three times.'},
+  {name:'Power Construct',efeito:'Transforms 10% or 50% Zygarde into Complete Forme when its HP is below 50%.'},
+  {name:'Corrosion',efeito:'This Pokémon can inflict poison on Poison and Steel Pokémon.'},
+  {name:'Comatose',efeito:'This Pokémon always acts as though it were Asleep.'},
+  {name:'Queenly Majesty',efeito:'Opposing Pokémon cannot use priority attacks.'},
+  {name:'Innards Out',efeito:'When this Pokémon faints from an opponent\'s move, that opponent takes damage equal to the HP this Pokémon had remaining.'},
+  {name:'Dancer',efeito:'Whenever another Pokémon uses a dance move, this Pokémon will use the same move immediately afterwards.'},
+  {name:'Battery',efeito:'Ally Pokémon\'s moves have their power increased to 1.3×.'},
+  {name:'Fluffy',efeito:'Damage from contact moves is halved. Damage from Fire moves is doubled.'},
+  {name:'Dazzling',efeito:'Opposing Pokémon cannot use priority attacks.'},
+  {name:'Soul Heart',efeito:'This Pokémon\'s Special Attack rises by one stage every time any Pokémon faints.'},
+  {name:'Tangling Hair',efeito:'When this Pokémon takes regular damage from a contact move, the attacking Pokémon\'s Speed lowers by one stage.'},
+  {name:'Receiver',efeito:'When an ally faints, this Pokémon gains its Ability.'},
+  {name:'Power Of Alchemy',efeito:'When an ally faints, this Pokémon gains its Ability.'},
+  {name:'Beast Boost',efeito:'Raises this Pokémon\'s highest stat by one stage when it faints another Pokémon.'},
+  {name:'Rks System',efeito:'Changes this Pokémon\'s type to match its held Memory.'},
+  {name:'Electric Surge',efeito:'When this Pokémon enters battle, it changes the terrain to Electric Terrain.'},
+  {name:'Psychic Surge',efeito:'When this Pokémon enters battle, it changes the terrain to Psychic Terrain.'},
+  {name:'Misty Surge',efeito:'When this Pokémon enters battle, it changes the terrain to Misty Terrain.'},
+  {name:'Grassy Surge',efeito:'When this Pokémon enters battle, it changes the terrain to Grassy Terrain.'},
+  {name:'Full Metal Body',efeito:'Other Pokémon cannot lower this Pokémon\'s stats.'},
+  {name:'Shadow Shield',efeito:'When this Pokémon has full HP, regular damage from moves is halved.'},
+  {name:'Prism Armor',efeito:'Reduces super-effective damage to 0.75×.'},
+  {name:'Neuroforce',efeito:'Increases super-effective damage dealt to 1.25×.'},
+  {name:'Intrepid Sword',efeito:'Boosts Attack in battle.'},
+  {name:'Dauntless Shield',efeito:'Boosts Defense in battle.'},
+  {name:'Libero',efeito:'Libero changes the Pokémon\'s type to that of its previously used attack.'},
+  {name:'Ball Fetch',efeito:'If the Pokémon is not holding an item, it will fetch the Poké Ball from the first failed throw of the battle.'},
+  {name:'Cotton Down',efeito:'When Ignores moves and abilities that draw in moves.'},
+  {name:'Propeller Tail',efeito:'Ignores moves and abilities that draw in moves.'},
+  {name:'Mirror Armor',efeito:'Reflects any stat-lowering effects.'},
+  {name:'Gulp Missile',efeito:'If a Cramorant with Gulp Missile uses Surf or Dive, it catches prey and changes its form depending on its remaining HP.'},
+  {name:'Stalwart',efeito:'Ignores moves and abilities that draw in moves.'},
+  {name:'Steam Engine',efeito:'Boosts the Speed stat drastically when the Pokémon is hit by a Fire- or Water-type move.'},
+  {name:'Punk Rock',efeito:'Boosts sound-based moves and halves damage from the same moves.'},
+  {name:'Sand Spit',efeito:'Creates a sandstorm when hit by an attack.'},
+  {name:'Ice Scales',efeito:'Halves damage from Special moves.'},
+  {name:'Ripen',efeito:'Doubles the effect of berries.'},
+  {name:'Ice Face',efeito:'The Pokémon’s ice head can take a physical attack as a substitute, but the attack also changes the Pokémon’s appearance. The ice will be restored when it snows.'},
+  {name:'Power Spot',efeito:'Just being next to the Pokémon powers up moves.'},
+  {name:'Mimicry',efeito:'Changes type depending on the terrain.'},
+  {name:'Screen Cleaner',efeito:'Nullifies effects of Light Screen, Reflect, and Aurora Veil.'},
+  {name:'Steely Spirit',efeito:'Powers up ally Pokémon\'s Steel-type moves.'},
+  {name:'Perish Body',efeito:'When hit by a move that makes direct contact, the Pokémon and the attacker will faint after three turns unless they switch out of battle.'},
+  {name:'Wandering Spirit',efeito:'Swaps abilities with opponents on contact.'},
+  {name:'Gorilla Tactics',efeito:'Boosts the Pokémon\'s Attack stat but only allows the use of the first selected move.'},
+  {name:'Neutralizing Gas',efeito:'Neutralizes abilities of all Pokémon in battle.'},
+  {name:'Pastel Veil',efeito:'Prevents the Pokémon and its allies from being poisoned.'},
+  {name:'Hunger Switch',efeito:'Causes Morpeko to change its form each turn, alternating between Full Belly Mode and Hangry Mode'},
+  {name:'Quick Draw',efeito:'Enables the Pokémon to move first occasionally.'},
+  {name:'Unseen Fist',efeito:'Contact moves can strike through Protect/Detect.'},
+  {name:'Curious Medicine',efeito:'Resets all stat changes upon entering battlefield.'},
+  {name:'Transistor',efeito:'Powers up Electric-type moves.'},
+  {name:'Dragons Maw',efeito:'Powers up Dragon-type moves.'},
+  {name:'Chilling Neigh',efeito:'Boosts Attack after knocking out a Pokémon.'},
+  {name:'Grim Neigh',efeito:'Boosts Special Attack after knocking out a Pokémon.'},
+  {name:'As One Glastrier',efeito:'Combines the effects of Unnerve and Chilling Neigh.'},
+  {name:'As One Spectrier',efeito:'Combines the effects of Unnerve and Grim Neigh.'},
+  {name:'Lingering Aroma',efeito:'Contact changes the attacker\'s Ability to Lingering Aroma.'},
+  {name:'Seed Sower',efeito:'Turns the ground into Grassy Terrain when the Pokémon is hit by an attack.'},
+  {name:'Thermal Exchange',efeito:'Raises Attack when hit by a Fire-type move. Cannot be burned.'},
+  {name:'Anger Shell',efeito:'When the Pokémon\'s HP drops below half, Anger Shell lowers its Defense and Special Defense but its Attack, Special Attack and Speed are raised.'},
+  {name:'Purifying Salt',efeito:'Protects from status conditions and halves damage from Ghost-type moves.'},
+  {name:'Well Baked Body',efeito:'Immune to Fire-type moves, and Defense is sharply boosted.'},
+  {name:'Wind Rider',efeito:'Gives immunity to wind moves, and causes the Pokémon\'s Attack to increase by one stage when hit by one.'},
+  {name:'Guard Dog',efeito:'Boosts Attack if intimidated, and prevents being forced to switch out.'},
+  {name:'Rocky Payload',efeito:'Powers up Rock-type moves.'},
+  {name:'Wind Power',efeito:'When hit by a wind move, the power of the next Electric-type move it uses is doubled.'},
+  {name:'Zero To Hero',efeito:'Transforms into its Hero Form when switching out.'},
+  {name:'Commander',efeito:'Goes inside the mouth of an ally Dondozo if one is on the field.'},
+  {name:'Electromorphosis',efeito:'When hit by an attack, the power of the next Electric-type move it uses is doubled.'},
+  {name:'Protosynthesis',efeito:'Raises highest stat in harsh sunlight, or if holding Booster Energy.'},
+  {name:'Quark Drive',efeito:'Raises highest stat on Electric Terrain, or if holding Booster Energy.'},
+  {name:'Good As Gold',efeito:'Gives immunity to status moves.'},
+  {name:'Vessel Of Ruin',efeito:'Lowers Special Attack of all Pokémon except itself.'},
+  {name:'Sword Of Ruin',efeito:'Lowers Defense of all Pokémon except itself.'},
+  {name:'Tablets Of Ruin',efeito:'Lowers Attack of all Pokémon except itself.'},
+  {name:'Beads Of Ruin',efeito:'Lowers Special Defense of all Pokémon except itself.'},
+  {name:'Orichalcum Pulse',efeito:'Turns the sunlight harsh when entering battle, and boosts Attack while active.'},
+  {name:'Hadron Engine',efeito:'Creates an Electric Terrain when entering battle, and boosts Special Attack while active.'},
+  {name:'Opportunist',efeito:'Copies stat boosts by the opponent.'},
+  {name:'Cud Chew',efeito:'Causes the Pokémon to reuse an already consumed Berry at the end of the next turn.'},
+  {name:'Sharpness',efeito:'Powers up slicing moves.'},
+  {name:'Supreme Overlord',efeito:'Attack and Special Attack are boosted for each party Pokémon that has been defeated.'},
+  {name:'Costar',efeito:'Copies ally\'s stat changes on entering battle.'},
+  {name:'Toxic Debris',efeito:'Scatters poison spikes at the feet of the opposing team when the Pokémon takes damage from physical moves.'},
+  {name:'Armor Tail',efeito:'Prevents the opponent from using any moves that have priority, such as Quick Attack.'},
+  {name:'Earth Eater',efeito:'Restores HP when hit by a Ground-type move.'},
+  {name:'Mycelium Might',efeito:'Status moves go last, but are not affected by the opponent\'s ability.'},
+  {name:'Minds Eye',efeito:'The Pokémon ignores changes to opponents\' evasiveness, its accuracy can\'t be lowered, and it can hit Ghost types with Normal- and Fighting-type moves.'},
+  {name:'Supersweet Syrup',efeito:'Once per battle, when a Pokémon with Supersweet Syrup enters the battle, it lowers the evasion stat of all adjacent opponents by one stage.'},
+  {name:'Hospitality',efeito:'When a Pokémon with Hospitality enters a battle, it restores HP for an ally by 25%.'},
+  {name:'Toxic Chain',efeito:'May cause bad poisoning when the Pokémon hits an opponent with a move.'},
+  {name:'Embody Aspect',efeito:'Embody Aspect boosts a particular stat, depending on the form of a Terastallized Ogerpon'},
+  {name:'Tera Shift',efeito:'When Terapagos enters the battle, it turns into its Terastal Form until the end of the battle.'},
+  {name:'Tera Shell',efeito:'All damage-dealing moves that hit the Pokémon when its HP is full will not be very effective.'},
+  {name:'Teraform Zero',efeito:'As soon as Terapagos assumes its Stellar Form, it will immediately neutralize weather and terrain effects.'},
+  {name:'Poison Puppeteer',efeito:'Pokémon poisoned by Pecharunt\'s moves will also become confused.'},
+  {name:'Piercing Drill',efeito:'When the Pokémon uses contact moves, it can hit even targets that are protecting themselves.'},
+  {name:'Dragonize',efeito:'The Pokémon\'s Normal-type moves become Dragon-type moves and their power is boosted by 20%.'},
+  {name:'Mega Sol',efeito:'The Pokémon can use its moves as if the weather were harsh sunlight.'},
+  {name:'Spicy Spray',efeito:'When the Pokémon takes damage from a move, it burns the attacker.'},
+  {name:'Eelevate',efeito:'The Pokémon floats off the ground, making it immune to Ground-type moves, as well as the Spikes, Toxic Spikes, and Sticky Web statuses. When the Pokémon knocks out a target with an attack, its highest stat is boosted by 1 stage.'},
+  {name:'Fire Mane',efeito:'Boosts the power of the Pokémon\'s Fire-type moves by 50%.'},
+  {name:'Mountaineer',efeito:''},
+  {name:'Wave Rider',efeito:''},
+  {name:'Skater',efeito:''},
+  {name:'Thrust',efeito:''},
+  {name:'Perception',efeito:''},
+  {name:'Parry',efeito:''},
+  {name:'Instinct',efeito:''},
+  {name:'Dodge',efeito:''},
+  {name:'Jagged Edge',efeito:''},
+  {name:'Frostbite',efeito:''},
+  {name:'Tenacity',efeito:''},
+  {name:'Pride',efeito:''},
+  {name:'Deep Sleep',efeito:''},
+  {name:'Power Nap',efeito:''},
+  {name:'Spirit',efeito:''},
+  {name:'Warm Blanket',efeito:''},
+  {name:'Gulp',efeito:''},
+  {name:'Herbivore',efeito:''},
+  {name:'Sandpit',efeito:''},
+  {name:'Hot Blooded',efeito:''},
+  {name:'Medic',efeito:''},
+  {name:'Life Force',efeito:''},
+  {name:'Lunchbox',efeito:''},
+  {name:'Nurse',efeito:''},
+  {name:'Melee',efeito:''},
+  {name:'Sponge',efeito:''},
+  {name:'Bodyguard',efeito:''},
+  {name:'Hero',efeito:''},
+  {name:'Last Bastion',efeito:''},
+  {name:'Stealth',efeito:''},
+  {name:'Vanguard',efeito:''},
+  {name:'Nomad',efeito:''},
+  {name:'Sequence',efeito:''},
+  {name:'Grass Cloak',efeito:''},
+  {name:'Celebrate',efeito:''},
+  {name:'Lullaby',efeito:''},
+  {name:'Calming',efeito:''},
+  {name:'Daze',efeito:''},
+  {name:'Frighten',efeito:''},
+  {name:'Interference',efeito:''},
+  {name:'Mood Maker',efeito:''},
+  {name:'Confidence',efeito:''},
+  {name:'Fortune',efeito:''},
+  {name:'Bonanza',efeito:''},
+  {name:'Explode',efeito:''},
+  {name:'Omnipotent',efeito:''},
+  {name:'Share',efeito:''},
+  {name:'Black Hole',efeito:''},
+  {name:'Shadow Dash',efeito:''},
+  {name:'Sprint',efeito:''},
+  {name:'Disgust',efeito:''},
+  {name:'High Rise',efeito:''},
+  {name:'Climber',efeito:''},
+  {name:'Flame Boost',efeito:''},
+  {name:'Aqua Boost',efeito:''},
+  {name:'Run Up',efeito:''},
+  {name:'Conqueror',efeito:''},
+  {name:'Shackle',efeito:''},
+  {name:'Decoy',efeito:''},
+  {name:'Shield',efeito:''}
+];
+
 
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function clampInt(n,min,max){ n=parseInt(n,10); if(isNaN(n)) n=min; return Math.max(min,Math.min(max,n)); }
@@ -3214,34 +3624,34 @@ function rollStarterNum(){
    Tipo, em ordem crescente de dificuldade. Elenco fixo (curado à mão,
    espécies comuns verificadas contra SPECIES_DEX -- nunca lendárias,
    pra não gastar o "chefão" cedo demais), Nível do Ace escalando com
-   a posição igualmente espalhado pelo teto de NIVEL_MAX (gymAceLevel):
-   2, 4, 6, 8, 10, 12, 14, 16 -- o 8º Mestre sempre bate no teto do
-   jogo. Vencer libera a Insígnia dele e o próximo Mestre da fila
+   a posição (ace = 15 + índice*12 -- fórmula original do protótipo,
+   voltou depois do teto de 16 ter sido revertido pro 1-100 de novo).
+   Vencer libera a Insígnia dele e o próximo Mestre da fila
    (progressão sempre sequencial neste protótipo -- ver comentário
    grande no topo do arquivo). */
 var GYM_LEADERS = [
   { id:'inseto', nome:'Mestre Enxame', tipo:'Inseto', insignia:'Insígnia Casulo', emoji:'🐛',
-    roster:[{num:10,rel:-2},{num:11,rel:-1},{num:49,rel:0}] },
+    roster:[{num:10,rel:-6},{num:11,rel:-3},{num:49,rel:0}] },
   { id:'pedra', nome:'Mestre Rocha', tipo:'Pedra', insignia:'Insígnia Pedra', emoji:'🪨',
-    roster:[{num:74,rel:-2},{num:74,rel:-1},{num:75,rel:0}] },
+    roster:[{num:74,rel:-6},{num:74,rel:-3},{num:75,rel:0}] },
   { id:'agua', nome:'Mestre Correnteza', tipo:'Água', insignia:'Insígnia Onda', emoji:'🌊',
-    roster:[{num:54,rel:-2},{num:61,rel:-1},{num:55,rel:0}] },
+    roster:[{num:54,rel:-6},{num:61,rel:-3},{num:55,rel:0}] },
   { id:'eletrico', nome:'Mestre Voltagem', tipo:'Elétrico', insignia:'Insígnia Raio', emoji:'⚡',
-    roster:[{num:81,rel:-2},{num:100,rel:-1},{num:82,rel:0}] },
+    roster:[{num:81,rel:-6},{num:100,rel:-3},{num:82,rel:0}] },
   { id:'venenoso', nome:'Mestra Toxina', tipo:'Venenoso', insignia:'Insígnia Veneno', emoji:'☠️',
-    roster:[{num:23,rel:-2},{num:41,rel:-1},{num:24,rel:0}] },
+    roster:[{num:23,rel:-6},{num:41,rel:-3},{num:24,rel:0}] },
   { id:'psiquico', nome:'Mestre Oráculo', tipo:'Psíquico', insignia:'Insígnia Mente', emoji:'🔮',
-    roster:[{num:63,rel:-2},{num:96,rel:-1},{num:97,rel:0}] },
+    roster:[{num:63,rel:-6},{num:96,rel:-3},{num:97,rel:0}] },
   { id:'fantasma', nome:'Mestra Sombria', tipo:'Fantasma', insignia:'Insígnia Sombra', emoji:'👻',
-    roster:[{num:92,rel:-2},{num:92,rel:-1},{num:93,rel:0}] },
+    roster:[{num:92,rel:-6},{num:92,rel:-3},{num:93,rel:0}] },
   { id:'dragao', nome:'Mestre Dracônico', tipo:'Dragão', insignia:'Insígnia Dragão', emoji:'🐉',
-    roster:[{num:371,rel:-2},{num:147,rel:-1},{num:148,rel:0}] }
+    roster:[{num:371,rel:-6},{num:147,rel:-3},{num:148,rel:0}] }
 ];
 /* Nível do Ace de cada Mestre pela posição na fila (0-based) -- os
    dois lugares que precisam disso (montar o elenco em startBattle e
    mostrar na tela de Mestres) usam esta função, nunca uma conta
    solta, pra nunca divergir. */
-function gymAceLevel(idx){ return clampInt((idx+1)*2, 1, NIVEL_MAX); }
+function gymAceLevel(idx){ return clampInt(15 + idx*12, 1, NIVEL_MAX); }
 
 /* Itens de cura (Cap. "itens de cura, que funcionarão com gatilhos"):
    catálogo bem enxuto de propósito -- não é o ITEM_DEX inteiro do RPG
@@ -3270,6 +3680,31 @@ var LOJA_ITENS = [
   { key:'hiperpocao', nome:'Hiperpoção', emoji:'🧪', preco:60, tipo:'item' }
 ];
 
+/* MTs (Cap. "TM será necessário comprar e o ganhar, e a troca é
+   grátis, já que é do item"): preço fixo pra manter simples (não
+   inventa raridade por Movimento) -- lista de MTs de verdade
+   calculada 1x a partir de LEARNSETS[*].tm (mesma fonte real do
+   RPG), nunca um Movimento que nenhuma Espécie aprende por MT. */
+var PRECO_TM = 50;
+function tmMovesDisponiveis(){
+  if(!tmMovesDisponiveis._cache){
+    var set = {};
+    Object.keys(LEARNSETS).forEach(function(num){
+      (LEARNSETS[num].tm||[]).forEach(function(m){ set[m]=true; });
+    });
+    tmMovesDisponiveis._cache = Object.keys(set).sort();
+  }
+  return tmMovesDisponiveis._cache;
+}
+DT.gaComprarTM = function(moveName){
+  if(!moveName){ SESSION.error='Escolha uma MT pra comprar.'; render(); return; }
+  if((STATE.pokedolares||0) < PRECO_TM){ SESSION.error='Pokédólares insuficientes -- MT custa '+PRECO_TM+' e você tem '+(STATE.pokedolares||0)+'.'; render(); return; }
+  STATE.pokedolares -= PRECO_TM;
+  STATE.tms[moveName] = (STATE.tms[moveName]||0) + 1;
+  SESSION.notice = 'Comprou 1 MT de '+moveName+'!';
+  mutate();
+};
+
 /* Movimento de reserva -- só entra se um Pokémon muito baixo de Nível
    acabar sem NENHUM Movimento de dano no learnset ainda liberado (só
    Status, tipo Growl/Tail Whip no Nível 1) -- garante que a luta nunca
@@ -3287,7 +3722,41 @@ function speciesNatural(num, stat){
   var sp = speciesByNum(num);
   return sp ? baseStatToRPG(sp.base[stat]) : 1;
 }
-function effStat(poke, stat){ return speciesNatural(poke.num, stat) + levelStatBonus(poke.level); }
+
+/* Natureza e Habilidade (Cap. "Implemente também nature e ability...
+   sempre aleatório, respeitando a limitação de cada pokémon" +
+   "capturou ou ganhou um pokemon ele vem com a hability e nature
+   random... isso não será trocado, a menos que façamos uma mecânica
+   pra isso com um item" -- ainda não existe esse item, então
+   spawnPoke sorteia 1x e nunca mais muda) -- MESMOS dados do RPG de
+   mesa, copiados sem inventar nada novo (NATURES_DEX/ABILITIES_DEX,
+   e o campo `hab` que já vem em cada SPECIES_DEX -- a "limitação de
+   cada Pokémon" é exatamente esse `hab`, nunca uma Habilidade de
+   fora da lista real da Espécie). */
+function findNatureByName(nome){
+  return NATURES_DEX.filter(function(n){ return n.nome===nome; })[0] || null;
+}
+function natureModifier(poke, stat){
+  if(stat==='hp') return 0;
+  var nat = findNatureByName(poke.natureza);
+  if(!nat) return 0;
+  if(nat.mais===stat) return 1;
+  if(nat.menos===stat) return -1;
+  return 0;
+}
+function findAbilityByName(nome){
+  return ABILITIES_DEX.filter(function(a){ return a.name===nome; })[0] || null;
+}
+function rollNatureForSpecies(){
+  return NATURES_DEX[Math.floor(Math.random()*NATURES_DEX.length)].nome;
+}
+function rollAbilityForSpecies(num){
+  var sp = speciesByNum(num);
+  if(!sp || !sp.hab || !sp.hab.length) return '';
+  return sp.hab[Math.floor(Math.random()*sp.hab.length)].n;
+}
+
+function effStat(poke, stat){ return speciesNatural(poke.num, stat) + levelStatBonus(poke.level) + natureModifier(poke, stat); }
 function gaHpMax(poke){ return 10 + effStat(poke,'hp')*3; }
 
 function speciesByNum(num){
@@ -3326,13 +3795,19 @@ function pickMovesForLevel(num, level){
   if(picked.length===0) picked.push(FALLBACK_MOVE);
   return picked;
 }
-/* Nível MÁXIMO do jogo inteiro (Cap. "O nível máximo é de 1 a 16") --
-   MESMO teto do Treinador no RPG de mesa (regras.md Cap. 2.4/2.3:
-   "Nível máximo 16"). Todo lugar que decide um Nível de Pokémon
-   nesse protótipo passa por essa constante, nunca um número solto. */
-var NIVEL_MAX = 16;
+/* Nível MÁXIMO do jogo inteiro -- Cap. "O nível, pode voltar pro 1 ao
+   100. Vamos manter tudo igual ao do original mesmo" (o teto de 16
+   copiado do Treinador do RPG de mesa durou só 1 leva -- voltou pro
+   1-100 original deste protótipo). Todo lugar que decide um Nível de
+   Pokémon nesse protótipo passa por essa constante, nunca um número
+   solto. */
+var NIVEL_MAX = 100;
 function spawnPoke(num, level){
-  return { id: uid(), num: num, level: clampInt(level,1,NIVEL_MAX), apelido:'', moves: pickMovesForLevel(num, level), vitoriasNivel: 0 };
+  return {
+    id: uid(), num: num, level: clampInt(level,1,NIVEL_MAX), apelido:'',
+    moves: pickMovesForLevel(num, level), vitoriasNivel: 0,
+    natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num)
+  };
 }
 
 /* ============================================================
@@ -3368,7 +3843,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, movesOpenFor:null };
 
 function freshState(trainerName){
   return {
@@ -3380,12 +3855,31 @@ function freshState(trainerName){
     pokebolas: 10,
     poketickets: 0,
     pokedolares: 200,
+    tms: {},
     itens: { pocao:5, superpocao:2, hiperpocao:0 },
     dex: {},
     party: [],
     box: [],
     battle: null
   };
+}
+
+/* Migra um STATE salvo ANTES de um campo novo existir (mesmo espírito
+   do migrateState do Diário de Treinador) -- roda toda vez que o
+   snapshot do Firestore chega, então uma conta criada antes da leva
+   de Pokédólares/MT/Natureza/Habilidade não quebra nem perde nada,
+   só ganha os campos que faltam com um valor neutro/sorteado. */
+function migrateState(){
+  if(!STATE) return;
+  if(typeof STATE.pokedolares!=='number') STATE.pokedolares = 0;
+  if(!STATE.tms || typeof STATE.tms!=='object') STATE.tms = {};
+  [STATE.party, STATE.box].forEach(function(lista){
+    (lista||[]).forEach(function(p){
+      if(typeof p.vitoriasNivel!=='number') p.vitoriasNivel = 0;
+      if(!p.natureza || !findNatureByName(p.natureza)) p.natureza = rollNatureForSpecies();
+      if(!p.habilidade || !findAbilityByName(p.habilidade)) p.habilidade = rollAbilityForSpecies(p.num);
+    });
+  });
 }
 
 /* Nome -> ID de documento: minúsculo, sem acento, só [a-z0-9-] --
@@ -3466,6 +3960,7 @@ function attachSaveListener(docId){
     var data = doc.data();
     if(data.banido){ SESSION.error='Esta conta foi banida.'; DT.gaSair(); return; }
     STATE = data.state;
+    migrateState();
     if(SESSION.screen==='login') SESSION.screen = 'hub';
     render();
   }, function(err){
@@ -3725,8 +4220,24 @@ function finishBattle(result){
   if(result==='vitoria'){
     b.log.push('🏆 Vitória!');
     if(b.kind==='trainer' && STATE.badges.indexOf(b.leaderId)===-1){
+      var leaderVencido = GYM_LEADERS.filter(function(l){return l.id===b.leaderId;})[0];
       STATE.badges.push(b.leaderId);
-      b.log.push('🎖️ Você ganhou a '+GYM_LEADERS.filter(function(l){return l.id===b.leaderId;})[0].insignia+'!');
+      b.log.push('🎖️ Você ganhou a '+leaderVencido.insignia+'!');
+      /* Cap. "TM será necessário comprar ou ganhar": vencer um Mestre
+         também dá 1 MT de graça, sorteada do elenco dele (TM
+         ensinável de verdade pra pelo menos 1 dos Pokémon do time
+         vencido, nunca uma MT genérica qualquer). */
+      var mtGanhaPool = {};
+      leaderVencido.roster.forEach(function(slot){
+        var lsSlot = LEARNSETS[slot.num];
+        (lsSlot && lsSlot.tm ? lsSlot.tm : []).forEach(function(m){ mtGanhaPool[m]=true; });
+      });
+      var mtGanhaArr = Object.keys(mtGanhaPool);
+      if(mtGanhaArr.length){
+        var mtGanha = mtGanhaArr[Math.floor(Math.random()*mtGanhaArr.length)];
+        STATE.tms[mtGanha] = (STATE.tms[mtGanha]||0) + 1;
+        b.log.push('💿 '+leaderVencido.nome+' também te deu uma MT de '+mtGanha+'!');
+      }
     }
     if(b.kind==='wild') b.captureDone = false; // ainda não -- pergunta na tela de resultado
     var premio = battleReward(b);
@@ -3814,7 +4325,14 @@ function resolveGaTurn(user, target){
    DT.gaUsarItemCura confirma o uso, DT.gaRecusarItemCura passa direto. */
 DT.gaUsarItemCura = function(itemKey){
   var b = STATE.battle; if(!b || !b.pendingHeal) return;
-  var it = itemByKey(itemKey); if(!it || (STATE.itens[itemKey]||0)<=0) return;
+  var it = itemByKey(itemKey);
+  /* Rede de segurança: um item inválido/sem estoque NUNCA deixa a luta
+     travada esperando pra sempre num pendingHeal que ninguém vai
+     resolver -- trata como recusa (mesmo caminho de DT.gaRecusarItemCura)
+     em vez de silenciosamente não fazer nada. A UI de verdade só mostra
+     botão pros itens que o Treinador realmente tem, então isso só
+     importa em uso direto da API (testes) ou alguma borda futura. */
+  if(!it || (STATE.itens[itemKey]||0)<=0){ DT.gaRecusarItemCura(); return; }
   var alvoKey = b.pendingHeal.pokeKey;
   var alvo = battlerObj(b,'player'); // só o ativo do jogador pode receber cura no gatilho
   var max = gaHpMax(alvo);
@@ -3991,7 +4509,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, movesOpenFor:null };
   render();
 };
 
@@ -4045,13 +4563,13 @@ DT.gaAdminCancelarExcluir = function(){ SESSION.adminConfirmExcluir = null; rend
 /* ============================================================
    Zonas (Cap. "áreas para que ele consiga farmar bem com uma certa
    dificuldade mas que fique justo... divida as áreas inicialmente
-   por níveis... 1-3, 4-6... até 16... não use números e sim
-   palavras"): 6 zonas de 3 em 3 Níveis (a última, sozinha, no teto
-   NIVEL_MAX -- "assim sucessivamente até 16" sem inventar uma faixa
-   maior só pra fechar redondo). Uma zona libera quando o Pokémon
-   ESCOLHIDO PRA LIDERAR chega no Nível mínimo dela -- zonas já
-   liberadas continuam sempre disponíveis (dá pra voltar pra uma mais
-   fácil e farmar tranquilo com folga de Nível).
+   por níveis... não use números e sim palavras"): 6 zonas nomeadas,
+   agora reescalonadas pra cobrir 1-100 de novo (o teto de 16 durou
+   só 1 leva -- "o nível pode voltar pro 1 ao 100") em faixas de
+   tamanho parecido (~17 Níveis cada). Uma zona libera quando o
+   Pokémon ESCOLHIDO PRA LIDERAR chega no Nível mínimo dela -- zonas
+   já liberadas continuam sempre disponíveis (dá pra voltar pra uma
+   mais fácil e farmar tranquilo com folga de Nível).
 
    Cap. (mensagem seguinte) "quanto mais fortes, eles podem ser
    evoluídos... de 1 a 3 pode não ter evolução, só as primárias
@@ -4063,12 +4581,12 @@ DT.gaAdminCancelarExcluir = function(){ SESSION.adminConfirmExcluir = null; rend
    evolutiva completa) -- nunca um Pokémon MUITO evoluído aparecendo
    numa zona de Nível baixo. */
 var ZONAS = [
-  { id:'aprendiz',   nome:'Aprendiz',   min:1,  max:3,  stage:1 },
-  { id:'iniciante',  nome:'Iniciante',  min:4,  max:6,  stage:1 },
-  { id:'moderado',   nome:'Moderado',   min:7,  max:9,  stage:2 },
-  { id:'avancado',   nome:'Avançado',   min:10, max:12, stage:2 },
-  { id:'experiente', nome:'Experiente', min:13, max:15, stage:3 },
-  { id:'lendario',   nome:'Lendário',   min:16, max:16, stage:3 }
+  { id:'aprendiz',   nome:'Aprendiz',   min:1,  max:16,  stage:1 },
+  { id:'iniciante',  nome:'Iniciante',  min:17, max:33,  stage:1 },
+  { id:'moderado',   nome:'Moderado',   min:34, max:50,  stage:2 },
+  { id:'avancado',   nome:'Avançado',   min:51, max:67,  stage:2 },
+  { id:'experiente', nome:'Experiente', min:68, max:84,  stage:3 },
+  { id:'lendario',   nome:'Lendário',   min:85, max:100, stage:3 }
 ];
 function zonaByStatus(id){ return ZONAS.filter(function(z){ return z.id===id; })[0] || null; }
 function wildPoolForZona(zona){
@@ -4244,6 +4762,7 @@ function screenHTML(){
   if(!STATE) return wrap(loginScreenHTML());
   if(STATE.battle) return wrap(battleScreenHTML());
   if(SESSION.dexOpenNum) return wrap(hubScreenHTML() /* mantém o fundo, popup por cima */) + dexPopupHTML(SESSION.dexOpenNum);
+  if(SESSION.movesOpenFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + movesPopupHTML(SESSION.movesOpenFor);
   switch(SESSION.screen){
     case 'equipe': return wrap(equipeScreenHTML());
     case 'dex': return wrap(dexScreenHTML());
@@ -4319,6 +4838,7 @@ function pokeCardMini(poke, actionsHTML){
     '<img src="'+spriteUrl(poke.num)+'" loading="lazy" alt="">'+
     '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+'</div>'+
     '<div class="ga-poke-meta">Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
+    '<div class="ga-hint">'+esc2(poke.natureza||'—')+' · '+esc2(poke.habilidade||'—')+'</div>'+
     '<div class="ga-hint">'+progresso+'</div>'+
     (actionsHTML||'')+
   '</div>';
@@ -4360,6 +4880,7 @@ function equipeScreenHTML(){
     '<div class="ga-poke-grid">'+
     STATE.party.map(function(p){
       var actions = '<div class="ga-poke-actions">'+
+        '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
         (STATE.party.length>1 ? (SESSION.confirmRelease===p.id
           ? '<button class="ga-btn-sm danger" onclick="DT.gaLiberar(\''+p.id+'\')">Confirmar</button><button class="ga-btn-sm" onclick="DT.gaCancelLiberar()">Cancelar</button>'
           : '<button class="ga-btn-sm" onclick="DT.gaMandarPraCaixa(\''+p.id+'\')">📦 Caixa</button><button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>')
@@ -4370,10 +4891,89 @@ function equipeScreenHTML(){
     '</div></div>'+
     (STATE.box.length ? '<div class="ga-card"><h2>📦 Caixa ('+STATE.box.length+')</h2><div class="ga-poke-grid">'+
       STATE.box.map(function(p){
-        return pokeCardMini(p, '<div class="ga-poke-actions"><button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button></div>');
+        return pokeCardMini(p, '<div class="ga-poke-actions">'+
+          '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
+          '<button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button>'+
+        '</div>');
       }).join('')+
     '</div></div>' : '');
   return out;
+}
+
+/* Troca de Movimento (Cap. "implementar no pokémon, uma troca de
+   moveset... moves que já são do nível... trocar gastando 10
+   energia por move. TM será necessário comprar ou ganhar e a troca
+   é grátis, já que é do item"): lista os Movimentos elegíveis --
+   Nível já liberado (10 Energia) ou MT que o Treinador tem em
+   estoque (grátis, consome 1 MT) -- excluindo o que já conhece. */
+function movimentosElegiveis(poke){
+  var ls = LEARNSETS[poke.num];
+  var conhecidos = {};
+  (poke.moves||[]).forEach(function(m){ conhecidos[m.name]=true; });
+  var opcoes = [];
+  if(ls && ls.levelup){
+    ls.levelup.forEach(function(pair){
+      if(pair[1]<=poke.level && !conhecidos[pair[0]] && !opcoes.some(function(o){return o.name===pair[0];})){
+        opcoes.push({ name:pair[0], fonte:'nivel', reqLevel:pair[1] });
+      }
+    });
+  }
+  if(ls && ls.tm){
+    ls.tm.forEach(function(nome){
+      if((STATE.tms[nome]||0)>0 && !conhecidos[nome] && !opcoes.some(function(o){return o.name===nome;})){
+        opcoes.push({ name:nome, fonte:'tm' });
+      }
+    });
+  }
+  opcoes.sort(function(a,b){ return a.name<b.name?-1:(a.name>b.name?1:0); });
+  return opcoes;
+}
+DT.gaOpenMoves = function(pid){ SESSION.movesOpenFor = pid; render(); };
+DT.gaCloseMoves = function(){ SESSION.movesOpenFor = null; render(); };
+DT.gaTrocarMovimento = function(pid, slotIndex, moveName){
+  var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
+  if(!p || !moveName){ SESSION.error='Escolha um Movimento pra trocar.'; render(); return; }
+  var moveObj = findMoveByName(moveName);
+  if(!moveObj){ SESSION.error='Movimento não encontrado.'; render(); return; }
+  if((p.moves||[]).some(function(m){ return m.name===moveObj.name; })){ SESSION.error='Esse Pokémon já conhece esse Movimento.'; render(); return; }
+  var ls = LEARNSETS[p.num];
+  var viaNivel = ls && ls.levelup && ls.levelup.some(function(pair){ return pair[0]===moveObj.name && pair[1]<=p.level; });
+  var viaTM = ls && ls.tm && ls.tm.indexOf(moveObj.name)!==-1;
+  if(viaNivel){
+    if(STATE.energy<10){ SESSION.error='Energia insuficiente -- trocar Movimento de Nível custa 10.'; render(); return; }
+    STATE.energy -= 10;
+  } else if(viaTM){
+    if((STATE.tms[moveObj.name]||0)<=0){ SESSION.error='Você não tem essa MT -- compre na Loja primeiro.'; render(); return; }
+    STATE.tms[moveObj.name] -= 1;
+  } else {
+    SESSION.error='Esse Pokémon não pode aprender esse Movimento (nem por Nível nem por MT).'; render(); return;
+  }
+  p.moves[slotIndex] = moveObj;
+  SESSION.notice = (p.apelido||speciesByNum(p.num).name)+' agora conhece '+moveObj.name+'!';
+  mutate();
+};
+function movesPopupHTML(pid){
+  var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
+  if(!p) return '';
+  var sp = speciesByNum(p.num);
+  var elegiveis = movimentosElegiveis(p);
+  return '<div class="ga-overlay" onclick="DT.gaCloseMoves()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCloseMoves()">✕</button>'+
+    '<h2>🔁 Movimentos — '+esc2(p.apelido||sp.name)+' (Nv. '+p.level+')</h2>'+
+    '<p class="ga-hint">Movimento do Nível: 10 Energia. Movimento de MT (se você tiver a MT em estoque): grátis.</p>'+
+    (p.moves||[]).map(function(m, idx){
+      var opts = elegiveis.map(function(o){
+        var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : ' (MT — você tem '+(STATE.tms[o.name]||0)+')');
+        return '<option value="'+esc2(o.name)+'">'+esc2(rotulo)+'</option>';
+      }).join('');
+      return '<div class="ga-move-row">'+
+        '<div class="ga-move-atual"><strong>'+esc2(m.name)+'</strong> <span class="ga-hint">('+esc2(m.tipo)+' · '+esc2(m.categoria)+')</span></div>'+
+        (opts ? ('<select id="gaMoveNovo-'+idx+'"><option value="">— trocar por --</option>'+opts+'</select>'+
+          '<button class="ga-btn-sm" onclick="DT.gaTrocarMovimento(\''+p.id+'\','+idx+',document.getElementById(\'gaMoveNovo-'+idx+'\').value)">Trocar</button>')
+          : '<span class="ga-hint">nenhum Movimento elegível pra trocar aqui agora</span>')+
+      '</div>';
+    }).join('')+
+  '</div></div>';
 }
 
 function dexScreenHTML(){
@@ -4479,6 +5079,15 @@ function lojaScreenHTML(){
         '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\')">Comprar</button>'+
       '</div>';
     }).join('')+
+    '</div></div>'+
+    '<div class="ga-card"><h2>💿 MTs</h2>'+
+    '<p class="ga-hint">Ensina um Movimento pra qualquer Pokémon que a Espécie aprenda por MT (grátis, na tela 🎒 Equipe → 🔁 Movimentos) -- comprada aqui ou ganha de graça vencendo um Mestre Especialista.</p>'+
+    '<div class="ga-btn-row">'+
+      '<select id="gaTmSelect">'+tmMovesDisponiveis().map(function(nome){
+        var qtd = STATE.tms[nome]||0;
+        return '<option value="'+esc2(nome)+'">'+esc2(nome)+(qtd?' (você tem '+qtd+')':'')+'</option>';
+      }).join('')+'</select>'+
+      '<button class="ga-btn-sm ga-btn-primary" '+((STATE.pokedolares||0)>=PRECO_TM?'':'disabled')+' onclick="DT.gaComprarTM(document.getElementById(\'gaTmSelect\').value)">Comprar por 💰 '+PRECO_TM+'</button>'+
     '</div></div>';
   return out;
 }
