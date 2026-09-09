@@ -4888,13 +4888,19 @@ function rollRivalTeam(zona){
   return time;
 }
 
+/* Cap. leva desta sessão: "Libere o acesso para todas as zonas com
+   qualquer pokémon. A responsabilidade de acesso é do treinador" --
+   nenhuma Zona fica trancada por Nível mínimo mais (a trava antiga
+   comparava lead.level < zona.min e recusava entrar); qualquer
+   Pokémon da Equipe pode liderar em qualquer Zona, mesmo uma bem
+   acima do Nível dele -- a decisão de arriscar (ou não) é do próprio
+   Treinador, não do jogo. */
 DT.gaSetCapturaLead = function(pid){ SESSION.capturaLeadId = pid; render(); };
 DT.gaEntrarCaptura = function(leadId, zonaId){
   var zona = zonaByStatus(zonaId);
   if(!zona) return;
   var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
   if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar a luta.'; render(); return; }
-  if(lead.level < zona.min){ SESSION.error = 'Esse Pokémon ainda não chegou no Nível '+zona.min+' -- a zona '+zona.nome+' continua trancada pra ele.'; render(); return; }
   var idx = ZONAS.indexOf(zona);
   var chanceTr = chanceTreinadorZona(zona, idx);
   var pool = wildPoolForZona(zona);
@@ -5353,7 +5359,7 @@ function capturaScreenHTML(){
   var leadNome = lead.apelido || leadSp.name;
 
   var out = '<div class="ga-card"><h2>🌿 Área de Captura</h2>'+
-    '<p class="ga-hint">Escolha quem vai liderar a luta -- cada zona libera pra ele quando chega no Nível mínimo dela (zonas já liberadas continuam sempre disponíveis, dá pra voltar e farmar com folga). Quanto mais alta a Zona, maior a chance de cair num Treinador aleatório em vez de um selvagem (selvagem forte fica mais raro na natureza) -- Treinador paga mais Pokédólares/Pokétickets, mas não dá pra capturar o Pokémon dele.</p>'+
+    '<p class="ga-hint">Escolha quem vai liderar a luta -- todas as Zonas ficam abertas pra qualquer Pokémon da Equipe, mesmo bem acima do Nível dele (a responsabilidade de entrar numa Zona forte demais é do Treinador). Quanto mais alta a Zona, maior a chance de cair num Treinador aleatório em vez de um selvagem (selvagem forte fica mais raro na natureza) -- Treinador paga mais Pokédólares/Pokétickets, mas não dá pra capturar o Pokémon dele.</p>'+
     '<div class="ga-poke-grid">'+STATE.party.map(function(p){
       var sel = p.id===lead.id;
       return pokeCardMini(p, '<div class="ga-poke-actions"><button class="ga-btn-sm'+(sel?' ga-btn-primary':'')+'" onclick="DT.gaSetCapturaLead(\''+p.id+'\')">'+(sel?'✔️ Liderando':'Escolher')+'</button></div>');
@@ -5361,16 +5367,15 @@ function capturaScreenHTML(){
     '<h3 class="ga-subhead">Zonas — '+esc2(leadNome)+' (Nv. '+lead.level+')</h3>'+
     '<div class="ga-zona-grid">'+
     ZONAS.map(function(z, idx){
-      var liberada = lead.level >= z.min;
       var faixa = 'Níveis '+z.min+'–'+z.max;
       var chanceTr = chanceTreinadorZona(z, idx);
       var chanceTexto = chanceTr>=1 ? 'só Treinador (base selvagem esgotada)' : Math.round(chanceTr*100)+'% chance de Treinador';
-      return '<div class="ga-zona-card'+(liberada?'':' locked')+'">'+
+      var arriscado = lead.level < z.min; // não trava mais -- só avisa que pode ser dureza
+      return '<div class="ga-zona-card">'+
         '<div class="ga-zona-nome">'+esc2(z.nome)+'</div>'+
         '<div class="ga-hint">'+faixa+' · '+chanceTexto+'</div>'+
-        (liberada
-          ? '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntrarCaptura(\''+lead.id+'\',\''+z.id+'\')">⚔️ Entrar na mata</button>'
-          : '<div class="ga-hint">🔒 '+esc2(leadNome)+' precisa chegar no Nível '+z.min+'</div>')+
+        (arriscado ? '<div class="ga-hint">⚠️ '+esc2(leadNome)+' tá abaixo do Nível '+z.min+' -- entrar aqui é por sua conta e risco.</div>' : '')+
+        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntrarCaptura(\''+lead.id+'\',\''+z.id+'\')">⚔️ Entrar na mata</button>'+
       '</div>';
     }).join('')+
     '</div>'+
