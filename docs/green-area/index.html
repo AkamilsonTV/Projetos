@@ -9675,13 +9675,6 @@ function battleScreenHTML(){
     out += '<div class="ga-battle-prompt"><p>💥 '+esc2(playerSp.name)+' desmaiou! Escolha o próximo:</p><div class="ga-poke-grid">'+
       vivos.map(function(p){ return pokeCardMini(p, '<div class="ga-poke-actions"><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaTrocarPokemon(\''+p.id+'\')">Ir!</button></div>'); }).join('')+
     '</div></div>';
-  } else if(b.pendingEvolution){
-    var pe = b.pendingEvolution;
-    var fromSp = speciesByNum(pe.fromNum), toSp = speciesByNum(pe.toNum);
-    out += '<div class="ga-battle-prompt"><p>✨ '+esc2(fromSp.name)+' pode evoluir para '+esc2(toSp.name)+' agora! Evoluir?</p><div class="ga-btn-row">'+
-      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderEvolucao(true)">✨ Evoluir</button>'+
-      '<button class="ga-btn-sm" onclick="DT.gaResponderEvolucao(false)">Não, manter '+esc2(fromSp.name)+'</button>'+
-    '</div></div>';
   } else if(b.finished){
     out += '<div class="ga-battle-prompt">';
     if(b.finished==='vitoria'){
@@ -9705,7 +9698,35 @@ function battleScreenHTML(){
     out += '</div>';
   }
   out += '</div>';
+  /* Cap. leva desta sessão: "Quando o pokémon evoluir faça com que um
+     popup surja na tela como prioridade e assim o jogador decide se
+     vai evoluir ou não" -- antes a pergunta de evolução era só um
+     card `.ga-battle-prompt` dentro da própria tela de luta (mesma
+     "caixa" do gatilho de cura/troca por desmaio); agora usa o MESMO
+     overlay de tela cheia (`.ga-overlay`/`.ga-overlay-card`, z-index
+     100) já usado pelos outros popups de prioridade do jogo
+     (Energia/Luta difícil/Sequência) -- cobre a tela inteira por
+     cima de tudo, então o jogador NUNCA perde a pergunta no meio do
+     log de batalha rolando. */
+  if(b.pendingEvolution) out += evolucaoPopupHTML(b.pendingEvolution);
   return out;
+}
+/* Popup de evolução (ver comentário acima) -- MESMA troca de
+   Espécie/Habilidade de sempre acontece em DT.gaResponderEvolucao,
+   aqui é só a tela. Clicar fora do card (ou no ✕) conta como "Não" --
+   mesmo padrão dos outros popups de prioridade (fechar = recusar). */
+function evolucaoPopupHTML(pe){
+  var fromSp = speciesByNum(pe.fromNum), toSp = speciesByNum(pe.toNum);
+  return '<div class="ga-overlay" onclick="DT.gaResponderEvolucao(false)"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaResponderEvolucao(false)">✕</button>'+
+    '<h2>✨ '+esc2(fromSp.name)+' pode evoluir!</h2>'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(pe.toNum)+'" alt="">'+
+    '<p class="ga-hint">Evoluir '+esc2(fromSp.name)+' pra '+esc2(toSp.name)+' agora?</p>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderEvolucao(true)">✨ Evoluir</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaResponderEvolucao(false)">Não, manter '+esc2(fromSp.name)+'</button>'+
+    '</div>'+
+  '</div></div>';
 }
 
 /* ============================================================
