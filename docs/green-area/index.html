@@ -7229,8 +7229,23 @@ function iniciarSequenciaDeCaptura(leadId, zonaId, qtd){
   if(!zona){ SESSION.error='Zona inválida.'; render(); return; }
   qtd = Math.floor(Number(qtd));
   if(!qtd || qtd<1){ SESSION.error='Digite uma quantidade de lutas válida (1 ou mais).'; render(); return; }
-  SESSION.capturaRepeat = { leadId:leadId, zonaId:zonaId, total:qtd, remaining:qtd-1, vitorias:0, derrotas:0 };
-  logAction('batalha', 'Iniciou uma sequência de '+qtd+' luta(s) na Zona '+zona.nome+'.');
+  /* Cap. leva desta sessão: "A quantidade de lutas tem que ser
+     limitado a energia atual que o jogador possui... se ele tem 100
+     de energia e vai fazer uma luta que custa 5, ele pode lutar no
+     máximo 20. Trava isso no combate desejado" -- a quantidade PEDIDA
+     nunca passa do que a Energia ATUAL realmente paga (custo fixo por
+     Zona × quantidade, ver custoEnergiaZona) -- trava aqui, ANTES de
+     começar a 1ª luta, em vez de deixar a sequência tentar ir além e
+     parar no meio do caminho sem querer. */
+  var custo = custoEnergiaZona(ZONAS.indexOf(zona));
+  var maxComEnergia = Math.floor((STATE.energy||0)/custo);
+  if(maxComEnergia<1){ SESSION.error='Energia insuficiente pra nem 1 luta nessa Zona (custa '+custo+', você tem '+(STATE.energy||0)+').'; render(); return; }
+  var qtdTravada = Math.min(qtd, maxComEnergia);
+  SESSION.capturaRepeat = { leadId:leadId, zonaId:zonaId, total:qtdTravada, remaining:qtdTravada-1, vitorias:0, derrotas:0 };
+  if(qtdTravada<qtd){
+    SESSION.notice = '⚠️ Você pediu '+qtd+' luta(s), mas sua Energia atual ('+STATE.energy+') só paga '+qtdTravada+' nessa Zona (custa '+custo+' cada) -- a sequência foi travada em '+qtdTravada+'.';
+  }
+  logAction('batalha', 'Iniciou uma sequência de '+qtdTravada+' luta(s) na Zona '+zona.nome+(qtdTravada<qtd?' (pediu '+qtd+', travado pela Energia disponível)':'')+'.');
   iniciarLutaDeZona(leadId, zonaId, false);
 }
 DT.gaIniciarLutasVarias = function(leadId, zonaId, inputEl){
@@ -8028,7 +8043,7 @@ function capturaScreenHTML(){
         '<div class="ga-zona-actions">'+
           '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntrarCaptura(\''+lead.id+'\',\''+z.id+'\')">⚔️ Entrar na mata</button>'+
           '<div class="ga-capqtd-row">'+
-            '<input type="number" min="1" step="1" id="'+inputId+'" placeholder="Qtd" class="ga-capqtd-input">'+
+            '<input type="number" min="1" max="'+Math.max(1,maxComEnergia)+'" step="1" id="'+inputId+'" placeholder="Qtd (máx '+maxComEnergia+')" title="Sua Energia atual trava a sequência em, no máximo, '+maxComEnergia+' luta(s) nessa Zona" class="ga-capqtd-input">'+
             '<button class="ga-btn-sm" onclick="DT.gaIniciarLutasVarias(\''+lead.id+'\',\''+z.id+'\',document.getElementById(\''+inputId+'\'))">🔁 Lutar Várias Vezes</button>'+
           '</div>'+
           '<button class="ga-btn-sm" '+(maxComEnergia<1?'disabled':'')+' title="Sua Energia atual dá pra '+maxComEnergia+' luta(s) nessa Zona" onclick="DT.gaIniciarLutasComTodaEnergia(\''+lead.id+'\',\''+z.id+'\')">⚡ Usar Toda a Energia ('+maxComEnergia+' luta'+(maxComEnergia===1?'':'s')+')</button>'+
