@@ -44,6 +44,10 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-nav button:hover{ background:var(--bg2); border-color:var(--line); }
 .ga-nav button.active{ background:var(--accent-dim); color:#04170c; border-color:var(--accent-dim); font-weight:700; }
 .ga-nav-ic{ font-size:1.05rem; }
+/* Cap. leva desta sessão (Centro Pokémon): selo numérico de pedidos de
+   amizade pendentes, ao lado do nome do item de menu -- vermelho
+   chamativo de propósito (é uma notificação de verdade). */
+.ga-nav-badge{ background:var(--danger); color:#fff; font-size:.68rem; font-weight:800; border-radius:999px; padding:1px 6px; margin-left:auto; }
 .ga-nav-sair{ background:transparent; border:1px solid var(--line); color:var(--ink-dim); border-radius:8px; padding:9px 10px; font-size:.86rem; }
 .ga-nav-sair:hover{ border-color:var(--danger); color:#fecaca; }
 .ga-sidebar-backdrop{ display:none; }
@@ -134,6 +138,17 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    o botão sempre gruda no fundo do card, alinhado com os vizinhos da
    mesma linha nunca importa quanto texto tem acima. */
 .ga-poke-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
+/* Cap. leva desta sessão (Centro Pokémon): card de Treinador/pedido de
+   amizade -- reaproveita o MESMO grid `.ga-poke-grid` de sempre, só
+   com um card mais simples (sem sprite, só nome + ação). */
+.ga-friend-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; display:flex; flex-direction:column; gap:6px; align-items:center; }
+/* Chat público ao vivo -- log com rolagem própria (igual o log de
+   batalha), mensagem própria destacada com uma borda na cor de
+   destaque pra distinguir rápido "o que eu disse" no meio da conversa. */
+.ga-chat-log{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; max-height:280px; overflow-y:auto; font-size:.85rem; display:flex; flex-direction:column; gap:5px; margin:8px 0; }
+.ga-chat-msg{ padding:4px 8px; border-radius:6px; }
+.ga-chat-msg.mine{ background:var(--accent-dim); color:#04170c; }
+.ga-chat-input{ flex:1; }
 .ga-poke-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; display:flex; flex-direction:column; }
 .ga-poke-card img{ width:64px; height:64px; image-rendering:pixelated; align-self:center; }
 .ga-poke-name{ font-weight:700; font-size:.86rem; }
@@ -5261,6 +5276,32 @@ var db = null;
 var savesCol = null;
 var currentSaveRef = null;
 var unsubscribeSnapshot = null;
+/* Cap. leva desta sessão (Centro Pokémon -- Fase 1: área social, chat
+   público, amizade): 3 coleções NOVAS, TOPO do banco (nunca aninhadas
+   dentro de `state` de green_area_saves) -- de propósito, pra nunca
+   correrem risco de serem apagadas por engano quando O PRÓPRIO dono da
+   conta salva o resto do progresso dele (doSave() reescreve o campo
+   `state` INTEIRO de uma vez; qualquer coisa que outro jogador escreva
+   ali dentro seria perdida na próxima vez que o dono salvasse alguma
+   coisa sem saber do que chegou nesse meio tempo). Guardando essas 3
+   coisas em documentos PRÓPRIOS, e escrevendo nelas sempre com
+   FieldValue.arrayUnion/arrayRemove (operação atômica de verdade do
+   lado do servidor, nunca "lê tudo, edita, escreve tudo de volta"),
+   2 jogadores mexendo ao mesmo tempo nunca se atropelam:
+     - green_area_chat_publico/global -- 1 documento só, mensagens do
+       chat público do Centro Pokémon (visível a QUALQUER Treinador).
+     - green_area_inbox/{docId} -- 1 documento por CONTA, pedidos de
+       amizade RECEBIDOS -- só quem enviou escreve nele (arrayUnion),
+       só o dono lê e remove (arrayRemove) o que já respondeu.
+     - green_area_amizades/{par} -- 1 documento por PAR de amigos
+       confirmado (id = os 2 docIds ordenados, unidos por "__" --
+       ver friendPairId), criado só quando o pedido é aceito. */
+var chatCol = null;
+var inboxCol = null;
+var amizadesCol = null;
+var unsubscribeChat = null;
+var unsubscribeInbox = null;
+var unsubscribeAmizades = null;
 
 var SESSION_CACHE_KEY = 'green_area_session_v1'; // {docId, pin} -- NUNCA o progresso em si
 var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só localStorage, antes da conta online)
@@ -5276,7 +5317,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null };
 
 function freshState(trainerName){
   return {
@@ -5470,6 +5511,35 @@ function attachSaveListener(docId){
     SESSION.error = 'Não consegui conectar ao banco de dados. Verifique sua internet e recarregue a página. (' + (err && err.message ? err.message : 'erro desconhecido') + ')';
     render();
   });
+  attachSocialListeners(docId);
+}
+/* Cap. leva desta sessão (Centro Pokémon): pedidos de amizade RECEBIDOS
+   (green_area_inbox) e a lista de amizades CONFIRMADAS
+   (green_area_amizades) escutam ao vivo desde o login, rodando por
+   trás igual o contador de Energia -- não importa em qual tela o
+   jogador está, um pedido novo (ou um amigo aceitando o seu) aparece
+   na hora, sem precisar estar na tela do Centro Pokémon pra ver
+   (mesma filosofia de "roda em segundo plano, independente da tela"
+   já usada pro contador de Energia e pela sequência automática de
+   lutas). */
+function attachSocialListeners(docId){
+  if(unsubscribeInbox) unsubscribeInbox();
+  unsubscribeInbox = inboxCol.doc(docId).onSnapshot(function(doc){
+    SESSION.pedidosAmizade = (doc.exists && doc.data().pedidosAmizade) || [];
+    render();
+  }, function(){ /* erro de rede -- silencioso, só fica sem atualizar até a conexão voltar */ });
+  if(unsubscribeAmizades) unsubscribeAmizades();
+  unsubscribeAmizades = amizadesCol.onSnapshot(function(snap){
+    var lista = [];
+    snap.forEach(function(d){
+      var data = d.data();
+      if(!data) return;
+      if(data.a===docId) lista.push({ outro: data.b, outroNome: data.bNome, desde: data.desde });
+      else if(data.b===docId) lista.push({ outro: data.a, outroNome: data.aNome, desde: data.desde });
+    });
+    SESSION.amigos = lista;
+    render();
+  }, function(){});
 }
 
 function bootApp(){
@@ -5477,6 +5547,9 @@ function bootApp(){
     firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.firestore();
     savesCol = db.collection('green_area_saves');
+    chatCol = db.collection('green_area_chat_publico');
+    inboxCol = db.collection('green_area_inbox');
+    amizadesCol = db.collection('green_area_amizades');
   }catch(e){
     SESSION.error = 'Erro ao iniciar o Firebase.';
     render();
@@ -6973,11 +7046,171 @@ DT.gaSair = function(){
     currentSaveRef.update({ state: sanitizeForFirestore(STATE), updatedAt: Date.now() }).catch(function(){});
   }
   if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot=null; }
+  if(unsubscribeInbox){ unsubscribeInbox(); unsubscribeInbox=null; }
+  if(unsubscribeAmizades){ unsubscribeAmizades(); unsubscribeAmizades=null; }
+  if(unsubscribeChat){ unsubscribeChat(); unsubscribeChat=null; }
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null };
   render();
+};
+
+/* ============================================================
+   Centro Pokémon (Cap. leva desta sessão -- Fase 1 de 4, ver README:
+   "Quero criar uma área, chamada Centro Pokémon. Ali os jogadores vão
+   poder... trocar chat e se desafiarem para um pvp... O chat é livre
+   para todos verem o que todos falam... pedido de amizade entre os
+   jogadores"): área social nova -- diretório de Treinadores, chat
+   público (visível a todo mundo, ao vivo) e pedido/aceite de amizade.
+   Troca (Pokémon/itens/dinheiro) e desafio de PvP ficam pras próximas
+   fases desta mesma leva (avisado na própria tela, não escondido).
+   ============================================================ */
+function friendPairId(a, b){ return [a,b].sort().join('__'); }
+/* Abre a tela + carrega o diretório de Treinadores (savesCol.get(),
+   mesmo caminho que o Painel Admin já usa -- só filtra pros nomes,
+   nunca expõe o resto do save de ninguém na tela) + liga o listener
+   do chat público (só enquanto o jogador está OLHANDO essa tela --
+   ao contrário do inbox/amizades, que ficam sempre ligados desde o
+   login, o chat ao vivo só precisa rodar enquanto alguém está vendo
+   ele, ver DT.gaGoto que desliga ao sair daqui). */
+DT.gaAbrirCentro = function(){
+  SESSION.screen = 'centro';
+  SESSION.error = '';
+  SESSION.sidebarOpen = false;
+  render();
+  carregarDiretorioJogadores();
+  if(unsubscribeChat) unsubscribeChat();
+  unsubscribeChat = chatCol.doc(CENTRO_CHAT_DOC).onSnapshot(function(doc){
+    SESSION.centroChat = (doc.exists && doc.data().mensagens) || [];
+    render();
+  }, function(){ /* erro de rede -- silencioso, chat só fica sem atualizar */ });
+};
+function carregarDiretorioJogadores(){
+  SESSION.centroDiretorioCarregando = true;
+  render();
+  savesCol.get().then(function(snap){
+    var lista = [];
+    snap.forEach(function(doc){
+      if(doc.id===SESSION.currentDocId) return;
+      var d = doc.data();
+      if(!d || d.banido) return;
+      lista.push({ docId: doc.id, nome: (d.state && d.state.trainerName) || doc.id });
+    });
+    lista.sort(function(a,b){ return a.nome.localeCompare(b.nome); });
+    SESSION.centroDiretorio = lista;
+    SESSION.centroDiretorioCarregando = false;
+    render();
+  }).catch(function(){
+    SESSION.centroDiretorioCarregando = false;
+    SESSION.error = 'Não consegui carregar a lista de Treinadores -- verifique sua internet.';
+    render();
+  });
+}
+
+/* ---- Amizade ----
+   Pedido enviado: escrito direto no INBOX de quem recebe (nunca no
+   PRÓPRIO save de ninguém -- ver comentário grande lá em cima, perto
+   de `var chatCol`), sempre via arrayUnion (nunca lê-modifica-escreve
+   o array inteiro, então 2 pedidos chegando ao mesmo tempo pra
+   alguém nunca se atropelam). `set(...,{merge:true})` em vez de
+   `update()` de propósito -- cria o documento do inbox na hora, se
+   ainda não existir (1º pedido que aquela conta recebe na vida). */
+var CENTRO_PEDIDO_SPAM_MS = 0; // reservado (nenhuma trava de tempo por enquanto -- só 1 pedido pendente por par já evita spam de verdade)
+DT.gaEnviarPedidoAmizade = function(paraDocId){
+  if(!STATE || !paraDocId || paraDocId===SESSION.currentDocId) return;
+  var alvo = (SESSION.centroDiretorio||[]).filter(function(p){ return p.docId===paraDocId; })[0];
+  if(!alvo) return;
+  if((SESSION.amigos||[]).some(function(a){ return a.outro===paraDocId; })){ SESSION.error='Vocês já são amigos.'; render(); return; }
+  STATE.pedidosEnviados = STATE.pedidosEnviados || [];
+  if(STATE.pedidosEnviados.some(function(p){ return p.paraDocId===paraDocId; })){ SESSION.error='Você já enviou um pedido pra esse Treinador -- espere a resposta.'; render(); return; }
+  var pedido = { deDocId: SESSION.currentDocId, deNome: STATE.trainerName, ts: Date.now() };
+  inboxCol.doc(paraDocId).set({ pedidosAmizade: firebase.firestore.FieldValue.arrayUnion(pedido) }, { merge:true }).then(function(){
+    STATE.pedidosEnviados.push({ paraDocId: paraDocId, paraNome: alvo.nome, ts: pedido.ts });
+    logAction('amizade', 'Enviou um pedido de amizade pra '+alvo.nome+'.');
+    mutate();
+  }).catch(function(){ SESSION.error='Não consegui enviar o pedido -- verifique sua internet.'; render(); });
+};
+/* Responde 1 pedido recebido -- acha o objeto EXATO dentro de
+   SESSION.pedidosAmizade (que já veio do snapshot ao vivo do inbox,
+   ver attachSocialListeners) pelo par (deDocId, ts) -- precisa ser o
+   MESMO objeto (ou um igual byte a byte) pro arrayRemove funcionar
+   de verdade (o Firestore -- e este stub, ver firestore_stub.js --
+   comparam por igualdade profunda, não por referência). Aceitar cria
+   o documento de amizade confirmada (green_area_amizades) ANTES de
+   remover o pedido do inbox -- se a 2ª escrita falhar (rede caiu no
+   meio), o pedido continua lá pra tentar de novo, nunca "perde" a
+   amizade já criada. */
+DT.gaResponderPedidoAmizade = function(deDocId, ts, aceitar){
+  if(!STATE) return;
+  var pedido = (SESSION.pedidosAmizade||[]).filter(function(p){ return p.deDocId===deDocId && p.ts===ts; })[0];
+  if(!pedido) return;
+  var meuId = SESSION.currentDocId, meuNome = STATE.trainerName;
+  var removerDoInbox = function(){ return inboxCol.doc(meuId).update({ pedidosAmizade: firebase.firestore.FieldValue.arrayRemove(pedido) }); };
+  if(!aceitar){
+    removerDoInbox().then(function(){
+      SESSION.notice = 'Pedido de '+pedido.deNome+' recusado.';
+      render();
+    }).catch(function(){ SESSION.error='Não consegui recusar o pedido -- tente de novo.'; render(); });
+    return;
+  }
+  var ids = [meuId, pedido.deDocId].sort();
+  var docAmizade = { a: ids[0], b: ids[1], aNome: ids[0]===meuId ? meuNome : pedido.deNome, bNome: ids[1]===meuId ? meuNome : pedido.deNome, desde: Date.now() };
+  amizadesCol.doc(friendPairId(meuId, pedido.deDocId)).set(docAmizade).then(function(){
+    return removerDoInbox();
+  }).then(function(){
+    logAction('amizade', 'Aceitou o pedido de amizade de '+pedido.deNome+'.');
+    mutate();
+  }).catch(function(){ SESSION.error='Não consegui aceitar o pedido -- verifique sua internet e tente de novo.'; render(); });
+};
+/* Desfazer amizade (bônus -- grátis já que o par tem 1 documento só).
+   NUNCA mexe no lado de ninguém além de apagar o documento do par --
+   os 2 lados descobrem sozinhos, ao vivo, pelo mesmo listener de
+   coleção que já mostrou a amizade sendo criada. */
+DT.gaDesfazerAmizade = function(outroDocId){
+  if(!STATE || !outroDocId) return;
+  amizadesCol.doc(friendPairId(SESSION.currentDocId, outroDocId)).delete().then(function(){
+    logAction('amizade', 'Desfez amizade.');
+    mutate();
+  }).catch(function(){ SESSION.error='Não consegui desfazer a amizade -- tente de novo.'; render(); });
+};
+
+/* ---- Chat público do Centro Pokémon ----
+   Cap. "O chat é livre para todos verem o que todos falam": 1
+   documento só (green_area_chat_publico/global), mensagens
+   acrescentadas sempre via arrayUnion (2 jogadores mandando mensagem
+   no mesmíssimo instante nunca apagam a mensagem um do outro).
+   Travado num teto de histórico (CENTRO_CHAT_MAX) igual o
+   STATE.actionLog do Admin -- quando alguém manda uma mensagem e
+   percebe que passou do teto, essa MESMA pessoa já aproveita pra
+   cortar as mais antigas (`trimChatSeNecessario`). Isso é só
+   "manutenção por oportunidade", não uma fila perfeita -- 2 pessoas
+   cortando bem no mesmo instante podem, na teoria, derrubar 1
+   mensagem de alguém (limitação honesta, documentada, mesmo espírito
+   dos outros avisos "sem garantia 100%" já espalhados pelo jogo --
+   pra um chat de protótipo entre poucos jogadores, o risco é
+   desprezível). */
+var CENTRO_CHAT_DOC = 'global';
+var CENTRO_CHAT_MAX = 200;
+var CENTRO_CHAT_MSG_MAX_LEN = 300;
+function trimChatSeNecessario(){
+  var atuais = SESSION.centroChat || [];
+  if(atuais.length <= CENTRO_CHAT_MAX) return;
+  var cortado = atuais.slice(atuais.length - CENTRO_CHAT_MAX);
+  chatCol.doc(CENTRO_CHAT_DOC).update({ mensagens: cortado }).catch(function(){});
+}
+DT.gaEnviarMensagemChat = function(inputEl){
+  if(!STATE) return;
+  var texto = ((inputEl && inputEl.value) || '').trim();
+  if(!texto) return;
+  if(texto.length > CENTRO_CHAT_MSG_MAX_LEN) texto = texto.slice(0, CENTRO_CHAT_MSG_MAX_LEN);
+  var msg = { autor: STATE.trainerName, docId: SESSION.currentDocId, texto: texto, ts: Date.now() };
+  chatCol.doc(CENTRO_CHAT_DOC).set({ mensagens: firebase.firestore.FieldValue.arrayUnion(msg) }, { merge:true }).then(function(){
+    if(inputEl) inputEl.value = '';
+    logAction('chat', 'Mandou uma mensagem no chat público do Centro Pokémon.');
+    mutate();
+    trimChatSeNecessario();
+  }).catch(function(){ SESSION.error='Não consegui mandar a mensagem -- verifique sua internet.'; render(); });
 };
 
 /* ============================================================
@@ -7702,7 +7935,16 @@ DT.gaDebugReset = function(){
   mutate();
 };
 
-DT.gaGoto = function(screen){ SESSION.screen = screen; SESSION.error=''; SESSION.sidebarOpen=false; render(); };
+DT.gaGoto = function(screen){
+  /* Chat ao vivo do Centro Pokémon só roda enquanto o jogador está
+     OLHANDO essa tela (ao contrário do inbox/amizades, sempre ligados
+     desde o login) -- desliga o listener ao sair daqui pra QUALQUER
+     outra tela, economizando banda sem perder nada (o histórico
+     continua salvo em green_area_chat_publico, é só a atualização ao
+     vivo que pausa). */
+  if(SESSION.screen==='centro' && screen!=='centro' && unsubscribeChat){ unsubscribeChat(); unsubscribeChat=null; }
+  SESSION.screen = screen; SESSION.error=''; SESSION.sidebarOpen=false; render();
+};
 DT.gaDismiss = function(){ SESSION.error=''; SESSION.notice=''; render(); };
 DT.gaOpenDex = function(num){ SESSION.dexOpenNum = num; render(); };
 DT.gaCloseDex = function(){ SESSION.dexOpenNum = null; render(); };
@@ -7791,10 +8033,19 @@ var TOOLTIPS = {
    SESSION.sidebarOpen/DT.gaToggleSidebar). */
 var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','moves:🗡️:Movimentos','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
 function navListHTML(){
+  /* Cap. leva desta sessão (Centro Pokémon): entrada própria (não
+     genérica via NAV_ITENS/gaGoto -- precisa carregar o diretório e
+     ligar o chat, mesmo caminho especial que o Admin já usa) --
+     mostra um selo com a quantidade de pedidos de amizade pendentes
+     (SESSION.pedidosAmizade vem do listener sempre ligado desde o
+     login, então esse número já aparece aqui mesmo de LONGE do
+     Centro Pokémon, exatamente como uma notificação de verdade). */
+  var qtdPedidos = (SESSION.pedidosAmizade||[]).length;
   return NAV_ITENS.map(function(item){
     var kv = item.split(':');
     return '<button class="'+(SESSION.screen===kv[0]?'active':'')+'" onclick="DT.gaGoto(\''+kv[0]+'\')"><span class="ga-nav-ic">'+kv[1]+'</span>'+kv[2]+'</button>';
   }).join('')+
+  '<button class="'+(SESSION.screen==='centro'?'active':'')+'" onclick="DT.gaAbrirCentro()"><span class="ga-nav-ic">🏥</span>Centro Pokémon'+(qtdPedidos>0?' <span class="ga-nav-badge">'+qtdPedidos+'</span>':'')+'</button>'+
   (SESSION.isAdmin ? '<button class="'+(SESSION.screen==='admin'?'active':'')+'" onclick="DT.gaAdminAbrirPainel()"><span class="ga-nav-ic">🛡️</span>Admin</button>' : '');
 }
 function sidebarHTML(){
@@ -7860,6 +8111,7 @@ function screenHTML(){
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
+    case 'centro': return wrap(centroScreenHTML());
     case 'debug': return wrap(debugScreenHTML());
     default: return wrap(hubScreenHTML());
   }
@@ -8684,6 +8936,68 @@ function wikiScreenHTML(){
     '<p>Clique num Pokémon já visto em batalha (mesmo sem capturar) pra ver Área onde encontrar, Movimentos possíveis, Habilidades possíveis, Lore (em português) e o Cry original em áudio.</p>');
 
   out += '</div>';
+  return out;
+}
+
+/* Cap. leva desta sessão -- Centro Pokémon: diretório de Treinadores +
+   pedidos de amizade recebidos + lista de amigos + chat público ao
+   vivo. Tudo lido de SESSION (nunca STATE.* pros dados dos OUTROS
+   jogadores -- SESSION.centroDiretorio/pedidosAmizade/amigos/
+   centroChat vêm todos de listeners/consultas ao vivo, ver
+   attachSocialListeners/gaAbrirCentro). */
+function centroScreenHTML(){
+  var out = '<div class="ga-card"><h2>🏥 Centro Pokémon</h2>'+
+    '<p class="ga-hint">Ponto de encontro entre Treinadores -- veja quem mais está jogando, peça amizade e converse no chat público (visível pra TODO MUNDO). Troca de Pokémon/itens/dinheiro e desafios de PvP chegam nas próximas atualizações.</p>';
+
+  var pedidos = SESSION.pedidosAmizade||[];
+  if(pedidos.length){
+    out += '<h3 class="ga-subhead">📨 Pedidos de amizade recebidos</h3><div class="ga-poke-grid">'+
+      pedidos.map(function(p){
+        return '<div class="ga-friend-card"><strong>'+esc2(p.deNome)+'</strong>'+
+          '<div class="ga-btn-row"><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderPedidoAmizade(\''+p.deDocId+'\','+p.ts+',true)">✔️ Aceitar</button>'+
+          '<button class="ga-btn-sm" onclick="DT.gaResponderPedidoAmizade(\''+p.deDocId+'\','+p.ts+',false)">✕ Recusar</button></div></div>';
+      }).join('')+'</div>';
+  }
+
+  var amigos = SESSION.amigos||[];
+  out += '<h3 class="ga-subhead">👥 Meus amigos'+(amigos.length?' ('+amigos.length+')':'')+'</h3>'+
+    (amigos.length
+      ? '<div class="ga-poke-grid">'+amigos.map(function(a){
+          return '<div class="ga-friend-card"><strong>'+esc2(a.outroNome)+'</strong>'+
+            '<button class="ga-btn-sm" onclick="DT.gaDesfazerAmizade(\''+a.outro+'\')">Desfazer amizade</button></div>';
+        }).join('')+'</div>'
+      : '<p class="ga-hint">Você ainda não tem nenhum amigo -- peça amizade pra alguém da lista de Treinadores abaixo.</p>');
+
+  out += '<h3 class="ga-subhead">🧑‍🤝‍🧑 Treinadores</h3>'+
+    (SESSION.centroDiretorioCarregando
+      ? '<p class="ga-hint">Carregando lista de Treinadores...</p>'
+      : (!SESSION.centroDiretorio || !SESSION.centroDiretorio.length
+          ? '<p class="ga-hint">Nenhum outro Treinador tem conta ainda -- volte aqui quando mais gente entrar.</p>'
+          : '<div class="ga-poke-grid">'+SESSION.centroDiretorio.map(function(p){
+              var jaAmigo = amigos.some(function(a){ return a.outro===p.docId; });
+              var pedidoPendente = (STATE.pedidosEnviados||[]).some(function(e){ return e.paraDocId===p.docId; });
+              var acao = jaAmigo ? '<span class="ga-hint">✔️ Amigos</span>'
+                : pedidoPendente ? '<span class="ga-hint">⏳ Pedido enviado</span>'
+                : '<button class="ga-btn-sm" onclick="DT.gaEnviarPedidoAmizade(\''+p.docId+'\')">➕ Adicionar</button>';
+              return '<div class="ga-friend-card"><strong>'+esc2(p.nome)+'</strong>'+acao+'</div>';
+            }).join('')+'</div>'
+        )
+    );
+
+  out += '<h3 class="ga-subhead">💬 Chat público</h3>'+
+    '<div class="ga-hint">Visível pra TODOS os Treinadores que estiverem no Centro Pokémon agora.</div>'+
+    '<div class="ga-chat-log" id="gaChatLog">'+
+      (!SESSION.centroChat || !SESSION.centroChat.length
+        ? '<div class="ga-hint">Nenhuma mensagem ainda -- seja o primeiro a falar!</div>'
+        : SESSION.centroChat.map(function(m){
+            return '<div class="ga-chat-msg'+(m.docId===SESSION.currentDocId?' mine':'')+'"><strong>'+esc2(m.autor)+':</strong> '+esc2(m.texto)+'</div>';
+          }).join(''))+
+    '</div>'+
+    '<div class="ga-capqtd-row">'+
+      '<input type="text" maxlength="'+CENTRO_CHAT_MSG_MAX_LEN+'" id="gaChatInput" placeholder="Escreva uma mensagem..." class="ga-chat-input" onkeydown="if(event.key===\'Enter\')DT.gaEnviarMensagemChat(document.getElementById(\'gaChatInput\'))">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemChat(document.getElementById(\'gaChatInput\'))">Enviar</button>'+
+    '</div>'+
+  '</div>';
   return out;
 }
 
