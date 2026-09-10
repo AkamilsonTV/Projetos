@@ -5127,6 +5127,7 @@ function freshState(trainerName){
     badges: [],
     pokebolas: { pokebola:10, greatball:0, superball:0, ultraball:0 },
     poketickets: 0,
+    poketicketsUpdatedAt: Date.now(),
     pokedolares: 200,
     tms: {},
     itens: { pocao:5, superpocao:2, hiperpocao:0 },
@@ -5151,6 +5152,13 @@ function migrateState(){
   if(!STATE) return;
   if(typeof STATE.pokedolares!=='number') STATE.pokedolares = 0;
   if(typeof STATE.poketickets!=='number') STATE.poketickets = 0;
+  /* Cap. leva desta sessão: "Pokétickets são ganhos 50 por dia... podem
+     acumular no máximo 1000... Acima disso os tickets não contabilizam ou
+     ficam guardados, para em 1000" -- conta sem esse campo ainda (criada
+     antes dessa leva) começa a contagem do grant diário AGORA, não tenta
+     "recuperar" dias que já passaram antes de existir o campo. */
+  if(typeof STATE.poketicketsUpdatedAt!=='number') STATE.poketicketsUpdatedAt = Date.now();
+  STATE.poketickets = clampInt(STATE.poketickets, 0, POKETICKETS_MAX); // uma conta antiga pode já ter passado do teto novo (nunca dava antes) -- trava em 1000 na migração também
   if(!STATE.tms || typeof STATE.tms!=='object') STATE.tms = {};
   if(typeof STATE.pokebolas==='number') STATE.pokebolas = { pokebola: STATE.pokebolas, greatball:0, superball:0, ultraball:0 };
   if(!STATE.pokebolas || typeof STATE.pokebolas!=='object') STATE.pokebolas = { pokebola:0, greatball:0, superball:0, ultraball:0 };
@@ -5217,7 +5225,7 @@ function doSave(){
     if(saveQueuedAfter){ saveQueuedAfter = false; doSave(); }
   });
 }
-function mutate(){ if(STATE) tickEnergy(); render(); queueSave(); }
+function mutate(){ if(STATE){ tickEnergy(); tickPoketickets(); } render(); queueSave(); }
 
 /* A "sessão" salva no navegador é só {docId, pin} -- NUNCA o
    progresso do jogo em si -- pra reabrir e cair direto no jogo sem
@@ -5326,6 +5334,40 @@ function formatMMSS(totalSeg){
   var m = Math.floor(totalSeg/60), s = totalSeg%60;
   return m+':'+(s<10?'0':'')+s;
 }
+
+/* Cap. leva desta sessão: "Pokétickets são ganhos 50 por dia. Os
+   jogadores podem acumular no máximo 1000 tickets. Acima disso os
+   tickets não contabilizam ou ficam guardados, para em 1000. GASTEM
+   SEUS TICKETS!": um grant diário de verdade, no MESMO padrão
+   "preguiçoso" (catch-up) já usado pra Energia -- em vez de um timer
+   vivo (que morre se a aba fechar), cada vez que o estado é tocado
+   confere quanto tempo real passou desde a última conta e credita os
+   blocos de 24h inteiros que já se passaram, sem nunca passar do teto.
+   O teto vale pra QUALQUER fonte de Pokéticket (grant diário, recompensa
+   de Mestre Especialista, drop de Treinador de Elite, ferramenta de
+   debug) -- ver POKETICKETS_MAX usado em cada um desses lugares. */
+var POKETICKETS_MAX = 1000;
+var POKETICKETS_POR_DIA = 50;
+var MS_POR_DIA = 24*60*60*1000;
+function tickPoketickets(){
+  var now = Date.now();
+  var elapsedMs = now - (STATE.poketicketsUpdatedAt||now);
+  var blocos = Math.floor(elapsedMs/MS_POR_DIA);
+  if(blocos>0){
+    STATE.poketickets = clampInt((STATE.poketickets||0) + blocos*POKETICKETS_POR_DIA, 0, POKETICKETS_MAX);
+    STATE.poketicketsUpdatedAt = STATE.poketicketsUpdatedAt + blocos*MS_POR_DIA;
+  }
+}
+function secondsToNextPoketicketTick(){
+  if((STATE.poketickets||0) >= POKETICKETS_MAX) return 0;
+  var into = (Date.now() - (STATE.poketicketsUpdatedAt||Date.now())) % MS_POR_DIA;
+  if(into<0) into += MS_POR_DIA;
+  return Math.max(0, Math.ceil((MS_POR_DIA - into)/1000));
+}
+function formatHHMMSS(totalSeg){
+  var h = Math.floor(totalSeg/3600), m = Math.floor((totalSeg%3600)/60), s = totalSeg%60;
+  return h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+}
 /* Antes, tickEnergy() só rodava dentro de mutate() -- ou seja, só
    quando o jogador clicava em algo. Parado numa tela sem fazer nada,
    a Energia NUNCA subia sozinha, mesmo passando o tempo real
@@ -5340,11 +5382,14 @@ function formatMMSS(totalSeg){
    formulários, PIN de login etc.) só pra manter um relógio andando. */
 function energyTickLoop(){
   if(!STATE) return;
-  var antes = STATE.energy;
+  var antesEnergia = STATE.energy, antesTickets = STATE.poketickets;
   tickEnergy();
-  if(STATE.energy !== antes){ render(); queueSave(); return; }
+  tickPoketickets();
+  if(STATE.energy !== antesEnergia || STATE.poketickets !== antesTickets){ render(); queueSave(); return; }
   var el = document.getElementById('ga-energy-countdown');
   if(el) el.textContent = formatMMSS(secondsToNextEnergyTick());
+  var elT = document.getElementById('ga-ticket-countdown');
+  if(elT) elT.textContent = formatHHMMSS(secondsToNextPoketicketTick());
 }
 setInterval(energyTickLoop, 1000);
 
@@ -5700,7 +5745,8 @@ function finishBattle(result){
     b.log.push('💰 Você ganhou '+premio+' Pokédólares!');
     var tix = ticketReward(b);
     if(tix>0){
-      STATE.poketickets = (STATE.poketickets||0) + tix;
+      // teto de 1000 vale pra QUALQUER fonte, essa recompensa de batalha incluída
+      STATE.poketickets = clampInt((STATE.poketickets||0) + tix, 0, POKETICKETS_MAX);
       b.log.push('🎫 Você ganhou '+tix+' Pokétickets!');
     }
     /* XP/Nível/evolução JÁ foram resolvidos no meio da luta, golpe a
@@ -6478,7 +6524,7 @@ DT.gaDebugItens = function(){
   mutate();
 };
 DT.gaDebugPokedolares = function(){ STATE.pokedolares = (STATE.pokedolares||0)+500; mutate(); };
-DT.gaDebugPoketicketsExtra = function(){ STATE.poketickets = (STATE.poketickets||0)+50; mutate(); };
+DT.gaDebugPoketicketsExtra = function(){ STATE.poketickets = clampInt((STATE.poketickets||0)+50, 0, POKETICKETS_MAX); mutate(); };
 DT.gaDebugReset = function(){
   if(!SESSION.confirmReset){ SESSION.confirmReset = true; render(); return; }
   SESSION.confirmReset = false;
@@ -6560,7 +6606,7 @@ function esc2(s){ return esc(s); }
 var TOOLTIPS = {
   energia: 'Energia (0 a 1000): o que você gasta pra entrar em qualquer luta (selvagem, Treinador aleatório ou Mestre Especialista) -- quanto mais forte o oponente, mais cara a luta.\nRecupera +10 sozinha a cada 10 minutos reais.\nOu troque 1 🎫 Pokéticket por +'+ENERGIA_POR_TICKET+' na hora, quando quiser.',
   pokedolares: 'Pokédólares: ganhos depois de VENCER uma luta -- selvagem paga pouco, Treinador aleatório de Zona paga mais, Mestre Especialista paga o melhor de todos (soma por CADA oponente derrotado).\nGaste na 🏪 Loja: Pokébolas, Poções e MTs.',
-  poketickets: 'Pokétickets: batalha selvagem e Treinador comum de rota NÃO dão Pokéticket nenhum.\nSó 2 fontes -- vencer um Mestre Especialista (5 garantidos, sempre) ou vencer um raro Treinador de Elite (a partir da Zona Elite -- chance baixa de largar até 5, e quanto mais tickets, mais rara a chance).\nTroque por Energia (1 Pokéticket = +'+ENERGIA_POR_TICKET+') quando quiser, sem limite.',
+  poketickets: 'Pokétickets: ganha +'+POKETICKETS_POR_DIA+' sozinho a cada 24 horas reais (mesmo parado, sem lutar).\nTambém dá pra ganhar lutando -- Mestre Especialista dá 5 garantidos, e um raro Treinador de Elite (a partir da Zona Elite) tem chance baixa de largar até 5.\nO total NUNCA passa de '+POKETICKETS_MAX+' -- acima disso, qualquer ganho novo (diário ou de luta) é descartado, trava no teto. Gaste antes de bater no teto!\nTroque por Energia (1 Pokéticket = +'+ENERGIA_POR_TICKET+') quando quiser, sem limite.',
   insignias: 'Insígnias: conquistadas vencendo os 8 Mestres Especialistas, em ordem -- não dá pra pular nenhum.\nVeja a aba 🎖️ Mestres.',
   pokedex: 'Pokédex: quantas das 1025 Espécies você já CAPTUROU, do total.\nClique num Pokémon na aba 📕 Pokédex pra ver Área/Movimentos/Habilidades/Lore/Cry dele, mesmo sem ter capturado ainda.',
   papelCombate: 'Papel de Combate: o sistema de luta automática usa mais os Movimentos desse papel -- ⚔️ Ataque (elimina o oponente), 🛡️ Defesa (cura o próprio PV / aumenta a própria defesa), 🌿 Suporte (fortalece/cura o TIME) ou 🌀 Controle (deixa o oponente com status ruim).\n60% de chance de usar um Movimento do papel setado, os outros 3 dividem os 40% restantes -- nunca 100% de um só tipo.\nUm Movimento pode valer pra mais de um papel ao mesmo tempo, quando o efeito dele se encaixa em mais de uma definição.'
@@ -6738,7 +6784,8 @@ function hubScreenHTML(){
          ganha o PRÓPRIO card no Início, igual Energia/Mochila/
          Insígnias, com o número grande (o "contador") e um botão
          independente só dele. */
-      '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.poketickets)+'"><div class="ga-stat-label">🎫 Pokétickets</div><div class="ga-stat-val">'+(STATE.poketickets||0)+'</div>'+
+      '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.poketickets)+'"><div class="ga-stat-label">🎫 Pokétickets</div><div class="ga-stat-val">'+(STATE.poketickets||0)+'/'+POKETICKETS_MAX+'</div>'+
+        '<div class="ga-hint">'+((STATE.poketickets||0)>=POKETICKETS_MAX ? 'Teto atingido -- gaste!' : '+'+POKETICKETS_POR_DIA+' em <span id="ga-ticket-countdown">'+formatHHMMSS(secondsToNextPoketicketTick())+'</span>')+'</div>'+
         '<button class="ga-btn-sm" '+((STATE.poketickets||0)<1?'disabled':'')+' onclick="DT.gaTrocarTicketPorEnergia()">Trocar 1 por +'+ENERGIA_POR_TICKET+' de Energia</button></div>'+
       '<div class="ga-card ga-stat-card" title="Itens que a luta automática usa -- Pokébolas pra capturar (depois de vencer um selvagem) e Poções pro gatilho de cura em PV baixo. Compre mais na 🏪 Loja."><div class="ga-stat-label">🎒 Mochila</div>'+
         '<div class="ga-hint ga-item-row">'+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+(STATE.pokebolas[bl.key]||0); }).join('')+'</div>'+
