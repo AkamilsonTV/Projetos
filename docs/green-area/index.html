@@ -8442,6 +8442,59 @@ DT.gaSetPapelCombate = function(pid, papel){
   logAction('equipe', 'Mudou o Papel de Combate de '+(p.apelido||speciesByNum(p.num).name)+' pra '+PAPEL_COMBATE_LABEL[papel]+'.');
   mutate();
 };
+/* Cap. leva desta sessão: "Cria uma área de filtro na caixa dos
+   pokémon pra facilitar encontrar os pokemon que precisamos, um
+   filtro parecido com a pokedex" -- MESMO padrão de filtro já usado
+   na Pokédex (dexFilteredList/dexScreenHTML) e no Catálogo de
+   Movimentos (movDexFilteredList/movesScreenHTML): busca por
+   apelido/nome/número + Tipo 1/Tipo 2 (combináveis) + Papel de
+   Combate (ROLES_COMBATE/PAPEL_COMBATE_LABEL, já usados na Equipe
+   acima). Só se aplica à CAIXA -- a Equipe nunca passa de 6, não
+   precisa filtrar pra "achar" nada. */
+DT.gaSetCaixaSearch = function(el){ SESSION.caixaSearch = (el.value||''); render(); };
+DT.gaSetCaixaFiltroTipo1 = function(el){ SESSION.caixaFiltroTipo1 = el.value||''; render(); };
+DT.gaSetCaixaFiltroTipo2 = function(el){ SESSION.caixaFiltroTipo2 = el.value||''; render(); };
+DT.gaSetCaixaFiltroPapel = function(v){ SESSION.caixaFiltroPapel = v; render(); };
+function caixaFilteredList(){
+  var q = (SESSION.caixaSearch||'').trim().toLowerCase();
+  var t1 = SESSION.caixaFiltroTipo1 || '';
+  var t2 = SESSION.caixaFiltroTipo2 || '';
+  var papel = SESSION.caixaFiltroPapel || '';
+  return (STATE.box||[]).filter(function(p){
+    var sp = speciesByNum(p.num);
+    if(t1 && sp.tipo1!==t1) return false;
+    if(t2 && sp.tipo2!==t2) return false;
+    if(papel && (p.papelCombate||'ataque')!==papel) return false;
+    if(q){
+      var matchApelido = (p.apelido||'').toLowerCase().indexOf(q)!==-1;
+      var matchNome = sp.name.toLowerCase().indexOf(q)!==-1;
+      var matchNum = String(sp.num).indexOf(q)!==-1;
+      if(!matchApelido && !matchNome && !matchNum) return false;
+    }
+    return true;
+  });
+}
+function caixaFiltrosHTML(){
+  var tipos = todosOsTipos();
+  var papelAtual = SESSION.caixaFiltroPapel || '';
+  return '<div class="ga-dex-filtros">'+
+      '<input type="text" id="gaCaixaSearch" placeholder="Apelido, nome ou número..." value="'+esc2(SESSION.caixaSearch||'')+'" onkeydown="if(event.key===\'Enter\')DT.gaSetCaixaSearch(document.getElementById(\'gaCaixaSearch\'))">'+
+      '<button class="ga-btn-sm" onclick="DT.gaSetCaixaSearch(document.getElementById(\'gaCaixaSearch\'))">🔍 Buscar</button>'+
+      (SESSION.caixaSearch ? '<button class="ga-btn-sm" onclick="DT.gaSetCaixaSearch({value:\'\'})">✕ Limpar busca</button>' : '')+
+      '<select onchange="DT.gaSetCaixaFiltroTipo1(this)"><option value="">Tipo 1: qualquer</option>'+
+        tipos.map(function(t){ return '<option value="'+esc2(t)+'" '+(SESSION.caixaFiltroTipo1===t?'selected':'')+'>'+esc2(t)+'</option>'; }).join('')+
+      '</select>'+
+      '<select onchange="DT.gaSetCaixaFiltroTipo2(this)"><option value="">Tipo 2: qualquer</option>'+
+        tipos.map(function(t){ return '<option value="'+esc2(t)+'" '+(SESSION.caixaFiltroTipo2===t?'selected':'')+'>'+esc2(t)+'</option>'; }).join('')+
+      '</select>'+
+      '<span class="ga-tabs">'+
+        [':Papel: qualquer'].concat(ROLES_COMBATE.map(function(r){ return r+':'+PAPEL_COMBATE_LABEL[r]; })).map(function(pair){
+          var idx = pair.indexOf(':'), kv=[pair.slice(0,idx), pair.slice(idx+1)];
+          return '<button class="'+(papelAtual===kv[0]?'active':'')+'" onclick="DT.gaSetCaixaFiltroPapel(\''+kv[0]+'\')">'+kv[1]+'</button>';
+        }).join('')+
+      '</span>'+
+    '</div>';
+}
 function equipeScreenHTML(){
   var out = '<div class="ga-card"><h2>🎒 Equipe ('+STATE.party.length+'/6)</h2>'+
     '<div class="ga-poke-grid">'+
@@ -8457,14 +8510,19 @@ function equipeScreenHTML(){
       return pokeCardMini(p, actions);
     }).join('')+
     '</div></div>'+
-    (STATE.box.length ? '<div class="ga-card"><h2>📦 Caixa ('+STATE.box.length+')</h2><div class="ga-poke-grid">'+
-      STATE.box.map(function(p){
+    (STATE.box.length ? (function(){
+      var lista = caixaFilteredList();
+      var grid = lista.map(function(p){
         return pokeCardMini(p, '<div class="ga-poke-actions">'+
           '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
           '<button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button>'+
         '</div>');
-      }).join('')+
-    '</div></div>' : '');
+      }).join('');
+      return '<div class="ga-card"><h2>📦 Caixa ('+STATE.box.length+')</h2>'+
+        caixaFiltrosHTML()+
+        '<p class="ga-hint">'+lista.length+' de '+STATE.box.length+' Pokémon com esses filtros.</p>'+
+        '<div class="ga-poke-grid">'+(grid||'<p class="ga-hint">Nenhum Pokémon da Caixa bate com esses filtros.</p>')+'</div></div>';
+    })() : '');
   return out;
 }
 
