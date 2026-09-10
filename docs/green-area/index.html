@@ -151,6 +151,13 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-chat-input{ flex:1; }
 .ga-poke-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; display:flex; flex-direction:column; }
 .ga-poke-card img{ width:64px; height:64px; image-rendering:pixelated; align-self:center; }
+/* Cap. leva desta sessão ("deixar ele destacado dos demais"): o
+   Pokémon ativo (primeiro da Equipe, ver equipeScreenHTML) ganha uma
+   borda e sombra na cor de destaque pra ficar óbvio de longe qual é,
+   sem precisar ler o rótulo "🎯 Ativo" dentro do card. */
+.ga-poke-card.ativo{ border:2px solid var(--accent-dim); box-shadow:0 0 0 2px rgba(0,0,0,.15), 0 0 10px var(--accent-dim); }
+.ga-poke-card[draggable="true"]{ cursor:grab; }
+.ga-poke-card[draggable="true"]:active{ cursor:grabbing; }
 .ga-poke-name{ font-weight:700; font-size:.86rem; }
 .ga-poke-meta{ font-size:.7rem; color:var(--ink-dim); margin:2px 0 6px; }
 .ga-poke-actions{ display:flex; flex-direction:column; gap:4px; margin-top:auto; padding-top:8px; }
@@ -8614,10 +8621,17 @@ function loginScreenHTML(){
   return out;
 }
 
-function pokeCardMini(poke, actionsHTML){
+/* `extraClass`/`extraAttrs` (opcionais, Cap. leva desta sessão --
+   arrastar a Equipe pra reordenar): permitem marcar o card visualmente
+   (ex.: "ativo", ver equipeScreenHTML) e/ou pendurar atributos HTML
+   extras (ex.: `draggable`/`ondragstart`/`ondragover`/`ondrop`) direto
+   no MESMO `<div>` raiz, sem duplicar a estrutura do card inteiro só
+   pra isso -- todo call site ANTIGO continua funcionando igual (os 2
+   parâmetros são opcionais, nunca quebra quem só passa 2 argumentos). */
+function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs){
   var sp = speciesByNum(poke.num);
   var progresso = poke.level>=NIVEL_MAX ? 'Nível máximo' : ((poke.xpNivel||0)+'/'+XP_PARA_LEVEL_UP+' XP pro próximo Nível');
-  return '<div class="ga-poke-card">'+
+  return '<div class="ga-poke-card'+(extraClass?' '+extraClass:'')+'"'+(extraAttrs?' '+extraAttrs:'')+'>'+
     '<img src="'+spriteUrl(poke.num)+'" loading="lazy" alt="">'+
     '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+'</div>'+
     '<div class="ga-poke-meta">Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
@@ -8692,6 +8706,41 @@ DT.gaSetPapelCombate = function(pid, papel){
   logAction('equipe', 'Mudou o Papel de Combate de '+(p.apelido||speciesByNum(p.num).name)+' pra '+PAPEL_COMBATE_LABEL[papel]+'.');
   mutate();
 };
+/* Cap. leva desta sessão: "Coloca a opção de arrastar a ordem do
+   pokémon pra facilitar o pokémon ativo. E deixar ele destacado dos
+   demais" -- STATE.party[0] já era, de fato, o "Pokémon ativo" antes
+   disso existir (usado como retrato do Início -- hubScreenHTML -- e
+   como líder JÁ pré-selecionado ao entrar na Área de Captura --
+   SESSION.capturaLeadId), só não dava pra ESCOLHER quem ocupa esse
+   posto sem passar Pokémon um por um pra Caixa e puxar de volta na
+   ordem certa. Agora dá pra reordenar a Equipe direto -- arrastando
+   (`DT.gaArrastarEquipe`, ponteiro/mouse) ou pelos botões ⬆️/⬇️
+   (`DT.gaMoverEquipe`, funciona em QUALQUER aparelho, incluso celular
+   -- arrastar de verdade (HTML5 `draggable`) não tem suporte nativo
+   confiável em touch). O primeiro da lista fica destacado com uma
+   borda própria (`.ga-poke-card.ativo`, ver equipeScreenHTML/style.css)
+   pra ficar óbvio qual é o "ativo" antes mesmo de olhar o Início. */
+DT.gaMoverEquipe = function(pid, direcao){
+  var ids = STATE.party.map(function(p){ return p.id; });
+  var idx = ids.indexOf(pid);
+  var novoIdx = idx + direcao;
+  if(idx===-1 || novoIdx<0 || novoIdx>=STATE.party.length) return;
+  var tmp = STATE.party[idx];
+  STATE.party[idx] = STATE.party[novoIdx];
+  STATE.party[novoIdx] = tmp;
+  logAction('equipe', 'Reordenou a Equipe.');
+  mutate();
+};
+DT.gaArrastarEquipe = function(pidArrastado, pidAlvo){
+  if(!pidArrastado || !pidAlvo || pidArrastado===pidAlvo) return;
+  var ids = STATE.party.map(function(p){ return p.id; });
+  var idxOrigem = ids.indexOf(pidArrastado), idxAlvo = ids.indexOf(pidAlvo);
+  if(idxOrigem===-1 || idxAlvo===-1) return;
+  var item = STATE.party.splice(idxOrigem,1)[0];
+  STATE.party.splice(idxAlvo,0,item);
+  logAction('equipe', 'Reordenou a Equipe (arrastar).');
+  mutate();
+};
 /* Cap. leva desta sessão: "Cria uma área de filtro na caixa dos
    pokémon pra facilitar encontrar os pokemon que precisamos, um
    filtro parecido com a pokedex" -- MESMO padrão de filtro já usado
@@ -8747,17 +8796,34 @@ function caixaFiltrosHTML(){
 }
 function equipeScreenHTML(){
   var out = '<div class="ga-card"><h2>🎒 Equipe ('+STATE.party.length+'/6)</h2>'+
+    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início, e o líder já vem selecionado sozinho ao entrar na Área de Captura) -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
     '<div class="ga-poke-grid">'+
-    STATE.party.map(function(p){
+    STATE.party.map(function(p, i){
       var actions = '<div class="ga-poke-actions">'+
+        (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
         papelCombateSeletorHTML(p)+
         '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
+        (STATE.party.length>1 ? '<div class="ga-btn-row">'+
+          (i>0 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',-1)">⬆️</button>' : '')+
+          (i<STATE.party.length-1 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',1)">⬇️</button>' : '')+
+        '</div>' : '')+
         (STATE.party.length>1 ? (SESSION.confirmRelease===p.id
           ? '<button class="ga-btn-sm danger" onclick="DT.gaLiberar(\''+p.id+'\')">Confirmar</button><button class="ga-btn-sm" onclick="DT.gaCancelLiberar()">Cancelar</button>'
           : '<button class="ga-btn-sm" onclick="DT.gaMandarPraCaixa(\''+p.id+'\')">📦 Caixa</button><button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>')
           : '<span class="ga-hint">último da Equipe</span>')+
       '</div>';
-      return pokeCardMini(p, actions);
+      /* Arrastar de verdade (Cap. "Coloca a opção de arrastar a ordem
+         do pokémon"): HTML5 `draggable` nativo -- carrega o PRÓPRIO id
+         no dataTransfer ao começar a arrastar, e ao soltar EM CIMA de
+         outro card chama DT.gaArrastarEquipe(id de quem foi arrastado,
+         id de quem recebeu o solto), que reordena o array de verdade.
+         `ondragover` precisa de `preventDefault()` (senão o navegador
+         nunca permite soltar ali) -- mesmo padrão de qualquer
+         drag-and-drop HTML5. Só embala ids literais (sem SESSION.*
+         dentro do atributo), mesma disciplina de todo onclick inline
+         do projeto, mesmo esses NÃO sendo onclick. */
+      var dragAttrs = 'draggable="true" ondragstart="event.dataTransfer.setData(\'text/plain\',\''+p.id+'\')" ondragover="event.preventDefault()" ondrop="event.preventDefault();DT.gaArrastarEquipe(event.dataTransfer.getData(\'text/plain\'),\''+p.id+'\')"';
+      return pokeCardMini(p, actions, i===0?'ativo':'', dragAttrs);
     }).join('')+
     '</div></div>'+
     (STATE.box.length ? (function(){
