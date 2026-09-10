@@ -5027,6 +5027,15 @@ function gymAceNum(leader){ return leader.roster[leader.roster.length-1].num; }
    Pokémon ativo em PV <= 20%, a luta PAUSA e pergunta se quer usar
    um item (só aparecem os que o Treinador realmente tem). */
 var HEAL_TRIGGER_PCT = 0.20;
+/* Cap. leva desta sessão -- Fase 4 (Duelo PvP): mesmo gatilho de PV
+   baixo (HEAL_TRIGGER_PCT) dispara a pergunta de cura pro jogador
+   certo, mas o Duelo NUNCA mexe na Mochila real de ninguém (nenhum
+   cliente pode descontar item da conta do OUTRO jogador -- ver
+   comentário grande perto de DT.gaDesafiarDuelo) -- então "usar uma
+   cura" no Duelo aplica uma cura FIXA (% do PV Máximo, sem gastar
+   nenhum item de verdade), documentado como simplificação de
+   propósito. */
+var DUELO_CURA_PCT = 0.5;
 /* Cap. (leva desta sessão) "As poções precisam ter também a sua
    descrição": catálogo de cura com preço E descrição juntos num
    lugar só (a Loja e o gatilho de cura em batalha usam o MESMO
@@ -5405,6 +5414,15 @@ var amizadesCol = null;
 var presencaCol = null;
 var dmCol = null;
 var trocasCol = null;
+/* Cap. leva desta sessão -- Fase 4: "PvP -- duelo ao vivo sincronizado
+   entre 2 jogadores". 1 coleção NOVA no mesmo espírito das de cima:
+   `green_area_duelos/{id}` -- 1 documento por duelo (id aleatório, NÃO
+   determinístico pelo par -- o MESMO par pode duelar várias vezes ao
+   longo do tempo). Ver o comentário grande perto de DT.gaDesafiarDuelo
+   mais abaixo pra o desenho completo (quem escreve o quê, quem resolve
+   as Rodadas, como cada lado credita o PRÓPRIO V/D no final). */
+var duelosCol = null;
+var unsubscribeDuelos = null;
 var unsubscribeChat = null;
 var unsubscribeInbox = null;
 var unsubscribeAmizades = null;
@@ -5442,7 +5460,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null };
 
 function freshState(trainerName){
   return {
@@ -5752,6 +5770,33 @@ function attachSocialListeners(docId){
     }
     render();
   }, function(err){ SESSION.error = 'Não consegui ver suas trocas ('+erroFirestoreMsg(err)+').'; render(); });
+
+  /* Cap. leva desta sessão -- Fase 4: "PvP -- duelo ao vivo sincronizado
+     entre 2 jogadores". MESMO padrão "roda desde o login" das coleções
+     acima (escuta `green_area_duelos` inteira, filtra no cliente pelos
+     duelos em que o PRÓPRIO docId participa). Ver o comentário grande
+     perto de DT.gaDesafiarDuelo pro desenho completo -- aqui só
+     alimenta SESSION.duelosAtivos e chama processarDuelosAtivos, que
+     faz TODO o trabalho de fundo (iniciar a luta quando os 2 líderes
+     já foram escolhidos, resolver Rodada a Rodada, creditar V/D no
+     final, limpar o documento). */
+  if(unsubscribeDuelos) unsubscribeDuelos();
+  unsubscribeDuelos = duelosCol.onSnapshot(function(snap){
+    var meus = [];
+    snap.forEach(function(d){
+      var data = d.data();
+      if(!data || (data.a!==docId && data.b!==docId)) return;
+      data.id = d.id;
+      meus.push(data);
+    });
+    SESSION.duelosAtivos = meus;
+    processarDuelosAtivos(meus);
+    if(SESSION.duelId && !meus.some(function(d){ return d.id===SESSION.duelId; })){
+      if(SESSION.screen==='duelo'){ SESSION.notice = 'Esse Duelo não está mais disponível.'; SESSION.screen = 'centro'; }
+      SESSION.duelId = null;
+    }
+    render();
+  }, function(err){ SESSION.error = 'Não consegui ver seus Duelos ('+erroFirestoreMsg(err)+').'; render(); });
 }
 
 function bootApp(){
@@ -5765,6 +5810,7 @@ function bootApp(){
     presencaCol = db.collection('green_area_centro_presenca');
     dmCol = db.collection('green_area_dm');
     trocasCol = db.collection('green_area_trocas');
+    duelosCol = db.collection('green_area_duelos');
   }catch(e){
     SESSION.error = 'Erro ao iniciar o Firebase.';
     render();
@@ -7382,10 +7428,11 @@ DT.gaSair = function(){
   if(unsubscribeChat){ unsubscribeChat(); unsubscribeChat=null; }
   if(unsubscribeDm){ unsubscribeDm(); unsubscribeDm=null; }
   if(unsubscribeTrocas){ unsubscribeTrocas(); unsubscribeTrocas=null; }
+  if(unsubscribeDuelos){ unsubscribeDuelos(); unsubscribeDuelos=null; }
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null };
   render();
 };
 
@@ -7880,6 +7927,336 @@ function processarTrocasAtivas(lista){
     if(trade.confirmadoA && trade.confirmadoB){
       trocaExecutandoLocal[trade.id] = true;
       aplicarMinhaParteDaTroca(trade).then(function(){ delete trocaExecutandoLocal[trade.id]; }).catch(function(){ delete trocaExecutandoLocal[trade.id]; });
+    }
+  });
+}
+
+/* ============================================================
+   Duelo PvP (Cap. leva desta sessão -- Fase 4, README "Em aberto":
+   "PvP como duelo sincronizado de verdade entre 2 jogadores... não uma
+   resolução instantânea contra uma 'foto' parada do time do outro").
+   2 decisões de desenho confirmadas com o jogador antes de começar:
+
+   (1) AÇÃO AUTOMÁTICA por Papel de Combate -- igual toda luta da
+   Green Área já funciona (Ataque/Defesa/Suporte/Controle escolhido
+   ANTES do Duelo, resolveGaTurn/pickMoveByRole decide o golpe sozinho
+   a cada Rodada). Não existe seleção manual de golpe turno a turno.
+
+   (2) CURA MANUAL ao vivo -- diferente da luta contra selvagem/
+   Treinador (só o jogador humano recebe a pergunta), no Duelo os 2
+   lados são humanos, então os 2 recebem a pergunta quando o PRÓPRIO
+   Pokémon cruza o gatilho de PV baixo (mesmo HEAL_TRIGGER_PCT) -- SÓ
+   o dono daquele lado pode responder (ver DT.gaDueloResponderCura), e
+   o Duelo fica pausado esperando ele decidir (o outro lado só vê
+   "esperando decisão"). "Usar cura" aplica uma % FIXA do PV Máximo
+   (DUELO_CURA_PCT) -- NUNCA desconta item de verdade da Mochila de
+   ninguém (ver comentário abaixo sobre por que).
+
+   MODELO DE DADOS (1 documento por Duelo, `green_area_duelos/{id}` --
+   id aleatório, NUNCA determinístico pelo par, porque o MESMO par pode
+   duelar várias vezes ao longo do tempo):
+     status: 'convite' -> 'lider' -> 'lutando' -> 'fim'
+     a/aNome, b/bNome -- quem desafiou (a) e quem foi desafiado (b)
+     partyA/partyB -- CÓPIA COMPLETA da Equipe de cada lado no momento
+       em que ENTROU no Duelo (a escreve a própria ao desafiar, b ao
+       aceitar) -- congelada ali, NUNCA lida direto de STATE.party de
+       novo depois (evita o Duelo mudar de figura se alguém mexer na
+       própria Equipe durante uma partida em andamento).
+     liderA/liderB -- id (dentro do snapshot) de quem cada lado escolhe
+       pra liderar, escrito só pelo PRÓPRIO lado (revelação simultânea,
+       igual "escolher líder" do PVP do RPG principal).
+     battle -- sub-objeto com hp/log/ativoA/ativoB/faintedA/faintedB/
+       vencedor/pendingHealFor/pendingHealDecisao/roundGuard -- SEMPRE
+       reescrito INTEIRO de uma vez (`.update({battle: objInteiro})`,
+       nunca um caminho aninhado tipo "battle.hp" -- ver comentário
+       grande no topo do firestore_stub.js sobre por que).
+     desistiuA/desistiuB, creditadoA/creditadoB.
+
+   QUEM RESOLVE CADA RODADA: só o DESAFIANTE (lado 'a'). Simplificação
+   deliberada -- 2 clientes resolvendo Rodadas com RNG (dano/crítico/
+   acerto) ao MESMO tempo divergiriam (cada um veria um resultado
+   diferente pro MESMO golpe), e sem transação de verdade no Firestore
+   (o stub deste protótipo não suporta -- só update() de "última
+   escrita vence") não dá pra garantir com segurança que só 1 lado
+   resolve por vez sem um relógio único. Um ÚNICO resolvedor fixo evita
+   a corrida por completo, ao custo de uma limitação HONESTA (mesmo
+   espírito da sequência automática de captura): o Duelo só avança
+   enquanto o desafiante continua logado com o app aberto (não precisa
+   estar OLHANDO a tela do Duelo -- o relógio de fundo, o mesmo Web
+   Worker da sequência automática, roda independente da tela). O lado
+   desafiado (b) só LÊ o resultado ao vivo e ESCREVE as próprias
+   decisões (líder, cura, desistir) -- nunca resolve Rodada nenhuma.
+
+   POR QUE A CURA NÃO MEXE NA MOCHILA DE VERDADE: aplicar a cura exige
+   decidir no cliente do DESAFIANTE (que é quem resolve a Rodada,
+   mesmo quando é o lado 'b' que pediu a cura) -- mas descontar 1 item
+   da Mochila REAL de 'b' exigiria o cliente de 'a' escrever no
+   `green_area_saves` de OUTRA conta, que este protótipo NUNCA faz (ver
+   comentário grande no topo do arquivo sobre isso ser perigoso sem
+   regras de segurança de verdade no Firestore). Por isso a cura de
+   Duelo é uma % fixa (DUELO_CURA_PCT), sem estoque nenhum envolvido --
+   documentado como simplificação de propósito.
+
+   CRÉDITO DE V/D: igual a Troca ao vivo, CADA lado aplica a PRÓPRIA
+   metade sozinho quando o Duelo termina (`aplicarMeuResultadoDuelo`,
+   nunca escreve no save do outro) -- vitória só pro Pokémon ATIVO no
+   fim (se esse lado venceu), derrota pra todo Pokémon que desmaiou
+   (`faintedA`/`faintedB`), MESMA regra já usada em finishBattle nesta
+   sessão. Sem XP, sem Pokédólares, sem captura -- só o histórico V/D
+   está em jogo aqui, e cada Pokémon sai do Duelo com o PV cheio de
+   novo (nunca fica "ferido" fora da luta, mesma regra de sempre). */
+var duelosExecutandoLocal = {};
+var duelosApagandoLocal = {};
+function dueloPartySnapshot(){ return JSON.parse(JSON.stringify(STATE.party)); }
+function achaDueloAtivo(id){ return (SESSION.duelosAtivos||[]).filter(function(d){ return d.id===id; })[0] || null; }
+DT.gaDesafiarDuelo = function(outroDocId){
+  if(!STATE || !outroDocId) return;
+  if(!(SESSION.amigos||[]).some(function(a){ return a.outro===outroDocId; })){ SESSION.error='Só dá pra desafiar quem já é seu amigo.'; render(); return; }
+  var jaAtivo = (SESSION.duelosAtivos||[]).filter(function(d){ return (d.a===outroDocId || d.b===outroDocId) && d.status!=='fim'; })[0];
+  if(jaAtivo){ SESSION.screen='duelo'; SESSION.duelId=jaAtivo.id; SESSION.error=''; SESSION.sidebarOpen=false; render(); return; }
+  var amigo = (SESSION.amigos||[]).filter(function(a){ return a.outro===outroDocId; })[0];
+  var outroNome = amigo ? amigo.outroNome : outroDocId;
+  var duelId = uid();
+  duelosCol.doc(duelId).set({
+    a: SESSION.currentDocId, aNome: STATE.trainerName, b: outroDocId, bNome: outroNome,
+    status: 'convite', partyA: dueloPartySnapshot(), partyB: null,
+    liderA: null, liderB: null, battle: null,
+    desistiuA: false, desistiuB: false, creditadoA: false, creditadoB: false, criadoEm: Date.now()
+  }).then(function(){
+    SESSION.screen='duelo'; SESSION.duelId=duelId; SESSION.error='';
+    logAction('duelo', 'Desafiou '+outroNome+' pra um Duelo PvP.');
+    render();
+  }).catch(function(err){ SESSION.error='Não consegui desafiar pra um Duelo ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaAbrirDuelo = function(id){ SESSION.screen='duelo'; SESSION.duelId=id; SESSION.error=''; SESSION.sidebarOpen=false; render(); };
+DT.gaFecharDuelo = function(){ SESSION.screen='centro'; SESSION.duelId=null; render(); };
+DT.gaAceitarDuelo = function(id){
+  var d = achaDueloAtivo(id); if(!d || !STATE || d.b!==SESSION.currentDocId) return;
+  duelosCol.doc(id).update({ partyB: dueloPartySnapshot(), status: 'lider' }).then(function(){
+    logAction('duelo', 'Aceitou o Duelo PvP com '+d.aNome+'.');
+    SESSION.screen='duelo'; SESSION.duelId=id; render();
+  }).catch(function(err){ SESSION.error='Não consegui aceitar o Duelo ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaRecusarDuelo = function(id){
+  var d = achaDueloAtivo(id); if(!d) return;
+  duelosCol.doc(id).delete().then(function(){
+    if(SESSION.duelId===id){ SESSION.duelId=null; SESSION.screen='centro'; }
+    render();
+  }).catch(function(err){ SESSION.error='Não consegui recusar o Duelo ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaEscolherLiderDuelo = function(id, pid){
+  var d = achaDueloAtivo(id); if(!d || !STATE) return;
+  var souA = d.a===SESSION.currentDocId;
+  var minhaParty = souA ? d.partyA : d.partyB;
+  if(!minhaParty || !minhaParty.some(function(p){ return p.id===pid; })) return;
+  var upd = {}; upd[souA?'liderA':'liderB'] = pid;
+  duelosCol.doc(id).update(upd).catch(function(err){ SESSION.error='Não consegui escolher quem lidera ('+erroFirestoreMsg(err)+').'; render(); });
+};
+function iniciarBatalhaDuelo(d){
+  var pA = (d.partyA||[]).filter(function(p){ return p.id===d.liderA; })[0];
+  var pB = (d.partyB||[]).filter(function(p){ return p.id===d.liderB; })[0];
+  if(!pA || !pB) return;
+  var ativoA = buildBattlerFromParty(pA);
+  var ativoB = buildBattlerFromParty(pB);
+  var hp = {}; hp[ativoA.key] = gaHpMax(ativoA); hp[ativoB.key] = gaHpMax(ativoB);
+  var battle = {
+    hp: hp, log: ['⚔️ O Duelo começou! '+(pA.apelido||speciesByNum(pA.num).name)+' VS '+(pB.apelido||speciesByNum(pB.num).name)+'!'],
+    ativoA: ativoA, ativoB: ativoB, faintedA: [], faintedB: [], vencedor: null,
+    roundGuard: 0, healedThisFaint: {}, pendingHealFor: null, pendingHealDecisao: null
+  };
+  duelosCol.doc(d.id).update({ status: 'lutando', battle: battle }).catch(function(){});
+}
+/* Desmaio de UM lado do Duelo -- mesmo espírito de resolveFaintAfterDamage
+   (ordem da Equipe, sem escolha nenhuma) mas escrito à parte porque
+   opera sobre o snapshot congelado (partyA/partyB) em vez de STATE.party
+   direto. Devolve true quando o Duelo INTEIRO terminou (ninguém mais
+   vivo desse lado). */
+function duelResolveFaint(d, lado){
+  var b = d.battle;
+  var party = lado==='a' ? d.partyA : d.partyB;
+  var ativoKey = lado==='a' ? 'ativoA' : 'ativoB';
+  var faintedKey = lado==='a' ? 'faintedA' : 'faintedB';
+  var atual = b[ativoKey];
+  b.log.push('💥 '+displayName(atual)+' desmaiou!');
+  b[faintedKey] = b[faintedKey] || [];
+  if(b[faintedKey].indexOf(atual.partyId)===-1) b[faintedKey].push(atual.partyId);
+  var proximo = party.filter(function(p){ var k = 'p_'+p.id; return b.hp[k]===undefined || b.hp[k]>0; })[0];
+  if(proximo){
+    b[ativoKey] = buildBattlerFromParty(proximo);
+    if(b.hp[b[ativoKey].key]===undefined) b.hp[b[ativoKey].key] = gaHpMax(b[ativoKey]);
+    b.log.push('🔄 Vai, '+displayName(b[ativoKey])+'!');
+    return false;
+  }
+  b.vencedor = lado==='a' ? 'b' : 'a';
+  b.log.push((lado==='a'?d.bNome:d.aNome)+' venceu o Duelo!');
+  return true;
+}
+/* O "coração" do Duelo -- SÓ o desafiante (lado 'a') chama isto (ver
+   comentário grande acima sobre por quê). Resolve exatamente 1 Rodada
+   por chamada (não um loop até acabar, tipo runBattleUntilPause) --
+   de propósito, pra o Duelo aparecer se desenrolando AO VIVO pros 2
+   lados, Rodada a Rodada, em vez de uma resolução instantânea. Reusa
+   os MESMOS primitivos de combate do resto do jogo (resolveGaTurn,
+   applyEndOfTurnStatus, applyWeatherResidual/applyTerrainResidual --
+   todos genéricos sobre STATE.battle) trocando STATE.battle pelo
+   sub-objeto `battle` do Duelo só enquanto dura a chamada (mesmo
+   truque de "contexto emprestado" que o resto do arquivo já usa em
+   vários lugares -- aqui, `backupBattle` garante que a luta normal
+   (contra selvagem/Treinador) do próprio desafiante, se estiver
+   rolando ao mesmo tempo por acaso, nunca é pisada). */
+function resolverRodadaDuelo(d){
+  var b = d.battle; if(!b || b.vencedor) return;
+  if(b.pendingHealFor){
+    if(!b.pendingHealDecisao || b.pendingHealDecisao.lado!==b.pendingHealFor) return; // ainda esperando a decisão do lado certo
+    var ladoDecisao = b.pendingHealFor;
+    var alvoCura = b[ladoDecisao==='a'?'ativoA':'ativoB'];
+    if(b.pendingHealDecisao.usar){
+      var maxHpCura = gaHpMax(alvoCura);
+      var cura = Math.max(1, Math.round(maxHpCura*DUELO_CURA_PCT));
+      var antesCura = b.hp[alvoCura.key];
+      b.hp[alvoCura.key] = Math.min(maxHpCura, b.hp[alvoCura.key]+cura);
+      b.log.push('💊 '+displayName(alvoCura)+' usou uma cura de Duelo -- recuperou '+(b.hp[alvoCura.key]-antesCura)+' PV.');
+    } else {
+      b.log.push('➡️ '+displayName(alvoCura)+' seguiu sem curar.');
+    }
+    b.pendingHealFor = null; b.pendingHealDecisao = null;
+    duelosCol.doc(d.id).update({ battle: b }).catch(function(){});
+    return;
+  }
+  b.roundGuard = (b.roundGuard||0)+1;
+  if(b.roundGuard>500){ // rede de segurança igual runBattleUntilPause -- nunca trava um Duelo de vez
+    b.vencedor = b.hp[b.ativoA.key] >= b.hp[b.ativoB.key] ? 'a' : 'b';
+    b.log.push('⏱️ O Duelo se arrastou demais -- resultado forçado pelo PV restante.');
+    duelosCol.doc(d.id).update({ battle: b }).catch(function(){});
+    return;
+  }
+  var aB = b.ativoA, bB = b.ativoB;
+  var aSpe = effStatWithStage(aB,'spe') * (aB.status==='paralisia'?0.5:1);
+  var bSpe = effStatWithStage(bB,'spe') * (bB.status==='paralisia'?0.5:1);
+  var order = (aSpe===bSpe ? Math.random()<0.5 : aSpe>bSpe) ? [aB,bB] : [bB,aB];
+  aB.flinch=false; bB.flinch=false;
+  var backupBattle = STATE.battle;
+  STATE.battle = b;
+  var pausou = false;
+  try{
+    for(var i=0;i<order.length && !pausou;i++){
+      var user = order[i], target = order[i]===aB ? bB : aB;
+      if(b.hp[user.key]<=0 || b.hp[target.key]<=0) continue;
+      if(user.flinch){ b.log.push('😨 '+displayName(user)+' hesitou e não conseguiu agir.'); user.flinch=false; continue; }
+      resolveGaTurn(user, target);
+      if(b.hp[target.key]<=0){
+        if(duelResolveFaint(d, target===aB?'a':'b')){ pausou=true; }
+      } else {
+        var hpPct = b.hp[target.key] / gaHpMax(target);
+        if(hpPct<=HEAL_TRIGGER_PCT && hpPct>0){
+          var chave = target.key+':'+Math.ceil(hpPct*100);
+          b.healedThisFaint = b.healedThisFaint || {};
+          if(!b.healedThisFaint[chave]){ b.healedThisFaint[chave]=true; b.pendingHealFor = target===aB?'a':'b'; pausou=true; }
+        }
+      }
+    }
+    if(!pausou && !b.vencedor){
+      applyEndOfTurnStatus(aB,b); if(b.hp[aB.key]<=0 && duelResolveFaint(d,'a')) pausou=true;
+      if(!pausou){ applyEndOfTurnStatus(bB,b); if(b.hp[bB.key]<=0 && duelResolveFaint(d,'b')) pausou=true; }
+      if(!pausou){
+        applyWeatherResidual(aB,bB,b);
+        if(b.hp[aB.key]<=0 && duelResolveFaint(d,'a')) pausou=true;
+        else if(b.hp[bB.key]<=0 && duelResolveFaint(d,'b')) pausou=true;
+      }
+      if(!pausou){
+        applyTerrainResidual(aB,bB,b);
+        if(b.hp[aB.key]<=0 && duelResolveFaint(d,'a')) pausou=true;
+        else if(b.hp[bB.key]<=0 && duelResolveFaint(d,'b')) pausou=true;
+      }
+    }
+  } finally { STATE.battle = backupBattle; }
+  duelosCol.doc(d.id).update({ battle: b }).catch(function(){});
+}
+DT.gaDueloResponderCura = function(usar){
+  var d = achaDueloAtivo(SESSION.duelId); if(!d || !d.battle || !d.battle.pendingHealFor) return;
+  var souA = d.a===SESSION.currentDocId;
+  var meuLado = souA?'a':'b';
+  if(d.battle.pendingHealFor!==meuLado) return; // só quem foi perguntado decide
+  var b = d.battle;
+  b.pendingHealDecisao = { lado: meuLado, usar: !!usar };
+  duelosCol.doc(d.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui responder ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaDesistirDuelo = function(id){
+  var d = achaDueloAtivo(id); if(!d) return;
+  var souA = d.a===SESSION.currentDocId;
+  if(!d.battle){ // ainda não começou a lutar -- só cancela
+    duelosCol.doc(id).delete().then(function(){ if(SESSION.duelId===id){ SESSION.duelId=null; SESSION.screen='centro'; } render(); }).catch(function(err){ SESSION.error='Não consegui desistir ('+erroFirestoreMsg(err)+').'; render(); });
+    return;
+  }
+  if(d.battle.vencedor){ return; } // já acabou -- desistir não faz mais sentido
+  var b = d.battle;
+  b.vencedor = souA?'b':'a';
+  b.log.push((souA?d.aNome:d.bNome)+' desistiu do Duelo.');
+  var upd = { battle: b }; upd[souA?'desistiuA':'desistiuB'] = true;
+  duelosCol.doc(id).update(upd).catch(function(err){ SESSION.error='Não consegui desistir ('+erroFirestoreMsg(err)+').'; render(); });
+};
+/* Aplica o PRÓPRIO resultado (V/D) de UM Duelo já terminado -- MESMO
+   espírito de aplicarMinhaParteDaTroca (cada lado só mexe no PRÓPRIO
+   save, nunca no do outro). Chamado de dentro do listener. */
+function aplicarMeuResultadoDuelo(d){
+  var souA = d.a===SESSION.currentDocId;
+  var meuLado = souA?'a':'b';
+  var b = d.battle;
+  var meusFaintedIds = (souA ? b.faintedA : b.faintedB) || [];
+  meusFaintedIds.forEach(function(pid){
+    var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
+    if(p) p.derrotas = (p.derrotas||0)+1;
+  });
+  if(b.vencedor===meuLado){
+    var finalizadorId = (meuLado==='a' ? b.ativoA : b.ativoB).partyId;
+    var pFin = STATE.party.filter(function(x){return x.id===finalizadorId;})[0] || STATE.box.filter(function(x){return x.id===finalizadorId;})[0];
+    if(pFin) pFin.vitorias = (pFin.vitorias||0)+1;
+  }
+  logAction('duelo', 'Duelo PvP com '+(souA?d.bNome:d.aNome)+' terminou: '+(b.vencedor===meuLado?'🏆 vitória':'☠️ derrota')+'.');
+  mutate();
+  var upd = {}; upd[souA?'creditadoA':'creditadoB'] = true;
+  return duelosCol.doc(d.id).update(upd).catch(function(err){ SESSION.error='Não consegui aplicar o resultado do Duelo ('+erroFirestoreMsg(err)+').'; render(); });
+}
+/* Chamado a cada snapshot da coleção INTEIRA de Duelos (ver
+   attachSocialListeners) E a cada tick do relógio de fundo (ver
+   duelTick) -- faz TODO o trabalho automático: inicia a luta quando os
+   2 líderes já foram escolhidos, resolve Rodada a Rodada (só o
+   desafiante), credita V/D quando termina, limpa o documento quando os
+   2 lados já creditaram (mesmo padrão "delete quando os 2 já
+   receberam" de processarTrocasAtivas). */
+function processarDuelosAtivos(lista){
+  (lista||[]).forEach(function(d){
+    if(!d || !d.id || !STATE) return;
+    var souA = d.a===SESSION.currentDocId;
+    if(d.status==='lider' && d.liderA && d.liderB && souA){ iniciarBatalhaDuelo(d); return; }
+    if(d.status==='lutando' && d.battle && !d.battle.vencedor && souA){ resolverRodadaDuelo(d); }
+    if(d.battle && d.battle.vencedor && d.status!=='fim'){
+      duelosCol.doc(d.id).update({ status: 'fim' }).catch(function(){}); // idempotente -- qualquer lado que veja primeiro marca, sem risco
+    }
+    if(d.status==='fim' && d.creditadoA && d.creditadoB){
+      if(!duelosApagandoLocal[d.id]){
+        duelosApagandoLocal[d.id] = true;
+        duelosCol.doc(d.id).delete().catch(function(){}).then(function(){ delete duelosApagandoLocal[d.id]; });
+      }
+      return;
+    }
+    var jaCreditei = souA ? d.creditadoA : d.creditadoB;
+    if(d.status==='fim' && d.battle && d.battle.vencedor && !jaCreditei && !duelosExecutandoLocal[d.id]){
+      duelosExecutandoLocal[d.id] = true;
+      aplicarMeuResultadoDuelo(d).then(function(){ delete duelosExecutandoLocal[d.id]; }).catch(function(){ delete duelosExecutandoLocal[d.id]; });
+    }
+  });
+}
+/* Ganchado no MESMO relógio de fundo da sequência automática de
+   captura (ver startCaptureSequenceTicker mais abaixo) -- só o
+   desafiante de fato faz alguma coisa aqui (resolverRodadaDuelo já
+   confere `souA` de novo por segurança, então chamar isto sem ser o
+   desafiante nunca faz nada). */
+function duelTick(){
+  if(!STATE || !SESSION.duelosAtivos) return;
+  SESSION.duelosAtivos.forEach(function(d){
+    if(d.a===SESSION.currentDocId && d.status==='lutando' && d.battle && !d.battle.vencedor){
+      resolverRodadaDuelo(d);
     }
   });
 }
@@ -8507,6 +8884,16 @@ function captureSequenceTick(){
    principal como rede de segurança -- nunca trava a sequência por
    causa disso, só perde a mesma resistência a aba em segundo plano que
    já existia antes desta leva. */
+/* Cap. leva desta sessão -- Fase 4 (Duelo PvP): `duelTick()` (ver
+   comentário grande perto de DT.gaDesafiarDuelo) roda no MESMO relógio
+   de fundo da sequência automática de captura -- não precisa de um 2º
+   Worker/setInterval só pra isso, é só mais uma checagem dentro do
+   MESMO callback que já dispara a cada ~1,5s independente da aba estar
+   visível ou não. */
+function backgroundTick(){
+  if(STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick();
+  duelTick();
+}
 function startCaptureSequenceTicker(){
   var suportaWorker = typeof Worker!=='undefined' && typeof Blob!=='undefined' && typeof URL!=='undefined' && !!URL.createObjectURL;
   if(suportaWorker){
@@ -8514,7 +8901,7 @@ function startCaptureSequenceTicker(){
       var workerSrc = 'setInterval(function(){ postMessage(1); }, 1500);';
       var blobUrl = URL.createObjectURL(new Blob([workerSrc], { type:'application/javascript' }));
       var worker = new Worker(blobUrl);
-      worker.onmessage = function(){ if(STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick(); };
+      worker.onmessage = function(){ backgroundTick(); };
       worker.onerror = function(){ worker.terminate(); startCaptureSequenceTickerFallback(); };
       return;
     }catch(e){ /* cai pro fallback abaixo */ }
@@ -8522,7 +8909,7 @@ function startCaptureSequenceTicker(){
   startCaptureSequenceTickerFallback();
 }
 function startCaptureSequenceTickerFallback(){
-  setInterval(function(){ if(STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick(); }, 1500);
+  setInterval(function(){ backgroundTick(); }, 1500);
 }
 startCaptureSequenceTicker();
 /* Complemento (não substitui o Worker acima): assim que a aba volta a
@@ -8532,7 +8919,7 @@ startCaptureSequenceTicker();
    rolou enquanto o jogador estava noutra aba. */
 if(typeof document!=='undefined' && document.addEventListener){
   document.addEventListener('visibilitychange', function(){
-    if(!document.hidden && STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick();
+    if(!document.hidden) backgroundTick();
   });
 }
 
@@ -9070,6 +9457,7 @@ function screenHTML(){
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
+    case 'duelo': return wrap(dueloScreenHTML());
     case 'debug': return wrap(debugScreenHTML());
     default: return wrap(hubScreenHTML());
   }
@@ -10134,7 +10522,7 @@ function wikiScreenHTML(){
    attachSocialListeners/gaAbrirCentro). */
 function centroScreenHTML(){
   var out = '<div class="ga-card"><h2>🏥 Centro Pokémon</h2>'+
-    '<p class="ga-hint">Ponto de encontro entre Treinadores -- peça amizade, converse no chat público (visível pra TODO MUNDO), troque mensagem privada e troque Pokémon/itens/dinheiro com seus amigos, ao vivo. A lista de Treinadores abaixo só mostra quem está com ESSA tela aberta agora, igual um lugar de verdade -- sai daqui e você some da tela dos outros também. Desafio de PvP chega numa próxima atualização.</p>';
+    '<p class="ga-hint">Ponto de encontro entre Treinadores -- peça amizade, converse no chat público (visível pra TODO MUNDO), troque mensagem privada, troque Pokémon/itens/dinheiro e desafie seus amigos pra um Duelo PvP, tudo ao vivo. A lista de Treinadores abaixo só mostra quem está com ESSA tela aberta agora, igual um lugar de verdade -- sai daqui e você some da tela dos outros também.</p>';
 
   var pedidos = SESSION.pedidosAmizade||[];
   if(pedidos.length){
@@ -10160,15 +10548,29 @@ function centroScreenHTML(){
       }).join('')+'</div>';
   }
 
+  var duelosAtivos = (SESSION.duelosAtivos||[]).filter(function(d){ return d.status!=='fim'; });
+  if(duelosAtivos.length){
+    out += '<h3 class="ga-subhead">⚔️ Duelos</h3><div class="ga-poke-grid">'+
+      duelosAtivos.map(function(d){
+        var souA = d.a===SESSION.currentDocId;
+        var outroNome = souA ? d.bNome : d.aNome;
+        var statusTxt = d.status==='convite' ? (souA ? '⏳ esperando aceitar' : '📨 te desafiou!') : (d.status==='lider' ? '🎯 escolhendo líder' : '⚔️ lutando');
+        return '<div class="ga-friend-card"><strong>'+esc2(outroNome)+'</strong><span class="ga-hint">'+statusTxt+'</span>'+
+          '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirDuelo(\''+d.id+'\')">Abrir Duelo</button></div>';
+      }).join('')+'</div>';
+  }
+
   var amigos = SESSION.amigos||[];
   out += '<h3 class="ga-subhead">👥 Meus amigos'+(amigos.length?' ('+amigos.length+')':'')+'</h3>'+
     (amigos.length
       ? '<div class="ga-poke-grid">'+amigos.map(function(a){
           var naoLidas = dmNaoLidas(a.outro);
           var trocaComEle = (SESSION.trocasAtivas||[]).filter(function(t){ return t.a===a.outro || t.b===a.outro; })[0];
+          var duelComEle = duelosAtivos.filter(function(d){ return d.a===a.outro || d.b===a.outro; })[0];
           return '<div class="ga-friend-card"><strong>'+esc2(a.outroNome)+(naoLidas>0?' <span class="ga-nav-badge">'+naoLidas+'</span>':'')+'</strong>'+
             '<div class="ga-btn-row"><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirConversa(\''+a.outro+'\')">💬 Mensagem</button>'+
             '<button class="ga-btn-sm" onclick="DT.gaIniciarTroca(\''+a.outro+'\')">🔄 '+(trocaComEle?'Continuar troca':'Trocar')+'</button>'+
+            '<button class="ga-btn-sm" onclick="DT.gaDesafiarDuelo(\''+a.outro+'\')">⚔️ '+(duelComEle?'Continuar Duelo':'Desafiar')+'</button>'+
             '<button class="ga-btn-sm" onclick="DT.gaDesfazerAmizade(\''+a.outro+'\')">Desfazer amizade</button></div></div>';
         }).join('')+'</div>'
       : '<p class="ga-hint">Você ainda não tem nenhum amigo -- peça amizade pra alguém da lista de Treinadores abaixo.</p>');
@@ -10367,6 +10769,66 @@ function hpBarHTML(cur, max){
   var pct = max>0 ? Math.max(0,Math.round(cur/max*100)) : 0;
   var tier = pct<=20 ? 'low' : (pct<=50 ? 'mid' : 'high');
   return '<div class="ga-hpbar '+tier+'"><i style="width:'+pct+'%"></i></div><div class="ga-hpnum">'+Math.max(0,cur)+' / '+max+' PV</div>';
+}
+/* ---- Tela do Duelo PvP (Cap. leva desta sessão -- Fase 4) ---- */
+function dueloScreenHTML(){
+  var d = achaDueloAtivo(SESSION.duelId);
+  if(!d) return '<div class="ga-card"><h2>⚔️ Duelo</h2><p class="ga-hint">Esse Duelo não está mais disponível.</p><button class="ga-btn-sm" onclick="DT.gaFecharDuelo()">Voltar</button></div>';
+  var souA = d.a===SESSION.currentDocId;
+  var outroNome = souA ? d.bNome : d.aNome;
+
+  if(d.status==='convite'){
+    if(souA) return '<div class="ga-card"><h2>⚔️ Duelo com '+esc2(outroNome)+'</h2><p class="ga-hint">Esperando '+esc2(outroNome)+' aceitar o desafio...</p><button class="ga-btn-sm danger" onclick="DT.gaDesistirDuelo(\''+d.id+'\')">Cancelar desafio</button></div>';
+    return '<div class="ga-card"><h2>⚔️ '+esc2(outroNome)+' te desafiou pra um Duelo!</h2><p class="ga-hint">Cada Pokémon age sozinho de acordo com o Papel de Combate dele -- mesmo motor da luta normal. Você pode usar cura ao vivo se o seu Pokémon cair abaixo de '+Math.round(HEAL_TRIGGER_PCT*100)+'% de PV.</p><div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAceitarDuelo(\''+d.id+'\')">✔️ Aceitar</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaRecusarDuelo(\''+d.id+'\')">✕ Recusar</button>'+
+    '</div></div>';
+  }
+
+  if(d.status==='lider'){
+    var minhaParty = souA ? d.partyA : d.partyB;
+    var meuLider = souA ? d.liderA : d.liderB;
+    var outroEscolheu = !!(souA ? d.liderB : d.liderA);
+    return '<div class="ga-card"><h2>⚔️ Escolha quem vai liderar contra '+esc2(outroNome)+'</h2>'+
+      (meuLider
+        ? '<p class="ga-hint">Você já escolheu -- esperando '+esc2(outroNome)+(outroEscolheu?' (já escolheu também, começando o Duelo...)':' escolher')+'.</p>'
+        : '<p class="ga-hint">Revelação simultânea -- o outro lado não vê sua escolha até os 2 terem escolhido.</p><div class="ga-poke-grid">'+minhaParty.map(function(p){
+            var sp = speciesByNum(p.num);
+            return '<div class="ga-poke-card"><img src="'+spriteUrl(p.num)+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(sp)+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherLiderDuelo(\''+d.id+'\',\''+p.id+'\')">Escolher</button></div>';
+          }).join('')+'</div>')+
+      '<button class="ga-btn-sm danger" onclick="DT.gaDesistirDuelo(\''+d.id+'\')">Desistir</button></div>';
+  }
+
+  var b = d.battle;
+  if(!b) return '<div class="ga-card"><h2>⚔️ Duelo com '+esc2(outroNome)+'</h2><p class="ga-hint">Preparando o Duelo...</p></div>';
+  var meuAtivo = souA ? b.ativoA : b.ativoB, outroAtivo = souA ? b.ativoB : b.ativoA;
+  var meuSp = speciesByNum(meuAtivo.num), outroSp = speciesByNum(outroAtivo.num);
+  var meuLado = souA?'a':'b';
+  var out = '<div class="ga-card ga-battle"><h2>⚔️ Duelo com '+esc2(outroNome)+'</h2>'+
+    '<div class="ga-battle-field">'+
+      '<div class="ga-battle-side"><img src="'+spriteUrl(outroAtivo.num)+'" alt=""><div>'+esc2(outroAtivo.apelido||outroSp.name)+' Nv.'+outroAtivo.level+'</div>'+hpBarHTML(b.hp[outroAtivo.key],gaHpMax(outroAtivo))+'</div>'+
+      '<div class="ga-battle-vs">VS</div>'+
+      '<div class="ga-battle-side"><img src="'+spriteUrl(meuAtivo.num)+'" alt=""><div>'+esc2(meuAtivo.apelido||meuSp.name)+' Nv.'+meuAtivo.level+'</div>'+hpBarHTML(b.hp[meuAtivo.key],gaHpMax(meuAtivo))+'</div>'+
+    '</div>'+
+    '<div class="ga-battle-log">'+b.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>';
+
+  if(b.pendingHealFor===meuLado && !b.pendingHealDecisao){
+    out += '<div class="ga-battle-prompt"><p>💊 '+esc2(meuAtivo.apelido||meuSp.name)+' está com PV baixo! Usar uma cura de Duelo agora (recupera '+Math.round(DUELO_CURA_PCT*100)+'% do PV Máximo, não gasta item da Mochila)?</p><div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaDueloResponderCura(true)">💊 Usar</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaDueloResponderCura(false)">➡️ Não usar</button>'+
+    '</div></div>';
+  } else if(b.pendingHealFor){
+    out += '<div class="ga-battle-prompt"><p class="ga-hint">⏳ Esperando '+esc2(outroNome)+' decidir se vai curar...</p></div>';
+  }
+
+  if(d.status==='fim' || b.vencedor){
+    var euVenci = b.vencedor===meuLado;
+    out += '<div class="ga-battle-prompt"><h3>'+(euVenci?'🏆 Você venceu o Duelo!':'☠️ Você perdeu o Duelo.')+'</h3><p class="ga-hint">Todo mundo já saiu do Duelo com o PV cheio de novo (nenhum Pokémon fica ferido fora dele).</p><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharDuelo()">Voltar pro Centro Pokémon</button></div>';
+  } else {
+    out += '<button class="ga-btn-sm danger" onclick="DT.gaDesistirDuelo(\''+d.id+'\')">🏳️ Desistir</button>';
+  }
+  out += '</div>';
+  return out;
 }
 function battleScreenHTML(){
   var b = STATE.battle;
