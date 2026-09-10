@@ -186,6 +186,18 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-admin-row.banido{ border-color:var(--danger); opacity:.7; }
 .ga-admin-info{ min-width:220px; }
 
+/* Cap. leva desta sessão: "Admin possa ver a ficha dos jogadores...
+   um log para o administrador" -- popup bem maior que o padrão
+   (.ga-overlay-card sozinho é só 360px, feito pra pouco conteúdo
+   centralizado) pra caber a Equipe inteira em grade + o log rolando,
+   e texto alinhado à esquerda (log/grade nunca ficam bons
+   centralizados). */
+.ga-overlay-card.wide{ max-width:900px; text-align:left; max-height:85vh; overflow-y:auto; }
+.ga-admin-log{ display:flex; flex-direction:column; gap:4px; margin-top:6px; max-height:320px; overflow-y:auto; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px; }
+.ga-admin-log-row{ font-size:.82rem; border-bottom:1px solid var(--line); padding:4px 0; }
+.ga-admin-log-row:last-child{ border-bottom:none; }
+.ga-tag-log{ display:inline-block; background:var(--accent-dim); color:var(--accent); border-radius:4px; padding:0 5px; font-size:.72rem; text-transform:uppercase; margin:0 4px; }
+
 .ga-move-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; text-align:left; }
 .ga-move-row:last-child{ border-bottom:none; }
 .ga-move-atual{ min-width:170px; }
@@ -4895,6 +4907,7 @@ DT.gaComprarTM = function(moveName){
   STATE.pokedolares -= PRECO_TM;
   STATE.tms[moveName] = (STATE.tms[moveName]||0) + 1;
   SESSION.notice = 'Comprou 1 MT de '+moveName+'!';
+  logAction('loja', 'Comprou 1 MT de '+moveName+' por '+PRECO_TM+' Pokédólares.');
   mutate();
 };
 
@@ -5116,7 +5129,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false };
 
 function freshState(trainerName){
   return {
@@ -5134,7 +5147,8 @@ function freshState(trainerName){
     dex: {},
     party: [],
     box: [],
-    battle: null
+    battle: null,
+    actionLog: []
   };
 }
 
@@ -5159,6 +5173,7 @@ function migrateState(){
      "recuperar" dias que já passaram antes de existir o campo. */
   if(typeof STATE.poketicketsUpdatedAt!=='number') STATE.poketicketsUpdatedAt = Date.now();
   STATE.poketickets = clampInt(STATE.poketickets, 0, POKETICKETS_MAX); // uma conta antiga pode já ter passado do teto novo (nunca dava antes) -- trava em 1000 na migração também
+  if(!STATE.actionLog || !Array.isArray(STATE.actionLog)) STATE.actionLog = []; // conta sem log ainda (Cap. "log pra o Admin saber o que cada jogador tá fazendo") nasce com histórico vazio, nunca tenta reconstruir o passado
   if(!STATE.tms || typeof STATE.tms!=='object') STATE.tms = {};
   if(typeof STATE.pokebolas==='number') STATE.pokebolas = { pokebola: STATE.pokebolas, greatball:0, superball:0, ultraball:0 };
   if(!STATE.pokebolas || typeof STATE.pokebolas!=='object') STATE.pokebolas = { pokebola:0, greatball:0, superball:0, ultraball:0 };
@@ -5227,6 +5242,34 @@ function doSave(){
 }
 function mutate(){ if(STATE){ tickEnergy(); tickPoketickets(); } render(); queueSave(); }
 
+/* Cap. leva desta sessão: "Desenvolva um log para o administrador
+   conseguir saber o que cada jogador tá fazendo, todas as ações
+   divididas por jogador... TUDO que for feito por ele, absolutamente
+   TUDO tem que estar nesse log": cada conta guarda o PRÓPRIO histórico
+   dentro do próprio documento salvo (`STATE.actionLog`) -- como o
+   Painel Admin já carrega o `state` completo de TODA conta pra
+   listar/banir/excluir (ver DT.gaAdminAbrirPainel), o log de qualquer
+   jogador já chega de graça junto, sem precisar de nenhuma coleção
+   nova nem de mais nenhuma consulta ao Firestore.
+   Limitação documentada de propósito: "TUDO" aqui cobre toda ação de
+   JOGO com efeito de verdade (entrar/sair da conta, capturar, lutar --
+   início e resultado --, comprar, trocar Movimento/papel de combate,
+   usar item, evoluir, soltar/mover Pokémon, trocar Pokéticket por
+   Energia, e toda ferramenta de debug) -- navegação pura de UI (abrir/
+   fechar um popup, trocar de aba, digitar na busca da Pokédex) fica de
+   fora, porque isso não é uma AÇÃO do jogador, é só olhar a tela, e
+   registrar cada tecla/clique nisso inflaria o log sem nenhuma
+   informação útil pro Mestre. Travado nas últimas 500 entradas (mais
+   antigas são descartadas) -- nunca cresce pra sempre, o documento do
+   Firestore não pode crescer sem limite. */
+var ACTION_LOG_MAX = 500;
+function logAction(tipo, desc){
+  if(!STATE) return;
+  if(!STATE.actionLog || !Array.isArray(STATE.actionLog)) STATE.actionLog = [];
+  STATE.actionLog.push({ ts: Date.now(), tipo: tipo, desc: desc });
+  if(STATE.actionLog.length > ACTION_LOG_MAX) STATE.actionLog.splice(0, STATE.actionLog.length - ACTION_LOG_MAX);
+}
+
 /* A "sessão" salva no navegador é só {docId, pin} -- NUNCA o
    progresso do jogo em si -- pra reabrir e cair direto no jogo sem
    redigitar; o progresso de verdade sempre vem do Firestore. */
@@ -5265,7 +5308,16 @@ function attachSaveListener(docId){
     if(data.banido){ SESSION.error='Esta conta foi banida.'; DT.gaSair(); return; }
     STATE = data.state;
     migrateState();
-    if(SESSION.screen==='login') SESSION.screen = 'hub';
+    /* Cap. leva desta sessão (log do Admin): esse é o ÚNICO ponto por
+       onde QUALQUER entrada de verdade passa -- Entrar, Criar conta,
+       Migrar progresso local e até a sessão salva no navegador
+       recuperando sozinha ao recarregar a página -- então é o lugar
+       certo pra logar "entrou na conta" 1x só (a condição
+       `SESSION.screen==='login'` garante isso: só é true na PRIMEIRA
+       vez que esse snapshot dispara depois de uma entrada de verdade,
+       nunca nos disparos seguintes causados por qualquer outra
+       mutação salva). */
+    if(SESSION.screen==='login'){ SESSION.screen = 'hub'; logAction('conta', 'Entrou na conta.'); queueSave(); }
     render();
   }, function(err){
     SESSION.error = 'Não consegui conectar ao banco de dados. Verifique sua internet e recarregue a página. (' + (err && err.message ? err.message : 'erro desconhecido') + ')';
@@ -5509,6 +5561,7 @@ function startBattle(kind, opts, skipDiscrepancia){
     render(); return;
   }
   STATE.energy -= custoEnergia;
+  logAction('batalha', 'Entrou numa luta ('+kind+'): '+label+', '+oppTeam.length+' oponente(s), custou '+custoEnergia+' de Energia.');
 
   var hp = {};
   var playerBattler = buildBattlerFromParty(lead);
@@ -5554,6 +5607,7 @@ DT.gaConfirmarUsarTickets = function(){
   SESSION.pendingEnergia = null;
   STATE.poketickets -= pe.tickets;
   STATE.energy = clampInt(STATE.energy + pe.tickets*ENERGIA_POR_TICKET, 0, 1000);
+  logAction('economia', 'Usou '+pe.tickets+' 🎫 Pokéticket(s) pra completar a Energia e entrar numa luta.');
   startBattle(pe.kind, pe.opts, true); // já passou pela discrepância (se tinha) -- não pergunta de novo
 };
 DT.gaCancelarUsarTickets = function(){ SESSION.pendingEnergia = null; render(); };
@@ -5753,8 +5807,10 @@ function finishBattle(result){
        golpe (ver grantXpAndMaybeEvolve, chamado de dentro de
        runBattleUntilPause a cada oponente desmaiado) -- não tem mais
        nada de progressão pra fazer aqui no fim. */
+    logAction('batalha', 'Venceu a luta ('+b.kind+', '+b.label+'): +'+premio+' Pokédólares'+(tix>0?', +'+tix+' Pokétickets':'')+'.');
   } else {
     b.log.push('☠️ Sua Equipe não aguentou -- luta perdida.');
+    logAction('batalha', 'Perdeu a luta ('+b.kind+', '+b.label+').');
   }
 }
 
@@ -5881,8 +5937,10 @@ DT.gaResponderEvolucao = function(aceitar){
     if(b.playerActive && b.playerActive.partyId===p.id) b.playerActive.num = p.num;
     markSeen(p.num); markCaught(p.num);
     b.log.push('✨ '+(p.apelido||oldSp.name)+' evoluiu para '+newSp.name+'!');
+    logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+'.');
   } else if(p){
     b.log.push('⏸️ '+(p.apelido||speciesByNum(p.num).name)+' não evoluiu dessa vez.');
+    logAction('evolucao', (p.apelido||speciesByNum(p.num).name)+' recusou evoluir.');
   }
   b.pendingEvolution = null;
   runBattleUntilPause();
@@ -6120,6 +6178,7 @@ DT.gaUsarItemCura = function(itemKey){
   b.hp[alvoKey] = Math.min(max, b.hp[alvoKey]+cura);
   STATE.itens[itemKey]--;
   b.log.push('💊 Você usou '+it.nome+' em '+displayName(alvo)+' -- recuperou '+cura+' PV.');
+  logAction('item', 'Usou '+it.nome+' em '+displayName(alvo)+' no meio da luta (+'+cura+' PV).');
   b.pendingHeal = null;
   runBattleUntilPause();
   mutate();
@@ -6164,8 +6223,10 @@ DT.gaJogarPokebola = function(ballKey){
     var novo = spawnPoke(num, level);
     if(STATE.party.length<6) STATE.party.push(novo); else STATE.box.push(novo);
     b.log.push('🎯 '+bola.nome+'... capturou! '+speciesByNum(num).name+' entrou pra sua '+(STATE.party.length<=6?'Equipe':'Caixa')+'.');
+    logAction('captura', 'Capturou '+speciesByNum(num).name+' (Nv. '+level+') com '+bola.nome+'.');
   } else {
     b.log.push('💨 A '+bola.nome+' balançou e o Pokémon escapou.');
+    logAction('captura', 'Tentou capturar '+speciesByNum(num).name+' com '+bola.nome+' -- escapou.');
   }
   b.captureDone = true;
   mutate();
@@ -6282,11 +6343,19 @@ DT.gaMigrarLocal = function(pinEl, pin2El){
 };
 
 DT.gaSair = function(){
+  /* loga ANTES de zerar STATE/currentSaveRef -- salva direto (não dá
+     pra usar queueSave/doSave depois daqui, currentSaveRef já vai ser
+     null) -- "melhor esforço", sem bloquear o logout esperando a
+     escrita confirmar (o jogador já espera sair na hora). */
+  if(STATE && currentSaveRef){
+    logAction('conta', 'Saiu da conta.');
+    currentSaveRef.update({ state: sanitizeForFirestore(STATE), updatedAt: Date.now() }).catch(function(){});
+  }
   if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot=null; }
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false };
   render();
 };
 
@@ -6326,17 +6395,35 @@ DT.gaAdminAbrirPainel = function(){
   });
 };
 DT.gaAdminBanir = function(docId){
-  savesCol.doc(docId).update({banido:true}).then(function(){ DT.gaAdminAbrirPainel(); }).catch(function(){ SESSION.error='Não consegui banir essa conta.'; render(); });
+  savesCol.doc(docId).update({banido:true}).then(function(){
+    logAction('admin', 'Baniu a conta "'+docId+'".'); mutate(); // loga no PRÓPRIO log do Admin (é uma ação dele, não da conta banida) e salva de verdade
+    DT.gaAdminAbrirPainel();
+  }).catch(function(){ SESSION.error='Não consegui banir essa conta.'; render(); });
 };
 DT.gaAdminDesbanir = function(docId){
-  savesCol.doc(docId).update({banido:false}).then(function(){ DT.gaAdminAbrirPainel(); }).catch(function(){ SESSION.error='Não consegui desbanir essa conta.'; render(); });
+  savesCol.doc(docId).update({banido:false}).then(function(){
+    logAction('admin', 'Desbaniu a conta "'+docId+'".'); mutate();
+    DT.gaAdminAbrirPainel();
+  }).catch(function(){ SESSION.error='Não consegui desbanir essa conta.'; render(); });
 };
 DT.gaAdminExcluir = function(docId){
   if(SESSION.adminConfirmExcluir!==docId){ SESSION.adminConfirmExcluir = docId; render(); return; }
   SESSION.adminConfirmExcluir = null;
-  savesCol.doc(docId).delete().then(function(){ DT.gaAdminAbrirPainel(); }).catch(function(){ SESSION.error='Não consegui excluir essa conta.'; render(); });
+  savesCol.doc(docId).delete().then(function(){
+    logAction('admin', 'Excluiu a conta "'+docId+'" de vez.'); mutate();
+    DT.gaAdminAbrirPainel();
+  }).catch(function(){ SESSION.error='Não consegui excluir essa conta.'; render(); });
 };
 DT.gaAdminCancelarExcluir = function(){ SESSION.adminConfirmExcluir = null; render(); };
+/* Cap. leva desta sessão: "Quero que o Admin possa ver a ficha dos
+   jogadores, pokémons, batalhas e etc... um log para o administrador
+   conseguir saber o que cada jogador tá fazendo": DT.gaAdminAbrirPainel
+   já carrega o `state` COMPLETO de toda conta (ver acima) pra montar a
+   lista -- então abrir a ficha de qualquer uma é só apontar
+   `SESSION.adminFichaFor` pro docId dela, sem nenhuma consulta nova ao
+   Firestore. */
+DT.gaAdminVerFicha = function(docId){ SESSION.adminFichaFor = docId; render(); };
+DT.gaAdminFecharFicha = function(){ SESSION.adminFichaFor = null; render(); };
 
 /* ============================================================
    Zonas (Cap. "áreas para que ele consiga farmar bem com uma certa
@@ -6501,8 +6588,8 @@ DT.gaDesafiarMestre = function(leadId, leaderId){
    jogos" -- painel honesto de atalhos pra testar sem esperar a
    Energia recarregar de verdade ou "comprar" Pokéticket nenhum;
    nunca escondido como se fosse mecânica real do jogo). */
-DT.gaDebugEnergia = function(){ STATE.energy = 1000; mutate(); };
-DT.gaDebugPoketicket = function(){ STATE.energy = clampInt(STATE.energy+100,0,1000); mutate(); };
+DT.gaDebugEnergia = function(){ STATE.energy = 1000; logAction('debug', 'Ferramenta de teste: encheu a Energia.'); mutate(); };
+DT.gaDebugPoketicket = function(){ STATE.energy = clampInt(STATE.energy+100,0,1000); logAction('debug', 'Ferramenta de teste: +100 Energia.'); mutate(); };
 /* Cap. leva desta sessão: "em energia, ele explica o que é e me
    explica o tempo que enche, o que usar pra encher" -- isso só faz
    sentido se "usar Pokéticket pra encher Energia" for um mecanismo
@@ -6516,26 +6603,31 @@ DT.gaTrocarTicketPorEnergia = function(){
   STATE.poketickets--;
   STATE.energy = clampInt(STATE.energy+ENERGIA_POR_TICKET, 0, 1000);
   SESSION.notice = 'Trocou 1 Pokéticket por '+ENERGIA_POR_TICKET+' de Energia!';
+  logAction('economia', 'Trocou 1 Pokéticket por +'+ENERGIA_POR_TICKET+' de Energia.');
   mutate();
 };
 DT.gaDebugItens = function(){
   STATE.pokebolas.pokebola+=10; STATE.pokebolas.greatball+=5; STATE.pokebolas.superball+=3; STATE.pokebolas.ultraball+=1;
   STATE.itens.pocao+=5; STATE.itens.superpocao+=3; STATE.itens.hiperpocao+=1;
+  logAction('debug', 'Ferramenta de teste: +itens (Pokébolas + Poções).');
   mutate();
 };
-DT.gaDebugPokedolares = function(){ STATE.pokedolares = (STATE.pokedolares||0)+500; mutate(); };
-DT.gaDebugPoketicketsExtra = function(){ STATE.poketickets = clampInt((STATE.poketickets||0)+50, 0, POKETICKETS_MAX); mutate(); };
+DT.gaDebugPokedolares = function(){ STATE.pokedolares = (STATE.pokedolares||0)+500; logAction('debug', 'Ferramenta de teste: +500 Pokédólares.'); mutate(); };
+DT.gaDebugPoketicketsExtra = function(){ STATE.poketickets = clampInt((STATE.poketickets||0)+50, 0, POKETICKETS_MAX); logAction('debug', 'Ferramenta de teste: +50 Pokétickets.'); mutate(); };
 DT.gaDebugReset = function(){
   if(!SESSION.confirmReset){ SESSION.confirmReset = true; render(); return; }
   SESSION.confirmReset = false;
   if(!currentSaveRef || !STATE) return;
   var nome = STATE.trainerName;
+  var logAntigo = STATE.actionLog; // preserva o histórico de ações -- resetar o progresso não devia apagar o log do Admin
   var num = rollStarterNum();
   var novo = freshState(nome);
   novo.party = [spawnPoke(num, 5)];
   novo.dex[num] = {seen:true, caught:true, caughtAt:Date.now()};
+  novo.actionLog = logAntigo || [];
   STATE = novo;
   SESSION.screen = 'hub';
+  logAction('debug', 'Ferramenta de teste: RESETOU o save inteiro (volta pro começo do jogo).');
   mutate();
 };
 
@@ -6545,14 +6637,16 @@ DT.gaOpenDex = function(num){ SESSION.dexOpenNum = num; render(); };
 DT.gaCloseDex = function(){ SESSION.dexOpenNum = null; render(); };
 DT.gaSetApelido = function(pid, el){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
-  if(p) p.apelido = (el.value||'').trim().slice(0,20);
+  if(p){ p.apelido = (el.value||'').trim().slice(0,20); logAction('equipe', 'Colocou o apelido "'+p.apelido+'" em '+speciesByNum(p.num).name+'.'); }
   mutate();
 };
 DT.gaLiberar = function(pid){
   if(STATE.party.length<=1 && STATE.box.length===0){ SESSION.error='Você precisa de pelo menos 1 Pokémon na Equipe.'; render(); return; }
+  var alvo = STATE.party.filter(function(p){return p.id===pid;})[0] || STATE.box.filter(function(p){return p.id===pid;})[0];
   STATE.party = STATE.party.filter(function(p){ return p.id!==pid; });
   STATE.box = STATE.box.filter(function(p){ return p.id!==pid; });
   SESSION.confirmRelease = null;
+  if(alvo) logAction('equipe', 'Soltou '+(alvo.apelido||speciesByNum(alvo.num).name)+' (Nv. '+alvo.level+') pra sempre.');
   mutate();
 };
 DT.gaAskLiberar = function(pid){ SESSION.confirmRelease = pid; render(); };
@@ -6562,6 +6656,7 @@ DT.gaPuxarDaCaixa = function(pid){
   var p = STATE.box.filter(function(x){return x.id===pid;})[0]; if(!p) return;
   STATE.box = STATE.box.filter(function(x){return x.id!==pid;});
   STATE.party.push(p);
+  logAction('equipe', 'Puxou '+(p.apelido||speciesByNum(p.num).name)+' da Caixa pra Equipe.');
   mutate();
 };
 DT.gaMandarPraCaixa = function(pid){
@@ -6569,6 +6664,7 @@ DT.gaMandarPraCaixa = function(pid){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0]; if(!p) return;
   STATE.party = STATE.party.filter(function(x){return x.id!==pid;});
   STATE.box.push(p);
+  logAction('equipe', 'Mandou '+(p.apelido||speciesByNum(p.num).name)+' da Equipe pra Caixa.');
   mutate();
 };
 
@@ -6822,6 +6918,7 @@ DT.gaSetPapelCombate = function(pid, papel){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0];
   if(!p) return;
   p.papelCombate = papel;
+  logAction('equipe', 'Mudou o Papel de Combate de '+(p.apelido||speciesByNum(p.num).name)+' pra '+PAPEL_COMBATE_LABEL[papel]+'.');
   mutate();
 };
 function equipeScreenHTML(){
@@ -6898,8 +6995,10 @@ DT.gaTrocarMovimento = function(pid, slotIndex, moveName){
   } else {
     SESSION.error='Esse Pokémon não pode aprender esse Movimento (nem por Nível nem por MT).'; render(); return;
   }
+  var nomeAntigo = p.moves[slotIndex] ? p.moves[slotIndex].name : '(vazio)';
   p.moves[slotIndex] = moveObj;
   SESSION.notice = (p.apelido||speciesByNum(p.num).name)+' agora conhece '+moveObj.name+'!';
+  logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou o Movimento '+nomeAntigo+' por '+moveObj.name+' (via '+(viaNivel?'Nível, 10 Energia':'MT, grátis')+').');
   mutate();
 };
 function movesPopupHTML(pid){
@@ -7206,6 +7305,7 @@ DT.gaComprarItem = function(key){
   if(bola) STATE.pokebolas[key] = (STATE.pokebolas[key]||0) + 1;
   else STATE.itens[key] = (STATE.itens[key]||0) + 1;
   SESSION.notice = 'Comprou 1 '+def.nome+'!';
+  logAction('loja', 'Comprou 1 '+def.nome+' por '+def.preco+' Pokédólares.');
   mutate();
 };
 
@@ -7263,6 +7363,7 @@ function adminScreenHTML(){
         '<div class="ga-hint">Maior Nível: '+maiorNivel+' · Insígnias: '+((s.badges||[]).length)+' · Energia: '+(s.energy||0)+' · 💰 '+(s.pokedolares||0)+(c.banido?' · 🚫 BANIDO':'')+'</div>'+
       '</div>'+
       '<div class="ga-btn-row">'+
+        '<button class="ga-btn-sm" onclick="DT.gaAdminVerFicha(\''+c.docId+'\')">👁️ Ver Ficha + Log</button>'+
         (c.banido
           ? '<button class="ga-btn-sm" onclick="DT.gaAdminDesbanir(\''+c.docId+'\')">Desbanir</button>'
           : '<button class="ga-btn-sm danger" onclick="DT.gaAdminBanir(\''+c.docId+'\')">Banir</button>')+
@@ -7273,7 +7374,38 @@ function adminScreenHTML(){
     '</div>';
   }).join('');
   out += '</div></div>';
+  if(SESSION.adminFichaFor) out += fichaAdminPopupHTML(SESSION.adminFichaFor);
   return out;
+}
+
+/* Cap. leva desta sessão: "Quero que o Admin possa ver a ficha dos
+   jogadores, pokémons, batalhas e etc... um log para o administrador
+   conseguir saber o que cada jogador tá fazendo". Popup com a ficha
+   INTEIRA de uma conta (Equipe/Caixa/Pokémon com Natureza/Habilidade/
+   Papel de Combate, Energia/Pokédólares/Pokétickets/Insígnias, Mochila)
+   + o próprio `actionLog` dela, mais recente primeiro. Reusa
+   pokeCardMini tal e qual (ele só olha o objeto `poke` recebido, nunca
+   STATE global) pra não duplicar o card do Pokémon. */
+function fichaAdminPopupHTML(docId){
+  var c = (SESSION.adminContas||[]).filter(function(x){ return x.docId===docId; })[0];
+  if(!c) return '';
+  var s = c.state || {};
+  var log = (s.actionLog||[]).slice().reverse(); // mais recente primeiro
+  return '<div class="ga-overlay" onclick="DT.gaAdminFecharFicha()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaAdminFecharFicha()">✕</button>'+
+    '<h2>👁️ Ficha — '+esc2(s.trainerName||c.docId)+' ('+esc2(c.docId)+')'+(c.banido?' · 🚫 BANIDO':'')+'</h2>'+
+    '<p class="ga-hint">🔋 Energia: '+(s.energy||0)+'/1000 · 💰 Pokédólares: '+(s.pokedolares||0)+' · 🎫 Pokétickets: '+(s.poketickets||0)+'/'+POKETICKETS_MAX+' · 🎖️ Insígnias: '+((s.badges||[]).length)+'/8</p>'+
+    '<p class="ga-hint">🎒 Mochila: '+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+((s.pokebolas||{})[bl.key]||0); }).join(' ')+' · '+GA_ITEMS.map(function(it){ return itemIconHTML(it)+' '+((s.itens||{})[it.key]||0); }).join(' ')+'</p>'+
+    '<h3 class="ga-subhead">🎒 Equipe ('+(s.party||[]).length+')</h3>'+
+    '<div class="ga-poke-grid">'+(s.party||[]).map(function(p){ return pokeCardMini(p, '<div class="ga-hint">Papel: '+esc2(PAPEL_COMBATE_LABEL[p.papelCombate]||p.papelCombate||'—')+'</div>'); }).join('')+'</div>'+
+    ((s.box||[]).length ? '<h3 class="ga-subhead">📦 Caixa ('+s.box.length+')</h3><div class="ga-poke-grid">'+s.box.map(function(p){ return pokeCardMini(p,''); }).join('')+'</div>' : '')+
+    '<h3 class="ga-subhead">📜 Log de ações ('+log.length+', mais recente primeiro)</h3>'+
+    (log.length
+      ? '<div class="ga-admin-log">'+log.map(function(l){
+          return '<div class="ga-admin-log-row"><span class="ga-hint">'+esc2(new Date(l.ts).toLocaleString('pt-BR'))+'</span> <span class="ga-tag-log">'+esc2(l.tipo)+'</span> '+esc2(l.desc)+'</div>';
+        }).join('')+'</div>'
+      : '<p class="ga-hint">Essa conta ainda não fez nenhuma ação registrada.</p>')+
+  '</div></div>';
 }
 
 /* Wiki (Cap. leva desta sessão: "Cria também uma aba onde fica a Wiki
