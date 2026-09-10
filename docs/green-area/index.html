@@ -106,7 +106,14 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-trainer-card{ display:flex; align-items:center; gap:14px; }
 .ga-trainer-sprite{ width:72px; height:72px; image-rendering:pixelated; }
 .ga-grid3{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
-.ga-stat-card{ display:flex; flex-direction:column; gap:6px; }
+/* Cap. leva desta sessão: "isso tem que ser feito em todos os cards.
+   De preferência centralizando": MESMO padrão do .ga-poke-card
+   aplicado aqui -- texto centralizado, botão sempre grudado no fundo
+   (margin-top:auto no ÚLTIMO filho, que é sempre o botão de ação
+   quando existe), pra nunca ficar em alturas diferentes entre cards
+   vizinhos do mesmo grid. */
+.ga-stat-card{ display:flex; flex-direction:column; gap:6px; text-align:center; }
+.ga-stat-card > button{ margin-top:auto; align-self:center; }
 .ga-stat-label{ font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); }
 .ga-stat-val{ font-size:1.2rem; font-weight:800; }
 .ga-bar{ height:10px; border-radius:999px; background:var(--bg2); overflow:hidden; border:1px solid var(--line); }
@@ -163,14 +170,16 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 
 .ga-subhead{ margin:16px 0 4px; font-size:.95rem; color:var(--accent); }
 .ga-zona-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:8px; }
-.ga-zona-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; }
+.ga-zona-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; }
 .ga-zona-card.locked{ opacity:.5; }
 .ga-zona-nome{ font-weight:700; font-size:.92rem; margin-bottom:2px; }
+.ga-zona-card > button{ margin-top:auto; padding-top:8px; align-self:center; }
 
 .ga-loja-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:10px; }
-.ga-loja-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; }
+.ga-loja-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; }
 .ga-loja-nome{ font-weight:700; font-size:.88rem; margin-bottom:2px; }
 .ga-loja-preco{ font-weight:700; color:var(--accent); margin:4px 0 8px; }
+.ga-loja-card > button{ margin-top:auto; align-self:center; }
 
 .ga-admin-list{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
 .ga-admin-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; flex-wrap:wrap; }
@@ -6625,8 +6634,17 @@ function hubScreenHTML(){
     '<div class="ga-grid3">'+
       '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.energia)+'"><div class="ga-stat-label">🔋 Energia</div><div class="ga-stat-val">'+STATE.energy+' / 1000</div>'+
         '<div class="ga-bar"><i style="width:'+(STATE.energy/10)+'%"></i></div>'+
-        '<div class="ga-hint">'+(STATE.energy>=1000 ? 'Energia cheia!' : '+10 em <span id="ga-energy-countdown">'+formatMMSS(secondsToNextEnergyTick())+'</span>')+'</div>'+
-        '<button class="ga-btn-sm" '+((STATE.poketickets||0)<1?'disabled':'')+' onclick="DT.gaTrocarTicketPorEnergia()">🎫 Trocar 1 por +'+ENERGIA_POR_TICKET+'</button></div>'+
+        '<div class="ga-hint">'+(STATE.energy>=1000 ? 'Energia cheia!' : '+10 em <span id="ga-energy-countdown">'+formatMMSS(secondsToNextEnergyTick())+'</span>')+'</div></div>'+
+      /* Cap. leva desta sessão: "Adicione também o contador nos
+         tickets, não tá aparecendo... Crie um botão independente para
+         recarregarmos a energia com ticket": antes o contador de
+         Pokétickets só aparecia pequeno na barra lateral, e o botão
+         de trocar ficava escondido dentro do card de Energia -- agora
+         ganha o PRÓPRIO card no Início, igual Energia/Mochila/
+         Insígnias, com o número grande (o "contador") e um botão
+         independente só dele. */
+      '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.poketickets)+'"><div class="ga-stat-label">🎫 Pokétickets</div><div class="ga-stat-val">'+(STATE.poketickets||0)+'</div>'+
+        '<button class="ga-btn-sm" '+((STATE.poketickets||0)<1?'disabled':'')+' onclick="DT.gaTrocarTicketPorEnergia()">Trocar 1 por +'+ENERGIA_POR_TICKET+' de Energia</button></div>'+
       '<div class="ga-card ga-stat-card" title="Itens que a luta automática usa -- Pokébolas pra capturar (depois de vencer um selvagem) e Poções pro gatilho de cura em PV baixo. Compre mais na 🏪 Loja."><div class="ga-stat-label">🎒 Mochila</div>'+
         '<div class="ga-hint ga-item-row">'+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+(STATE.pokebolas[bl.key]||0); }).join('')+'</div>'+
         '<div class="ga-hint ga-item-row">'+GA_ITEMS.map(function(it){ return itemIconHTML(it)+' '+(STATE.itens[it.key]||0); }).join('')+'</div></div>'+
