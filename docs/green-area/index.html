@@ -195,6 +195,16 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    e sem nenhum botão, só texto -- é puramente informativo (ver
    pokeCardMini/finishBattle). */
 .ga-vd-badge{ position:absolute; top:6px; right:6px; font-size:11px; line-height:1.3; background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:2px 5px; z-index:2; white-space:nowrap; opacity:.9; }
+/* Cap. leva desta sessão: "O botão de apelido pode ser apenas um lápis
+   ao lado do nome de cada pokémon. Após trocar o nome ele fica cinza,
+   mas não some" -- ícone inline (não mais botão separado nas ações),
+   clicável enquanto não tem apelido; `.travado` (apelido já definido)
+   só muda a cor pra cinza/opaca e tira o cursor de "clicável" -- o
+   ícone continua no MESMO lugar, nunca desaparece (ver pokeCardMini,
+   que também já tira o onclick dele quando travado). */
+.ga-apelido-lapis{ cursor:pointer; opacity:.85; font-size:.85em; }
+.ga-apelido-lapis:hover{ opacity:1; }
+.ga-apelido-lapis.travado{ cursor:default; opacity:.35; filter:grayscale(1); }
 /* Cap. leva desta sessão ("deixar ele destacado dos demais"): o
    Pokémon ativo (primeiro da Equipe, ver equipeScreenHTML) ganha uma
    borda e sombra na cor de destaque pra ficar óbvio de longe qual é,
@@ -5484,6 +5494,8 @@ function migrateState(){
   [STATE.party, STATE.box].forEach(function(lista){
     (lista||[]).forEach(function(p){
       if(typeof p.xpNivel!=='number') p.xpNivel = 0;
+      if(typeof p.vitorias!=='number') p.vitorias = 0;
+      if(typeof p.derrotas!=='number') p.derrotas = 0;
       delete p.vitoriasNivel;
       if(!p.natureza || !findNatureByName(p.natureza)) p.natureza = rollNatureForSpecies();
       if(!p.habilidade || !findAbilityByName(p.habilidade)) p.habilidade = rollAbilityForSpecies(p.num);
@@ -5502,6 +5514,22 @@ function migrateState(){
       if(ROLES_COMBATE.indexOf(p.papelCombate)===-1) p.papelCombate = 'ataque';
     });
   });
+  /* Cap. leva desta sessão: "zere todos os contadores de vitória e
+     derrota" -- os valores já acumulados nas contas existentes vieram
+     da lógica ANTIGA de crédito (todo Pokémon que participou da luta
+     ganhava vitória, mesmo quem desmaiou no meio dela -- corrigido
+     nesta MESMA leva pra só o Pokémon que FINALIZA a luta ganhar
+     vitória, e desmaiar virar derrota individual mesmo numa luta que a
+     Equipe no fim venceu, ver finishBattle), então os números antigos
+     não significam mais nada. Zera 1 ÚNICA vez (flag `vdZerado` no
+     STATE, não por Pokémon) -- nunca de novo depois, senão apagaria
+     progresso de verdade sendo criado dali em diante a cada login. */
+  if(!STATE.vdZerado){
+    [STATE.party, STATE.box].forEach(function(lista){
+      (lista||[]).forEach(function(p){ p.vitorias = 0; p.derrotas = 0; });
+    });
+    STATE.vdZerado = true;
+  }
 }
 
 /* Nome -> ID de documento: minúsculo, sem acento, só [a-z0-9-] --
@@ -6092,6 +6120,15 @@ function proximoDaFila(b){
 function resolveFaintAfterDamage(target, user, b){
   b.log.push('💥 '+displayName(target)+' desmaiou!');
   if(target.side==='player'){
+    /* Cap. leva desta sessão: "desmaio é derrota do pokémon. ele só
+       pode receber a vitória se ele finalizar a luta. Se outro entrar
+       no lugar dele mesmo que ele não tenha desmaiado a vitória vai
+       pro outro, nesse caso não conta como derrota" -- marca AQUI, no
+       exato momento do desmaio (não em finishBattle, que só vê o
+       resultado FINAL da luta), quem especificamente desmaiou -- ver
+       finishBattle pra onde isso vira o crédito de fato. */
+    b.faintedPartyIds = b.faintedPartyIds || [];
+    if(target.partyId && b.faintedPartyIds.indexOf(target.partyId)===-1) b.faintedPartyIds.push(target.partyId);
     if(everyPartyFainted(b)){ finishBattle('derrota'); return true; }
     var proximo = proximoDaFila(b);
     if(proximo){
@@ -6288,16 +6325,28 @@ function finishBattle(result){
      de dono) -- sem precisar de nenhuma lógica extra de persistência. 2
      Pokémon da mesma espécie são 2 objetos DIFERENTES (`id` próprio via
      uid()), cada um com o PRÓPRIO contador, nunca compartilhado.
-     Credita TODO Pokémon que efetivamente lutou nessa luta específica
-     (b.usedPartyIds -- o mesmo array que battleReportEntry já usa pra
-     "trocouPokemon"), não só o que desferiu o golpe final: numa
-     derrota, por exemplo, TODOS que entraram acabaram desmaiando
-     também. */
-  (b.usedPartyIds||[]).forEach(function(pid){
+
+     Esclarecimento do jogador (leva seguinte): "desmaio é derrota do
+     pokémon. ele só pode receber a vitória se ele finalizar a luta. Se
+     outro entrar no lugar dele mesmo que ele não tenha desmaiado a
+     vitória vai pro outro, nesse caso não conta como derrota" -- então
+     NÃO é mais "todo mundo que participou" (b.usedPartyIds): (1)
+     DERROTA é creditada a todo Pokémon que efetivamente DESMAIOU
+     durante essa luta (`b.faintedPartyIds`, marcado no exato momento
+     do desmaio em resolveFaintAfterDamage), não importa se a Equipe no
+     fim ganhou ou perdeu -- desmaiar é sempre uma derrota individual
+     pra ELE; (2) VITÓRIA só vai pro Pokémon que está ATIVO no exato
+     momento em que a luta termina em vitória (`b.playerActive.
+     partyId`) -- é ele quem "finalizou a luta". Quem só foi trocado
+     (nunca desmaiou, nunca terminou a luta) não ganha nem soma nada. */
+  (b.faintedPartyIds||[]).forEach(function(pid){
     var p = STATE.party.filter(function(x){ return x.id===pid; })[0];
-    if(!p) return;
-    if(result==='vitoria') p.vitorias = (p.vitorias||0)+1; else p.derrotas = (p.derrotas||0)+1;
+    if(p) p.derrotas = (p.derrotas||0)+1;
   });
+  if(result==='vitoria' && b.playerActive && b.playerActive.partyId){
+    var pFinalizador = STATE.party.filter(function(x){ return x.id===b.playerActive.partyId; })[0];
+    if(pFinalizador) pFinalizador.vitorias = (pFinalizador.vitorias||0)+1;
+  }
   if(result==='vitoria'){
     b.log.push('🏆 Vitória!');
     if(b.kind==='trainer' && STATE.badges.indexOf(b.leaderId)===-1){
@@ -8153,19 +8202,7 @@ DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl){
   var autoCurar = !!(autoCurEl && autoCurEl.checked);
   var ignorarPossuidos = autoCapturar && !!(ignorarPossuidosEl && ignorarPossuidosEl.checked);
   var zona = zonaByStatus(psc.zonaId);
-  /* Cap. leva desta sessão: "se ele tiver jogando no aprendiz e passar
-     pra range novato, ele continuará ganhando XP no aprendiz até essa
-     run acabar... faça o sistema trocar automaticamente o pokemon que
-     ele tá usando" -- guarda a FAIXA do líder no momento em que o
-     jogador escolheu ele (nunca recalculada depois), pra servir de
-     "alvo" que trocaAutomaticaLiderSeNecessario tenta manter durante
-     toda a sequência. Importante: a fórmula de XP (xpParaVitoria) já
-     reduz sozinha quando o Nível sobe -- não tem bug nela (investigado
-     e confirmado nesta leva) -- então isso aqui NÃO é um conserto de
-     conta, é só a automação de troca que o jogador pediu. */
-  var leadPokeInicial = STATE.party.filter(function(p){ return p.id===psc.leadId; })[0];
-  var leadFaixaInicial = leadPokeInicial ? rangeIndexForLevel(leadPokeInicial.level) : null;
-  STATE.captureSequence = { leadId: psc.leadId, leadFaixaInicial: leadFaixaInicial, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, finished:false, pararSemEnergia:false, relatorio:[] };
+  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, finished:false, pararSemEnergia:false, relatorio:[] };
   logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+(ignorarPossuidos?', ignorando quem já tem':'')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
   mutate();
   captureSequenceTick(); // dispara a 1ª luta na hora, sem esperar o próximo tick do relógio de fundo
@@ -8367,36 +8404,56 @@ function finalizarSequencia(cs){
    está lutando várias batalhas automáticas, se ele sair da range e
    pular pra outra, ele continua ganhando a XP de antes... faça o
    sistema trocar automaticamente o pokemon que ele tá usando e usar
-   esse pokémon que não pega XP ali em ultimo caso somente"):
-   investigado -- xpParaVitoria/rangeIndexForLevel JÁ recalculam do zero
-   a cada luta (sem bug de conta nenhum, confirmado com um script de
-   prova à parte). O que muda aqui é só a automação pedida: se o Nível
-   do líder atual (cs.leadId) já saiu da MESMA Faixa que ele tinha
-   quando a sequência começou (cs.leadFaixaInicial -- nunca recalculada,
-   pra respeitar de propósito uma escolha deliberada do jogador de
-   começar numa Faixa diferente da Zona, ex.: caçar XP bônus/reduzido de
-   propósito), procura outro membro da Equipe que AINDA esteja nessa
-   Faixa original e passa a usar ele. Só troca pro Pokémon "errado" (o
-   que já saiu da Faixa) como ÚLTIMO recurso, se ninguém mais serve --
-   exatamente "usar esse pokémon que não pega XP ali em ultimo caso
-   somente". Sequências já salvas ANTES desta leva não têm
-   `leadFaixaInicial` (undefined) -- nesse caso não mexe em nada, pra
-   nunca disparar uma troca surpresa no meio de uma run que já tava
-   rodando. */
+   esse pokémon que não pega XP ali em ultimo caso somente") +
+   esclarecimento do jogador na sequência: "não é 'Sair da faixa' ele
+   troca, pode trocar, sem problemas, mas é a questão de ele ganhar XP
+   da faixa anterior como se ele ainda estivesse lá... se ele estiver
+   numa faixa que ganhe 2 e ele aumentar de faixa no meio do combate,
+   ele TEM que passar a ganhar 1 porque está lutando numa faixa acima
+   ... a ideia é priorizar os que precisam de XP".
+
+   Confirmado (de novo, com mais rigor -- ver xpParaVitoria e o ponto
+   onde ela é chamada em resolveFaintAfterDamage): `xpUser.level` é o
+   Nível do battler ATIVO no exato momento daquele abate específico, e
+   `grantXpAndMaybeEvolve` sincroniza `b.playerActive.level = p.level`
+   IMEDIATAMENTE a cada level up dentro da própria luta -- então mesmo
+   um Treinador de 6 Pokémon caindo um atrás do outro NA MESMA luta já
+   recalculava do zero, kill a kill, sem nenhum valor "congelado". Sem
+   bug de conta nenhum, confirmado de novo.
+
+   O que esta função faz é só a automação de troca pedida -- e a régua
+   certa pra "quem precisa de XP" é a Faixa FIXA da própria ZONA
+   escolhida pra sequência (`cs.zonaId`, nunca muda durante a run),
+   não mais um "snapshot" do líder original: toda Zona ocupa exatamente
+   1 bloco de 10 Níveis (`ZONAS.indexOf(zona)` já É o índice de Faixa
+   dela, ver ZONAS acima), e a fórmula em xpParaVitoria dá o MELHOR XP
+   (2 base, ou até bônus) pra quem está NESSA Faixa ou abaixo (ainda
+   "precisa" -- é desafiador/parelho pra ele) e reduz (1, depois 0) pra
+   quem já passou dela (já "não precisa" mais, o combate virou fácil
+   demais). Por isso: se o líder atual já está numa Faixa ACIMA da
+   Zona, procura outro membro vivo da Equipe cuja Faixa ainda bata
+   (<=) com a da Zona e passa a usar ele; só continua com quem já saiu
+   da Faixa como ÚLTIMO recurso, se ninguém mais servir -- exatamente
+   "usar esse pokémon que não pega XP ali em ultimo caso somente". Roda
+   em TODO tick (inclusive o 1º, logo depois de confirmar o popup) --
+   sem guardar nenhum campo novo em STATE.captureSequence, então nem
+   precisa se preocupar com sequência salva antes desta leva. */
 function trocaAutomaticaLiderSeNecessario(cs){
-  if(cs.leadFaixaInicial==null) return; // sequência antiga, sem o campo -- não mexe
+  var zona = zonaByStatus(cs.zonaId);
+  if(!zona) return; // Zona sumiu -- deixa o próprio captureSequenceTick tratar (finaliza a sequência)
+  var faixaZona = ZONAS.indexOf(zona);
   var atual = STATE.party.filter(function(p){ return p.id===cs.leadId; })[0];
-  if(!atual) return; // líder saiu da Equipe -- deixa o próprio captureSequenceTick tratar (finaliza a sequência)
-  if(rangeIndexForLevel(atual.level)===cs.leadFaixaInicial) return; // ainda na Faixa certa, nada a fazer
-  var substituto = STATE.party.filter(function(p){ return p.id!==cs.leadId && rangeIndexForLevel(p.level)===cs.leadFaixaInicial; })[0];
-  if(!substituto) return; // ninguém mais na Faixa original -- continua com o atual mesmo (último recurso)
+  if(!atual) return; // líder saiu da Equipe -- idem, captureSequenceTick trata
+  if(rangeIndexForLevel(atual.level)<=faixaZona) return; // ainda na Faixa da Zona (ou abaixo, ganhando até bônus) -- não precisa trocar
+  var substituto = STATE.party.filter(function(p){ return p.id!==cs.leadId && rangeIndexForLevel(p.level)<=faixaZona; })[0];
+  if(!substituto) return; // ninguém mais bate com a Faixa da Zona -- continua com o atual mesmo (último recurso)
   cs.leadId = substituto.id;
   /* Não empilha em cs.relatorio -- essa lista é só de LUTAS
      (battleReportEntry, lido por sequenciaRelatorioHTML com campos
      fixos tipo r.log/r.resultado); a troca de líder não é uma luta.
      Fica registrada no Registro de ações mesmo (logAction), igual todo
      outro evento da sequência. */
-  logAction('batalha', '🔄 '+(atual.apelido||speciesByNum(atual.num).name)+' saiu da Faixa original da sequência automática -- '+(substituto.apelido||speciesByNum(substituto.num).name)+' assumiu a liderança no lugar dele.');
+  logAction('batalha', '🔄 '+(atual.apelido||speciesByNum(atual.num).name)+' já passou da Faixa da Zona da sequência automática (ganhando menos XP) -- '+(substituto.apelido||speciesByNum(substituto.num).name)+' assumiu a liderança no lugar dele.');
 }
 function captureSequenceTick(){
   var cs = STATE.captureSequence;
@@ -9083,9 +9140,24 @@ function loginScreenHTML(){
    no MESMO `<div>` raiz, sem duplicar a estrutura do card inteiro só
    pra isso -- todo call site ANTIGO continua funcionando igual (os 2
    parâmetros são opcionais, nunca quebra quem só passa 2 argumentos). */
-function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs){
+/* `apelidoEditavel` (opcional, Cap. leva desta sessão -- "O botão de
+   apelido pode ser apenas um lápis ao lado do nome de cada pokémon.
+   Após trocar o nome ele fica cinza, mas não some"): só quem "é dono"
+   do card (Equipe/Caixa do PRÓPRIO jogador) passa `true` aqui -- ver
+   equipeScreenHTML. Nos outros call sites (Equipe de OUTRO jogador,
+   escolher com quem trocar, escolher pra quem trocar em batalha etc.)
+   fica de fora, então o lápis nunca aparece onde editar não faria
+   sentido nenhum. Sem apelido ainda: lápis clicável de verdade (abre
+   DT.gaAskApelido). Com apelido já definido (travado): o MESMO ícone
+   continua no lugar, só que cinza/sem clique nenhum -- nunca some, só
+   muda de estado (pedido explícito, ao contrário do 1º rascunho desta
+   leva que escondia o botão de vez). */
+function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel){
   var sp = speciesByNum(poke.num);
   var progresso = poke.level>=NIVEL_MAX ? 'Nível máximo' : ((poke.xpNivel||0)+'/'+XP_PARA_LEVEL_UP+' XP pro próximo Nível');
+  var lapis = !apelidoEditavel ? '' : (poke.apelido
+    ? ' <span class="ga-apelido-lapis travado" title="Apelido já definido -- travado por enquanto">✏️</span>'
+    : ' <span class="ga-apelido-lapis" title="Definir apelido (só uma vez)" onclick="event.stopPropagation();DT.gaAskApelido(\''+poke.id+'\')">✏️</span>');
   return '<div class="ga-poke-card'+(extraClass?' '+extraClass:'')+'"'+(extraAttrs?' '+extraAttrs:'')+'>'+
     /* Cap. leva desta sessão: "V:" e "D:" no canto superior direito do
        card -- histórico INDIVIDUAL desse Pokémon (ver finishBattle),
@@ -9096,7 +9168,7 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs){
        restrito a nenhum contexto. */
     '<div class="ga-vd-badge" title="Vitórias / Derrotas desse Pokémon">V:'+(poke.vitorias||0)+' D:'+(poke.derrotas||0)+'</div>'+
     '<img src="'+spriteUrl(poke.num)+'" loading="lazy" alt="">'+
-    '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+'</div>'+
+    '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+lapis+'</div>'+
     '<div class="ga-poke-meta">Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
     '<div class="ga-hint">'+esc2(poke.natureza||'—')+' · '+esc2(poke.habilidade||'—')+'</div>'+
     '<div class="ga-hint">'+progresso+'</div>'+
@@ -9281,12 +9353,6 @@ function equipeScreenHTML(){
         (STATE.party.length>1
           ? '<div class="ga-btn-row"><button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button><button class="ga-btn-sm" onclick="DT.gaMandarPraCaixa(\''+p.id+'\')">📦 Caixa</button></div>'
           : '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>')+
-        /* Cap. leva desta sessão: "só poderemos colocar uma vez, depois
-           disso fica travado" -- botão só aparece ENQUANTO não tem
-           apelido; depois de definido, o nome já aparece sozinho no
-           card (esc2(poke.apelido||sp.name), ver pokeCardMini) e não
-           sobra nenhum jeito de reabrir o popup por aqui. */
-        (!p.apelido ? '<button class="ga-btn-sm" onclick="DT.gaAskApelido(\''+p.id+'\')">✏️ Apelido</button>' : '')+
         (STATE.party.length>1
           ? '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>'
           : '<span class="ga-hint">último da Equipe</span>')+
@@ -9302,7 +9368,7 @@ function equipeScreenHTML(){
          dentro do atributo), mesma disciplina de todo onclick inline
          do projeto, mesmo esses NÃO sendo onclick. */
       var dragAttrs = 'draggable="true" ondragstart="event.dataTransfer.setData(\'text/plain\',\''+p.id+'\')" ondragover="event.preventDefault()" ondrop="event.preventDefault();DT.gaArrastarEquipe(event.dataTransfer.getData(\'text/plain\'),\''+p.id+'\')"';
-      return pokeCardMini(p, actions, i===0?'ativo':'', dragAttrs);
+      return pokeCardMini(p, actions, i===0?'ativo':'', dragAttrs, true);
     }).join('')+
     '</div></div>'+
     (STATE.box.length ? (function(){
@@ -9316,10 +9382,9 @@ function equipeScreenHTML(){
         var actions = '<div class="ga-poke-actions">'+
           '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
           '<button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button>'+
-          (!p.apelido ? '<button class="ga-btn-sm" onclick="DT.gaAskApelido(\''+p.id+'\')">✏️ Apelido</button>' : '')+
           '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>'+
         '</div>';
-        return pokeCardMini(p, actions);
+        return pokeCardMini(p, actions, '', '', true);
       }).join('');
       return '<div class="ga-card"><h2>📦 Caixa ('+STATE.box.length+')</h2>'+
         caixaFiltrosHTML()+
