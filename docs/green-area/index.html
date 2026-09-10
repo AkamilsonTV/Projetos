@@ -5732,7 +5732,8 @@ function startBattle(kind, opts, skipDiscrepancia){
     oppDefeatedLevels: [],
     finished: null,
     captureDone: false,
-    weather: { tipo:'neutro', turnsLeft:null } // Cap. Clima -- por LUTA, sempre começa Neutro
+    weather: { tipo:'neutro', turnsLeft:null }, // Cap. Clima -- por LUTA, sempre começa Neutro
+    terrain: { tipo:'neutro', turnsLeft:null } // Cap. Terreno -- por LUTA, sempre começa Neutro
   };
   runBattleUntilPause();
   mutate();
@@ -5881,6 +5882,12 @@ function runBattleUntilPause(){
        DEPOIS do residual de Status de cada um, na mesma "FIM de
        Rodada", com o mesmo cuidado de checar desmaio antes de seguir. */
     applyWeatherResidual(atkB, defB, b);
+    if(b.hp[atkB.key]<=0 && resolveFaintAfterDamage(atkB, null, b)) return;
+    if(b.hp[defB.key]<=0 && resolveFaintAfterDamage(defB, null, b)) return;
+
+    /* Cap. Terreno: cura de Terreno de Grama + conta regressiva --
+       mesmo tratamento do Clima acima, os dois convivem sem conflito. */
+    applyTerrainResidual(atkB, defB, b);
     if(b.hp[atkB.key]<=0 && resolveFaintAfterDamage(atkB, null, b)) return;
     if(b.hp[defB.key]<=0 && resolveFaintAfterDamage(defB, null, b)) return;
   }
@@ -6342,6 +6349,81 @@ function tickWeatherDuration(b){
   }
 }
 
+/* ============================================================
+   Terreno (Cap. leva desta sessão: "Depois disso pode dar continuidade
+   pro lance do terreno"): 4 Terrenos reais + Neutro, setados pelos 4
+   Movimentos oficiais de Terreno por 5 turnos -- MESMO padrão de
+   estado/duração do Clima acima (STATE.battle.terrain = {tipo,
+   turnsLeft}, por LUTA), mas os dois convivem juntos de verdade (dá
+   pra ter Chuva E Terreno Elétrico ao mesmo tempo, exatamente como no
+   jogo oficial -- um nunca cancela o outro).
+     - Elétrico: golpe de Elétrico ×1,3; ninguém pega Sono.
+     - Grama: golpe de Grama ×1,3; cura 1/16 do PV Máximo por Rodada.
+     - Névoa: golpe de Dragão ×0,5 no alvo; ninguém pega Condição
+       persistente nenhuma.
+     - Psíquico: golpe de Psíquico ×1,3.
+   Efeito de Terreno oficialmente só vale pra quem está "no chão" --
+   aqui isso é aproximado por "não é Tipo Voador" (o único sinal real
+   e simples que já existe sem depender de Habilidade/item, que Green
+   Área ainda não simula em batalha -- Levitate e afins ficam pra
+   aquela leva futura, mesma régua de exclusão de sempre). Bloqueio de
+   golpe com Prioridade sob Psíquico é um mecanismo bespoke (precisa
+   interceptar a escolha de ação antes da fórmula de dano) -- fica de
+   fora nesta leva, mesma régua do Solar Beam no Clima. */
+var TERRAIN_LABELS = { neutro:'Neutro', eletrico:'Terreno Elétrico', grama:'Terreno de Grama', neblina:'Terreno de Névoa', psiquico:'Terreno Psíquico' };
+var TERRAIN_ICONS = { neutro:'⛰️', eletrico:'⚡', grama:'🌱', neblina:'🌫️', psiquico:'🔮' };
+var TERRAIN_SET_MOVES = { 'Electric Terrain':'eletrico', 'Grassy Terrain':'grama', 'Misty Terrain':'neblina', 'Psychic Terrain':'psiquico' };
+var TERRAIN_MOVE_DURATION = 5;
+var TERRAIN_TYPE_BOOST = { eletrico:'Elétrico', grama:'Grama', psiquico:'Psíquico' };
+function terrainTipo(){ return (STATE.battle && STATE.battle.terrain && STATE.battle.terrain.tipo) || 'neutro'; }
+/* "No chão" (aproximação documentada acima): todo mundo, exceto Tipo
+   Voador -- Levitate/Air Balloon ficam pra leva de Habilidades/Itens. */
+function noChao(battler){
+  var sp = speciesByNum(battler.num);
+  return sp.tipo1!=='Voador' && sp.tipo2!=='Voador';
+}
+/* Bônus ×1,3 de dano por Tipo do golpe (Elétrico/Grama/Psíquico no
+   Terreno certo) + penalidade ×0,5 pro golpe de Dragão sob Névoa --
+   só quando o ALVO está no chão (é o campo debaixo DELE que importa,
+   não de quem atacou). Entra multiplicando junto com STAB/Efetividade/
+   Clima/Crítico em officialDamage, nunca substituindo nenhum fator. */
+function terrainDamageMultiplier(moveTipo, target){
+  var t = terrainTipo();
+  if(t==='neutro' || !noChao(target)) return 1;
+  if(TERRAIN_TYPE_BOOST[t]===moveTipo) return 1.3;
+  if(t==='neblina' && moveTipo==='Dragão') return 0.5;
+  return 1;
+}
+function setTerrain(tipo){
+  STATE.battle.terrain = { tipo: tipo, turnsLeft: TERRAIN_MOVE_DURATION };
+}
+/* Cura de FIM de Rodada do Terreno de Grama (1/16 do PV Máximo, só
+   quem está no chão) + conta regressiva -- mesmo padrão de
+   applyWeatherResidual, chamado 1x por Rodada pros 2 battlers. */
+function applyTerrainResidual(atkB, defB, b){
+  var t = terrainTipo();
+  if(t==='grama'){
+    [atkB, defB].forEach(function(battler){
+      if(!battler || b.hp[battler.key]===undefined || b.hp[battler.key]<=0) return;
+      if(!noChao(battler)) return;
+      var maxHp = gaHpMax(battler);
+      var antes = b.hp[battler.key];
+      b.hp[battler.key] = Math.min(maxHp, b.hp[battler.key]+Math.max(1, Math.floor(maxHp/16)));
+      if(b.hp[battler.key]>antes) b.log.push('🌱 '+displayName(battler)+' recuperou '+(b.hp[battler.key]-antes)+' PV com o Terreno de Grama.');
+    });
+  }
+  tickTerrainDuration(b);
+}
+function tickTerrainDuration(b){
+  var tObj = b.terrain;
+  if(!tObj || tObj.tipo==='neutro' || tObj.turnsLeft===null || tObj.turnsLeft===undefined) return;
+  tObj.turnsLeft--;
+  if(tObj.turnsLeft<=0){
+    b.log.push(TERRAIN_ICONS[tObj.tipo]+' O '+TERRAIN_LABELS[tObj.tipo]+' passou -- o campo voltou ao normal.');
+    b.terrain = { tipo:'neutro', turnsLeft:null };
+  }
+}
+
 /* Precisão/Evasão (Cap. "quero tudo dos combates mesmo"): rolagem por
    PORCENTAGEM de verdade (não mais o d10 de mesa) -- Precisão do
    Movimento × multiplicador de Estágio de Precisão do usuário ÷
@@ -6399,8 +6481,9 @@ function officialDamage(user, target, move, crit){
   var critMult = crit ? 1.5 : 1;
   var burnHalving = (move.categoria==='Físico' && user.status==='queimadura') ? 0.5 : 1;
   var climaMult = weatherDamageMultiplier(move.tipo);
+  var terrenoMult = terrainDamageMultiplier(move.tipo, target);
   var aleatorio = (85 + Math.floor(Math.random()*16))/100; // 0,85 a 1,00
-  var dano = Math.floor(base * stab * typeEff * critMult * burnHalving * climaMult * aleatorio);
+  var dano = Math.floor(base * stab * typeEff * critMult * burnHalving * climaMult * terrenoMult * aleatorio);
   return { dano: Math.max(typeEff>0 ? 1 : 0, dano), typeEff: typeEff };
 }
 
@@ -6437,6 +6520,8 @@ function applyAilment(battler, ailmentEn, moveName, b, logPrefix){
   var sp = speciesByNum(battler.num);
   if(statusBloqueadoPorTipo(sp, statusPt)) return;
   if(statusPt==='congelamento' && weatherTipo()==='sol') return; // Cap. Clima: ninguém congela sob Sol Forte (oficial)
+  if(statusPt==='sono' && terrainTipo()==='eletrico' && noChao(battler)) return; // Cap. Terreno: ninguém pega Sono no chão sob Terreno Elétrico (oficial)
+  if(terrainTipo()==='neblina' && noChao(battler)) return; // Cap. Terreno: ninguém pega Condição persistente nenhuma no chão sob Terreno de Névoa (oficial)
   battler.status = statusPt;
   battler.statusTurns = statusPt==='sono' ? (1+Math.floor(Math.random()*3)) : (statusPt==='veneno_grave' ? 1 : 0);
   b.log.push(logPrefix+' ficou com '+STATUS_LABELS_PT[statusPt]+'!');
@@ -6581,6 +6666,14 @@ function resolveGaTurn(user, target){
     if(WEATHER_SET_MOVES[move.name]){
       setWeather(WEATHER_SET_MOVES[move.name]);
       b.log.push(WEATHER_ICONS[WEATHER_SET_MOVES[move.name]]+' '+userName+' usou '+move.name+' -- o clima virou '+WEATHER_LABELS[WEATHER_SET_MOVES[move.name]]+'!');
+      return;
+    }
+    // Cap. Terreno: Electric/Grassy/Misty/Psychic Terrain armam o
+    // campo de verdade -- mesmo tratamento do clima acima, e os dois
+    // convivem juntos sem se cancelar.
+    if(TERRAIN_SET_MOVES[move.name]){
+      setTerrain(TERRAIN_SET_MOVES[move.name]);
+      b.log.push(TERRAIN_ICONS[TERRAIN_SET_MOVES[move.name]]+' '+userName+' usou '+move.name+' -- o campo virou '+TERRAIN_LABELS[TERRAIN_SET_MOVES[move.name]]+'!');
       return;
     }
     // cura (Recover/Roost/Synthesis...) -- healing% do PV Máximo de quem usou
@@ -8227,9 +8320,11 @@ function battleScreenHTML(){
   var playerHP = b.hp[b.playerActive.key], playerMax = gaHpMax(b.playerActive);
 
   var w = b.weather || { tipo:'neutro', turnsLeft:null };
+  var terr = b.terrain || { tipo:'neutro', turnsLeft:null };
   var out = '<div class="ga-card ga-battle">'+
     '<h2>'+esc2(b.label)+'</h2>'+
     (w.tipo!=='neutro' ? '<div class="ga-weather-badge">'+WEATHER_ICONS[w.tipo]+' '+esc2(WEATHER_LABELS[w.tipo])+(w.turnsLeft!=null?' ('+w.turnsLeft+' turno'+(w.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
+    (terr.tipo!=='neutro' ? '<div class="ga-weather-badge">'+TERRAIN_ICONS[terr.tipo]+' '+esc2(TERRAIN_LABELS[terr.tipo])+(terr.turnsLeft!=null?' ('+terr.turnsLeft+' turno'+(terr.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
     (SESSION.capturaRepeat ? '<div class="ga-weather-badge">🔁 Sequência: luta '+(SESSION.capturaRepeat.total-SESSION.capturaRepeat.remaining)+' de '+SESSION.capturaRepeat.total+' ('+SESSION.capturaRepeat.vitorias+'✅ '+SESSION.capturaRepeat.derrotas+'☠️)</div>' : '')+
     '<div class="ga-battle-field">'+
       '<div class="ga-battle-side"><img src="'+spriteUrl(opp.num)+'" alt=""><div>'+esc2(oppSp.name)+' Nv.'+opp.level+'</div>'+hpBarHTML(oppHP,oppMax)+'</div>'+
