@@ -8713,6 +8713,33 @@ DT.gaLiberar = function(pid){
 };
 DT.gaAskLiberar = function(pid){ SESSION.confirmRelease = pid; render(); };
 DT.gaCancelLiberar = function(){ SESSION.confirmRelease = null; render(); };
+/* Cap. leva desta sessão: "Retirar a opção de SOLTAR da equipe ativa.
+   Colocar um popup perguntando se deseja soltar o pokémon em questão.
+   Mostra a foto do pokemon acima e o nome dele na mensagem" -- era um
+   Confirmar/Cancelar INLINE, no próprio card (fácil de confundir com
+   os outros botões, ou clicar sem querer perto de outra ação). Agora
+   usa o MESMO popup de tela cheia (`.ga-overlay`/`.ga-overlay-card`)
+   de todo outro popup de prioridade do jogo -- sprite grande da forma
+   atual (mesma classe `ga-dex-popup-img` já usada no popup de
+   evolução) e o nome/Nível na própria pergunta, impossível de soltar
+   por engano. Vale pra Equipe E Caixa (mesmo SESSION.confirmRelease,
+   DT.gaLiberar já busca nos 2 lugares). */
+function confirmarLiberarPopupHTML(pid){
+  var p = STATE.party.filter(function(x){ return x.id===pid; })[0] || STATE.box.filter(function(x){ return x.id===pid; })[0];
+  if(!p) return '';
+  var sp = speciesByNum(p.num);
+  var nome = p.apelido || sp.name;
+  return '<div class="ga-overlay" onclick="DT.gaCancelLiberar()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelLiberar()">✕</button>'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
+    '<h2>🚫 Soltar '+esc2(nome)+'?</h2>'+
+    '<p class="ga-hint">Tem certeza que quer soltar '+esc2(nome)+' (Nv. '+p.level+') pra sempre? Essa ação não pode ser desfeita.</p>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm danger" onclick="DT.gaLiberar(\''+pid+'\')">🚫 Soltar pra sempre</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaCancelLiberar()">Cancelar</button>'+
+    '</div>'+
+  '</div></div>';
+}
 DT.gaPuxarDaCaixa = function(pid){
   if(STATE.party.length>=6){ SESSION.error='Equipe cheia (6/6) -- libere ou mande alguém pra Caixa primeiro.'; render(); return; }
   var p = STATE.box.filter(function(x){return x.id===pid;})[0]; if(!p) return;
@@ -8850,6 +8877,7 @@ function screenHTML(){
      porque STATE.captureSequence.finished é persistido igual tudo
      mais. */
   if(STATE.captureSequence && STATE.captureSequence.finished) return wrap(sequenciaFimScreenHTML());
+  if(SESSION.confirmRelease) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + confirmarLiberarPopupHTML(SESSION.confirmRelease);
   if(SESSION.dexOpenNum) return wrap(hubScreenHTML() /* mantém o fundo, popup por cima */) + dexPopupHTML(SESSION.dexOpenNum);
   if(SESSION.movesOpenFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + movesPopupHTML(SESSION.movesOpenFor);
   if(SESSION.leaderTeamOpenFor) return wrap(ginasiosScreenHTML() /* mantém o fundo, popup por cima */) + leaderTeamPopupHTML(SESSION.leaderTeamOpenFor);
@@ -9130,9 +9158,8 @@ function equipeScreenHTML(){
         (STATE.party.length>1
           ? '<div class="ga-btn-row"><button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button><button class="ga-btn-sm" onclick="DT.gaMandarPraCaixa(\''+p.id+'\')">📦 Caixa</button></div>'
           : '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>')+
-        (STATE.party.length>1 ? (SESSION.confirmRelease===p.id
-          ? '<button class="ga-btn-sm danger" onclick="DT.gaLiberar(\''+p.id+'\')">Confirmar</button><button class="ga-btn-sm" onclick="DT.gaCancelLiberar()">Cancelar</button>'
-          : '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>')
+        (STATE.party.length>1
+          ? '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>'
           : '<span class="ga-hint">último da Equipe</span>')+
       '</div>';
       /* Arrastar de verdade (Cap. "Coloca a opção de arrastar a ordem
@@ -9152,18 +9179,15 @@ function equipeScreenHTML(){
     (STATE.box.length ? (function(){
       var lista = caixaFilteredList();
       /* Cap. leva desta sessão ("Colocar a opção de SOLTAR na box
-         também"): MESMO botão/confirmação de 2 passos da Equipe
-         (Soltar -> Confirmar/Cancelar), reusando DT.gaLiberar/
-         gaAskLiberar/gaCancelLiberar como já estão -- eles já filtram
-         tanto STATE.party quanto STATE.box, então soltar da Caixa
-         funciona de graça, só faltava o botão aqui. */
+         também"): MESMO botão da Equipe, reusando DT.gaLiberar/
+         gaAskLiberar como já estão -- eles já filtram tanto
+         STATE.party quanto STATE.box, então soltar da Caixa funciona
+         de graça, só faltava o botão aqui. */
       var grid = lista.map(function(p){
         var actions = '<div class="ga-poke-actions">'+
           '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
           '<button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button>'+
-          (SESSION.confirmRelease===p.id
-            ? '<button class="ga-btn-sm danger" onclick="DT.gaLiberar(\''+p.id+'\')">Confirmar</button><button class="ga-btn-sm" onclick="DT.gaCancelLiberar()">Cancelar</button>'
-            : '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>')+
+          '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>'+
         '</div>';
         return pokeCardMini(p, actions);
       }).join('');
