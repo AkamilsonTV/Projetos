@@ -196,6 +196,20 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    (Início/Área de Captura/Mestres). */
 .ga-ticket-troca-row{ display:flex; gap:6px; margin:6px 0; align-items:center; flex-wrap:wrap; }
 .ga-ticket-troca-row .ga-capqtd-input{ width:64px; }
+/* Cap. leva desta sessão: "Tire as setinhas de colocar os números
+   para que a gente só digite, fica mais bonito" -- remove as
+   setinhas nativas de incrementar/decrementar de TODO <input
+   type="number"> do jogo (Chrome/Safari via os pseudo-elementos
+   webkit, Firefox via -moz-appearance), sem tirar o teclado numérico
+   nem a validação min/max -- só quem digita direto, sem clicar em
+   seta nenhuma. */
+input[type="number"]{ -moz-appearance:textfield; appearance:textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+/* Cap. leva desta sessão (popup de confirmação da sequência
+   automática): checkbox + rótulo lado a lado, um por linha. */
+.ga-check-row{ display:flex; align-items:center; gap:8px; margin:8px 0; text-align:left; cursor:pointer; }
+.ga-check-row input[type="checkbox"]{ flex:0 0 auto; width:18px; height:18px; }
 
 .ga-loja-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:10px; }
 .ga-loja-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; }
@@ -5254,7 +5268,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', capturaRepeat:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null };
 
 function freshState(trainerName){
   return {
@@ -5663,7 +5677,7 @@ function startBattle(kind, opts, skipDiscrepancia){
     var leader = GYM_LEADERS.filter(function(l){ return l.id===opts.leaderId; })[0];
     var aceLevel = gymAceLevel(GYM_LEADERS.indexOf(leader));
     oppTeam = leader.roster.map(function(slot,i){ return buildBattlerTrainer(slot.num, clampInt(aceLevel+slot.rel,1,NIVEL_MAX), leader.id+'_'+i); });
-    custoEnergia = 20 * aceLevel;
+    custoEnergia = MESTRE_CUSTO_ENERGIA;
     label = leader.nome+' ('+leader.tipo+')';
   }
   /* Cap. leva desta sessão: "Se uma luta for muito discrepante para o
@@ -6820,41 +6834,17 @@ DT.gaJogarPokebola = function(ballKey){
   mutate();
 };
 /* Cap. leva desta sessão: fecha a luta que acabou de terminar -- é o
-   ÚNICO ponto por onde TODA luta passa pra sair da tela de batalha de
-   verdade (clique em "Continuar" numa vitória sem captura, "Deixar
-   ir embora" recusando a Pokébola, "Continuar" depois de decidir a
-   Pokébola, ou "Continuar" numa derrota -- os 4 caminhos convergem
-   aqui). Por isso é o lugar certo pra encadear a PRÓXIMA luta de uma
-   sequência "lutar várias vezes" (SESSION.capturaRepeat) sem o
-   jogador precisar clicar "Entrar na mata" de novo -- toda decisão
-   DENTRO de cada luta (cura/troca/evolução/Pokébola) continua
-   pedindo confirmação normal, só o "ir pra próxima luta" que vira
-   automático. */
+   ÚNICO ponto por onde TODA luta MANUAL passa pra sair da tela de
+   batalha de verdade (clique em "Continuar" numa vitória sem captura,
+   "Deixar ir embora" recusando a Pokébola, "Continuar" depois de
+   decidir a Pokébola, ou "Continuar" numa derrota -- os 4 caminhos
+   convergem aqui). Uma sequência automática de 2+ lutas NUNCA passa
+   por aqui -- ela fecha sozinha (ver fecharLutaDaSequencia, chamado
+   de dentro do tick de fundo), exatamente pra nunca esperar o jogador
+   clicar em nada no meio do caminho. */
 DT.gaEncerrarBatalha = function(){
-  var cr = SESSION.capturaRepeat;
-  if(cr && STATE.battle){
-    if(STATE.battle.finished==='vitoria') cr.vitorias++; else cr.derrotas++;
-  }
   STATE.battle = null;
-  if(!cr){ mutate(); return; }
-  if(cr.remaining<=0){
-    SESSION.capturaRepeat = null;
-    SESSION.notice = 'Sequência terminou: '+cr.vitorias+' vitória(s), '+cr.derrotas+' derrota(s) em '+cr.total+' luta(s).';
-    logAction('batalha', 'Sequência de lutas terminou: '+cr.vitorias+' vitória(s), '+cr.derrotas+' derrota(s) em '+cr.total+' luta(s).');
-    mutate();
-    return;
-  }
-  var zona = zonaByStatus(cr.zonaId);
-  var custo = zona ? custoEnergiaZona(ZONAS.indexOf(zona)) : Infinity;
-  if(!zona || STATE.energy < custo){
-    SESSION.capturaRepeat = null;
-    SESSION.notice = 'Sequência parou sem Energia suficiente pra continuar: '+cr.vitorias+' vitória(s), '+cr.derrotas+' derrota(s) em '+(cr.total-cr.remaining)+' de '+cr.total+' luta(s) pedidas.';
-    logAction('batalha', 'Sequência de lutas parou por falta de Energia: '+cr.vitorias+' vitória(s), '+cr.derrotas+' derrota(s) em '+(cr.total-cr.remaining)+' de '+cr.total+' luta(s) pedidas.');
-    mutate();
-    return;
-  }
-  cr.remaining--;
-  iniciarLutaDeZona(cr.leadId, cr.zonaId, true); // já confirmou a sequência 1x -- não pergunta discrepância de novo a cada luta
+  mutate();
 };
 
 /* ============================================================
@@ -6976,7 +6966,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', capturaRepeat:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null };
   render();
 };
 
@@ -7094,6 +7084,12 @@ function zonaByStatus(id){ return ZONAS.filter(function(z){ return z.id===id; })
    Captura); Mestre Especialista continua com o próprio custo (não
    pertence a uma Zona). */
 function custoEnergiaZona(idx){ return 5 * (clampInt(idx,0,ZONAS.length-1) + 1); }
+/* Cap. leva desta sessão: "Os mestres, precisam ter uma entrada
+   uniforme de energia. Todos eles vão custar 300 energias" --
+   substitui o custo antigo (20×Nível do Ace, que variava Mestre a
+   Mestre conforme a progressão) por um valor FIXO, igual pros 8
+   Mestres Especialistas (ver startBattle e ginasiosScreenHTML). */
+var MESTRE_CUSTO_ENERGIA = 300;
 /* Piscina selvagem "de verdade" da Zona -- só quem tem nivelTipico
    dentro da faixa exata dela (nunca Lendário/Mítico). */
 function wildPoolForZona(zona){
@@ -7210,48 +7206,63 @@ function iniciarLutaDeZona(leadId, zonaId, skipDiscrepancia){
   markSeen(sp.num);
   startBattle('wild', { leadPartyId: leadId, wildNum: sp.num, wildLevel: level, zonaIdx: idx }, skipDiscrepancia);
 }
-DT.gaEntrarCaptura = function(leadId, zonaId){ iniciarLutaDeZona(leadId, zonaId, false); };
+/* Cap. leva desta sessão: enquanto uma sequência automática (ver
+   STATE.captureSequence mais abaixo) está rodando, NENHUMA luta nova
+   pode começar por fora dela -- senão o tick da sequência (que roda
+   sozinho, sem esperar clique nenhum) e um clique manual do jogador
+   podiam disputar a MESMA STATE.battle ao mesmo tempo. */
+function sequenciaAtivaBloqueando(){
+  return !!(STATE.captureSequence && !STATE.captureSequence.finished);
+}
+DT.gaEntrarCaptura = function(leadId, zonaId){
+  if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar (o progresso aparece aqui mesmo, na Área de Captura).'; render(); return; }
+  iniciarLutaDeZona(leadId, zonaId, false);
+};
 
-/* Cap. leva desta sessão: "o treinador pode digitar a quantidade de
-   vezes que ele quer ir (que pode corresponder ao máximo de vezes
-   que ele tem energia) ou dar a opção de ele usar TODA a energia
-   disponível" -- lutar várias vezes seguidas numa Zona sem precisar
-   clicar "Entrar na mata" de novo a cada luta. SESSION.capturaRepeat
-   guarda o estado da sequência (sobrevive a cada STATE.battle indo e
-   voltando, já que cada luta some inteira ao terminar); o
-   encadeamento de verdade acontece dentro de DT.gaEncerrarBatalha
-   (o ÚNICO ponto onde toda luta -- vitória, derrota ou depois de
-   decidir a Pokébola -- realmente "fecha"), não aqui: aqui só
-   prepara o contador e dispara a 1ª luta, exatamente como um clique
-   normal em "Entrar na mata". */
+/* Cap. leva desta sessão: "ele tem que dar o aviso ANTES de começar a
+   luta e não deixar seguir, ou o número VOLTAR pra quantidade máximo
+   que o usuário pode. Nunca deixar passar e dar o aviso lá em cima" --
+   se o pedido passa do que a Energia ATUAL realmente paga (custo fixo
+   por Zona × quantidade, ver custoEnergiaZona), a sequência NEM
+   COMEÇA: só avisa no banner do topo (bannersHTML) e devolve o número
+   máximo pro campo de novo (SESSION.capturaQtdSugerida, lido em
+   capturaScreenHTML) -- nunca deixa passar com o valor pedido, o
+   jogador precisa clicar de novo (já com o campo certo) pra confirmar.
+
+   "batalhas múltiplas... tem que ser automáticas. Não parando nem pra
+   evolução... isso é só para o caso de multiplos combates": só 2+
+   lutas entram no fluxo automático (SESSION.pendingSequenciaConfirm,
+   respondido por DT.gaConfirmarSequencia) -- pedir 1 luta só continua
+   sendo o mesmo clique manual de sempre, sem popup nenhum. */
 function iniciarSequenciaDeCaptura(leadId, zonaId, qtd){
+  if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar.'; render(); return; }
   var zona = zonaByStatus(zonaId);
   if(!zona){ SESSION.error='Zona inválida.'; render(); return; }
   qtd = Math.floor(Number(qtd));
   if(!qtd || qtd<1){ SESSION.error='Digite uma quantidade de lutas válida (1 ou mais).'; render(); return; }
-  /* Cap. leva desta sessão: "A quantidade de lutas tem que ser
-     limitado a energia atual que o jogador possui... se ele tem 100
-     de energia e vai fazer uma luta que custa 5, ele pode lutar no
-     máximo 20. Trava isso no combate desejado" -- a quantidade PEDIDA
-     nunca passa do que a Energia ATUAL realmente paga (custo fixo por
-     Zona × quantidade, ver custoEnergiaZona) -- trava aqui, ANTES de
-     começar a 1ª luta, em vez de deixar a sequência tentar ir além e
-     parar no meio do caminho sem querer. */
   var custo = custoEnergiaZona(ZONAS.indexOf(zona));
   var maxComEnergia = Math.floor((STATE.energy||0)/custo);
   if(maxComEnergia<1){ SESSION.error='Energia insuficiente pra nem 1 luta nessa Zona (custa '+custo+', você tem '+(STATE.energy||0)+').'; render(); return; }
-  var qtdTravada = Math.min(qtd, maxComEnergia);
-  SESSION.capturaRepeat = { leadId:leadId, zonaId:zonaId, total:qtdTravada, remaining:qtdTravada-1, vitorias:0, derrotas:0 };
-  if(qtdTravada<qtd){
-    SESSION.notice = '⚠️ Você pediu '+qtd+' luta(s), mas sua Energia atual ('+STATE.energy+') só paga '+qtdTravada+' nessa Zona (custa '+custo+' cada) -- a sequência foi travada em '+qtdTravada+'.';
+  if(qtd>maxComEnergia){
+    SESSION.error = '⚠️ Você pediu '+qtd+' luta(s), mas sua Energia atual ('+STATE.energy+') só paga '+maxComEnergia+' nessa Zona (custa '+custo+' cada). Ajustei o campo pra '+maxComEnergia+' -- clique em "Lutar Várias Vezes" de novo pra confirmar.';
+    SESSION.capturaQtdSugerida = { zonaId: zonaId, qtd: maxComEnergia };
+    render();
+    return;
   }
-  logAction('batalha', 'Iniciou uma sequência de '+qtdTravada+' luta(s) na Zona '+zona.nome+(qtdTravada<qtd?' (pediu '+qtd+', travado pela Energia disponível)':'')+'.');
-  iniciarLutaDeZona(leadId, zonaId, false);
+  SESSION.capturaQtdSugerida = null;
+  if(qtd===1){
+    logAction('batalha', 'Iniciou uma luta na Zona '+zona.nome+'.');
+    iniciarLutaDeZona(leadId, zonaId, false);
+    return;
+  }
+  SESSION.pendingSequenciaConfirm = { leadId: leadId, zonaId: zonaId, qtd: qtd };
+  render();
 }
 DT.gaIniciarLutasVarias = function(leadId, zonaId, inputEl){
   iniciarSequenciaDeCaptura(leadId, zonaId, inputEl && inputEl.value);
 };
 DT.gaIniciarLutasComTodaEnergia = function(leadId, zonaId){
+  if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar.'; render(); return; }
   var zona = zonaByStatus(zonaId);
   if(!zona) return;
   var custo = custoEnergiaZona(ZONAS.indexOf(zona));
@@ -7259,7 +7270,253 @@ DT.gaIniciarLutasComTodaEnergia = function(leadId, zonaId){
   if(qtd<1){ SESSION.error = 'Energia insuficiente pra nem 1 luta nessa Zona (custa '+custo+', você tem '+(STATE.energy||0)+').'; render(); return; }
   iniciarSequenciaDeCaptura(leadId, zonaId, qtd);
 };
+/* Popup de confirmação da sequência automática (Cap. leva desta
+   sessão): "pergunta se ele quer tentar que o sistema capture, cure
+   automaticamente... elas precisam ser independentes" -- 2 toggles
+   sem relação um com o outro, lidos direto dos <input type=checkbox>
+   do popup (ver pendingSequenciaConfirmPopupHTML). */
+DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl){
+  var psc = SESSION.pendingSequenciaConfirm; if(!psc) return;
+  SESSION.pendingSequenciaConfirm = null;
+  var autoCapturar = !!(autoCapEl && autoCapEl.checked);
+  var autoCurar = !!(autoCurEl && autoCurEl.checked);
+  var zona = zonaByStatus(psc.zonaId);
+  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, finished:false, pararSemEnergia:false };
+  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
+  mutate();
+  captureSequenceTick(); // dispara a 1ª luta na hora, sem esperar o próximo tick do relógio de fundo
+};
+DT.gaCancelarSequencia = function(){ SESSION.pendingSequenciaConfirm = null; render(); };
+
+/* ============================================================
+   Motor da sequência automática (Cap. leva desta sessão -- "batalhas
+   múltiplas... tem que ser automáticas. Não parando nem pra evolução"
+   + "Se eu atualizo a tela, no meio do combate multiplo, ele
+   simplesmente perde a sequencia. Isso não pode ocorrer. O sistema
+   tem que rodar por trás independente da minha tela"):
+
+   TODO o estado de uma sequência vive em STATE.captureSequence, NUNCA
+   em SESSION -- então é salvo no Firestore igual qualquer outra coisa
+   do jogo (mutate -> queueSave) e sobrevive a um F5/fechar-e-abrir a
+   aba de novo. Quem realmente empurra a sequência pra frente é
+   captureSequenceTick(), chamado (a) na hora, assim que o jogador
+   confirma o popup de captura/cura automática, e (b) sozinho, de
+   tempos em tempos, pelo setInterval lá embaixo -- exatamente o
+   mesmo padrão de energyTickLoop: roda IGUAL não importa qual tela
+   está sendo mostrada (SESSION.screen), então voltar pra Área de
+   Captura depois de um F5 mostra o progresso de onde a sequência
+   realmente está, sem precisar clicar em nada.
+
+   Limite honesto (documentado, não escondido): isso só continua
+   rodando enquanto a ABA do navegador continua aberta de verdade --
+   fechar a aba pausa o relógio, igual qualquer app só-cliente sem
+   servidor próprio por trás (esse protótipo não tem Cloud Function
+   nem backend -- só o Firestore como banco). Reabrir a aba (ou só dar
+   F5) retoma sozinho. */
+
+/* Item de cura "mais recomendado" pro gatilho de cura no meio de uma
+   luta automática -- prefere o MENOR item que já cobre o PV que falta
+   AGORA (nunca estoura uma Hiperpoção numa arranhadura), e só cai pro
+   melhor disponível se nenhum cobrir tudo sozinho. */
+function itemCuraRecomendado(faltaPct){
+  var disponiveis = GA_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0; });
+  if(!disponiveis.length) return null;
+  var cobrem = disponiveis.filter(function(it){ return it.curaPct>=faltaPct; });
+  if(cobrem.length){
+    cobrem.sort(function(a,b){ return a.curaPct-b.curaPct; }); // o menor que já basta
+    return cobrem[0];
+  }
+  disponiveis.sort(function(a,b){ return b.curaPct-a.curaPct; }); // nenhum cobre tudo -- usa o mais forte que tem
+  return disponiveis[0];
+}
+/* Mesma ideia pra Pokébola: a mais fraca/barata que já bate uma
+   chance "boa o bastante" de captura (70%), só subindo pra mais forte
+   se nenhuma disponível bater esse patamar. */
+var POKEBOLA_CHANCE_ALVO = 0.70;
+function pokebolaRecomendada(num){
+  var disponiveis = POKEBALLS.filter(function(bl){ return (STATE.pokebolas[bl.key]||0)>0; });
+  if(!disponiveis.length) return null;
+  var boas = disponiveis.filter(function(bl){ return catchChance(num, bl.key)>=POKEBOLA_CHANCE_ALVO; });
+  if(boas.length){
+    boas.sort(function(a,b){ return catchChance(num,a.key)-catchChance(num,b.key); });
+    return boas[0];
+  }
+  disponiveis.sort(function(a,b){ return catchChance(num,b.key)-catchChance(num,a.key); });
+  return disponiveis[0];
+}
+/* Troca de Pokémon por desmaio SEMPRE acontece (não tem "recusar
+   troca" no jogo -- ver DT.gaTrocarPokemon), independente dos
+   toggles da sequência -- só decide QUAL: o vivo de Nível mais alto
+   (aposta mais segura). */
+function trocaAutomaticaEscolha(b){
+  var vivos = STATE.party.filter(function(p){ var k='p_'+p.id; return b.hp[k]===undefined || b.hp[k]>0; });
+  if(!vivos.length) return null;
+  vivos.sort(function(a,c){ return c.level-a.level; });
+  return vivos[0];
+}
+/* Roda a luta ATIVA sozinha, até terminar, sem esperar clique nenhum
+   -- resolve toda pausa que apareceria pro jogador (cura/troca) do
+   jeito que os toggles autoCurar/autoCapturar mandam, e SEMPRE recusa
+   evolução na hora (nunca decide isso no meio da sequência -- fica
+   pendente de verdade pra perguntar só no fim, ver eligibleEvolution/
+   finalizarSequencia -- recusar não é destrutivo, o Pokémon continua
+   elegível). Reaproveita os MESMOS DT.ga* que o jogador usaria no
+   clique manual (gaUsarItemCura/gaRecusarItemCura/gaTrocarPokemon/
+   gaJogarPokebola/gaResponderEvolucao) -- mesma lógica de sempre,
+   só decidida pelo próprio código em vez de esperar o popup. */
+function resolverLutaAutomaticamente(cs){
+  var guard = 0;
+  while(STATE.battle && !STATE.battle.finished && guard<300){
+    guard++;
+    var b = STATE.battle;
+    if(b.pendingEvolution){ DT.gaResponderEvolucao(false); continue; }
+    if(b.pendingHeal){
+      if(cs.autoCurar){
+        var faltaPct = 1 - (battlerCurrentHP(b.playerActive)/gaHpMax(b.playerActive));
+        var it = itemCuraRecomendado(faltaPct);
+        if(it) DT.gaUsarItemCura(it.key); else DT.gaRecusarItemCura();
+      } else {
+        DT.gaRecusarItemCura(); // toggle desligado -- "a batalha segue sem uso de nada que ele pediu"
+      }
+      continue;
+    }
+    if(b.pendingSwitch){
+      var escolha = trocaAutomaticaEscolha(b);
+      if(escolha) DT.gaTrocarPokemon(escolha.id); else break; // rede de segurança -- não deveria acontecer (ver comentário de trocaAutomaticaEscolha)
+      continue;
+    }
+    break;
+  }
+  var b2 = STATE.battle;
+  if(b2 && b2.finished==='vitoria' && b2.kind==='wild' && !b2.captureDone){
+    if(cs.autoCapturar){
+      var bola = pokebolaRecomendada(b2.oppTeam[0].num);
+      if(bola) DT.gaJogarPokebola(bola.key); else b2.captureDone = true; // sem bola nenhuma na Mochila -- não força
+    } else {
+      b2.captureDone = true; // toggle desligado -- nunca tenta capturar, "sem uso de nada que ele pediu"
+    }
+  }
+}
+/* Fecha a luta que acabou de terminar DENTRO de uma sequência
+   automática -- mesma contabilidade de vitórias/derrotas que o
+   clique manual em "Continuar" fazia, só que sem esperar clique
+   nenhum (ver DT.gaEncerrarBatalha, agora só pro caminho manual). */
+function fecharLutaDaSequencia(cs){
+  var b = STATE.battle;
+  if(b){ if(b.finished==='vitoria') cs.vitorias++; else cs.derrotas++; }
+  STATE.battle = null;
+}
+/* Sequência acabou (ou parou sem Energia no meio do caminho) -- NÃO
+   limpa STATE.captureSequence na hora: fica marcado `finished:true`
+   de propósito, pra tela de resumo com a pergunta de evolução (ver
+   sequenciaFimScreenHTML) também sobreviver a um F5 -- só some de
+   verdade quando o jogador fecha o resumo (DT.gaFecharResumoSequencia). */
+function finalizarSequencia(cs){
+  cs.finished = true;
+  logAction('batalha', 'Sequência automática terminou: '+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' (parou sem Energia suficiente pra continuar)':'')+'.');
+}
+/* O "coração" do relógio de fundo -- chamado na hora (ao confirmar o
+   popup) e, dali em diante, pelo setInterval lá embaixo. Sempre
+   síncrono do início ao fim (sem await/Promise no meio), então nunca
+   corre o risco de duas chamadas se atropelarem. */
+function captureSequenceTick(){
+  var cs = STATE.captureSequence;
+  if(!cs || cs.finished) return;
+  if(STATE.battle){
+    // uma luta já tava em andamento (ex.: retomando depois de um F5 no meio dela) -- resolve ela agora
+    resolverLutaAutomaticamente(cs);
+    if(STATE.battle && STATE.battle.finished) fecharLutaDaSequencia(cs);
+    mutate();
+    return;
+  }
+  if(cs.remaining<=0){ finalizarSequencia(cs); mutate(); return; }
+  var zona = zonaByStatus(cs.zonaId);
+  var custo = zona ? custoEnergiaZona(ZONAS.indexOf(zona)) : Infinity;
+  if(!zona || STATE.energy < custo){
+    cs.pararSemEnergia = true;
+    finalizarSequencia(cs);
+    mutate();
+    return;
+  }
+  cs.remaining--;
+  iniciarLutaDeZona(cs.leadId, cs.zonaId, true); // já confirmou a sequência 1x -- nunca pergunta discrepância de novo
+  if(!STATE.battle){
+    // algo impediu a luta de começar (ex.: o líder escolhido saiu da Equipe no meio da sequência) -- para com o que já foi registrado, em vez de ficar tentando pra sempre
+    cs.pararSemEnergia = false;
+    finalizarSequencia(cs);
+    mutate();
+    return;
+  }
+  resolverLutaAutomaticamente(cs);
+  if(STATE.battle && STATE.battle.finished) fecharLutaDaSequencia(cs);
+  mutate();
+}
+setInterval(function(){ if(STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick(); }, 1500);
+
+/* Quem, no Time atual, JÁ está no Nível certo pra evoluir agora (Cap.
+   leva desta sessão -- pergunta adiada pro FIM da sequência): pura
+   releitura do Nível atual de cada Pokémon contra EVOLUTIONS_DEX (a
+   MESMA eligibleEvolution usada dentro da luta) -- não precisa guardar
+   NENHUM histórico de "quem evoluiu durante a sequência", porque
+   recusar evolução no meio do caminho nunca é destrutivo (ver
+   resolverLutaAutomaticamente acima). */
+function elegiveisParaEvoluirAgora(){
+  return STATE.party.filter(function(p){ return !!eligibleEvolution(p); });
+}
+/* Tela de resumo + pergunta de evolução adiada, mostrada assim que
+   STATE.captureSequence.finished vira true (ver screenHTML mais
+   abaixo -- aparece por CIMA de qualquer tela, do mesmo jeito que a
+   tela de batalha, até o jogador fechar o resumo). */
+function sequenciaFimScreenHTML(){
+  var cs = STATE.captureSequence;
+  var zona = zonaByStatus(cs.zonaId);
+  var elegiveis = elegiveisParaEvoluirAgora();
+  var out = '<div class="ga-card"><h2>🔁 Sequência automática terminou — '+esc2(zona?zona.nome:'?')+'</h2>'+
+    '<p class="ga-hint">'+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' -- parou sem Energia suficiente pra continuar':'')+'.</p>';
+  if(elegiveis.length){
+    out += '<h3 class="ga-subhead">✨ Algum Pokémon pode evoluir agora</h3>'+
+      '<p class="ga-hint">Evolução nunca é decidida no meio de uma sequência automática -- fica pra perguntar só aqui, depois que TODAS as lutas pedidas já terminaram.</p>'+
+      '<div class="ga-poke-grid">'+elegiveis.map(function(p){
+        var sp = speciesByNum(p.num);
+        var evo = eligibleEvolution(p);
+        var toSp = speciesByNum(evo.to);
+        return pokeCardMini(p, '<div class="ga-poke-actions"><p class="ga-hint">Pode evoluir para '+esc2(toSp.name)+'</p>'+
+          '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEvoluirPosSequencia(\''+p.id+'\',true)">✨ Evoluir</button>'+
+          '<button class="ga-btn-sm" onclick="DT.gaEvoluirPosSequencia(\''+p.id+'\',false)">Manter '+esc2(sp.name)+'</button></div>');
+      }).join('')+'</div>';
+  }
+  out += '<div class="ga-btn-row"><button class="ga-btn ga-btn-primary" onclick="DT.gaFecharResumoSequencia()">'+(elegiveis.length?'✔️ Terminei, fechar resumo':'✔️ Fechar')+'</button></div>'+
+    '</div>';
+  return out;
+}
+/* Responde a pergunta de evolução ADIADA (fora de luta -- por isso
+   não mexe em nenhum b.hp/b.log: fora de batalha, todo Pokémon do
+   Time é sempre considerado com PV cheio implícito, ver
+   everyPartyFainted). MESMA troca de Espécie/Habilidade do popup
+   normal (DT.gaResponderEvolucao), só sem o contexto de luta. */
+DT.gaEvoluirPosSequencia = function(partyId, aceitar){
+  var p = STATE.party.filter(function(x){ return x.id===partyId; })[0];
+  if(!p) return;
+  var evo = eligibleEvolution(p);
+  if(!evo){ render(); return; } // não é mais elegível por algum outro motivo -- nada a fazer
+  if(aceitar){
+    var oldSp = speciesByNum(p.num);
+    var newSp = speciesByNum(evo.to);
+    var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
+    p.num = evo.to;
+    if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
+    else p.habilidade = rollAbilityForSpecies(p.num);
+    markSeen(p.num); markCaught(p.num);
+    logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+' (decisão adiada pro fim da sequência automática).');
+  } else {
+    logAction('evolucao', (p.apelido||speciesByNum(p.num).name)+' recusou evoluir (decisão adiada pro fim da sequência automática).');
+  }
+  mutate();
+};
+DT.gaFecharResumoSequencia = function(){ STATE.captureSequence = null; mutate(); };
+
 DT.gaDesafiarMestre = function(leadId, leaderId){
+  if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar.'; render(); return; }
   var leader = GYM_LEADERS.filter(function(l){ return l.id===leaderId; })[0];
   if(!leader) return;
   var idx = GYM_LEADERS.indexOf(leader);
@@ -7496,9 +7753,17 @@ function bannersHTML(){
 function screenHTML(){
   if(!STATE) return wrap(loginScreenHTML());
   if(STATE.battle) return wrap(battleScreenHTML());
+  /* Cap. leva desta sessão: sequência automática que terminou fica
+     travada nessa tela de resumo (com a pergunta de evolução adiada)
+     ATÉ o jogador fechar -- aparece por CIMA de qualquer tela, do
+     mesmo jeito que a tela de batalha acima, e sobrevive a um F5
+     porque STATE.captureSequence.finished é persistido igual tudo
+     mais. */
+  if(STATE.captureSequence && STATE.captureSequence.finished) return wrap(sequenciaFimScreenHTML());
   if(SESSION.dexOpenNum) return wrap(hubScreenHTML() /* mantém o fundo, popup por cima */) + dexPopupHTML(SESSION.dexOpenNum);
   if(SESSION.movesOpenFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + movesPopupHTML(SESSION.movesOpenFor);
   if(SESSION.leaderTeamOpenFor) return wrap(ginasiosScreenHTML() /* mantém o fundo, popup por cima */) + leaderTeamPopupHTML(SESSION.leaderTeamOpenFor);
+  if(SESSION.pendingSequenciaConfirm) return wrap(capturaScreenHTML()) + pendingSequenciaConfirmPopupHTML();
   if(SESSION.pendingDiscrepancia || SESSION.pendingEnergia){
     var bgScreen = SESSION.screen==='ginasios' ? ginasiosScreenHTML() : capturaScreenHTML();
     return wrap(bgScreen) + (SESSION.pendingDiscrepancia ? pendingDiscrepanciaPopupHTML() : pendingEnergiaPopupHTML());
@@ -8021,6 +8286,16 @@ function capturaScreenHTML(){
   var out = '<div class="ga-card"><h2>🌿 Área de Captura</h2>'+
     '<p class="ga-hint">Escolha quem vai liderar a luta -- todas as Zonas ficam abertas pra qualquer Pokémon da Equipe, mesmo bem acima do Nível dele (a responsabilidade de entrar numa Zona forte demais é do Treinador). Quanto mais alta a Zona, maior a chance de cair num Treinador aleatório em vez de um selvagem (selvagem forte fica mais raro na natureza) -- Treinador paga mais Pokédólares, mas não dá pra capturar o Pokémon dele. Só nas Zonas Elite/Lendário existe também uma chance rara de cair num Treinador de Elite (roster de 6, força de Mestre) -- o único encontro comum que também pode largar Pokéticket.</p>'+
     '<div class="ga-hint">🔋 '+STATE.energy+'/1000 de Energia · 🎫 '+(STATE.poketickets||0)+' Pokéticket(s)</div>'+
+    /* Cap. leva desta sessão: "Se eu atualizar e voltar pra área de
+       captura ele tem que estar lá pra eu ver o que aconteceu" -- essa
+       tarja SEMPRE aparece enquanto uma sequência automática ainda
+       está rolando, não importa se foi ESTA aba que a começou ou se o
+       jogador só voltou aqui depois de um F5 -- o progresso vem direto
+       de STATE.captureSequence (persistido), nunca de nada só-desta-
+       sessão. */
+    (STATE.captureSequence && !STATE.captureSequence.finished
+      ? '<div class="ga-banner ok">🔁 Sequência automática rodando: luta '+(STATE.captureSequence.total-STATE.captureSequence.remaining)+' de '+STATE.captureSequence.total+' ('+STATE.captureSequence.vitorias+'✅ '+STATE.captureSequence.derrotas+'☠️) -- continua sozinha mesmo se você sair dessa tela ou recarregar a página.</div>'
+      : '')+
     ticketParaEnergiaWidgetHTML('captura')+
     '<div class="ga-poke-grid">'+STATE.party.map(function(p){
       var sel = p.id===lead.id;
@@ -8036,6 +8311,13 @@ function capturaScreenHTML(){
       var custo = custoEnergiaZona(idx);
       var maxComEnergia = Math.floor((STATE.energy||0)/custo);
       var inputId = 'gaCapQtd_'+z.id;
+      /* Cap. leva desta sessão: "o número VOLTAR pra quantidade máximo
+         que o usuário pode" -- quando iniciarSequenciaDeCaptura recusa
+         um pedido acima do que a Energia paga, ela guarda o valor
+         travado aqui (SESSION.capturaQtdSugerida) só pra ESSA Zona --
+         o campo já vem preenchido com o número certo, pronto pro
+         jogador só clicar de novo pra confirmar. */
+      var qtdSugerida = (SESSION.capturaQtdSugerida && SESSION.capturaQtdSugerida.zonaId===z.id) ? SESSION.capturaQtdSugerida.qtd : null;
       return '<div class="ga-zona-card">'+
         '<div class="ga-zona-nome">'+esc2(z.nome)+'</div>'+
         '<div class="ga-hint">'+faixa+' · '+chanceTexto+' · ⚡'+custo+' por luta</div>'+
@@ -8043,7 +8325,7 @@ function capturaScreenHTML(){
         '<div class="ga-zona-actions">'+
           '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntrarCaptura(\''+lead.id+'\',\''+z.id+'\')">⚔️ Entrar na mata</button>'+
           '<div class="ga-capqtd-row">'+
-            '<input type="number" min="1" max="'+Math.max(1,maxComEnergia)+'" step="1" id="'+inputId+'" placeholder="Qtd (máx '+maxComEnergia+')" title="Sua Energia atual trava a sequência em, no máximo, '+maxComEnergia+' luta(s) nessa Zona" class="ga-capqtd-input">'+
+            '<input type="number" min="1" max="'+Math.max(1,maxComEnergia)+'" step="1" id="'+inputId+'"'+(qtdSugerida?' value="'+qtdSugerida+'"':'')+' placeholder="Qtd (máx '+maxComEnergia+')" title="Sua Energia atual trava a sequência em, no máximo, '+maxComEnergia+' luta(s) nessa Zona" class="ga-capqtd-input">'+
             '<button class="ga-btn-sm" onclick="DT.gaIniciarLutasVarias(\''+lead.id+'\',\''+z.id+'\',document.getElementById(\''+inputId+'\'))">🔁 Lutar Várias Vezes</button>'+
           '</div>'+
           '<button class="ga-btn-sm" '+(maxComEnergia<1?'disabled':'')+' title="Sua Energia atual dá pra '+maxComEnergia+' luta(s) nessa Zona" onclick="DT.gaIniciarLutasComTodaEnergia(\''+lead.id+'\',\''+z.id+'\')">⚡ Usar Toda a Energia ('+maxComEnergia+' luta'+(maxComEnergia===1?'':'s')+')</button>'+
@@ -8063,7 +8345,7 @@ function ginasiosScreenHTML(){
     var aceLevel = gymAceLevel(idx);
     return '<div class="ga-leader-row'+(conquistado?' done':'')+(bloqueado?' locked':'')+'">'+
       '<img class="ga-leader-emoji" src="'+spriteUrl(gymAceNum(l))+'" alt="" loading="lazy" title="'+esc2(l.emoji)+' '+esc2(l.tipo)+'">'+
-      '<div class="ga-leader-info"><strong>'+esc2(l.nome)+'</strong><span class="ga-hint">Tipo '+l.tipo+' · Ace Nv. '+aceLevel+' · '+l.roster.length+' Pokémon · custo '+(20*aceLevel)+' energia · '+l.insignia+'</span></div>'+
+      '<div class="ga-leader-info"><strong>'+esc2(l.nome)+'</strong><span class="ga-hint">Tipo '+l.tipo+' · Ace Nv. '+aceLevel+' · '+l.roster.length+' Pokémon · custo '+MESTRE_CUSTO_ENERGIA+' energia · '+l.insignia+'</span></div>'+
       '<button class="ga-btn-sm" onclick="DT.gaOpenLeaderTeam(\''+l.id+'\')">👁️ Ver Time</button>'+
       (conquistado ? '<span class="ga-badge-won">🎖️ Conquistada</span>' : (bloqueado ? '<span class="ga-hint">🔒 Vença o Mestre anterior</span>' : '<select id="gaLead-'+l.id+'">'+STATE.party.map(function(p){ return '<option value="'+p.id+'">'+esc2(p.apelido||speciesByNum(p.num).name)+' (Nv. '+p.level+')</option>'; }).join('')+'</select><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaDesafiarMestre(document.getElementById(\'gaLead-'+l.id+'\').value,\''+l.id+'\')">⚔️ Desafiar</button>'))+
     '</div>';
@@ -8125,6 +8407,28 @@ function pendingEnergiaPopupHTML(){
     '<div class="ga-btn-row">'+
       '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarUsarTickets()">🎫 Usar e entrar</button>'+
       '<button class="ga-btn-sm" onclick="DT.gaCancelarUsarTickets()">Cancelar</button>'+
+    '</div>'+
+  '</div></div>';
+}
+/* Popup de confirmação da sequência automática (Cap. leva desta
+   sessão -- "o cara escolheu mais de 1 combate o jogo pergunta se ele
+   quer tentar que o sistema capture, cure automaticamente... elas
+   precisam ser independentes"): 2 checkboxes soltos, sem relação um
+   com o outro, lidos direto pelos <input> na hora de confirmar (ver
+   DT.gaConfirmarSequencia). */
+function pendingSequenciaConfirmPopupHTML(){
+  var psc = SESSION.pendingSequenciaConfirm;
+  var zona = zonaByStatus(psc.zonaId);
+  return '<div class="ga-overlay" onclick="DT.gaCancelarSequencia()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelarSequencia()">✕</button>'+
+    '<h2>🔁 Sequência de '+psc.qtd+' lutas — '+esc2(zona?zona.nome:'?')+'</h2>'+
+    '<p class="ga-hint">Isso roda '+psc.qtd+' luta(s) seguidas de forma AUTOMÁTICA, sem parar nem pra evolução (a decisão de evoluir fica pra perguntar só no FINAL da sequência inteira). Escolha, de forma independente, o que o jogo pode resolver sozinho no meio de cada luta:</p>'+
+    '<label class="ga-check-row"><input type="checkbox" id="gaSeqAutoCap"> 🎯 Tentar capturar automaticamente (usa a Pokébola mais recomendada pra situação)</label>'+
+    '<label class="ga-check-row"><input type="checkbox" id="gaSeqAutoCur"> 💊 Curar automaticamente (usa o item de cura mais recomendado pra situação)</label>'+
+    '<p class="ga-hint">Se deixar as duas desmarcadas, a sequência roda do mesmo jeito, só que sem gastar nenhum item nem Pokébola.</p>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarSequencia(document.getElementById(\'gaSeqAutoCap\'),document.getElementById(\'gaSeqAutoCur\'))">▶️ Começar sequência</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaCancelarSequencia()">Cancelar</button>'+
     '</div>'+
   '</div></div>';
 }
@@ -8340,7 +8644,7 @@ function battleScreenHTML(){
     '<h2>'+esc2(b.label)+'</h2>'+
     (w.tipo!=='neutro' ? '<div class="ga-weather-badge">'+WEATHER_ICONS[w.tipo]+' '+esc2(WEATHER_LABELS[w.tipo])+(w.turnsLeft!=null?' ('+w.turnsLeft+' turno'+(w.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
     (terr.tipo!=='neutro' ? '<div class="ga-weather-badge">'+TERRAIN_ICONS[terr.tipo]+' '+esc2(TERRAIN_LABELS[terr.tipo])+(terr.turnsLeft!=null?' ('+terr.turnsLeft+' turno'+(terr.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
-    (SESSION.capturaRepeat ? '<div class="ga-weather-badge">🔁 Sequência: luta '+(SESSION.capturaRepeat.total-SESSION.capturaRepeat.remaining)+' de '+SESSION.capturaRepeat.total+' ('+SESSION.capturaRepeat.vitorias+'✅ '+SESSION.capturaRepeat.derrotas+'☠️)</div>' : '')+
+    (STATE.captureSequence && !STATE.captureSequence.finished ? '<div class="ga-weather-badge">🔁 Sequência automática: luta '+(STATE.captureSequence.total-STATE.captureSequence.remaining)+' de '+STATE.captureSequence.total+' ('+STATE.captureSequence.vitorias+'✅ '+STATE.captureSequence.derrotas+'☠️) -- só aparece aqui porque algo travou a resolução automática; use os botões abaixo pra destravar.</div>' : '')+
     '<div class="ga-battle-field">'+
       '<div class="ga-battle-side"><img src="'+spriteUrl(opp.num)+'" alt=""><div>'+esc2(oppSp.name)+' Nv.'+opp.level+'</div>'+hpBarHTML(oppHP,oppMax)+'</div>'+
       '<div class="ga-battle-vs">VS</div>'+
