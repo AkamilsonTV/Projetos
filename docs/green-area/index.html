@@ -5335,7 +5335,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
 
 function freshState(trainerName){
   return {
@@ -7145,7 +7145,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
   render();
 };
 
@@ -8181,28 +8181,52 @@ function sequenciaRelatorioHTML(cs){
     }).join('')+
     '</div>';
 }
+/* Cap. leva desta sessão: "Ainda quero que ele seja um popup" (a
+   evolução adiada de uma sequência automática também vira popup de
+   prioridade, mesmo componente `.ga-overlay` do popup em luta manual
+   -- antes era uma lista de cards dentro da própria tela de resumo,
+   agora aparece UM DE CADA VEZ, por cima de tudo, igual a evolução em
+   luta manual). `SESSION.evolucaoSequenciaDecididos` rastreia quem já
+   foi respondido NESTA rodada de resumo (aceitar OU recusar) -- sem
+   isso, `elegiveisParaEvoluirAgora()` continuaria achando o MESMO
+   Pokémon recusado elegível pra sempre (nada muda a elegibilidade
+   dele só por ter recusado -- "se ele impedir, todo Nível pergunte de
+   novo" só vale pro PRÓXIMO level up de verdade, não a cada render) e
+   o popup reabriria sozinho em loop. Zerado ao fechar o resumo (ver
+   DT.gaFecharResumoSequencia). */
 function sequenciaFimScreenHTML(){
   var cs = STATE.captureSequence;
   var zona = zonaByStatus(cs.zonaId);
-  var elegiveis = elegiveisParaEvoluirAgora();
+  var pendentes = elegiveisParaEvoluirAgora().filter(function(p){ return (SESSION.evolucaoSequenciaDecididos||[]).indexOf(p.id)===-1; });
   var out = '<div class="ga-card"><h2>🔁 Sequência automática terminou — '+esc2(zona?zona.nome:'?')+'</h2>'+
     '<p class="ga-hint">'+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' -- parou sem Energia suficiente pra continuar':'')+'.</p>'+
     sequenciaRelatorioHTML(cs);
-  if(elegiveis.length){
-    out += '<h3 class="ga-subhead">✨ Algum Pokémon pode evoluir agora</h3>'+
-      '<p class="ga-hint">Evolução nunca é decidida no meio de uma sequência automática -- fica pra perguntar só aqui, depois que TODAS as lutas pedidas já terminaram.</p>'+
-      '<div class="ga-poke-grid">'+elegiveis.map(function(p){
-        var sp = speciesByNum(p.num);
-        var evo = eligibleEvolution(p);
-        var toSp = speciesByNum(evo.to);
-        return pokeCardMini(p, '<div class="ga-poke-actions"><p class="ga-hint">Pode evoluir para '+esc2(toSp.name)+'</p>'+
-          '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEvoluirPosSequencia(\''+p.id+'\',true)">✨ Evoluir</button>'+
-          '<button class="ga-btn-sm" onclick="DT.gaEvoluirPosSequencia(\''+p.id+'\',false)">Manter '+esc2(sp.name)+'</button></div>');
-      }).join('')+'</div>';
+  if(pendentes.length){
+    out += '<p class="ga-hint">✨ Algum Pokémon pode evoluir agora -- decida no popup antes de fechar o resumo.</p>';
   }
-  out += '<div class="ga-btn-row"><button class="ga-btn ga-btn-primary" onclick="DT.gaFecharResumoSequencia()">'+(elegiveis.length?'✔️ Terminei, fechar resumo':'✔️ Fechar')+'</button></div>'+
+  out += '<div class="ga-btn-row"><button class="ga-btn ga-btn-primary" onclick="DT.gaFecharResumoSequencia()">'+(pendentes.length?'✔️ Terminei, fechar resumo':'✔️ Fechar')+'</button></div>'+
     '</div>';
+  if(pendentes.length) out += evolucaoSequenciaPopupHTML(pendentes[0]);
   return out;
+}
+/* Popup de evolução adiada (ver comentário acima) -- MESMO visual do
+   popup de evolução em luta manual (evolucaoPopupHTML), com a
+   ressalva de que fora de luta não existe `b`/log de batalha nenhum
+   (ver DT.gaEvoluirPosSequencia). */
+function evolucaoSequenciaPopupHTML(p){
+  var sp = speciesByNum(p.num);
+  var evo = eligibleEvolution(p);
+  var toSp = speciesByNum(evo.to);
+  return '<div class="ga-overlay" onclick="DT.gaEvoluirPosSequencia(\''+p.id+'\',false)"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaEvoluirPosSequencia(\''+p.id+'\',false)">✕</button>'+
+    '<h2>✨ '+esc2(sp.name)+' pode evoluir!</h2>'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(evo.to)+'" alt="">'+
+    '<p class="ga-hint">Evoluir '+esc2(sp.name)+' pra '+esc2(toSp.name)+' agora?</p>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEvoluirPosSequencia(\''+p.id+'\',true)">✨ Evoluir</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaEvoluirPosSequencia(\''+p.id+'\',false)">Não, manter '+esc2(sp.name)+'</button>'+
+    '</div>'+
+  '</div></div>';
 }
 /* Responde a pergunta de evolução ADIADA (fora de luta -- por isso
    não mexe em nenhum b.hp/b.log: fora de batalha, todo Pokémon do
@@ -8212,6 +8236,8 @@ function sequenciaFimScreenHTML(){
 DT.gaEvoluirPosSequencia = function(partyId, aceitar){
   var p = STATE.party.filter(function(x){ return x.id===partyId; })[0];
   if(!p) return;
+  SESSION.evolucaoSequenciaDecididos = SESSION.evolucaoSequenciaDecididos || [];
+  if(SESSION.evolucaoSequenciaDecididos.indexOf(partyId)===-1) SESSION.evolucaoSequenciaDecididos.push(partyId);
   var evo = eligibleEvolution(p);
   if(!evo){ render(); return; } // não é mais elegível por algum outro motivo -- nada a fazer
   if(aceitar){
@@ -8228,7 +8254,7 @@ DT.gaEvoluirPosSequencia = function(partyId, aceitar){
   }
   mutate();
 };
-DT.gaFecharResumoSequencia = function(){ STATE.captureSequence = null; mutate(); };
+DT.gaFecharResumoSequencia = function(){ STATE.captureSequence = null; SESSION.evolucaoSequenciaDecididos = []; mutate(); };
 
 DT.gaDesafiarMestre = function(leadId, leaderId){
   if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar.'; render(); return; }
