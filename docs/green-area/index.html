@@ -215,6 +215,7 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-leader-row.locked{ opacity:.45; }
 .ga-badge-won{ font-size:.78rem; font-weight:700; color:var(--accent); }
 
+.ga-weather-badge{ display:inline-block; font-size:.82rem; font-weight:700; background:var(--bg2); border:1px solid var(--line); border-radius:999px; padding:4px 12px; margin:2px 0 6px; }
 .ga-battle-field{ display:flex; align-items:center; justify-content:space-around; gap:12px; margin:10px 0; flex-wrap:wrap; }
 .ga-battle-side{ text-align:center; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; min-width:150px; }
 .ga-battle-side img{ width:72px; height:72px; image-rendering:pixelated; }
@@ -5622,23 +5623,19 @@ function startBattle(kind, opts, skipDiscrepancia){
   var label;
   if(kind==='wild'){
     oppTeam = [buildBattlerWild(opts.wildNum, opts.wildLevel)];
-    custoEnergia = 10 * opts.wildLevel;
+    custoEnergia = custoEnergiaZona(opts.zonaIdx);
     label = 'Área de Captura';
   } else if(kind==='rival'){
     oppTeam = opts.rivalTeam.map(function(slot,i){ return buildBattlerTrainer(slot.num, slot.level, 'rival_'+i); });
-    var maxLvlRival = opts.rivalTeam.reduce(function(m,s){ return Math.max(m,s.level); }, 1);
-    custoEnergia = 15 * maxLvlRival;
+    custoEnergia = custoEnergiaZona(opts.zonaIdx);
     label = opts.rivalNome+' te desafiou!';
   } else if(kind==='elite'){
     /* Cap. leva desta sessão: "criar uns treinadores de nivel dos
        mestres que aparecem a partir do nivel elite" -- roster de 6
        Pokémon fortes (igual um Mestre), mas NÃO dá Insígnia nenhuma
-       (só GYM_LEADERS/kind 'trainer' dá -- ver finishBattle). Custo de
-       Energia usa a MESMA fórmula por Nível de um Mestre (20×), já
-       que a força do time é equivalente. */
+       (só GYM_LEADERS/kind 'trainer' dá -- ver finishBattle). */
     oppTeam = opts.eliteTeam.map(function(slot,i){ return buildBattlerTrainer(slot.num, slot.level, 'elite_'+i); });
-    var maxLvlElite = opts.eliteTeam.reduce(function(m,s){ return Math.max(m,s.level); }, 1);
-    custoEnergia = 20 * maxLvlElite;
+    custoEnergia = custoEnergiaZona(opts.zonaIdx);
     label = opts.eliteNome+' (Treinador de Elite) te desafiou!';
   } else {
     var leader = GYM_LEADERS.filter(function(l){ return l.id===opts.leaderId; })[0];
@@ -5712,7 +5709,8 @@ function startBattle(kind, opts, skipDiscrepancia){
     pendingEvolution: null,
     oppDefeatedLevels: [],
     finished: null,
-    captureDone: false
+    captureDone: false,
+    weather: { tipo:'neutro', turnsLeft:null } // Cap. Clima -- por LUTA, sempre começa Neutro
   };
   runBattleUntilPause();
   mutate();
@@ -5855,6 +5853,14 @@ function runBattleUntilPause(){
     if(b.hp[atkB.key]<=0 && resolveFaintAfterDamage(atkB, null, b)) return;
     applyEndOfTurnStatus(defB, b);
     if(b.hp[defB.key]<=0 && resolveFaintAfterDamage(defB, null, b)) return;
+
+    /* Cap. Clima: chip-dano de Areia/Granizo + conta regressiva dos
+       turnos -- é efeito de CAMPO (não de um battler só), então roda
+       DEPOIS do residual de Status de cada um, na mesma "FIM de
+       Rodada", com o mesmo cuidado de checar desmaio antes de seguir. */
+    applyWeatherResidual(atkB, defB, b);
+    if(b.hp[atkB.key]<=0 && resolveFaintAfterDamage(atkB, null, b)) return;
+    if(b.hp[defB.key]<=0 && resolveFaintAfterDamage(defB, null, b)) return;
   }
   // guard estourou (não deveria em uso normal) -- força um resultado justo, sem travar o jogo
   if(!b.finished){
@@ -5995,11 +6001,21 @@ function finishBattle(result){
    ============================================================ */
 var XP_PARA_LEVEL_UP = 10;
 function rangeIndexForLevel(level){ return clampInt(Math.floor((level-1)/10), 0, 9); }
+/* Cap. leva desta sessão (substitui a régua antiga de cima --
+   "1 abaixo/mesma/1 acima = sempre 1 XP, só escala 2+ acima"): "Pokémon
+   dentro da sua range de nível ganhará 2xp por combate vencido, 1
+   categoria abaixo ganhará 1 e a cada categoria acima irá ser somado 1
+   de xp aos 2 de base. Categorias abaixo de 1 da base não dão XP." --
+     mesma Faixa (diff 0)      -> 2 XP (base)
+     1 Faixa ABAIXO (diff -1)  -> 1 XP
+     2+ Faixas ABAIXO (diff<=-2) -> 0 XP (evita farm infinito de selvagem fraco)
+     N Faixas ACIMA (diff>=1)  -> 2 + diff XP (1 acima=3, 2 acima=4, 3 acima=5...) */
 function xpParaVitoria(nivelProprio, nivelOponente){
   var diff = rangeIndexForLevel(nivelOponente) - rangeIndexForLevel(nivelProprio);
-  if(diff<=-2) return 0; // oponente 2+ Faixas ABAIXO -- não ajuda a evoluir, evita farm infinito
-  if(diff>=2) return diff; // 2 Faixas acima = 2XP, 3 = 3XP... "sobe um a cada Faixa acima"
-  return 1; // mesma Faixa, 1 abaixo ou 1 acima
+  if(diff<=-2) return 0;
+  if(diff===-1) return 1;
+  if(diff===0) return 2;
+  return 2+diff; // 1+ Faixas acima
 }
 
 /* Evolução (Cap. "Na hora de evoluir, peço que pergunte ao treinador
@@ -6221,6 +6237,89 @@ function typeEffMultiplier(moveTipo, defTipo1, defTipo2){
   });
   return mult;
 }
+
+/* ============================================================
+   Clima (Cap. leva desta sessão: "Quero que traga o clima como no
+   original. Então vamos fazer dessa forma."): 4 climas reais + Neutro
+   (padrão), setados pelos próprios Movimentos oficiais de clima
+   (Rain Dance/Sunny Day/Sandstorm/Hail) por 5 turnos, com efeito
+   MECÂNICO real -- e não a versão aditiva do RPG principal (aquele
+   motor inteiro é de mesa, d10/±número fixo); aqui os efeitos
+   entram na fórmula MULTIPLICATIVA oficial (ver officialDamage):
+     - Chuva: Água ×1,5 / Fogo ×0,5. Sol Forte: Fogo ×1,5 / Água ×0,5.
+     - Areia/Granizo: 1/16 do PV Máximo de dano residual por Rodada
+       em quem NÃO é imune por Tipo (Areia poupa Pedra/Terra/Aço,
+       Granizo poupa Gelo -- mesma imunidade oficial).
+     - Moonlight/Synthesis/Morning Sun (os 3 únicos golpes de cura
+       oficialmente sensíveis ao clima): curam 67% no Sol, 25% sob
+       qualquer clima "ruim" (Chuva/Areia/Granizo), 50% no Neutro.
+     - Congelamento nunca acontece sob Sol Forte (oficial).
+   Vive em STATE.battle.weather = {tipo, turnsLeft} -- por LUTA (uma
+   luta nova sempre começa em Neutro, nunca herda de uma anterior).
+   Fora de escopo nesta leva (mesma régua de "efeitos genuinamente
+   bespoke ficam pra depois" do resto do motor): Terreno, Weather
+   Ball mudando de Tipo, Solar Beam sem carregar no Sol (Green Área
+   ainda não tem golpe de carregar 2 turnos), e qualquer Habilidade
+   condicionada ao clima (Leaf Guard etc. -- Habilidade ainda não é
+   simulada em batalha aqui). */
+var WEATHER_LABELS = { neutro:'Neutro', chuva:'Chuva', sol:'Sol Forte', areia:'Tempestade de Areia', granizo:'Granizo' };
+var WEATHER_ICONS = { neutro:'⛅', chuva:'🌧️', sol:'☀️', areia:'🏜️', granizo:'🌨️' };
+var WEATHER_SET_MOVES = { 'Rain Dance':'chuva', 'Sunny Day':'sol', 'Sandstorm':'areia', 'Hail':'granizo' };
+var WEATHER_MOVE_DURATION = 5;
+var WEATHER_CHIP_IMMUNE = { areia: { 'Pedra':1, 'Terra':1, 'Aço':1 }, granizo: { 'Gelo':1 } };
+var WEATHER_SUN_HEAL_MOVES = { 'Moonlight':1, 'Synthesis':1, 'Morning Sun':1 };
+function weatherTipo(){ return (STATE.battle && STATE.battle.weather && STATE.battle.weather.tipo) || 'neutro'; }
+/* Bônus/penalidade oficial ×1,5/×0,5 de dano por Tipo do golpe, sob
+   Chuva/Sol -- entra multiplicando junto com STAB/Efetividade/Crítico
+   em officialDamage, nunca substituindo nenhum dos outros fatores. */
+function weatherDamageMultiplier(moveTipo){
+  var w = weatherTipo();
+  if(w==='chuva'){ if(moveTipo==='Água') return 1.5; if(moveTipo==='Fogo') return 0.5; }
+  if(w==='sol'){ if(moveTipo==='Fogo') return 1.5; if(moveTipo==='Água') return 0.5; }
+  return 1;
+}
+function weatherHealPct(){
+  var w = weatherTipo();
+  if(w==='sol') return 67;
+  if(w==='chuva' || w==='areia' || w==='granizo') return 25;
+  return 50;
+}
+/* Troca o clima ativo de verdade (chamado pelos 4 Movimentos de
+   clima em resolveGaTurn) -- SUBSTITUI o anterior por completo
+   (reseta a contagem pro novo clima, nunca soma turno em cima de
+   turno). */
+function setWeather(tipo){
+  STATE.battle.weather = { tipo: tipo, turnsLeft: WEATHER_MOVE_DURATION };
+}
+/* Chip-dano de FIM de Rodada por Areia/Granizo (Cap. oficial) + conta
+   regressiva dos turnos restantes -- chamado 1x por Rodada (depois
+   dos 2 battlers agirem e do dano residual de Status de cada um),
+   nunca por battler (é um efeito de CAMPO, não individual). Reverte
+   pra Neutro sozinho quando os turnos acabam. */
+function applyWeatherResidual(atkB, defB, b){
+  var w = weatherTipo();
+  if(w!=='areia' && w!=='granizo') { tickWeatherDuration(b); return; }
+  [atkB, defB].forEach(function(battler){
+    if(!battler || b.hp[battler.key]===undefined || b.hp[battler.key]<=0) return;
+    var sp = speciesByNum(battler.num);
+    var imune = WEATHER_CHIP_IMMUNE[w] && ((sp.tipo1 && WEATHER_CHIP_IMMUNE[w][sp.tipo1]) || (sp.tipo2 && WEATHER_CHIP_IMMUNE[w][sp.tipo2]));
+    if(imune) return;
+    var maxHp = gaHpMax(battler), dano = Math.max(1, Math.floor(maxHp/16));
+    b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
+    b.log.push((w==='areia'?'🏜️':'🌨️')+' '+displayName(battler)+' sofreu '+dano+' de dano do '+WEATHER_LABELS[w]+'.');
+  });
+  tickWeatherDuration(b);
+}
+function tickWeatherDuration(b){
+  var wObj = b.weather;
+  if(!wObj || wObj.tipo==='neutro' || wObj.turnsLeft===null || wObj.turnsLeft===undefined) return;
+  wObj.turnsLeft--;
+  if(wObj.turnsLeft<=0){
+    b.log.push(WEATHER_ICONS[wObj.tipo]+' O '+WEATHER_LABELS[wObj.tipo]+' passou -- o tempo voltou ao normal.');
+    b.weather = { tipo:'neutro', turnsLeft:null };
+  }
+}
+
 /* Precisão/Evasão (Cap. "quero tudo dos combates mesmo"): rolagem por
    PORCENTAGEM de verdade (não mais o d10 de mesa) -- Precisão do
    Movimento × multiplicador de Estágio de Precisão do usuário ÷
@@ -6277,8 +6376,9 @@ function officialDamage(user, target, move, crit){
   var typeEff = typeEffMultiplier(move.tipo, targetSp.tipo1, targetSp.tipo2);
   var critMult = crit ? 1.5 : 1;
   var burnHalving = (move.categoria==='Físico' && user.status==='queimadura') ? 0.5 : 1;
+  var climaMult = weatherDamageMultiplier(move.tipo);
   var aleatorio = (85 + Math.floor(Math.random()*16))/100; // 0,85 a 1,00
-  var dano = Math.floor(base * stab * typeEff * critMult * burnHalving * aleatorio);
+  var dano = Math.floor(base * stab * typeEff * critMult * burnHalving * climaMult * aleatorio);
   return { dano: Math.max(typeEff>0 ? 1 : 0, dano), typeEff: typeEff };
 }
 
@@ -6314,6 +6414,7 @@ function applyAilment(battler, ailmentEn, moveName, b, logPrefix){
   if(battler.status) return; // já tem Status persistente -- só 1 por vez
   var sp = speciesByNum(battler.num);
   if(statusBloqueadoPorTipo(sp, statusPt)) return;
+  if(statusPt==='congelamento' && weatherTipo()==='sol') return; // Cap. Clima: ninguém congela sob Sol Forte (oficial)
   battler.status = statusPt;
   battler.statusTurns = statusPt==='sono' ? (1+Math.floor(Math.random()*3)) : (statusPt==='veneno_grave' ? 1 : 0);
   b.log.push(logPrefix+' ficou com '+STATUS_LABELS_PT[statusPt]+'!');
@@ -6451,10 +6552,22 @@ function resolveGaTurn(user, target){
   var crit = move.categoria!=='Status' && officialCritRoll(of.critRate);
 
   if(move.categoria==='Status'){
+    // Cap. Clima: Rain Dance/Sunny Day/Sandstorm/Hail armam o clima de
+    // verdade (5 turnos) em vez de cair no log genérico "usou X" --
+    // não tem efeito extra nenhum além de trocar o clima, então
+    // encerra aqui (não passa pelo resto do golpe de Status).
+    if(WEATHER_SET_MOVES[move.name]){
+      setWeather(WEATHER_SET_MOVES[move.name]);
+      b.log.push(WEATHER_ICONS[WEATHER_SET_MOVES[move.name]]+' '+userName+' usou '+move.name+' -- o clima virou '+WEATHER_LABELS[WEATHER_SET_MOVES[move.name]]+'!');
+      return;
+    }
     // cura (Recover/Roost/Synthesis...) -- healing% do PV Máximo de quem usou
+    // (Moonlight/Synthesis/Morning Sun são os 3 únicos oficialmente
+    // sensíveis ao clima ativo -- ver weatherHealPct/WEATHER_SUN_HEAL_MOVES)
     if(of.healing>0){
+      var healPct = WEATHER_SUN_HEAL_MOVES[move.name] ? weatherHealPct() : of.healing;
       var maxUser = gaHpMax(user);
-      var cura = Math.max(1, Math.round(maxUser*of.healing/100));
+      var cura = Math.max(1, Math.round(maxUser*healPct/100));
       var antes = b.hp[user.key];
       b.hp[user.key] = Math.min(maxUser, b.hp[user.key]+cura);
       b.log.push('💚 '+userName+' usou '+move.name+' -- recuperou '+(b.hp[user.key]-antes)+' PV.');
@@ -6822,6 +6935,17 @@ var ZONAS = [
   { id:'lendario',   nome:'Lendário',   min:91,  max:100 }
 ];
 function zonaByStatus(id){ return ZONAS.filter(function(z){ return z.id===id; })[0] || null; }
+/* Cap. leva desta sessão: "na área de combate vamos começar gastando
+   5 de energia na área mais fraca e subindo 5 a cada área mais
+   forte, então 5, 10, 15, 20 e assim sucessivamente. Não será mais
+   por nível de pokémon" -- substitui o custo antigo (10×Nível do
+   selvagem / 15×Nível do Treinador / 20×Nível do Treinador de Elite)
+   por um custo FIXO por Zona: Aprendiz=5, Iniciante=10... Lendário=50
+   (5×(índice+1) -- a mesma ordem de ZONAS). Vale pra selvagem,
+   Treinador de Zona e Treinador de Elite (todos entram pela Área de
+   Captura); Mestre Especialista continua com o próprio custo (não
+   pertence a uma Zona). */
+function custoEnergiaZona(idx){ return 5 * (clampInt(idx,0,ZONAS.length-1) + 1); }
 /* Piscina selvagem "de verdade" da Zona -- só quem tem nivelTipico
    dentro da faixa exata dela (nunca Lendário/Mítico). */
 function wildPoolForZona(zona){
@@ -6914,7 +7038,7 @@ DT.gaEntrarCaptura = function(leadId, zonaId){
   if(idx>=8 && Math.random()<CHANCE_TREINADOR_ELITE){
     var timeElite = rollEliteTeam(zona);
     timeElite.forEach(function(slot){ markSeen(slot.num); });
-    startBattle('elite', { leadPartyId: leadId, eliteNome: rollEliteNome(), eliteTeam: timeElite });
+    startBattle('elite', { leadPartyId: leadId, eliteNome: rollEliteNome(), eliteTeam: timeElite, zonaIdx: idx });
     return;
   }
   var chanceTr = chanceTreinadorZona(zona, idx);
@@ -6922,13 +7046,13 @@ DT.gaEntrarCaptura = function(leadId, zonaId){
   if(Math.random()<chanceTr || pool.length===0){
     var time = rollRivalTeam(zona);
     time.forEach(function(slot){ markSeen(slot.num); });
-    startBattle('rival', { leadPartyId: leadId, rivalNome: rollRivalNome(), rivalTeam: time });
+    startBattle('rival', { leadPartyId: leadId, rivalNome: rollRivalNome(), rivalTeam: time, zonaIdx: idx });
     return;
   }
   var sp = pool[Math.floor(Math.random()*pool.length)];
   var level = zona.min + Math.floor(Math.random()*(zona.max-zona.min+1));
   markSeen(sp.num);
-  startBattle('wild', { leadPartyId: leadId, wildNum: sp.num, wildLevel: level });
+  startBattle('wild', { leadPartyId: leadId, wildNum: sp.num, wildLevel: level, zonaIdx: idx });
 };
 DT.gaDesafiarMestre = function(leadId, leaderId){
   var leader = GYM_LEADERS.filter(function(l){ return l.id===leaderId; })[0];
@@ -7858,8 +7982,10 @@ function battleScreenHTML(){
   var oppHP = b.hp[opp.key], oppMax = gaHpMax(opp);
   var playerHP = b.hp[b.playerActive.key], playerMax = gaHpMax(b.playerActive);
 
+  var w = b.weather || { tipo:'neutro', turnsLeft:null };
   var out = '<div class="ga-card ga-battle">'+
     '<h2>'+esc2(b.label)+'</h2>'+
+    (w.tipo!=='neutro' ? '<div class="ga-weather-badge">'+WEATHER_ICONS[w.tipo]+' '+esc2(WEATHER_LABELS[w.tipo])+(w.turnsLeft!=null?' ('+w.turnsLeft+' turno'+(w.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
     '<div class="ga-battle-field">'+
       '<div class="ga-battle-side"><img src="'+spriteUrl(opp.num)+'" alt=""><div>'+esc2(oppSp.name)+' Nv.'+opp.level+'</div>'+hpBarHTML(oppHP,oppMax)+'</div>'+
       '<div class="ga-battle-vs">VS</div>'+
