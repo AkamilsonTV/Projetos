@@ -104,7 +104,15 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-btn-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
 .ga-btn[disabled],.ga-btn-sm[disabled]{ opacity:.4; cursor:not-allowed; }
 .ga-btn-sm.active{ background:var(--accent-dim); color:#04170c; border-color:var(--accent-dim); }
-.ga-papel-combate{ display:flex; gap:4px; flex-wrap:wrap; }
+/* Cap. leva desta sessão: "Da um espacinho nesses ícones de ataque,
+   defesa suporte e controle, deixando eles com um alinhamento no
+   começo de cada retangulo" -- era `flex-wrap`, que só quebra linha
+   quando o conteúdo não cabe: Defesa/Controle (2ª coluna) começavam
+   onde Ataque/Suporte (1ª) terminavam, cada largura diferente conforme
+   o texto do botão -- nunca alinhados de verdade entre si. Virou grid
+   de 2 colunas IGUAIS -- agora as 2 colunas sempre começam no mesmo x,
+   não importa a largura de cada rótulo. */
+.ga-papel-combate{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 
 .ga-hub{ display:flex; flex-direction:column; gap:14px; }
 .ga-trainer-card{ display:flex; align-items:center; gap:14px; }
@@ -167,8 +175,19 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-chat-msg{ padding:4px 8px; border-radius:6px; }
 .ga-chat-msg.mine{ background:var(--accent-dim); color:#04170c; }
 .ga-chat-input{ flex:1; }
-.ga-poke-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; display:flex; flex-direction:column; }
+.ga-poke-card{ position:relative; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; display:flex; flex-direction:column; }
 .ga-poke-card img{ width:64px; height:64px; image-rendering:pixelated; align-self:center; }
+/* Cap. leva desta sessão: "As setas de cima e baixo coloca na parte
+   superior esquerda do card de cada pokémon" -- flutua por cima do
+   canto superior esquerdo do PRÓPRIO card (`.ga-poke-card` acima
+   ganhou `position:relative` só pra ancorar isso), em vez de uma linha
+   inteira perdida lá embaixo entre Movimentos e Caixa. `z-index`
+   garante que fica por cima do sprite (que já tem `align-self:center`,
+   sem posicionamento próprio, então não disputa a mesma camada por
+   padrão -- só reforçando pra nunca ficar escondido). */
+.ga-order-controls{ position:absolute; top:6px; left:6px; display:flex; flex-direction:column; gap:3px; z-index:2; }
+.ga-order-controls .ga-btn-sm{ padding:3px 6px; line-height:1; opacity:.85; }
+.ga-order-controls .ga-btn-sm:hover{ opacity:1; }
 /* Cap. leva desta sessão ("deixar ele destacado dos demais"): o
    Pokémon ativo (primeiro da Equipe, ver equipeScreenHTML) ganha uma
    borda e sombra na cor de destaque pra ficar óbvio de longe qual é,
@@ -296,6 +315,17 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-battle-side{ text-align:center; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; min-width:150px; }
 .ga-battle-side img{ width:72px; height:72px; image-rendering:pixelated; }
 .ga-battle-vs{ font-weight:800; color:var(--ink-dim); }
+/* Cap. leva desta sessão: "Acrescentar a informação de pokémon
+   capturado uma pokebola pixelada ao lado do pokémon que você estiver
+   lutando contra" -- seletor MAIS específico que `.ga-battle-side img`
+   acima (que sozinho deixaria essa Pokébola do tamanho do sprite,
+   72×72) pra garantir o tamanho pequeno de ícone junto ao nome, não o
+   tamanho de sprite grande. Apagada/cinza (mesmo filtro de
+   .ga-dex-tile não capturado) até bater a captura de verdade, aí vira
+   colorida -- MESMO ícone oficial já usado em toda Mochila/Loja
+   (itemIconUrl('poke-ball')), nunca um desenho novo. */
+.ga-battle-side img.ga-catch-badge{ width:16px; height:16px; vertical-align:middle; margin-left:4px; filter:grayscale(1) brightness(.6); opacity:.5; }
+.ga-battle-side img.ga-catch-badge.caught{ filter:none; opacity:1; }
 .ga-hpbar{ height:8px; border-radius:999px; background:#2a1414; overflow:hidden; border:1px solid var(--line); margin-top:4px; }
 .ga-hpbar i{ display:block; height:100%; background:#4ade80; }
 .ga-hpbar.mid i{ background:#fbbf24; }
@@ -5357,6 +5387,20 @@ var unsubscribeDm = null;
 var unsubscribeTrocas = null;
 var presencaHeartbeatTimer = null;
 var trocaExecutandoLocal = {}; // tradeId -> true enquanto a PRÓPRIA aplicação da troca está em andamento (evita aplicar 2x por reentrância do listener)
+/* Cap. leva desta sessão ("depois da confirmação a troca é realizada
+   mas não fecha a janela... fica dando mensagem que não temos mais o
+   item"): 2 travas novas, mesmo padrão de trocaExecutandoLocal acima.
+   trocaApagandoLocal -- evita mandar delete() 2x em cima do MESMO doc
+   (idempotente de qualquer jeito, só evita barulho). trocaFalhouLocal
+   -- quando a PRÓPRIA oferta já não bate mais contra o estoque atual
+   (ofertaValidaContraEstadoAtual), trava aqui pra NUNCA tentar de novo
+   sozinho: sem isso, cada novo disparo do listener de trocasCol
+   repetia a MESMA validação, a MESMA falha e o MESMO SESSION.error --
+   travando o jogador numa fila de popups idênticos sem fim. Só um
+   gesto explícito do jogador (reconfirmar depois de arrumar a oferta,
+   ver DT.gaConfirmarTroca) limpa essa trava e dá outra chance. */
+var trocaApagandoLocal = {};
+var trocaFalhouLocal = {};
 
 var SESSION_CACHE_KEY = 'green_area_session_v1'; // {docId, pin} -- NUNCA o progresso em si
 var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só localStorage, antes da conta online)
@@ -5797,6 +5841,20 @@ setInterval(energyTickLoop, 1000);
    preto e branco vira colorida quando capturado")
    ============================================================ */
 function dexEntry(num){ return STATE.dex[num] || {seen:false, caught:false}; }
+/* Cap. leva desta sessão: "Acrescentar a informação de pokémon
+   capturado uma pokebola pixelada ao lado do pokémon que você estiver
+   lutando contra para saber se já capturou ou não" -- reusa o MESMO
+   ícone oficial pixelado de Pokébola já usado em toda a Mochila/Loja
+   (itemIconUrl('poke-ball'), PokeAPI/sprites) em vez de desenhar um
+   novo -- colorido quando já capturou esse Número da Pokédex, cinza/
+   apagado quando ainda não (mesmo padrão visual de .ga-dex-tile:
+   preto e branco vira colorida quando capturado). Funciona em
+   QUALQUER luta (selvagem ou Treinador) -- é sobre a Pokédex do
+   Treinador, não sobre se ESSE encontro específico é capturável. */
+function capturadoBadgeHTML(num){
+  var capturado = dexEntry(num).caught;
+  return ' <img class="ga-catch-badge'+(capturado?' caught':'')+'" src="'+itemIconUrl('poke-ball')+'" alt="" title="'+(capturado?'Você já capturou esse Pokémon':'Você ainda não capturou esse Pokémon')+'">';
+}
 function markSeen(num){ if(!STATE.dex[num]) STATE.dex[num] = {seen:true, caught:false}; else STATE.dex[num].seen = true; }
 function markCaught(num){
   if(!STATE.dex[num]) STATE.dex[num] = {seen:true, caught:false};
@@ -7587,6 +7645,7 @@ function salvarOfertaTroca(tradeId, souA, oferta){
   var upd = {};
   upd[souA ? 'ofertaA' : 'ofertaB'] = oferta;
   upd.confirmadoA = false; upd.confirmadoB = false; // qualquer mudança na oferta (de QUALQUER lado) exige reconfirmar os 2
+  delete trocaFalhouLocal[tradeId]; // a oferta mudou -- dá outra chance de verdade na próxima confirmação
   trocasCol.doc(tradeId).update(upd).catch(function(err){ SESSION.error = 'Não consegui atualizar a oferta ('+erroFirestoreMsg(err)+').'; render(); });
 }
 DT.gaIniciarTroca = function(outroDocId){
@@ -7647,6 +7706,7 @@ DT.gaConfirmarTroca = function(tradeId){
   var souA = trade.a===SESSION.currentDocId;
   var minhaOferta = souA ? trade.ofertaA : trade.ofertaB;
   if(!ofertaValidaContraEstadoAtual(minhaOferta)){ SESSION.error='Sua oferta tem algo que você não tem mais -- atualize antes de confirmar.'; render(); return; }
+  delete trocaFalhouLocal[tradeId]; // gesto explícito de confirmar de novo -- dá outra chance de verdade (ver comentário da declaração)
   var upd = {}; upd[souA?'confirmadoA':'confirmadoB'] = true;
   trocasCol.doc(tradeId).update(upd).catch(function(err){ SESSION.error='Não consegui confirmar a troca ('+erroFirestoreMsg(err)+').'; render(); });
 };
@@ -7674,7 +7734,8 @@ function aplicarMinhaParteDaTroca(trade){
   var minhaOferta = souA ? trade.ofertaA : trade.ofertaB;
   var ofertaRecebida = souA ? trade.ofertaB : trade.ofertaA;
   if(!ofertaValidaContraEstadoAtual(minhaOferta)){
-    SESSION.error = 'Sua oferta na troca com '+(souA?trade.bNome:trade.aNome)+' não é mais válida (você não tem mais algo que ofereceu) -- a troca ficou travada; cancele e comece de novo se precisar.';
+    trocaFalhouLocal[trade.id] = true; // ver comentário da declaração -- NUNCA tenta de novo sozinho, só reconfirmando
+    SESSION.error = 'Sua oferta na troca com '+(souA?trade.bNome:trade.aNome)+' não é mais válida (você não tem mais algo que ofereceu) -- cancele a troca e comece de novo, ou ajuste a oferta e confirme de novo.';
     render();
     return Promise.resolve();
   }
@@ -7692,17 +7753,46 @@ function aplicarMinhaParteDaTroca(trade){
   logAction('troca', 'Concluiu uma troca com '+(souA?trade.bNome:trade.aNome)+'.');
   mutate();
   var upd = {}; upd[souA?'recebidoA':'recebidoB'] = true;
-  return trocasCol.doc(trade.id).update(upd).then(function(){
-    var outroJaRecebeu = souA ? trade.recebidoB : trade.recebidoA;
-    if(outroJaRecebeu) return trocasCol.doc(trade.id).delete().catch(function(){});
-  }).catch(function(err){ SESSION.error='Não consegui concluir a troca ('+erroFirestoreMsg(err)+').'; render(); });
+  /* Não tenta apagar o documento aqui -- feito de propósito, ver
+     comentário de processarTrocasAtivas: apagar SÓ quando os 2
+     `recebido*` já estão confirmados no snapshot ATUAL (não o `trade`
+     capturado no início desta função, que pode estar desatualizado)
+     evita a corrida onde os 2 lados aplicam quase ao mesmo tempo e
+     nenhum vê o `recebido*` do outro fresco o suficiente pra apagar. O
+     PRÓPRIO `.update()` abaixo já dispara um novo snapshot que passa
+     de novo por processarTrocasAtivas, então o apagar acontece sozinho
+     logo em seguida (do MEU lado ou do lado do outro jogador). */
+  return trocasCol.doc(trade.id).update(upd).catch(function(err){ SESSION.error='Não consegui concluir a troca ('+erroFirestoreMsg(err)+').'; render(); });
 }
 function processarTrocasAtivas(lista){
   (lista||[]).forEach(function(trade){
-    if(!trade || !trade.id || !STATE) return;
+    if(!trade || !trade.id) return;
+    /* Cap. leva desta sessão ("a troca é realizada mas não fecha a
+       janela"): antes, só quem aplicava a PRÓPRIA metade por ÚLTIMO
+       conferia "o outro já recebeu?" pra decidir apagar o documento --
+       usando o `trade` capturado NA HORA da própria aplicação. Se os 2
+       lados aplicassem quase ao mesmo tempo (bem provável -- os 2
+       confirmam e o listener dispara pros 2 quase junto), nenhum dos 2
+       via o `recebido*` do OUTRO fresco o suficiente, e o documento
+       nunca era apagado -- ficava pra sempre em `trocasAtivas`, com a
+       tela de Troca reaparecendo sem nunca "fechar". Agora QUALQUER
+       disparo do listener (não só o do lado que acabou de aplicar)
+       confere de novo com o snapshot ATUAL (sempre fresco) e apaga se
+       os 2 já receberam -- fecha a corrida garantido. Fica ANTES do
+       `!STATE`/`souA` abaixo de propósito: apagar um documento "zumbi"
+       (os 2 já receberam) não depende de ninguém estar logado -- pode
+       vir de QUALQUER lado que ainda escute essa troca. */
+    if(trade.recebidoA && trade.recebidoB){
+      if(!trocaApagandoLocal[trade.id]){
+        trocaApagandoLocal[trade.id] = true;
+        trocasCol.doc(trade.id).delete().catch(function(){}).then(function(){ delete trocaApagandoLocal[trade.id]; });
+      }
+      return;
+    }
+    if(!STATE) return;
     var souA = trade.a===SESSION.currentDocId;
     var jaRecebi = souA ? trade.recebidoA : trade.recebidoB;
-    if(jaRecebi || trocaExecutandoLocal[trade.id]) return;
+    if(jaRecebi || trocaExecutandoLocal[trade.id] || trocaFalhouLocal[trade.id]) return;
     if(trade.confirmadoA && trade.confirmadoB){
       trocaExecutandoLocal[trade.id] = true;
       aplicarMinhaParteDaTroca(trade).then(function(){ delete trocaExecutandoLocal[trade.id]; }).catch(function(){ delete trocaExecutandoLocal[trade.id]; });
@@ -8939,17 +9029,28 @@ function equipeScreenHTML(){
     (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início) -- é ele quem entra primeiro na Área de Captura, e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
     '<div class="ga-poke-grid ga-poke-grid-equipe">'+
     STATE.party.map(function(p, i){
-      var actions = '<div class="ga-poke-actions">'+
-        (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
-        papelCombateSeletorHTML(p)+
-        '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
-        (STATE.party.length>1 ? '<div class="ga-btn-row">'+
+      /* Cap. leva desta sessão: "coloca as setas de cima e baixo na
+         parte superior esquerda do card". Fica FORA de `.ga-poke-
+         actions` de propósito -- `.ga-order-controls` é posicionado
+         absoluto (ver style.css) sobre o canto superior esquerdo do
+         PRÓPRIO card, não mais uma linha inteira lá embaixo perdida
+         entre Movimentos e Caixa. */
+      var orderControls = STATE.party.length>1 ? '<div class="ga-order-controls">'+
           (i>0 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',-1)">⬆️</button>' : '')+
           (i<STATE.party.length-1 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',1)">⬇️</button>' : '')+
-        '</div>' : '')+
+        '</div>' : '';
+      /* Cap. leva desta sessão: "junta Movimentos e caixa ali embaixo"
+         -- os 2 na MESMA linha agora, em vez de Movimentos sozinho
+         numa linha e Caixa/Soltar noutra. */
+      var actions = orderControls+'<div class="ga-poke-actions">'+
+        (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
+        papelCombateSeletorHTML(p)+
+        (STATE.party.length>1
+          ? '<div class="ga-btn-row"><button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button><button class="ga-btn-sm" onclick="DT.gaMandarPraCaixa(\''+p.id+'\')">📦 Caixa</button></div>'
+          : '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>')+
         (STATE.party.length>1 ? (SESSION.confirmRelease===p.id
           ? '<button class="ga-btn-sm danger" onclick="DT.gaLiberar(\''+p.id+'\')">Confirmar</button><button class="ga-btn-sm" onclick="DT.gaCancelLiberar()">Cancelar</button>'
-          : '<button class="ga-btn-sm" onclick="DT.gaMandarPraCaixa(\''+p.id+'\')">📦 Caixa</button><button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>')
+          : '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>')
           : '<span class="ga-hint">último da Equipe</span>')+
       '</div>';
       /* Arrastar de verdade (Cap. "Coloca a opção de arrastar a ordem
@@ -9876,7 +9977,20 @@ function trocaScreenHTML(){
 
   var out = '<div class="ga-card"><h2>🔄 Troca com '+esc2(outroNome)+'</h2>'+
     '<button class="ga-btn-sm" onclick="DT.gaFecharTroca()">← Voltar</button>'+
-    '<p class="ga-hint">Monte sua oferta -- a troca só conclui quando os DOIS confirmarem a versão final. Mudar a oferta (de qualquer lado) cancela as 2 confirmações de novo, pra ninguém confirmar um negócio que já mudou.</p></div>';
+    '<p class="ga-hint">Monte sua oferta -- a troca só conclui quando os DOIS confirmarem a versão final. Mudar a oferta (de qualquer lado) cancela as 2 confirmações de novo, pra ninguém confirmar um negócio que já mudou.</p>'+
+    /* Cap. leva desta sessão: "esse lance da confirmação tem que ficar
+       lá em cima junto com a troca" -- movida pra logo depois do
+       cabeçalho (era o ÚLTIMO card da tela, depois da oferta E do
+       seletor de Pokémon da Caixa -- ficava fora de vista na maioria
+       das telas sem rolar até o fim). */
+    '<h3 class="ga-subhead">✅ Confirmação</h3>'+
+    '<p class="ga-hint">Você: '+(euConfirmei?'✅ Confirmado':'⏳ Ainda não confirmou')+' &nbsp;·&nbsp; '+esc2(outroNome)+': '+(outroConfirmou?'✅ Confirmado':'⏳ Ainda não confirmou')+'</p>'+
+    '<div class="ga-btn-row">'+
+      (euConfirmei
+        ? '<button class="ga-btn-sm" onclick="DT.gaDesconfirmarTroca(\''+trade.id+'\')">Desfazer confirmação</button>'
+        : '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarTroca(\''+trade.id+'\')">✅ Confirmar</button>')+
+      (podeCancelar ? '<button class="ga-btn-sm danger" onclick="DT.gaCancelarTroca(\''+trade.id+'\')">🚫 Cancelar troca</button>' : '')+
+    '</div></div>';
 
   out += trocaLadoHTML(trade.id, '🧑 Sua oferta', minhaOferta, true, outroNome);
   out += trocaLadoHTML(trade.id, '🤝 Oferta de '+esc2(outroNome), ofertaOutro, false, outroNome);
@@ -9888,15 +10002,6 @@ function trocaScreenHTML(){
         return pokeCardMini(p, '<button class="ga-btn-sm '+(jaOferecido?'active':'')+'" onclick="DT.gaToggleTrocaPokemon(\''+trade.id+'\',\''+p.id+'\')">'+(jaOferecido?'✔️ Na oferta':'➕ Oferecer')+'</button>');
       }).join('')+'</div></div>';
   }
-
-  out += '<div class="ga-card"><h3 class="ga-subhead">✅ Confirmação</h3>'+
-    '<p class="ga-hint">Você: '+(euConfirmei?'✅ Confirmado':'⏳ Ainda não confirmou')+' &nbsp;·&nbsp; '+esc2(outroNome)+': '+(outroConfirmou?'✅ Confirmado':'⏳ Ainda não confirmou')+'</p>'+
-    '<div class="ga-btn-row">'+
-      (euConfirmei
-        ? '<button class="ga-btn-sm" onclick="DT.gaDesconfirmarTroca(\''+trade.id+'\')">Desfazer confirmação</button>'
-        : '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarTroca(\''+trade.id+'\')">✅ Confirmar</button>')+
-      (podeCancelar ? '<button class="ga-btn-sm danger" onclick="DT.gaCancelarTroca(\''+trade.id+'\')">🚫 Cancelar troca</button>' : '')+
-    '</div></div>';
 
   return out;
 }
@@ -9944,7 +10049,7 @@ function battleScreenHTML(){
     (terr.tipo!=='neutro' ? '<div class="ga-weather-badge">'+TERRAIN_ICONS[terr.tipo]+' '+esc2(TERRAIN_LABELS[terr.tipo])+(terr.turnsLeft!=null?' ('+terr.turnsLeft+' turno'+(terr.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
     (STATE.captureSequence && !STATE.captureSequence.finished ? '<div class="ga-weather-badge">🔁 Sequência automática: luta '+(STATE.captureSequence.total-STATE.captureSequence.remaining)+' de '+STATE.captureSequence.total+' ('+STATE.captureSequence.vitorias+'✅ '+STATE.captureSequence.derrotas+'☠️) -- só aparece aqui porque algo travou a resolução automática; use os botões abaixo pra destravar.</div>' : '')+
     '<div class="ga-battle-field">'+
-      '<div class="ga-battle-side"><img src="'+spriteUrl(opp.num)+'" alt=""><div>'+esc2(oppSp.name)+' Nv.'+opp.level+'</div>'+hpBarHTML(oppHP,oppMax)+'</div>'+
+      '<div class="ga-battle-side"><img src="'+spriteUrl(opp.num)+'" alt=""><div>'+esc2(oppSp.name)+' Nv.'+opp.level+capturadoBadgeHTML(opp.num)+'</div>'+hpBarHTML(oppHP,oppMax)+'</div>'+
       '<div class="ga-battle-vs">VS</div>'+
       '<div class="ga-battle-side"><img src="'+spriteUrl(b.playerActive.num)+'" alt=""><div>'+esc2(b.playerActive.apelido||playerSp.name)+' Nv.'+b.playerActive.level+'</div>'+hpBarHTML(playerHP,playerMax)+'</div>'+
     '</div>'+
