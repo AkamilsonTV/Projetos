@@ -5000,7 +5000,7 @@ function spawnPoke(num, level){
     id: uid(), num: num, level: clampInt(level,1,NIVEL_MAX), apelido:'',
     moves: pickMovesForLevel(num, level), xpNivel: 0,
     natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num),
-    papelCombate: 'atacar'
+    papelCombate: 'ataque'
   };
 }
 
@@ -5164,11 +5164,16 @@ function migrateState(){
       /* Cap. leva desta sessão: "Colocar opções no pokemon, na tela do
          time, para que possamos definir se ele é focado em atacar,
          defender ou ser suporte": todo Pokémon de save antigo (sem
-         esse campo ainda) nasce 'atacar' -- o comportamento que a
+         esse campo ainda) nasce 'ataque' -- o comportamento que a
          luta automática já tinha antes dessa leva (sempre golpe de
          dano), então ninguém muda de comportamento só por causa da
-         migração. */
-      if(['atacar','defender','suporte'].indexOf(p.papelCombate)===-1) p.papelCombate = 'atacar';
+         migração. Leva desta sessão (4 categorias): remapeia os
+         valores antigos do sistema de 3 papéis pro equivalente novo
+         ('atacar'->'ataque', 'defender'->'defesa', 'suporte' segue
+         'suporte' -- ainda um valor válido, só mudou de definição). */
+      if(p.papelCombate==='atacar') p.papelCombate = 'ataque';
+      else if(p.papelCombate==='defender') p.papelCombate = 'defesa';
+      if(ROLES_COMBATE.indexOf(p.papelCombate)===-1) p.papelCombate = 'ataque';
     });
   });
 }
@@ -5373,7 +5378,7 @@ function battleHpMap(){ return STATE.battle ? STATE.battle.hp : null; }
 function battlerCurrentHP(entry){ return STATE.battle.hp[entry.key]; }
 
 function buildBattlerFromParty(poke){
-  return { key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'atacar' };
+  return { key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque' };
 }
 function buildBattlerWild(num, level){
   return { key:'w_'+num, side:'wild', num:num, level:level, moves: pickMovesForLevel(num, level) };
@@ -5519,10 +5524,24 @@ function currentOpponent(){ return STATE.battle.oppTeam[STATE.battle.oppIdx]; }
    acabar -- várias Rodadas por clique é normal (só pausa quando
    PRECISA perguntar algo), exatamente o "automáticas e rápidas...
    resumida turno a turno" do pedido. */
+/* Cap. leva desta sessão (4 categorias de Papel de Combate): dividir os
+   40% que sobram do papel setado em 3 fatias (~13,3% cada, era 20%/20%
+   nos 2 papéis não-setados do sistema antigo de 3) deixa uma luta entre
+   2 Pokémon 'defesa'/'suporte'/'controle' (que raramente picam um golpe
+   de dano de verdade) demorar mais rodadas até alguém desmaiar de
+   verdade -- então o `guard` de segurança (força um resultado justo, sem
+   travar o jogo) precisava ser um contador POR BATALHA (b.roundGuard,
+   sobrevive a cada pausa -- cura/troca/evolução -- que essa função
+   sempre RETORNA e é chamada de novo depois), não uma variável local que
+   reiniciava do zero em toda chamada nova: uma luta que pausa muitas
+   vezes (vários gatilhos de cura, por exemplo) nunca acumulava rodada
+   nenhuma no guard antigo, e podia "travar" de verdade (rodar pra
+   sempre, sem nunca forçar o resultado justo) mesmo já tendo passado de
+   milhares de rodadas reais no total. */
 function runBattleUntilPause(){
   var b = STATE.battle;
-  var guard = 0;
-  while(guard++<400){
+  b.roundGuard = b.roundGuard||0;
+  while(b.roundGuard++<2000){
     if(b.finished) return;
     if(b.pendingHeal || b.pendingSwitch || b.pendingEvolution) return;
 
@@ -5824,61 +5843,83 @@ DT.gaResponderEvolucao = function(aceitar){
   mutate();
 };
 
-/* Cap. leva desta sessão: "Colocar opções no pokemon, na tela do
-   time, para que possamos definir se ele é focado em atacar, defender
-   ou ser suporte. Assim o sistema irá focar mais nas habilidades do
-   tipo que ele tá apontado. Classifique todos os MOVES dentro dessas
-   categorias": TODO Movimento (os 847 de MOVES_DEX) cai numa de 3
-   categorias, calculada por regra (nunca uma tabela gigante escrita à
-   mão) e cacheada por nome --
-     - 'atacar': todo Movimento de dano (categoria Físico ou
-       Especial, sempre -- o único tipo que a luta automática já
-       usava antes dessa leva);
-     - 'defender': Movimento de Status cujo efeito (já traduzido pro
-       português em MOVES_DEX) é sobre a SOBREVIVÊNCIA do próprio
-       usuário -- cura/restaura o próprio PV, aumenta a própria
-       Defesa/Defesa Especial/Evasão, protege de ataques, reduz dano
-       recebido (telas tipo Reflect) ou cria um substituto;
-     - 'suporte': todo o resto dos Movimentos de Status -- Condição/
-       debuff no alvo, armadilha, cura de Condição da equipe, ou até
-       um buff OFENSIVO no próprio usuário (Ataque/Ataque Especial/
-       Velocidade) -- não é sobre sobreviver, é sobre ajudar o combate
-       de outro jeito. */
-function isDefensiveStatusEffect(efeito){
-  var t = (efeito||'').toLowerCase();
-  var cura = /restaur|recuper|regener/.test(t) && /\bpv\b/.test(t);
-  var protege = /proteg|esquiv|substituto|reduz[a-z]*.{0,20}dano/.test(t);
-  var buffDefensivo = /aument[a-z]*.{0,60}(defesa especial|defesa|evas[aã]o)/.test(t);
-  return cura || protege || buffDefensivo;
+/* Cap. leva desta sessão: "vamos mudar a classificação dos moves sobre
+   as roles dos pokémon: Ataque... Defesa... Suporte... Controle...
+   Categorize as habilidades nessas 4 categorias pra facilitar e pode
+   categorizar uma habilidade em mais de uma categoria quando isso
+   aplicar": substitui o sistema antigo de 3 papéis EXCLUSIVOS (1 só
+   por Movimento) por 4 papéis, onde agora um Movimento pode carregar
+   MAIS DE UMA tag ao mesmo tempo quando o efeito dele se encaixa em
+   mais de uma definição. TODO Movimento (os 847 de MOVES_DEX) cai
+   numa dessas 4, calculado por regra sobre o texto do `efeito` (já
+   traduzido pro português) -- nunca uma tabela gigante escrita à mão
+   -- e cacheado por nome:
+     - 'ataque': "foca em atacar o oponente pra eliminar" -- todo
+       Movimento de dano (Físico/Especial) É sempre 'ataque'; entre os
+       de Status, um buff OFENSIVO PRÓPRIO (Ataque/Ataque Especial/
+       Velocidade) sem nenhuma outra tag também cai aqui -- é "se
+       preparar pra eliminar", a mesma ideia;
+     - 'defesa': "foca em se manter vivo no combate podendo usar moves
+       pra se curar e aumentar sua defesa" -- cura/restaura o próprio
+       PV, aumenta a própria Defesa/Defesa Especial/Evasão, protege de
+       ataques ou cria um substituto;
+     - 'suporte': "foca em ajudar o time, usando habilidades que
+       fortaleçam ou curem os aliados que vão entrar, melhoria de
+       campo" -- fortalece/cura um ALIADO (não o próprio usuário),
+       clima/terreno/paredes tipo Reflect, remove armadilha da própria
+       equipe;
+     - 'controle': "foca em manter o oponente com status que o
+       prejudiquem, seja de veneno, paralisia e etc" -- Veneno/
+       Paralisia/Sono/Confusão/Queimadura/Congelamento/Atração, reduz
+       Atributo do ALVO, prende/impede fuga ou trocar, armadilha tipo
+       Stealth Rock (afeta quem entra do lado adversário). Um golpe de
+       dano com chance de status secundário (ex.: "também pode
+       paralisar o alvo") ganha a tag 'controle' JUNTO com 'ataque' --
+       é exatamente o caso de "mais de uma categoria quando aplica". */
+var _moveRolesCache = {};
+var ROLES_COMBATE = ['ataque','defesa','suporte','controle'];
+function moveRoles(move){
+  if(!move) return ['ataque'];
+  if(_moveRolesCache[move.name]) return _moveRolesCache[move.name];
+  var t = (move.efeito||'').toLowerCase();
+  var defesaRe = /(restaur|recuper|regener)[a-zç]*.{0,30}\bpv\b|proteg|esquiv|substituto|aument[a-zç]*.{0,60}pr[oó]pri[ao].{0,30}(defesa especial|defesa|evas[aã]o)/;
+  var suporteRe = /alia?do|equipe inteira|time inteiro|clima|terreno|parede|luz protetora|neblina refletora|remove.{0,25}armadilha|troca de lugar com um alia?do|cura.{0,25}condi[cç][aã]o.{0,20}(equipe|alia?do)/;
+  var controleRe = /veneno|paralis|adormece|sono profundo|alvo dormir|confunde|queima|congela|atra[cç][aã]o|apaixon|reduz[a-zç]*.{0,80}(dele|deles|do alvo|dos advers[aá]rios|advers[aá]rio)|prende o alvo|impede[a-zç]*.{0,30}(fugir|trocar|usar)|hesita|intimida|provocad[oa]|armadilha[a-zç]*.{0,80}advers/;
+  var roles = [];
+  if(move.categoria==='Físico' || move.categoria==='Especial'){
+    roles.push('ataque');
+    if(controleRe.test(t)) roles.push('controle'); // status secundário (ex.: chance de paralisar) num golpe de dano
+  } else {
+    if(defesaRe.test(t)) roles.push('defesa');
+    if(suporteRe.test(t)) roles.push('suporte');
+    if(controleRe.test(t)) roles.push('controle');
+    if(!roles.length){
+      var buffOfensivoProprio = /aument[a-zç]*.{0,55}pr[oó]pri[ao].{0,30}(ataque especial|ataque|velocidade)/.test(t);
+      roles.push(buffOfensivoProprio ? 'ataque' : 'suporte'); // nada reconhecido -- nunca fica sem tag nenhuma
+    }
+  }
+  _moveRolesCache[move.name] = roles;
+  return roles;
 }
-var _moveRoleCache = {};
-function moveRole(move){
-  if(!move) return 'atacar';
-  if(_moveRoleCache[move.name]!==undefined) return _moveRoleCache[move.name];
-  var role = (move.categoria==='Físico' || move.categoria==='Especial')
-    ? 'atacar'
-    : (isDefensiveStatusEffect(move.efeito) ? 'defender' : 'suporte');
-  _moveRoleCache[move.name] = role;
-  return role;
-}
+function moveHasRole(move, papel){ return moveRoles(move).indexOf(papel)!==-1; }
 /* Cap. leva desta sessão: "ele poderá usar essas habilidades a qual
-   ele é setado na seguinte porcentagem: 60% 20% 20%": dentre os
-   Movimentos que o Pokémon TEM de verdade (até 4, o kit normal),
-   agrupa por papel (moveRole) e sorteia o PAPEL primeiro -- 60% de
-   chance do papel setado no Pokémon (`papel`), 20%/20% cada um dos
-   outros dois --, depois sorteia um Movimento qualquer DENTRO do
-   papel sorteado. Se o papel sorteado não tiver nenhum Movimento
-   disponível no kit (ex.: Pokémon 'defender' sem nenhum Movimento
-   defensivo aprendido), redistribui o peso só entre os papéis que TÊM
-   Movimento -- nunca trava a luta esperando um golpe que o Pokémon
-   nem sabe. */
-var ROLE_PESO_PRIMARIO = 0.6, ROLE_PESO_SECUNDARIO = 0.2;
+   ele é setado na seguinte porcentagem" (mantido desta leva pra cá:
+   60% pro papel setado, os outros 3 dividem o resto igualmente ~13,3%
+   cada): dentre os Movimentos que o Pokémon TEM de verdade (até 4, o
+   kit normal), agrupa por papel -- um Movimento com mais de uma tag
+   entra em MAIS de um grupo ao mesmo tempo -- e sorteia o PAPEL
+   primeiro, depois um Movimento qualquer DENTRO do papel sorteado. Se
+   o papel sorteado não tiver nenhum Movimento disponível no kit,
+   redistribui o peso só entre os papéis que TÊM Movimento -- nunca
+   trava a luta esperando um golpe que o Pokémon nem sabe. */
+var ROLE_PESO_PRIMARIO = 0.6, ROLE_PESO_SECUNDARIO = (1-0.6)/3;
 function pickMoveByRole(moves, papel){
-  var byRole = {atacar:[], defender:[], suporte:[]};
-  (moves||[]).forEach(function(m){ byRole[moveRole(m)].push(m); });
-  if(['atacar','defender','suporte'].indexOf(papel)===-1) papel = 'atacar';
-  var ordem = [papel].concat(['atacar','defender','suporte'].filter(function(r){ return r!==papel; }));
-  var pesos = {}; pesos[ordem[0]] = ROLE_PESO_PRIMARIO; pesos[ordem[1]] = ROLE_PESO_SECUNDARIO; pesos[ordem[2]] = ROLE_PESO_SECUNDARIO;
+  var byRole = {ataque:[], defesa:[], suporte:[], controle:[]};
+  (moves||[]).forEach(function(m){ moveRoles(m).forEach(function(r){ byRole[r].push(m); }); });
+  if(ROLES_COMBATE.indexOf(papel)===-1) papel = 'ataque';
+  var ordem = [papel].concat(ROLES_COMBATE.filter(function(r){ return r!==papel; }));
+  var pesos = {}; pesos[ordem[0]] = ROLE_PESO_PRIMARIO;
+  ordem.slice(1).forEach(function(r){ pesos[r] = ROLE_PESO_SECUNDARIO; });
   var total = ordem.reduce(function(s,r){ return s + (byRole[r].length ? pesos[r] : 0); }, 0);
   if(total<=0) return null;
   var roll = Math.random()*total, acumulado = 0, escolhido = null;
@@ -5892,28 +5933,65 @@ function pickMoveByRole(moves, papel){
   var pool = byRole[escolhido];
   return pool[Math.floor(Math.random()*pool.length)];
 }
-/* Efeitos genéricos e simplificados pros Movimentos de Status que
-   agora ENTRAM na luta automática (antes eram só ignorados de
-   verdade -- filtrados fora, nunca usados) -- Green Área não tem
-   Estágio/Condição (Cap. cabeçalho do arquivo: "Sem Habilidade/
-   Natureza/Estágio"), então em vez de tentar simular o efeito OFICIAL
-   exato de cada um dos 847 golpes, 'defender' cura uma fração do
-   próprio PV Máximo e 'suporte' causa uma fração do PV Máximo do alvo
-   como dano direto (representando debuff/Condição/pressão de campo,
-   sem precisar de sistema de Estágio nenhum). */
-var STATUS_DEFENDER_CURA_PCT = 0.35;
-var STATUS_SUPORTE_DANO_PCT = 0.10;
+/* Efeitos genéricos e simplificados pros Movimentos de Status --
+   Green Área não tem Estágio/Condição persistente (Cap. cabeçalho do
+   arquivo: "Sem Habilidade/Natureza/Estágio"), então em vez de tentar
+   simular o efeito OFICIAL exato de cada um dos 847 golpes, cada
+   papel tem um efeito mecânico simplificado próprio. QUANDO um
+   Movimento de Status carrega mais de uma tag, a EXECUÇÃO (não o
+   sorteio) segue uma prioridade fixa -- 'defesa' > 'suporte' >
+   'controle' > 'ataque' -- porque sobreviver vem antes de ajudar o
+   time, que vem antes de atrapalhar o oponente; 'ataque' só executa
+   por último porque um Movimento de Status só cai lá quando é um puro
+   buff ofensivo próprio (ex.: Swords Dance) sem nenhuma outra tag. */
+var STATUS_DEFESA_CURA_PCT = 0.35;
+var STATUS_SUPORTE_CURA_PCT = 0.35;
+var STATUS_CONTROLE_DANO_PCT = 0.10;
+var STATUS_ATAQUE_STATUS_CURA_PCT = 0.20; // placeholder: sem sistema de Estágio pra aplicar o buff de verdade
+/* 'suporte' agora cura o TIME INTEIRO (não só quem tá lutando) -- Cap.
+   acima "fortaleçam ou curem os aliados que vão entrar". Só cura quem
+   JÁ está sendo rastreado em b.hp (ou seja, já entrou nessa luta em
+   algum momento) -- qualquer Pokémon da Equipe/roster que nunca entrou
+   já está com o PV 100% cheio por definição (Cap. "PV é sempre
+   restaurado 100% fora de batalha"), então tentar curar ele não faria
+   sentido nenhum e não teria efeito mesmo. Lado do usuário decide qual
+   time cura: jogador cura STATE.party, oponente cura o próprio oppTeam. */
+function curarTimeInteiro(user){
+  var b = STATE.battle;
+  var curados = [];
+  if(user.side==='player'){
+    STATE.party.forEach(function(p){
+      var key = 'p_'+p.id;
+      if(b.hp[key]===undefined) return;
+      var max = gaHpMax(p);
+      if(b.hp[key]>=max) return;
+      var cura = Math.max(1, Math.round(max*STATUS_SUPORTE_CURA_PCT));
+      b.hp[key] = Math.min(max, b.hp[key]+cura);
+      curados.push(displayName(p));
+    });
+  } else {
+    (b.oppTeam||[]).forEach(function(o){
+      if(b.hp[o.key]===undefined) return;
+      var max = gaHpMax(o);
+      if(b.hp[o.key]>=max) return;
+      var cura = Math.max(1, Math.round(max*STATUS_SUPORTE_CURA_PCT));
+      b.hp[o.key] = Math.min(max, b.hp[o.key]+cura);
+      curados.push(speciesByNum(o.num).name);
+    });
+  }
+  return curados;
+}
 
 /* Um turno -- mesma fórmula do resolveAttack do RPG pro papel
-   'atacar' (Cap. cabeçalho do arquivo): base = atkEfetivo + poder -
+   'ataque' (Cap. cabeçalho do arquivo): base = atkEfetivo + poder -
    defEfetivo, Tipo soma/subtrai (não multiplica), d10 decide
    Acerto/Crítico. Sem Habilidade/Natureza/Estágio (não existem nesse
-   modo). 'defender'/'suporte' usam os efeitos genéricos acima. */
+   modo). Movimento de Status usa os efeitos genéricos acima, pela
+   prioridade de tag descrita ali em cima. */
 function resolveGaTurn(user, target){
   var b = STATE.battle;
   var pool = (user.moves && user.moves.length) ? user.moves : [FALLBACK_MOVE];
   var move = pickMoveByRole(pool, user.papelCombate) || FALLBACK_MOVE;
-  var papelDoGolpe = moveRole(move);
 
   var precisao100 = !move.precisao || parseInt(move.precisao,10)>=100;
   var threshold = hitThreshold(move.precisao);
@@ -5927,18 +6005,35 @@ function resolveGaTurn(user, target){
     return;
   }
 
-  if(papelDoGolpe==='defender'){
-    var maxUser = gaHpMax(user);
-    var cura = Math.max(1, Math.round(maxUser*STATUS_DEFENDER_CURA_PCT));
-    b.hp[user.key] = Math.min(maxUser, b.hp[user.key]+cura);
-    b.log.push('🛡️ '+userName+' usou '+move.name+' -- recuperou '+cura+' PV.');
-    return;
-  }
-  if(papelDoGolpe==='suporte'){
-    var maxAlvo = gaHpMax(target);
-    var danoSuporte = Math.max(1, Math.round(maxAlvo*STATUS_SUPORTE_DANO_PCT));
-    b.hp[target.key] = Math.max(0, b.hp[target.key]-danoSuporte);
-    b.log.push('🌀 '+userName+' usou '+move.name+' em '+targetName+' -- '+danoSuporte+' de dano (efeito de Suporte).');
+  if(move.categoria==='Status'){
+    var tags = moveRoles(move);
+    var papelExec = ['defesa','suporte','controle','ataque'].filter(function(r){ return tags.indexOf(r)!==-1; })[0] || 'suporte';
+    if(papelExec==='defesa'){
+      var maxUser = gaHpMax(user);
+      var cura = Math.max(1, Math.round(maxUser*STATUS_DEFESA_CURA_PCT));
+      b.hp[user.key] = Math.min(maxUser, b.hp[user.key]+cura);
+      b.log.push('🛡️ '+userName+' usou '+move.name+' -- recuperou '+cura+' PV.');
+      return;
+    }
+    if(papelExec==='suporte'){
+      var curados = curarTimeInteiro(user);
+      b.log.push(curados.length
+        ? '🌿 '+userName+' usou '+move.name+' -- curou o time inteiro ('+curados.join(', ')+').'
+        : '🌿 '+userName+' usou '+move.name+' -- o time já estava com o PV cheio.');
+      return;
+    }
+    if(papelExec==='controle'){
+      var maxAlvo = gaHpMax(target);
+      var danoControle = Math.max(1, Math.round(maxAlvo*STATUS_CONTROLE_DANO_PCT));
+      b.hp[target.key] = Math.max(0, b.hp[target.key]-danoControle);
+      b.log.push('🌀 '+userName+' usou '+move.name+' em '+targetName+' -- '+danoControle+' de dano (efeito de Controle).');
+      return;
+    }
+    // papelExec==='ataque': buff ofensivo próprio sem Estágio pra aplicar de verdade -- placeholder de auto-cura
+    var maxUserAtq = gaHpMax(user);
+    var curaAtq = Math.max(1, Math.round(maxUserAtq*STATUS_ATAQUE_STATUS_CURA_PCT));
+    b.hp[user.key] = Math.min(maxUserAtq, b.hp[user.key]+curaAtq);
+    b.log.push('⚔️ '+userName+' usou '+move.name+' -- recuperou '+curaAtq+' PV (efeito de preparo pra atacar).');
     return;
   }
 
@@ -6468,7 +6563,7 @@ var TOOLTIPS = {
   poketickets: 'Pokétickets: batalha selvagem e Treinador comum de rota NÃO dão Pokéticket nenhum.\nSó 2 fontes -- vencer um Mestre Especialista (5 garantidos, sempre) ou vencer um raro Treinador de Elite (a partir da Zona Elite -- chance baixa de largar até 5, e quanto mais tickets, mais rara a chance).\nTroque por Energia (1 Pokéticket = +'+ENERGIA_POR_TICKET+') quando quiser, sem limite.',
   insignias: 'Insígnias: conquistadas vencendo os 8 Mestres Especialistas, em ordem -- não dá pra pular nenhum.\nVeja a aba 🎖️ Mestres.',
   pokedex: 'Pokédex: quantas das 1025 Espécies você já CAPTUROU, do total.\nClique num Pokémon na aba 📕 Pokédex pra ver Área/Movimentos/Habilidades/Lore/Cry dele, mesmo sem ter capturado ainda.',
-  papelCombate: 'Papel de Combate: o sistema de luta automática usa mais os Movimentos desse papel -- ⚔️ Atacar (dano), 🛡️ Defender (cura o próprio PV / aumenta a própria defesa) ou 🌀 Suporte (atrapalha o oponente).\n60% de chance de usar um Movimento do papel setado, 20%/20% cada um dos outros dois -- nunca 100% de um só tipo.'
+  papelCombate: 'Papel de Combate: o sistema de luta automática usa mais os Movimentos desse papel -- ⚔️ Ataque (elimina o oponente), 🛡️ Defesa (cura o próprio PV / aumenta a própria defesa), 🌿 Suporte (fortalece/cura o TIME) ou 🌀 Controle (deixa o oponente com status ruim).\n60% de chance de usar um Movimento do papel setado, os outros 3 dividem os 40% restantes -- nunca 100% de um só tipo.\nUm Movimento pode valer pra mais de um papel ao mesmo tempo, quando o efeito dele se encaixa em mais de uma definição.'
 };
 /* Cap. leva desta sessão: "Gostaria que o layout, não as cores,
    fossem baseadas no the crims... menus na lateral para facilitar a
@@ -6662,20 +6757,21 @@ function hubScreenHTML(){
 
 /* Cap. leva desta sessão: "Colocar opções no pokemon, na tela do
    time, para que possamos definir se ele é focado em atacar, defender
-   ou ser suporte" -- 3 botões (um só ativo por vez) por Pokémon da
-   Equipe. Tela do Time só -- a Caixa não entra em luta, não precisa
-   de papel setado (o campo já existe/persiste se o Pokémon passar
-   pela Equipe depois, só não tem UI pra mudar direto na Caixa). */
-var PAPEL_COMBATE_LABEL = { atacar:'⚔️ Atacar', defender:'🛡️ Defender', suporte:'🌀 Suporte' };
+   ou ser suporte" (leva desta sessão: 4 categorias) -- 4 botões (um só
+   ativo por vez) por Pokémon da Equipe. Tela do Time só -- a Caixa não
+   entra em luta, não precisa de papel setado (o campo já existe/
+   persiste se o Pokémon passar pela Equipe depois, só não tem UI pra
+   mudar direto na Caixa). */
+var PAPEL_COMBATE_LABEL = { ataque:'⚔️ Ataque', defesa:'🛡️ Defesa', suporte:'🌿 Suporte', controle:'🌀 Controle' };
 function papelCombateSeletorHTML(p){
   return '<div class="ga-papel-combate" title="'+esc2(TOOLTIPS.papelCombate)+'">'+
-    ['atacar','defender','suporte'].map(function(papel){
-      return '<button class="ga-btn-sm '+(( p.papelCombate||'atacar')===papel?'active':'')+'" onclick="DT.gaSetPapelCombate(\''+p.id+'\',\''+papel+'\')">'+PAPEL_COMBATE_LABEL[papel]+'</button>';
+    ROLES_COMBATE.map(function(papel){
+      return '<button class="ga-btn-sm '+(( p.papelCombate||'ataque')===papel?'active':'')+'" onclick="DT.gaSetPapelCombate(\''+p.id+'\',\''+papel+'\')">'+PAPEL_COMBATE_LABEL[papel]+'</button>';
     }).join('')+
   '</div>';
 }
 DT.gaSetPapelCombate = function(pid, papel){
-  if(['atacar','defender','suporte'].indexOf(papel)===-1) return;
+  if(ROLES_COMBATE.indexOf(papel)===-1) return;
   var p = STATE.party.filter(function(x){return x.id===pid;})[0];
   if(!p) return;
   p.papelCombate = papel;
@@ -7173,9 +7269,13 @@ function wikiScreenHTML(){
 
   out += wikiSecao('✨ Natureza e Habilidade', '<p>Sorteadas 1x quando o Pokémon nasce/é capturado, dentro da limitação real da Espécie (a Habilidade só pode ser uma das que a Espécie realmente pode ter, Oculta incluída). Natureza afeta o Atributo Efetivo de verdade (+1/-1 num Atributo); Habilidade por enquanto é só identidade (ainda não tem gatilho em batalha). Nunca mudam sozinhas -- evoluir remapeia a Habilidade pro slot equivalente, mas não sorteia de novo do zero.</p>');
 
-  out += wikiSecao('⚔️🛡️🌀 Papel de Combate', '<p>'+esc2(TOOLTIPS.papelCombate).replace(/\n/g,'<br>')+'</p>'+
-    '<p>Todos os 847 Movimentos do jogo caem em 1 dos 3 papéis -- ⚔️ Atacar é sempre um Movimento de dano (Físico/Especial). Dos Movimentos de Status, os que cuidam da SOBREVIVÊNCIA do próprio usuário (curar o próprio PV, aumentar a própria Defesa/Defesa Especial/Evasão, proteger de ataques, reduzir dano recebido ou criar um substituto) viram 🛡️ Defender; todo o resto (Condição/debuff no alvo, armadilha, cura de Condição da equipe, até um buff ofensivo tipo Ataque/Velocidade no próprio usuário) vira 🌀 Suporte.</p>'+
-    '<p>Green Área não tem sistema de Estágio/Condição (dano é sempre um golpe só, na hora) -- então, de forma simplificada, um golpe 🛡️ Defender recupera 35% do próprio PV Máximo, e um golpe 🌀 Suporte causa 10% do PV Máximo do alvo como dano direto (representa o incômodo de uma Condição/debuff, sem precisar simular o efeito oficial exato de cada um dos 847).</p>');
+  out += wikiSecao('⚔️🛡️🌿🌀 Papel de Combate', '<p>'+esc2(TOOLTIPS.papelCombate).replace(/\n/g,'<br>')+'</p>'+
+    '<p>Todos os 847 Movimentos do jogo caem em pelo menos 1 dos 4 papéis -- e um Movimento PODE valer pra mais de um ao mesmo tempo, quando o efeito dele se encaixa em mais de uma definição:</p>'+
+    '<p>⚔️ <b>Ataque</b> -- foca em atacar o oponente pra eliminar. Sempre um Movimento de dano (Físico/Especial); entre os de Status, um buff ofensivo puro no próprio usuário (tipo Ataque/Velocidade, sem outra tag) também entra aqui.</p>'+
+    '<p>🛡️ <b>Defesa</b> -- foca em se manter vivo: cura o próprio PV, aumenta a própria Defesa/Defesa Especial/Evasão, protege de ataques ou cria um substituto.</p>'+
+    '<p>🌿 <b>Suporte</b> -- foca em ajudar o TIME: fortalece ou cura um aliado (não o próprio usuário), melhora o campo (clima/terreno/paredes tipo Reflect), remove armadilha da própria equipe.</p>'+
+    '<p>🌀 <b>Controle</b> -- foca em deixar o oponente com status que atrapalhe: Veneno/Paralisia/Sono/Confusão/Queimadura/Congelamento/Atração, reduz Atributo do alvo, prende/impede fuga ou troca, armadilha tipo Stealth Rock. Um golpe de dano com chance de status secundário (ex.: "também pode paralisar") ganha essa tag JUNTO com Ataque.</p>'+
+    '<p>Green Área não tem sistema de Estágio/Condição persistente (dano é sempre um golpe só, na hora) -- então, de forma simplificada, um Movimento de Status executa o efeito do PRIMEIRO papel que ele tiver nessa ordem de prioridade -- Defesa > Suporte > Controle > Ataque: 🛡️ Defesa recupera 35% do próprio PV Máximo; 🌿 Suporte cura 35% do PV Máximo de TODO o time (não só de quem tá lutando); 🌀 Controle causa 10% do PV Máximo do alvo como dano direto (representa o incômodo de uma Condição/debuff); e ⚔️ Ataque (só quando é um puro buff ofensivo sem outra tag, tipo Swords Dance) recupera 20% do próprio PV como um efeito placeholder, já que o motor não tem sistema de Estágio pra aplicar o buff de verdade.</p>');
 
   out += wikiSecao('📕 Pokédex', '<p>'+esc2(TOOLTIPS.pokedex).replace(/\n/g,'<br>')+'</p>'+
     '<p>Clique num Pokémon já visto em batalha (mesmo sem capturar) pra ver Área onde encontrar, Movimentos possíveis, Habilidades possíveis, Lore (em português) e o Cry original em áudio.</p>');
