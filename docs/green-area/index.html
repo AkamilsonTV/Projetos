@@ -5310,10 +5310,12 @@ var chatCol = null;
 var inboxCol = null;
 var amizadesCol = null;
 var presencaCol = null;
+var dmCol = null;
 var unsubscribeChat = null;
 var unsubscribeInbox = null;
 var unsubscribeAmizades = null;
 var unsubscribePresenca = null;
+var unsubscribeDm = null;
 var presencaHeartbeatTimer = null;
 
 var SESSION_CACHE_KEY = 'green_area_session_v1'; // {docId, pin} -- NUNCA o progresso em si
@@ -5330,7 +5332,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
 
 function freshState(trainerName){
   return {
@@ -5564,6 +5566,34 @@ function attachSocialListeners(docId){
     SESSION.amigos = lista;
     render();
   }, function(err){ SESSION.error = 'Não consegui ver sua lista de amigos ('+erroFirestoreMsg(err)+').'; render(); });
+
+  /* Cap. leva desta sessão -- Fase 2: "Crie também um chat privado (que
+     pode ser acessado de qualquer área)" -- MESMO padrão "roda em
+     segundo plano desde o login" do inbox/amizades acima: escuta a
+     coleção `green_area_dm` INTEIRA (mesmo truque do listener de
+     amizades logo acima -- filtra no cliente pelas conversas em que o
+     PRÓPRIO docId participa, pelo id do documento = friendPairId(a,b)),
+     então o selo de mensagens novas no menu lateral atualiza na hora
+     em QUALQUER tela, não só dentro da tela de Mensagens. */
+  if(unsubscribeDm) unsubscribeDm();
+  unsubscribeDm = dmCol.onSnapshot(function(snap){
+    var mapa = {};
+    snap.forEach(function(d){
+      if(d.id.split('__').indexOf(docId)===-1) return;
+      var data = d.data();
+      mapa[d.id] = (data && data.mensagens) || [];
+    });
+    SESSION.dmMensagens = mapa;
+    /* se a conversa aberta na hora ganhou mensagem nova, marca como
+       lida na mesma hora (o jogador já está com ela na tela) em vez
+       de deixar o selo de não-lida acender numa conversa que ele já
+       está literalmente olhando. */
+    if(SESSION.screen==='mensagens' && SESSION.dmConversaAberta && dmNaoLidas(SESSION.dmConversaAberta)>0){
+      marcarConversaLida(SESSION.dmConversaAberta);
+      return; // marcarConversaLida já chama mutate() -> render()
+    }
+    render();
+  }, function(err){ SESSION.error = 'Não consegui carregar suas mensagens privadas ('+erroFirestoreMsg(err)+').'; render(); });
 }
 
 function bootApp(){
@@ -5575,6 +5605,7 @@ function bootApp(){
     inboxCol = db.collection('green_area_inbox');
     amizadesCol = db.collection('green_area_amizades');
     presencaCol = db.collection('green_area_centro_presenca');
+    dmCol = db.collection('green_area_dm');
   }catch(e){
     SESSION.error = 'Erro ao iniciar o Firebase.';
     render();
@@ -7075,10 +7106,11 @@ DT.gaSair = function(){
   if(unsubscribeInbox){ unsubscribeInbox(); unsubscribeInbox=null; }
   if(unsubscribeAmizades){ unsubscribeAmizades(); unsubscribeAmizades=null; }
   if(unsubscribeChat){ unsubscribeChat(); unsubscribeChat=null; }
+  if(unsubscribeDm){ unsubscribeDm(); unsubscribeDm=null; }
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
   render();
 };
 
@@ -7272,6 +7304,88 @@ DT.gaEnviarMensagemChat = function(inputEl){
     logAction('chat', 'Mandou uma mensagem no chat público do Centro Pokémon.');
     mutate();
     trimChatSeNecessario();
+  }).catch(function(err){ SESSION.error='Não consegui mandar a mensagem ('+erroFirestoreMsg(err)+').'; render(); });
+};
+
+/* ---- Chat privado (DM) -- Fase 2 do Centro Pokémon ----
+   Cap. leva desta sessão: "Crie também um chat privado (que pode ser
+   acessado de qualquer área)". MESMA arquitetura do chat público (1
+   documento por conversa, mensagens sempre via arrayUnion -- nunca
+   lê-modifica-escreve, então os 2 lados mandando ao mesmo tempo nunca
+   se atropelam) só que 1 documento POR PAR de Treinadores em vez de 1
+   documento global -- reaproveita `friendPairId` (mesmo id usado por
+   `green_area_amizades`, mas numa coleção TOTALMENTE separada,
+   `green_area_dm`, então não colide com o documento de amizade
+   confirmada do mesmo par). Só dá pra conversar com quem já é AMIGO
+   (`SESSION.amigos`) -- o pedido de amizade já é o "aceite" de
+   verdade pra poder falar com alguém, mesma trava usada pra achar o
+   alvo no diretório do Centro Pokémon.
+
+   "Acessível de qualquer área": ao contrário do chat público (que só
+   liga o listener enquanto a tela do Centro Pokémon está aberta), o
+   listener de `green_area_dm` roda desde o LOGIN (ver
+   attachSocialListeners), então o selo de mensagens novas no menu
+   lateral (ver navListHTML/dmTotalNaoLidas) já aparece de QUALQUER
+   tela -- só o HISTÓRICO de uma conversa específica é lido ao abrir a
+   tela 💬 Mensagens.
+
+   "Lido até quando": cada Treinador guarda o PRÓPRIO controle de
+   leitura (`STATE.dmLidoAte[conversationId]`) dentro do PRÓPRIO save
+   -- nunca no documento da conversa em si (que é compartilhado) --
+   então não tem risco NENHUM de atropelo: só o dono mexe no próprio
+   campo, e `doSave()`/`mutate()` já reescreve o `state` inteiro da
+   PRÓPRIA conta de qualquer jeito. */
+var DM_CHAT_MAX = 200;
+var DM_MSG_MAX_LEN = 300;
+function marcarConversaLida(outroDocId){
+  if(!STATE || !SESSION.currentDocId || !outroDocId) return;
+  STATE.dmLidoAte = STATE.dmLidoAte || {};
+  STATE.dmLidoAte[friendPairId(SESSION.currentDocId, outroDocId)] = Date.now();
+  mutate();
+}
+function dmNaoLidas(outroDocId){
+  if(!STATE || !SESSION.currentDocId || !outroDocId) return 0;
+  var cid = friendPairId(SESSION.currentDocId, outroDocId);
+  var msgs = (SESSION.dmMensagens && SESSION.dmMensagens[cid]) || [];
+  var lidoAte = (STATE.dmLidoAte && STATE.dmLidoAte[cid]) || 0;
+  return msgs.filter(function(m){ return m.docId!==SESSION.currentDocId && m.ts>lidoAte; }).length;
+}
+function dmTotalNaoLidas(){
+  return (SESSION.amigos||[]).reduce(function(soma, a){ return soma + dmNaoLidas(a.outro); }, 0);
+}
+function trimDmSeNecessario(cid){
+  var atuais = (SESSION.dmMensagens && SESSION.dmMensagens[cid]) || [];
+  if(atuais.length <= DM_CHAT_MAX) return;
+  var cortado = atuais.slice(atuais.length - DM_CHAT_MAX);
+  dmCol.doc(cid).update({ mensagens: cortado }).catch(function(){});
+}
+/* Abre a tela de Mensagens já com essa conversa em foco -- clicável de
+   QUALQUER lugar que mostre um amigo (Centro Pokémon e a própria tela
+   de Mensagens), sempre marcando como lida na hora (o jogador já está
+   olhando pra ela). */
+DT.gaAbrirConversa = function(outroDocId){
+  if(!STATE || !outroDocId) return;
+  if(!(SESSION.amigos||[]).some(function(a){ return a.outro===outroDocId; })) return;
+  SESSION.screen = 'mensagens';
+  SESSION.dmConversaAberta = outroDocId;
+  SESSION.error = '';
+  SESSION.sidebarOpen = false;
+  marcarConversaLida(outroDocId); // já chama mutate() -> render()
+};
+DT.gaFecharConversa = function(){ SESSION.dmConversaAberta = null; render(); };
+DT.gaEnviarMensagemPrivada = function(paraDocId, inputEl){
+  if(!STATE || !paraDocId) return;
+  if(!(SESSION.amigos||[]).some(function(a){ return a.outro===paraDocId; })){ SESSION.error='Só dá pra mandar mensagem privada pra quem já é seu amigo.'; render(); return; }
+  var texto = ((inputEl && inputEl.value) || '').trim();
+  if(!texto) return;
+  if(texto.length > DM_MSG_MAX_LEN) texto = texto.slice(0, DM_MSG_MAX_LEN);
+  var cid = friendPairId(SESSION.currentDocId, paraDocId);
+  var msg = { autor: STATE.trainerName, docId: SESSION.currentDocId, texto: texto, ts: Date.now() };
+  dmCol.doc(cid).set({ mensagens: firebase.firestore.FieldValue.arrayUnion(msg) }, { merge:true }).then(function(){
+    if(inputEl) inputEl.value = '';
+    logAction('chat', 'Mandou uma mensagem privada.');
+    trimDmSeNecessario(cid);
+    marcarConversaLida(paraDocId); // nunca conta a PRÓPRIA mensagem como não lida
   }).catch(function(err){ SESSION.error='Não consegui mandar a mensagem ('+erroFirestoreMsg(err)+').'; render(); });
 };
 
@@ -8108,11 +8222,18 @@ function navListHTML(){
      login, então esse número já aparece aqui mesmo de LONGE do
      Centro Pokémon, exatamente como uma notificação de verdade). */
   var qtdPedidos = (SESSION.pedidosAmizade||[]).length;
+  /* Cap. leva desta sessão -- Fase 2: mesmo selo do Centro Pokémon
+     acima, agora pras mensagens privadas não lidas -- soma de TODAS
+     as conversas, atualizado ao vivo desde o login (ver
+     attachSocialListeners), então acende de QUALQUER tela, não só
+     dentro de 💬 Mensagens ("acessível de qualquer área"). */
+  var qtdDm = dmTotalNaoLidas();
   return NAV_ITENS.map(function(item){
     var kv = item.split(':');
     return '<button class="'+(SESSION.screen===kv[0]?'active':'')+'" onclick="DT.gaGoto(\''+kv[0]+'\')"><span class="ga-nav-ic">'+kv[1]+'</span>'+kv[2]+'</button>';
   }).join('')+
   '<button class="'+(SESSION.screen==='centro'?'active':'')+'" onclick="DT.gaAbrirCentro()"><span class="ga-nav-ic">🏥</span>Centro Pokémon'+(qtdPedidos>0?' <span class="ga-nav-badge">'+qtdPedidos+'</span>':'')+'</button>'+
+  '<button class="'+(SESSION.screen==='mensagens'?'active':'')+'" onclick="DT.gaGoto(\'mensagens\')"><span class="ga-nav-ic">💬</span>Mensagens'+(qtdDm>0?' <span class="ga-nav-badge">'+qtdDm+'</span>':'')+'</button>'+
   (SESSION.isAdmin ? '<button class="'+(SESSION.screen==='admin'?'active':'')+'" onclick="DT.gaAdminAbrirPainel()"><span class="ga-nav-ic">🛡️</span>Admin</button>' : '');
 }
 function sidebarHTML(){
@@ -8179,6 +8300,7 @@ function screenHTML(){
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
+    case 'mensagens': return wrap(mensagensScreenHTML());
     case 'debug': return wrap(debugScreenHTML());
     default: return wrap(hubScreenHTML());
   }
@@ -9030,8 +9152,10 @@ function centroScreenHTML(){
   out += '<h3 class="ga-subhead">👥 Meus amigos'+(amigos.length?' ('+amigos.length+')':'')+'</h3>'+
     (amigos.length
       ? '<div class="ga-poke-grid">'+amigos.map(function(a){
-          return '<div class="ga-friend-card"><strong>'+esc2(a.outroNome)+'</strong>'+
-            '<button class="ga-btn-sm" onclick="DT.gaDesfazerAmizade(\''+a.outro+'\')">Desfazer amizade</button></div>';
+          var naoLidas = dmNaoLidas(a.outro);
+          return '<div class="ga-friend-card"><strong>'+esc2(a.outroNome)+(naoLidas>0?' <span class="ga-nav-badge">'+naoLidas+'</span>':'')+'</strong>'+
+            '<div class="ga-btn-row"><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirConversa(\''+a.outro+'\')">💬 Mensagem</button>'+
+            '<button class="ga-btn-sm" onclick="DT.gaDesfazerAmizade(\''+a.outro+'\')">Desfazer amizade</button></div></div>';
         }).join('')+'</div>'
       : '<p class="ga-hint">Você ainda não tem nenhum amigo -- peça amizade pra alguém da lista de Treinadores abaixo.</p>');
 
@@ -9066,6 +9190,58 @@ function centroScreenHTML(){
     '</div>'+
   '</div>';
   return out;
+}
+
+/* Cap. leva desta sessão -- Fase 2 do Centro Pokémon: "Crie também um
+   chat privado (que pode ser acessado de qualquer área)". Lista de
+   conversas (1 linha por AMIGO, nunca por conta qualquer -- só dá pra
+   conversar com quem já é amigo) com prévia da última mensagem e selo
+   de não lidas; clicar abre a conversa em foco (SESSION.dmConversaAberta,
+   ver DT.gaAbrirConversa/gaFecharConversa). */
+function mensagensScreenHTML(){
+  if(SESSION.dmConversaAberta) return dmThreadHTML(SESSION.dmConversaAberta);
+  var amigos = SESSION.amigos||[];
+  var out = '<div class="ga-card"><h2>💬 Mensagens</h2>'+
+    '<p class="ga-hint">Chat privado com seus amigos -- acessível de QUALQUER área do jogo (o selo no menu lateral acende assim que chega mensagem nova, mesmo longe desta tela). Só dá pra conversar com quem já é seu amigo -- faça amizade no 🏥 Centro Pokémon primeiro.</p>';
+  if(!amigos.length){
+    out += '<p class="ga-hint">Você ainda não tem nenhum amigo -- peça amizade pra alguém no 🏥 Centro Pokémon pra poder conversar.</p></div>';
+    return out;
+  }
+  var linhas = amigos.map(function(a){
+    var cid = friendPairId(SESSION.currentDocId, a.outro);
+    var msgs = (SESSION.dmMensagens && SESSION.dmMensagens[cid]) || [];
+    return { amigo: a, ultima: msgs.length ? msgs[msgs.length-1] : null, naoLidas: dmNaoLidas(a.outro) };
+  });
+  linhas.sort(function(x,y){ return (y.ultima?y.ultima.ts:0) - (x.ultima?x.ultima.ts:0); });
+  out += '<div class="ga-poke-grid">'+linhas.map(function(l){
+    var prevTexto = l.ultima ? esc2(l.ultima.texto.length>40 ? l.ultima.texto.slice(0,40)+'...' : l.ultima.texto) : null;
+    var preview = l.ultima ? ((l.ultima.docId===SESSION.currentDocId?'Você: ':'')+prevTexto) : 'Nenhuma mensagem ainda -- diga oi!';
+    return '<div class="ga-friend-card"><strong>'+esc2(l.amigo.outroNome)+(l.naoLidas>0?' <span class="ga-nav-badge">'+l.naoLidas+'</span>':'')+'</strong>'+
+      '<span class="ga-hint">'+preview+'</span>'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirConversa(\''+l.amigo.outro+'\')">Abrir conversa</button></div>';
+  }).join('')+'</div></div>';
+  return out;
+}
+function dmThreadHTML(outroDocId){
+  var amigo = (SESSION.amigos||[]).filter(function(a){ return a.outro===outroDocId; })[0];
+  if(!amigo){
+    return '<div class="ga-card"><h2>💬 Mensagens</h2><p class="ga-hint">Vocês não são mais amigos -- a conversa não está mais disponível.</p>'+
+      '<button class="ga-btn-sm" onclick="DT.gaFecharConversa()">← Voltar pras conversas</button></div>';
+  }
+  var cid = friendPairId(SESSION.currentDocId, outroDocId);
+  var msgs = (SESSION.dmMensagens && SESSION.dmMensagens[cid]) || [];
+  return '<div class="ga-card"><h2>💬 '+esc2(amigo.outroNome)+'</h2>'+
+    '<button class="ga-btn-sm" onclick="DT.gaFecharConversa()">← Voltar pras conversas</button>'+
+    '<div class="ga-chat-log" id="gaDmLog">'+
+      (!msgs.length
+        ? '<div class="ga-hint">Nenhuma mensagem ainda -- diga oi!</div>'
+        : msgs.map(function(m){ return '<div class="ga-chat-msg'+(m.docId===SESSION.currentDocId?' mine':'')+'"><strong>'+esc2(m.autor)+':</strong> '+esc2(m.texto)+'</div>'; }).join(''))+
+    '</div>'+
+    '<div class="ga-capqtd-row">'+
+      '<input type="text" maxlength="'+DM_MSG_MAX_LEN+'" id="gaDmInput" placeholder="Escreva uma mensagem..." class="ga-chat-input" onkeydown="if(event.key===\'Enter\')DT.gaEnviarMensagemPrivada(\''+outroDocId+'\',document.getElementById(\'gaDmInput\'))">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemPrivada(\''+outroDocId+'\',document.getElementById(\'gaDmInput\'))">Enviar</button>'+
+    '</div>'+
+  '</div>';
 }
 
 function debugScreenHTML(){
