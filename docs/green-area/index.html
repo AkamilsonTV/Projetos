@@ -5311,12 +5311,15 @@ var inboxCol = null;
 var amizadesCol = null;
 var presencaCol = null;
 var dmCol = null;
+var trocasCol = null;
 var unsubscribeChat = null;
 var unsubscribeInbox = null;
 var unsubscribeAmizades = null;
 var unsubscribePresenca = null;
 var unsubscribeDm = null;
+var unsubscribeTrocas = null;
 var presencaHeartbeatTimer = null;
+var trocaExecutandoLocal = {}; // tradeId -> true enquanto a PRÓPRIA aplicação da troca está em andamento (evita aplicar 2x por reentrância do listener)
 
 var SESSION_CACHE_KEY = 'green_area_session_v1'; // {docId, pin} -- NUNCA o progresso em si
 var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só localStorage, antes da conta online)
@@ -5332,7 +5335,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
 
 function freshState(trainerName){
   return {
@@ -5594,6 +5597,36 @@ function attachSocialListeners(docId){
     }
     render();
   }, function(err){ SESSION.error = 'Não consegui carregar suas mensagens privadas ('+erroFirestoreMsg(err)+').'; render(); });
+
+  /* Cap. leva desta sessão -- Fase 3: "trocar pokémons, itens, dinheiro"
+     entre 2 jogadores, AO VIVO (confirmado com o usuário: troca ao vivo,
+     não caixa de correio). MESMO padrão "roda desde o login" das outras
+     2 coleções acima -- escuta `green_area_trocas` inteira, filtra no
+     cliente pelas trocas em que o PRÓPRIO docId participa (`a` ou `b`).
+     Além de alimentar SESSION.trocasAtivas (convites recebidos + trocas
+     que eu mesmo abri), CADA snapshot também confere se alguma troca já
+     tem os 2 lados confirmados e, se sim, aplica a PRÓPRIA parte dela
+     na hora (processarTrocasAtivas), não importa em qual tela o jogador
+     está -- assim a troca sempre conclui pros 2 lados, mesmo que um
+     deles já tenha saído da tela de Troca depois de confirmar. */
+  if(unsubscribeTrocas) unsubscribeTrocas();
+  unsubscribeTrocas = trocasCol.onSnapshot(function(snap){
+    var minhas = [];
+    snap.forEach(function(d){
+      var data = d.data();
+      if(!data || (data.a!==docId && data.b!==docId)) return;
+      data.id = d.id;
+      minhas.push(data);
+    });
+    SESSION.trocasAtivas = minhas;
+    processarTrocasAtivas(minhas);
+    // a troca que eu tava vendo sumiu (cancelada, ou já concluída dos 2 lados e limpa) -- volta pra uma tela neutra
+    if(SESSION.trocaId && !minhas.some(function(t){ return t.id===SESSION.trocaId; })){
+      if(SESSION.screen==='troca'){ SESSION.notice = 'Essa troca não está mais disponível (cancelada, ou já concluída).'; SESSION.screen = 'centro'; }
+      SESSION.trocaId = null;
+    }
+    render();
+  }, function(err){ SESSION.error = 'Não consegui ver suas trocas ('+erroFirestoreMsg(err)+').'; render(); });
 }
 
 function bootApp(){
@@ -5606,6 +5639,7 @@ function bootApp(){
     amizadesCol = db.collection('green_area_amizades');
     presencaCol = db.collection('green_area_centro_presenca');
     dmCol = db.collection('green_area_dm');
+    trocasCol = db.collection('green_area_trocas');
   }catch(e){
     SESSION.error = 'Erro ao iniciar o Firebase.';
     render();
@@ -7107,10 +7141,11 @@ DT.gaSair = function(){
   if(unsubscribeAmizades){ unsubscribeAmizades(); unsubscribeAmizades=null; }
   if(unsubscribeChat){ unsubscribeChat(); unsubscribeChat=null; }
   if(unsubscribeDm){ unsubscribeDm(); unsubscribeDm=null; }
+  if(unsubscribeTrocas){ unsubscribeTrocas(); unsubscribeTrocas=null; }
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
   render();
 };
 
@@ -7388,6 +7423,194 @@ DT.gaEnviarMensagemPrivada = function(paraDocId, inputEl){
     marcarConversaLida(paraDocId); // nunca conta a PRÓPRIA mensagem como não lida
   }).catch(function(err){ SESSION.error='Não consegui mandar a mensagem ('+erroFirestoreMsg(err)+').'; render(); });
 };
+
+/* ---- Troca ao vivo -- Fase 3 do Centro Pokémon ----
+   Cap. leva desta sessão: "trocar pokémons, itens, dinheiro" (confirmado
+   com o usuário: TROCA AO VIVO, não uma caixa de correio -- os 2 lados
+   montam a oferta em tempo real e confirmam ao mesmo tempo). Só entre
+   AMIGOS (mesma trava do chat privado -- o sistema de amizade já é o
+   "aceite" de propósito pra interação direta).
+
+   1 documento por troca (`green_area_trocas/{id}`, id aleatório --
+   NUNCA um par determinístico como friendPairId, porque o MESMO par
+   pode trocar várias vezes ao longo do tempo, uma depois da outra).
+   Cada lado só escreve o PRÓPRIO campo (`ofertaA`/`confirmadoA`/
+   `recebidoA` só por quem é o lado "a", idem "b") -- 2 jogadores
+   editando a MESMA troca ao mesmo tempo nunca se atropelam porque
+   nunca escrevem o MESMO campo, mesmo raciocínio da presença do
+   Centro Pokémon (campo exclusivo do dono, `.update()` comum já
+   basta, sem precisar de `arrayUnion`). A ÚNICA exceção de propósito:
+   editar a PRÓPRIA oferta também zera os 2 `confirmado*` (mesmo o do
+   OUTRO lado) -- garante que qualquer mudança na oferta exige
+   reconfirmação dos 2 lados pro negócio final de verdade batido; o
+   pior cenário de uma corrida nesse reset (2 escritas concorrentes
+   nesse mesmo campo) é só precisar clicar em Confirmar de novo --
+   NUNCA troca a mais nem a menos, porque a EXECUÇÃO só dispara quando
+   os 2 `confirmado*` aparecem `true` no MESMO snapshot.
+
+   Execução: quando os 2 lados confirmam, CADA CLIENTE aplica a
+   PRÓPRIA metade sozinho (tira o que ofereceu, dá o que recebeu) e
+   marca o PRÓPRIO `recebido*` -- nunca um lado escreve no
+   `green_area_saves` do outro (see comentário grande no topo do
+   arquivo sobre porque isso é perigoso). Quando os 2 `recebido*`
+   ficam `true`, o documento da troca é apagado (limpeza). Cada
+   Pokémon oferecido carrega uma CÓPIA COMPLETA do objeto (não só o
+   id) -- é assim que o outro lado consegue "receber" um Pokémon que
+   nunca existiu no próprio save. Só Pokémon da CAIXA entram na oferta
+   (nunca a Equipe -- documentado como simplificação de propósito,
+   evita o caso de esvaziar a Equipe de alguém no meio de uma troca). */
+var TROCA_ITEM_CATEGORIAS = ['pokebolas','itens'];
+function trocaOfertaVazia(){ return { dinheiro:0, pokebolas:{}, itens:{}, pokemons:[] }; }
+function clonarOferta(o){
+  if(!o) return trocaOfertaVazia();
+  return { dinheiro: o.dinheiro||0, pokebolas: JSON.parse(JSON.stringify(o.pokebolas||{})), itens: JSON.parse(JSON.stringify(o.itens||{})), pokemons: JSON.parse(JSON.stringify(o.pokemons||[])) };
+}
+function achaTrocaAtiva(tradeId){ return (SESSION.trocasAtivas||[]).filter(function(t){ return t.id===tradeId; })[0] || null; }
+/* Confere se uma oferta (a MINHA, sempre) ainda é entregável AGORA --
+   usada antes de deixar confirmar E de novo (defensivamente) antes de
+   executar. Ver comentário grande acima sobre o limite conhecido: se o
+   dono gastar o que ofereceu DEPOIS de confirmar mas ANTES dos 2 lados
+   confirmarem, essa checagem no momento da execução pega a maioria dos
+   casos (aborta a PRÓPRIA metade sem aplicar nada errado), mas não cobre
+   100% de uma corrida entre os 2 clientes -- risco desprezível numa
+   troca entre amigos de mesa, documentado de propósito no README. */
+function ofertaValidaContraEstadoAtual(oferta){
+  if(!STATE || !oferta) return false;
+  if((oferta.dinheiro||0) > (STATE.pokedolares||0)) return false;
+  var ok = true;
+  Object.keys(oferta.pokebolas||{}).forEach(function(k){ if((oferta.pokebolas[k]||0) > (STATE.pokebolas[k]||0)) ok = false; });
+  Object.keys(oferta.itens||{}).forEach(function(k){ if((oferta.itens[k]||0) > (STATE.itens[k]||0)) ok = false; });
+  var idsCaixa = {};
+  (STATE.box||[]).forEach(function(p){ idsCaixa[p.id] = true; });
+  (oferta.pokemons||[]).forEach(function(p){ if(!idsCaixa[p.id]) ok = false; });
+  return ok;
+}
+function salvarOfertaTroca(tradeId, souA, oferta){
+  var upd = {};
+  upd[souA ? 'ofertaA' : 'ofertaB'] = oferta;
+  upd.confirmadoA = false; upd.confirmadoB = false; // qualquer mudança na oferta (de QUALQUER lado) exige reconfirmar os 2
+  trocasCol.doc(tradeId).update(upd).catch(function(err){ SESSION.error = 'Não consegui atualizar a oferta ('+erroFirestoreMsg(err)+').'; render(); });
+}
+DT.gaIniciarTroca = function(outroDocId){
+  if(!STATE || !outroDocId) return;
+  if(!(SESSION.amigos||[]).some(function(a){ return a.outro===outroDocId; })){ SESSION.error='Só dá pra trocar com quem já é seu amigo.'; render(); return; }
+  var jaAtiva = (SESSION.trocasAtivas||[]).filter(function(t){ return t.a===outroDocId || t.b===outroDocId; })[0];
+  if(jaAtiva){ SESSION.screen='troca'; SESSION.trocaId=jaAtiva.id; SESSION.error=''; SESSION.sidebarOpen=false; render(); return; }
+  var amigo = (SESSION.amigos||[]).filter(function(a){ return a.outro===outroDocId; })[0];
+  var outroNome = amigo ? amigo.outroNome : outroDocId;
+  var tradeId = uid();
+  trocasCol.doc(tradeId).set({
+    a: SESSION.currentDocId, aNome: STATE.trainerName, b: outroDocId, bNome: outroNome,
+    ofertaA: trocaOfertaVazia(), ofertaB: trocaOfertaVazia(),
+    confirmadoA: false, confirmadoB: false, recebidoA: false, recebidoB: false,
+    criadoEm: Date.now()
+  }).then(function(){
+    SESSION.screen='troca'; SESSION.trocaId=tradeId; SESSION.error=''; SESSION.sidebarOpen=false;
+    logAction('troca', 'Iniciou uma troca com '+outroNome+'.');
+    render();
+  }).catch(function(err){ SESSION.error = 'Não consegui iniciar a troca ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaAbrirTroca = function(tradeId){ SESSION.screen='troca'; SESSION.trocaId=tradeId; SESSION.error=''; SESSION.sidebarOpen=false; render(); };
+DT.gaFecharTroca = function(){ SESSION.screen='centro'; SESSION.trocaId=null; render(); };
+DT.gaSetTrocaDinheiro = function(tradeId, inputEl){
+  var trade = achaTrocaAtiva(tradeId); if(!trade || !STATE) return;
+  var souA = trade.a===SESSION.currentDocId;
+  var valor = clampInt((inputEl&&inputEl.value)||0, 0, STATE.pokedolares||0);
+  var oferta = clonarOferta(souA?trade.ofertaA:trade.ofertaB);
+  oferta.dinheiro = valor;
+  salvarOfertaTroca(tradeId, souA, oferta);
+};
+DT.gaAjustarItemTroca = function(tradeId, categoria, key, delta){
+  var trade = achaTrocaAtiva(tradeId); if(!trade || !STATE || TROCA_ITEM_CATEGORIAS.indexOf(categoria)===-1) return;
+  var souA = trade.a===SESSION.currentDocId;
+  var oferta = clonarOferta(souA?trade.ofertaA:trade.ofertaB);
+  oferta[categoria] = oferta[categoria] || {};
+  var estoque = categoria==='pokebolas' ? (STATE.pokebolas[key]||0) : (STATE.itens[key]||0);
+  oferta[categoria][key] = clampInt((oferta[categoria][key]||0) + delta, 0, estoque);
+  salvarOfertaTroca(tradeId, souA, oferta);
+};
+DT.gaToggleTrocaPokemon = function(tradeId, pid){
+  var trade = achaTrocaAtiva(tradeId); if(!trade || !STATE) return;
+  var souA = trade.a===SESSION.currentDocId;
+  var oferta = clonarOferta(souA?trade.ofertaA:trade.ofertaB);
+  oferta.pokemons = oferta.pokemons || [];
+  var jaTem = oferta.pokemons.some(function(p){ return p.id===pid; });
+  if(jaTem){
+    oferta.pokemons = oferta.pokemons.filter(function(p){ return p.id!==pid; });
+  } else {
+    var p = (STATE.box||[]).filter(function(x){ return x.id===pid; })[0];
+    if(!p) return;
+    oferta.pokemons.push(JSON.parse(JSON.stringify(p)));
+  }
+  salvarOfertaTroca(tradeId, souA, oferta);
+};
+DT.gaConfirmarTroca = function(tradeId){
+  var trade = achaTrocaAtiva(tradeId); if(!trade || !STATE) return;
+  var souA = trade.a===SESSION.currentDocId;
+  var minhaOferta = souA ? trade.ofertaA : trade.ofertaB;
+  if(!ofertaValidaContraEstadoAtual(minhaOferta)){ SESSION.error='Sua oferta tem algo que você não tem mais -- atualize antes de confirmar.'; render(); return; }
+  var upd = {}; upd[souA?'confirmadoA':'confirmadoB'] = true;
+  trocasCol.doc(tradeId).update(upd).catch(function(err){ SESSION.error='Não consegui confirmar a troca ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaDesconfirmarTroca = function(tradeId){
+  var trade = achaTrocaAtiva(tradeId); if(!trade) return;
+  var souA = trade.a===SESSION.currentDocId;
+  var upd = {}; upd[souA?'confirmadoA':'confirmadoB'] = false;
+  trocasCol.doc(tradeId).update(upd).catch(function(err){ SESSION.error='Não consegui desfazer a confirmação ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaCancelarTroca = function(tradeId){
+  var trade = achaTrocaAtiva(tradeId); if(!trade) return;
+  if(trade.recebidoA || trade.recebidoB){ SESSION.error='Essa troca já começou a ser concluída -- não dá mais pra cancelar.'; render(); return; }
+  trocasCol.doc(tradeId).delete().then(function(){
+    if(SESSION.trocaId===tradeId){ SESSION.trocaId=null; SESSION.screen='centro'; }
+    render();
+  }).catch(function(err){ SESSION.error='Não consegui cancelar a troca ('+erroFirestoreMsg(err)+').'; render(); });
+};
+/* Aplica a PRÓPRIA metade de UMA troca já com os 2 lados confirmados
+   (chamada de dentro do listener, ver attachSocialListeners) -- tira o
+   que EU ofereci, dá o que o OUTRO ofereceu, salva no PRÓPRIO save
+   (mutate(), nunca mexe no save de ninguém mais) e marca o PRÓPRIO
+   `recebido*` no documento compartilhado. */
+function aplicarMinhaParteDaTroca(trade){
+  var souA = trade.a===SESSION.currentDocId;
+  var minhaOferta = souA ? trade.ofertaA : trade.ofertaB;
+  var ofertaRecebida = souA ? trade.ofertaB : trade.ofertaA;
+  if(!ofertaValidaContraEstadoAtual(minhaOferta)){
+    SESSION.error = 'Sua oferta na troca com '+(souA?trade.bNome:trade.aNome)+' não é mais válida (você não tem mais algo que ofereceu) -- a troca ficou travada; cancele e comece de novo se precisar.';
+    render();
+    return Promise.resolve();
+  }
+  STATE.pokedolares = Math.max(0, (STATE.pokedolares||0) - (minhaOferta.dinheiro||0));
+  Object.keys(minhaOferta.pokebolas||{}).forEach(function(k){ STATE.pokebolas[k] = Math.max(0, (STATE.pokebolas[k]||0) - (minhaOferta.pokebolas[k]||0)); });
+  Object.keys(minhaOferta.itens||{}).forEach(function(k){ STATE.itens[k] = Math.max(0, (STATE.itens[k]||0) - (minhaOferta.itens[k]||0)); });
+  var idsOferecidos = (minhaOferta.pokemons||[]).map(function(p){ return p.id; });
+  STATE.box = (STATE.box||[]).filter(function(p){ return idsOferecidos.indexOf(p.id)===-1; });
+
+  STATE.pokedolares = (STATE.pokedolares||0) + (ofertaRecebida.dinheiro||0);
+  Object.keys(ofertaRecebida.pokebolas||{}).forEach(function(k){ STATE.pokebolas[k] = (STATE.pokebolas[k]||0) + (ofertaRecebida.pokebolas[k]||0); });
+  Object.keys(ofertaRecebida.itens||{}).forEach(function(k){ STATE.itens[k] = (STATE.itens[k]||0) + (ofertaRecebida.itens[k]||0); });
+  (ofertaRecebida.pokemons||[]).forEach(function(p){ STATE.box.push(p); });
+
+  logAction('troca', 'Concluiu uma troca com '+(souA?trade.bNome:trade.aNome)+'.');
+  mutate();
+  var upd = {}; upd[souA?'recebidoA':'recebidoB'] = true;
+  return trocasCol.doc(trade.id).update(upd).then(function(){
+    var outroJaRecebeu = souA ? trade.recebidoB : trade.recebidoA;
+    if(outroJaRecebeu) return trocasCol.doc(trade.id).delete().catch(function(){});
+  }).catch(function(err){ SESSION.error='Não consegui concluir a troca ('+erroFirestoreMsg(err)+').'; render(); });
+}
+function processarTrocasAtivas(lista){
+  (lista||[]).forEach(function(trade){
+    if(!trade || !trade.id || !STATE) return;
+    var souA = trade.a===SESSION.currentDocId;
+    var jaRecebi = souA ? trade.recebidoA : trade.recebidoB;
+    if(jaRecebi || trocaExecutandoLocal[trade.id]) return;
+    if(trade.confirmadoA && trade.confirmadoB){
+      trocaExecutandoLocal[trade.id] = true;
+      aplicarMinhaParteDaTroca(trade).then(function(){ delete trocaExecutandoLocal[trade.id]; }).catch(function(){ delete trocaExecutandoLocal[trade.id]; });
+    }
+  });
+}
 
 /* ============================================================
    Painel Admin (Cap. "cria um login que tenha possibilidade de
@@ -8301,6 +8524,7 @@ function screenHTML(){
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
+    case 'troca': return wrap(trocaScreenHTML());
     case 'debug': return wrap(debugScreenHTML());
     default: return wrap(hubScreenHTML());
   }
@@ -9194,7 +9418,7 @@ function wikiScreenHTML(){
    attachSocialListeners/gaAbrirCentro). */
 function centroScreenHTML(){
   var out = '<div class="ga-card"><h2>🏥 Centro Pokémon</h2>'+
-    '<p class="ga-hint">Ponto de encontro entre Treinadores -- peça amizade e converse no chat público (visível pra TODO MUNDO). A lista de Treinadores abaixo só mostra quem está com ESSA tela aberta agora, igual um lugar de verdade -- sai daqui e você some da tela dos outros também. Troca de Pokémon/itens/dinheiro e desafios de PvP chegam nas próximas atualizações.</p>';
+    '<p class="ga-hint">Ponto de encontro entre Treinadores -- peça amizade, converse no chat público (visível pra TODO MUNDO), troque mensagem privada e troque Pokémon/itens/dinheiro com seus amigos, ao vivo. A lista de Treinadores abaixo só mostra quem está com ESSA tela aberta agora, igual um lugar de verdade -- sai daqui e você some da tela dos outros também. Desafio de PvP chega numa próxima atualização.</p>';
 
   var pedidos = SESSION.pedidosAmizade||[];
   if(pedidos.length){
@@ -9206,13 +9430,29 @@ function centroScreenHTML(){
       }).join('')+'</div>';
   }
 
+  var trocasAtivas = SESSION.trocasAtivas||[];
+  if(trocasAtivas.length){
+    out += '<h3 class="ga-subhead">🔄 Trocas em andamento</h3><div class="ga-poke-grid">'+
+      trocasAtivas.map(function(t){
+        var souA = t.a===SESSION.currentDocId;
+        var outroNome = souA ? t.bNome : t.aNome;
+        var euConfirmei = souA ? t.confirmadoA : t.confirmadoB;
+        var outroConfirmou = souA ? t.confirmadoB : t.confirmadoA;
+        var statusTxt = euConfirmei && outroConfirmou ? '✅ concluindo...' : (outroConfirmou ? '⏳ esperando você confirmar' : (euConfirmei ? '⏳ esperando '+esc2(outroNome) : '📝 montando oferta'));
+        return '<div class="ga-friend-card"><strong>'+esc2(outroNome)+'</strong><span class="ga-hint">'+statusTxt+'</span>'+
+          '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirTroca(\''+t.id+'\')">Abrir troca</button></div>';
+      }).join('')+'</div>';
+  }
+
   var amigos = SESSION.amigos||[];
   out += '<h3 class="ga-subhead">👥 Meus amigos'+(amigos.length?' ('+amigos.length+')':'')+'</h3>'+
     (amigos.length
       ? '<div class="ga-poke-grid">'+amigos.map(function(a){
           var naoLidas = dmNaoLidas(a.outro);
+          var trocaComEle = (SESSION.trocasAtivas||[]).filter(function(t){ return t.a===a.outro || t.b===a.outro; })[0];
           return '<div class="ga-friend-card"><strong>'+esc2(a.outroNome)+(naoLidas>0?' <span class="ga-nav-badge">'+naoLidas+'</span>':'')+'</strong>'+
             '<div class="ga-btn-row"><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirConversa(\''+a.outro+'\')">💬 Mensagem</button>'+
+            '<button class="ga-btn-sm" onclick="DT.gaIniciarTroca(\''+a.outro+'\')">🔄 '+(trocaComEle?'Continuar troca':'Trocar')+'</button>'+
             '<button class="ga-btn-sm" onclick="DT.gaDesfazerAmizade(\''+a.outro+'\')">Desfazer amizade</button></div></div>';
         }).join('')+'</div>'
       : '<p class="ga-hint">Você ainda não tem nenhum amigo -- peça amizade pra alguém da lista de Treinadores abaixo.</p>');
@@ -9300,6 +9540,79 @@ function dmThreadHTML(outroDocId){
       '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemPrivada(\''+outroDocId+'\',document.getElementById(\'gaDmInput\'))">Enviar</button>'+
     '</div>'+
   '</div>';
+}
+
+/* Cap. leva desta sessão -- Fase 3 do Centro Pokémon: tela de troca ao
+   vivo. Lado do jogador (editável) + lado do outro Treinador (só
+   leitura, atualiza sozinho pelo listener de fundo) + confirmação dos
+   2 lados. Nunca mostra a Equipe pra oferecer, só a Caixa (ver
+   comentário grande perto de DT.gaIniciarTroca). */
+function trocaLadoHTML(tradeId, titulo, oferta, souEu, outroNome){
+  var out = '<div class="ga-card"><h3 class="ga-subhead">'+titulo+'</h3>';
+  out += '<p class="ga-hint">💰 Pokédólares: <b>'+(oferta.dinheiro||0)+'</b>'+(souEu?' (você tem '+(STATE.pokedolares||0)+')':'')+'</p>';
+  if(souEu){
+    out += '<div class="ga-capqtd-row"><input type="number" min="0" max="'+(STATE.pokedolares||0)+'" step="1" id="gaTrocaDinheiro-'+tradeId+'" value="'+(oferta.dinheiro||0)+'" class="ga-capqtd-input">'+
+      '<button class="ga-btn-sm" onclick="DT.gaSetTrocaDinheiro(\''+tradeId+'\',document.getElementById(\'gaTrocaDinheiro-'+tradeId+'\'))">Definir</button></div>';
+  }
+  var linhasItens = POKEBALLS.concat(GA_ITEMS).map(function(it){
+    var categoria = POKEBALLS.indexOf(it)!==-1 ? 'pokebolas' : 'itens';
+    var qtd = ((oferta[categoria]||{})[it.key])||0;
+    if(!souEu && qtd===0) return '';
+    var estoque = categoria==='pokebolas' ? (STATE.pokebolas[it.key]||0) : (STATE.itens[it.key]||0);
+    return '<span class="ga-hint">'+itemIconHTML(it)+' '+qtd+
+      (souEu ? ' <button class="ga-btn-sm" '+(qtd<=0?'disabled':'')+' onclick="DT.gaAjustarItemTroca(\''+tradeId+'\',\''+categoria+'\',\''+it.key+'\',-1)">-</button>'+
+        '<button class="ga-btn-sm" '+(qtd>=estoque?'disabled':'')+' onclick="DT.gaAjustarItemTroca(\''+tradeId+'\',\''+categoria+'\',\''+it.key+'\',1)">+</button>' : '')+
+    '</span>';
+  }).join('');
+  out += '<p class="ga-hint">Itens:</p><div class="ga-item-row">'+(linhasItens || '<span class="ga-hint">Nenhum item oferecido.</span>')+'</div>';
+  out += '<p class="ga-hint">Pokémon da Caixa:</p>'+
+    (!oferta.pokemons || !oferta.pokemons.length
+      ? '<p class="ga-hint">Nenhum Pokémon oferecido'+(souEu?' -- escolha na lista abaixo':'')+'.</p>'
+      : '<div class="ga-poke-grid">'+oferta.pokemons.map(function(p){
+          return pokeCardMini(p, souEu ? '<button class="ga-btn-sm" onclick="DT.gaToggleTrocaPokemon(\''+tradeId+'\',\''+p.id+'\')">✕ Remover</button>' : '');
+        }).join('')+'</div>');
+  out += '</div>';
+  return out;
+}
+function trocaScreenHTML(){
+  var trade = achaTrocaAtiva(SESSION.trocaId);
+  if(!trade){
+    return '<div class="ga-card"><h2>🔄 Troca</h2><p class="ga-hint">Essa troca não está mais disponível (cancelada, ou já concluída).</p>'+
+      '<button class="ga-btn-sm" onclick="DT.gaFecharTroca()">← Voltar pro Centro Pokémon</button></div>';
+  }
+  var souA = trade.a===SESSION.currentDocId;
+  var minhaOferta = souA ? trade.ofertaA : trade.ofertaB;
+  var ofertaOutro = souA ? trade.ofertaB : trade.ofertaA;
+  var outroNome = souA ? trade.bNome : trade.aNome;
+  var euConfirmei = souA ? trade.confirmadoA : trade.confirmadoB;
+  var outroConfirmou = souA ? trade.confirmadoB : trade.confirmadoA;
+  var podeCancelar = !trade.recebidoA && !trade.recebidoB;
+
+  var out = '<div class="ga-card"><h2>🔄 Troca com '+esc2(outroNome)+'</h2>'+
+    '<button class="ga-btn-sm" onclick="DT.gaFecharTroca()">← Voltar</button>'+
+    '<p class="ga-hint">Monte sua oferta -- a troca só conclui quando os DOIS confirmarem a versão final. Mudar a oferta (de qualquer lado) cancela as 2 confirmações de novo, pra ninguém confirmar um negócio que já mudou.</p></div>';
+
+  out += trocaLadoHTML(trade.id, '🧑 Sua oferta', minhaOferta, true, outroNome);
+  out += trocaLadoHTML(trade.id, '🤝 Oferta de '+esc2(outroNome), ofertaOutro, false, outroNome);
+
+  if(STATE.box.length){
+    out += '<div class="ga-card"><h3 class="ga-subhead">📦 Escolher Pokémon da Caixa</h3>'+
+      '<div class="ga-poke-grid">'+STATE.box.map(function(p){
+        var jaOferecido = (minhaOferta.pokemons||[]).some(function(x){ return x.id===p.id; });
+        return pokeCardMini(p, '<button class="ga-btn-sm '+(jaOferecido?'active':'')+'" onclick="DT.gaToggleTrocaPokemon(\''+trade.id+'\',\''+p.id+'\')">'+(jaOferecido?'✔️ Na oferta':'➕ Oferecer')+'</button>');
+      }).join('')+'</div></div>';
+  }
+
+  out += '<div class="ga-card"><h3 class="ga-subhead">✅ Confirmação</h3>'+
+    '<p class="ga-hint">Você: '+(euConfirmei?'✅ Confirmado':'⏳ Ainda não confirmou')+' &nbsp;·&nbsp; '+esc2(outroNome)+': '+(outroConfirmou?'✅ Confirmado':'⏳ Ainda não confirmou')+'</p>'+
+    '<div class="ga-btn-row">'+
+      (euConfirmei
+        ? '<button class="ga-btn-sm" onclick="DT.gaDesconfirmarTroca(\''+trade.id+'\')">Desfazer confirmação</button>'
+        : '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarTroca(\''+trade.id+'\')">✅ Confirmar</button>')+
+      (podeCancelar ? '<button class="ga-btn-sm danger" onclick="DT.gaCancelarTroca(\''+trade.id+'\')">🚫 Cancelar troca</button>' : '')+
+    '</div></div>';
+
+  return out;
 }
 
 function debugScreenHTML(){
