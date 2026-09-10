@@ -5921,6 +5921,7 @@ function startBattle(kind, opts, skipDiscrepancia){
     pendingHeal: null,
     pendingSwitch: false,
     pendingEvolution: null,
+    pendingAprenderMovimento: null,
     oppDefeatedLevels: [],
     finished: null,
     captureDone: false,
@@ -6007,7 +6008,7 @@ function runBattleUntilPause(){
   b.roundGuard = b.roundGuard||0;
   while(b.roundGuard++<2000){
     if(b.finished) return;
-    if(b.pendingHeal || b.pendingSwitch || b.pendingEvolution) return;
+    if(b.pendingHeal || b.pendingSwitch || b.pendingEvolution || b.pendingAprenderMovimento) return;
 
     var atkB = battlerObj(b, 'player');
     var defB = currentOpponent();
@@ -6328,11 +6329,46 @@ DT.gaResponderEvolucao = function(aceitar){
     markSeen(p.num); markCaught(p.num);
     b.log.push('✨ '+(p.apelido||oldSp.name)+' evoluiu para '+newSp.name+'!');
     logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+'.');
+    /* Cap. leva desta sessão: "quando evoluir... perguntar se deseja
+       aprender algum ataque que o pokémon aprenda na evolução" --
+       recalcula movimentosElegiveis JÁ com a Espécie/Nível novos: se
+       sobrar espaço vazio (menos de 4 Movimentos) e existir algo novo
+       pra aprender, pausa a luta de novo (mesmo padrão de
+       pendingEvolution) perguntando ANTES de voltar a rodar turnos.
+       Só dispara quando aceita evoluir -- recusar não abre essa
+       pergunta (nada novo foi desbloqueado). */
+    if((p.moves||[]).length<4 && movimentosElegiveis(p).length>0){
+      b.pendingAprenderMovimento = { partyId: p.id };
+    }
   } else if(p){
     b.log.push('⏸️ '+(p.apelido||speciesByNum(p.num).name)+' não evoluiu dessa vez.');
     logAction('evolucao', (p.apelido||speciesByNum(p.num).name)+' recusou evoluir.');
   }
   b.pendingEvolution = null;
+  runBattleUntilPause();
+  mutate();
+};
+/* Responde o popup "aprender Movimento novo" (bônus de evolução --
+   ver comentário acima). Aceitar sempre GRÁTIS (nem Energia nem MT --
+   é a Espécie nova que já desbloqueou isso, não uma troca comprada) e
+   sempre no PRÓXIMO espaço vazio (moves.length), nunca sobrescreve um
+   Movimento já conhecido. Recusar (moveName vazio/nulo) só fecha o
+   popup e segue a luta -- pode aparecer nesse mesmo Nível de novo só
+   se evoluir outra vez (não guarda "recusado pra sempre", mesmo
+   espírito de eligibleEvolution). */
+DT.gaResponderAprenderMovimento = function(moveName){
+  var b = STATE.battle; if(!b || !b.pendingAprenderMovimento) return;
+  var pa = b.pendingAprenderMovimento;
+  var p = STATE.party.filter(function(x){ return x.id===pa.partyId; })[0];
+  if(p && moveName){
+    var moveObj = findMoveByName(moveName);
+    if(moveObj && (p.moves||[]).length<4 && !(p.moves||[]).some(function(m){ return m.name===moveObj.name; })){
+      p.moves[p.moves.length] = moveObj;
+      b.log.push('📖 '+(p.apelido||speciesByNum(p.num).name)+' aprendeu '+moveObj.name+'!');
+      logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' aprendeu '+moveObj.name+' (bônus de evolução, grátis).');
+    }
+  }
+  b.pendingAprenderMovimento = null;
   runBattleUntilPause();
   mutate();
 };
@@ -8205,15 +8241,21 @@ function sequenciaFimScreenHTML(){
   var cs = STATE.captureSequence;
   var zona = zonaByStatus(cs.zonaId);
   var pendentes = elegiveisParaEvoluirAgora().filter(function(p){ return (SESSION.evolucaoSequenciaDecididos||[]).indexOf(p.id)===-1; });
+  var aprenderPend = SESSION.pendingAprenderMovimentoSequencia;
   var out = '<div class="ga-card"><h2>🔁 Sequência automática terminou — '+esc2(zona?zona.nome:'?')+'</h2>'+
     '<p class="ga-hint">'+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' -- parou sem Energia suficiente pra continuar':'')+'.</p>'+
     sequenciaRelatorioHTML(cs);
-  if(pendentes.length){
-    out += '<p class="ga-hint">✨ Algum Pokémon pode evoluir agora -- decida no popup antes de fechar o resumo.</p>';
+  if(pendentes.length || aprenderPend){
+    out += '<p class="ga-hint">✨ Algum Pokémon pode evoluir (ou aprender um Movimento novo) agora -- decida no popup antes de fechar o resumo.</p>';
   }
-  out += '<div class="ga-btn-row"><button class="ga-btn ga-btn-primary" onclick="DT.gaFecharResumoSequencia()">'+(pendentes.length?'✔️ Terminei, fechar resumo':'✔️ Fechar')+'</button></div>'+
+  out += '<div class="ga-btn-row"><button class="ga-btn ga-btn-primary" onclick="DT.gaFecharResumoSequencia()">'+((pendentes.length||aprenderPend)?'✔️ Terminei, fechar resumo':'✔️ Fechar')+'</button></div>'+
     '</div>';
-  if(pendentes.length) out += evolucaoSequenciaPopupHTML(pendentes[0]);
+  /* Pergunta de "aprender Movimento" (bônus de evolução, ver
+     DT.gaEvoluirPosSequencia) tem PRIORIDADE sobre a próxima pergunta
+     de evolução pendente -- um popup de cada vez, mesma disciplina do
+     resto do fluxo de resumo. */
+  if(aprenderPend) out += aprenderMovimentoSequenciaPopupHTML(aprenderPend);
+  else if(pendentes.length) out += evolucaoSequenciaPopupHTML(pendentes[0]);
   return out;
 }
 /* Popup de evolução adiada (ver comentário acima) -- MESMO visual do
@@ -8256,12 +8298,55 @@ DT.gaEvoluirPosSequencia = function(partyId, aceitar){
     else p.habilidade = rollAbilityForSpecies(p.num);
     markSeen(p.num); markCaught(p.num);
     logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+' (decisão adiada pro fim da sequência automática).');
+    /* Mesmo bônus "aprender Movimento novo" do popup em luta manual
+       (ver DT.gaResponderEvolucao), versão adiada -- SESSION em vez de
+       b.pendingAprenderMovimento porque aqui não existe luta em
+       andamento nenhuma. */
+    if((p.moves||[]).length<4 && movimentosElegiveis(p).length>0){
+      SESSION.pendingAprenderMovimentoSequencia = { partyId: p.id };
+    }
   } else {
     logAction('evolucao', (p.apelido||speciesByNum(p.num).name)+' recusou evoluir (decisão adiada pro fim da sequência automática).');
   }
   mutate();
 };
-DT.gaFecharResumoSequencia = function(){ STATE.captureSequence = null; SESSION.evolucaoSequenciaDecididos = []; mutate(); };
+/* Popup "aprender Movimento novo" adiado (ver comentário acima) --
+   mesmo visual do popup em luta manual (aprenderMovimentoPopupHTML),
+   sem log de batalha (fora de luta). */
+function aprenderMovimentoSequenciaPopupHTML(pa){
+  var p = STATE.party.filter(function(x){ return x.id===pa.partyId; })[0];
+  if(!p) return '';
+  var sp = speciesByNum(p.num);
+  var elegiveis = movimentosElegiveis(p);
+  var opts = elegiveis.map(function(o){
+    var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : ' (MT)');
+    return '<option value="'+esc2(o.name)+'">'+esc2(rotulo)+'</option>';
+  }).join('');
+  return '<div class="ga-overlay" onclick="DT.gaAprenderMovimentoSequencia(\'\')"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaAprenderMovimentoSequencia(\'\')">✕</button>'+
+    '<h2>📖 '+esc2(p.apelido||sp.name)+' pode aprender um Movimento novo!</h2>'+
+    '<p class="ga-hint">Bônus de evolução -- grátis, sem gastar Energia nem MT.</p>'+
+    '<select id="gaAprenderNovoSeq">'+opts+'</select>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAprenderMovimentoSequencia(document.getElementById(\'gaAprenderNovoSeq\').value)">📖 Aprender</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaAprenderMovimentoSequencia(\'\')">Não, obrigado</button>'+
+    '</div>'+
+  '</div></div>';
+}
+DT.gaAprenderMovimentoSequencia = function(moveName){
+  var pa = SESSION.pendingAprenderMovimentoSequencia; if(!pa) return;
+  var p = STATE.party.filter(function(x){ return x.id===pa.partyId; })[0];
+  if(p && moveName){
+    var moveObj = findMoveByName(moveName);
+    if(moveObj && (p.moves||[]).length<4 && !(p.moves||[]).some(function(m){ return m.name===moveObj.name; })){
+      p.moves[p.moves.length] = moveObj;
+      logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' aprendeu '+moveObj.name+' (bônus de evolução, grátis).');
+    }
+  }
+  SESSION.pendingAprenderMovimentoSequencia = null;
+  mutate();
+};
+DT.gaFecharResumoSequencia = function(){ STATE.captureSequence = null; SESSION.evolucaoSequenciaDecididos = []; SESSION.pendingAprenderMovimentoSequencia = null; mutate(); };
 
 DT.gaDesafiarMestre = function(leadId, leaderId){
   if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar.'; render(); return; }
@@ -8828,11 +8913,21 @@ function equipeScreenHTML(){
     '</div></div>'+
     (STATE.box.length ? (function(){
       var lista = caixaFilteredList();
+      /* Cap. leva desta sessão ("Colocar a opção de SOLTAR na box
+         também"): MESMO botão/confirmação de 2 passos da Equipe
+         (Soltar -> Confirmar/Cancelar), reusando DT.gaLiberar/
+         gaAskLiberar/gaCancelLiberar como já estão -- eles já filtram
+         tanto STATE.party quanto STATE.box, então soltar da Caixa
+         funciona de graça, só faltava o botão aqui. */
       var grid = lista.map(function(p){
-        return pokeCardMini(p, '<div class="ga-poke-actions">'+
+        var actions = '<div class="ga-poke-actions">'+
           '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
           '<button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button>'+
-        '</div>');
+          (SESSION.confirmRelease===p.id
+            ? '<button class="ga-btn-sm danger" onclick="DT.gaLiberar(\''+p.id+'\')">Confirmar</button><button class="ga-btn-sm" onclick="DT.gaCancelLiberar()">Cancelar</button>'
+            : '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>')+
+        '</div>';
+        return pokeCardMini(p, actions);
       }).join('');
       return '<div class="ga-card"><h2>📦 Caixa ('+STATE.box.length+')</h2>'+
         caixaFiltrosHTML()+
@@ -8901,22 +8996,47 @@ function movesPopupHTML(pid){
   if(!p) return '';
   var sp = speciesByNum(p.num);
   var elegiveis = movimentosElegiveis(p);
-  return '<div class="ga-overlay" onclick="DT.gaCloseMoves()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
-    '<button class="ga-overlay-close" onclick="DT.gaCloseMoves()">✕</button>'+
-    '<h2>🔁 Movimentos — '+esc2(p.apelido||sp.name)+' (Nv. '+p.level+')</h2>'+
-    '<p class="ga-hint">Movimento do Nível: 10 Energia. Movimento de MT (se você tiver a MT em estoque): grátis.</p>'+
-    (p.moves||[]).map(function(m, idx){
-      var opts = elegiveis.map(function(o){
-        var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : ' (MT — você tem '+(STATE.tms[o.name]||0)+')');
-        return '<option value="'+esc2(o.name)+'">'+esc2(rotulo)+'</option>';
-      }).join('');
-      return '<div class="ga-move-row">'+
+  var moves = p.moves||[];
+  var opts = elegiveis.map(function(o){
+    var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : ' (MT — você tem '+(STATE.tms[o.name]||0)+')');
+    return '<option value="'+esc2(o.name)+'">'+esc2(rotulo)+'</option>';
+  }).join('');
+  /* Cap. leva desta sessão: "Os 4 tem que estar disponíveis para serem
+     adicionados ou mudados sempre" -- sempre desenha os 4 espaços de
+     Movimento, mesmo quando o Pokémon hoje conhece menos que isso (ex.
+     um recém-evoluído que só desbloqueou 2 por Nível). Um slot vazio
+     usa a MESMA DT.gaTrocarMovimento(pid, idx, moveName), que já
+     estende o array quando idx===moves.length -- só o slot vazio
+     seguinte ao último preenchido fica clicável; os de depois ficam
+     travados (placeholder) pra nunca abrir um buraco no meio do array
+     (moves[2] preenchido sem moves[1] quebraria PP e outras contas que
+     assumem array denso). */
+  var linhas = [];
+  for(var idx=0; idx<4; idx++){
+    if(idx < moves.length){
+      var m = moves[idx];
+      linhas.push('<div class="ga-move-row">'+
         '<div class="ga-move-atual"><strong>'+esc2(m.name)+'</strong> <span class="ga-hint">('+esc2(m.tipo)+' · '+esc2(m.categoria)+')</span></div>'+
         (opts ? ('<select id="gaMoveNovo-'+idx+'"><option value="">— trocar por --</option>'+opts+'</select>'+
           '<button class="ga-btn-sm" onclick="DT.gaTrocarMovimento(\''+p.id+'\','+idx+',document.getElementById(\'gaMoveNovo-'+idx+'\').value)">Trocar</button>')
           : '<span class="ga-hint">nenhum Movimento elegível pra trocar aqui agora</span>')+
-      '</div>';
-    }).join('')+
+      '</div>');
+    } else if(idx === moves.length){
+      linhas.push('<div class="ga-move-row">'+
+        '<div class="ga-move-atual"><span class="ga-hint">(espaço vazio)</span></div>'+
+        (opts ? ('<select id="gaMoveNovo-'+idx+'"><option value="">— aprender --</option>'+opts+'</select>'+
+          '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaTrocarMovimento(\''+p.id+'\','+idx+',document.getElementById(\'gaMoveNovo-'+idx+'\').value)">Aprender</button>')
+          : '<span class="ga-hint">nenhum Movimento elegível pra aprender aqui agora</span>')+
+      '</div>');
+    } else {
+      linhas.push('<div class="ga-move-row"><div class="ga-move-atual"><span class="ga-hint">(espaço vazio -- preencha o anterior primeiro)</span></div></div>');
+    }
+  }
+  return '<div class="ga-overlay" onclick="DT.gaCloseMoves()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCloseMoves()">✕</button>'+
+    '<h2>🔁 Movimentos — '+esc2(p.apelido||sp.name)+' (Nv. '+p.level+')</h2>'+
+    '<p class="ga-hint">Movimento do Nível: 10 Energia. Movimento de MT (se você tiver a MT em estoque): grátis.</p>'+
+    linhas.join('')+
   '</div></div>';
 }
 
@@ -9195,9 +9315,25 @@ function capturaScreenHTML(){
       ? '<div class="ga-banner ok">🔁 Sequência automática rodando: luta '+(STATE.captureSequence.total-STATE.captureSequence.remaining)+' de '+STATE.captureSequence.total+' ('+STATE.captureSequence.vitorias+'✅ '+STATE.captureSequence.derrotas+'☠️) -- continua sozinha mesmo se você sair dessa tela ou recarregar a página.</div>'
       : '')+
     ticketParaEnergiaWidgetHTML('captura')+
-    '<div class="ga-poke-grid">'+STATE.party.map(function(p){
+    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> e já vem selecionado sozinho pra liderar -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
+    '<div class="ga-poke-grid">'+STATE.party.map(function(p, i){
       var sel = p.id===lead.id;
-      return pokeCardMini(p, '<div class="ga-poke-actions"><button class="ga-btn-sm'+(sel?' ga-btn-primary':'')+'" onclick="DT.gaSetCapturaLead(\''+p.id+'\')">'+(sel?'✔️ Liderando':'Escolher')+'</button></div>');
+      var actions = '<div class="ga-poke-actions">'+
+        (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
+        '<button class="ga-btn-sm'+(sel?' ga-btn-primary':'')+'" onclick="DT.gaSetCapturaLead(\''+p.id+'\')">'+(sel?'✔️ Liderando':'Escolher')+'</button>'+
+        (STATE.party.length>1 ? '<div class="ga-btn-row">'+
+          (i>0 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',-1)">⬆️</button>' : '')+
+          (i<STATE.party.length-1 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',1)">⬇️</button>' : '')+
+        '</div>' : '')+
+      '</div>';
+      /* Mesmo arrastar-pra-reordenar da Equipe (Cap. "Essa opção da
+         equipe também tem na área de captura" / "a opção de arrastar
+         os pokémon pra ativo na party") -- reusa DT.gaArrastarEquipe,
+         que já mexe direto em STATE.party (o mesmo array compartilhado
+         com a tela de Equipe), então o efeito é idêntico nas duas
+         telas. */
+      var dragAttrs = 'draggable="true" ondragstart="event.dataTransfer.setData(\'text/plain\',\''+p.id+'\')" ondragover="event.preventDefault()" ondrop="event.preventDefault();DT.gaArrastarEquipe(event.dataTransfer.getData(\'text/plain\'),\''+p.id+'\')"';
+      return pokeCardMini(p, actions, i===0?'ativo':'', dragAttrs);
     }).join('')+'</div>'+
     '<h3 class="ga-subhead">Zonas — '+esc2(leadNome)+' (Nv. '+lead.level+')</h3>'+
     '<div class="ga-zona-grid">'+
@@ -9801,6 +9937,7 @@ function battleScreenHTML(){
      cima de tudo, então o jogador NUNCA perde a pergunta no meio do
      log de batalha rolando. */
   if(b.pendingEvolution) out += evolucaoPopupHTML(b.pendingEvolution);
+  if(b.pendingAprenderMovimento) out += aprenderMovimentoPopupHTML(b.pendingAprenderMovimento);
   return out;
 }
 /* Popup de evolução (ver comentário acima) -- MESMA troca de
@@ -9817,6 +9954,30 @@ function evolucaoPopupHTML(pe){
     '<div class="ga-btn-row">'+
       '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderEvolucao(true)">✨ Evoluir</button>'+
       '<button class="ga-btn-sm" onclick="DT.gaResponderEvolucao(false)">Não, manter '+esc2(fromSp.name)+'</button>'+
+    '</div>'+
+  '</div></div>';
+}
+/* Popup "aprender Movimento novo" (bônus de evolução -- ver comentário
+   de DT.gaResponderAprenderMovimento). Reusa movimentosElegiveis, mesma
+   fonte de dados do popup normal de Movimentos, só que sempre GRÁTIS e
+   sempre no próximo espaço vazio. */
+function aprenderMovimentoPopupHTML(pa){
+  var p = STATE.party.filter(function(x){ return x.id===pa.partyId; })[0];
+  if(!p) return '';
+  var sp = speciesByNum(p.num);
+  var elegiveis = movimentosElegiveis(p);
+  var opts = elegiveis.map(function(o){
+    var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : ' (MT)');
+    return '<option value="'+esc2(o.name)+'">'+esc2(rotulo)+'</option>';
+  }).join('');
+  return '<div class="ga-overlay" onclick="DT.gaResponderAprenderMovimento(\'\')"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaResponderAprenderMovimento(\'\')">✕</button>'+
+    '<h2>📖 '+esc2(p.apelido||sp.name)+' pode aprender um Movimento novo!</h2>'+
+    '<p class="ga-hint">Bônus de evolução -- grátis, sem gastar Energia nem MT.</p>'+
+    '<select id="gaAprenderNovo">'+opts+'</select>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderAprenderMovimento(document.getElementById(\'gaAprenderNovo\').value)">📖 Aprender</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaResponderAprenderMovimento(\'\')">Não, obrigado</button>'+
     '</div>'+
   '</div></div>';
 }
