@@ -20,7 +20,7 @@
    horizontalmente no celular. Com min-width:0 em tudo, cada elemento
    pode encolher/quebrar linha de verdade dentro do espaço disponível. */
 *{ box-sizing:border-box; min-width:0; }
-html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Segoe UI',system-ui,-apple-system,sans-serif; overflow-x:hidden; }
+html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Segoe UI',system-ui,-apple-system,sans-serif; }
 body{ min-height:100vh; }
 #app{ min-height:100vh; }
 h1,h2{ margin:0 0 8px; }
@@ -48,9 +48,26 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-nav-sair:hover{ border-color:var(--danger); color:#fecaca; }
 .ga-sidebar-backdrop{ display:none; }
 
-.ga-main{ flex:1; min-width:0; }
+/* Cap. leva desta sessão: "a parte lateral esquerda deve aparecer o
+   tempo todo... ela tem que rolar junto para não sair da tela": o
+   `overflow-x:hidden` que antes ficava em html/body quebrava
+   position:sticky da barra lateral por completo -- QUALQUER ancestral
+   entre o elemento sticky e o viewport com overflow diferente de
+   "visible" vira um "scroll container" novo pro navegador, e a barra
+   lateral passa a "grudar" relativo a esse container (que nunca rola
+   de verdade) em vez de rolar relativo à página inteira -- na prática
+   ela some ao rolar, exatamente o bug relatado. Correção: a proteção
+   contra estouro horizontal (Cap. "adaptado também para quando abrir
+   no celular") fica só em `.ga-main` agora -- nunca em html/body/
+   .ga-shell, que são ancestrais da barra lateral. */
+.ga-main{ flex:1; min-width:0; overflow-x:hidden; }
 .ga-mobtop{ display:none; }
-.ga-body{ padding:16px; display:flex; flex-direction:column; gap:14px; max-width:900px; margin:0 auto; width:100%; }
+/* Cap. leva desta sessão: "esse retângulo do meio... pode pegar quase
+   toda a tela, deixando só a parte lateral esquerda... sendo o
+   limitador dele": sem teto artificial de largura -- o conteúdo usa
+   todo o espaço que sobra ao lado da barra lateral (só um teto bem
+   generoso pra não esticar demais em monitor ultrawide). */
+.ga-body{ padding:16px 24px; display:flex; flex-direction:column; gap:14px; max-width:1600px; margin:0 auto; width:100%; }
 
 /* Celular: a barra lateral vira uma gaveta off-canvas (escondida à
    esquerda, desliza pra dentro com .open), com uma barrinha de topo
@@ -99,12 +116,22 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-badge-icon.on{ opacity:1; filter:none; }
 .ga-quicknav{ display:flex; flex-wrap:wrap; gap:10px; }
 
+/* Cap. leva desta sessão: "qualquer delas que fiquem alinhadas pra ter
+   padrão... Escolher/Liderando ficarem na mesma base pra não ficar
+   feio": a grade já estica cada card pra altura da linha (comportamento
+   padrão do CSS Grid), mas sem virar um flex column o conteúdo de
+   cima (Nome/Nível/Tipo(s)/Natureza/Habilidade/XP -- de altura
+   VARIÁVEL, ex.: 1 Tipo vs. 2 Tipos) não empurra o botão pra base --
+   sobrava espaço vazio DEPOIS do botão em vez de ANTES dele. Virando
+   `.ga-poke-card` um flex column e dando `margin-top:auto` nas ações,
+   o botão sempre gruda no fundo do card, alinhado com os vizinhos da
+   mesma linha nunca importa quanto texto tem acima. */
 .ga-poke-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
-.ga-poke-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; }
-.ga-poke-card img{ width:64px; height:64px; image-rendering:pixelated; }
+.ga-poke-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; display:flex; flex-direction:column; }
+.ga-poke-card img{ width:64px; height:64px; image-rendering:pixelated; align-self:center; }
 .ga-poke-name{ font-weight:700; font-size:.86rem; }
 .ga-poke-meta{ font-size:.7rem; color:var(--ink-dim); margin:2px 0 6px; }
-.ga-poke-actions{ display:flex; flex-direction:column; gap:4px; }
+.ga-poke-actions{ display:flex; flex-direction:column; gap:4px; margin-top:auto; padding-top:8px; }
 .ga-type{ display:inline-block; padding:1px 7px; border-radius:999px; font-size:.66rem; font-weight:700; background:#274238; color:var(--ink); }
 
 .ga-dex-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:6px; margin-top:10px; max-height:70vh; overflow-y:auto; }
