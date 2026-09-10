@@ -138,6 +138,24 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    o botão sempre gruda no fundo do card, alinhado com os vizinhos da
    mesma linha nunca importa quanto texto tem acima. */
 .ga-poke-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
+/* Cap. leva desta sessão: "faça eles ficarem maiores de forma que os 6
+   juntos preencham a área... mantenha o alinhamento das coisas, de
+   forma a ficar mais organizado" -- só a Equipe (sempre <=6 Pokémon,
+   nunca uma lista longa que precisa rolar) usa `auto-fit` em vez do
+   `auto-fill` padrão do `.ga-poke-grid`: `auto-fit` COLAPSA as colunas
+   vazias e reparte o espaço sobrando entre os cards que existem de
+   verdade (era exatamente esse vão vazio à direita, com só 6 cards
+   numa tela larga, que sobrava com `auto-fill`, que sempre mantém
+   colunas fantasmas do tamanho mínimo mesmo sem card pra ocupá-las).
+   Cards maiores (sprite/padding) pra combinar com o espaço extra.
+   Nunca aplicado no `.ga-poke-grid` padrão (Caixa/Pokédex/Trocas/etc.)
+   -- lá a lista pode ter dezenas de itens, e esticar cada card
+   conforme um filtro deixa menos resultados ficaria estranho. */
+.ga-poke-grid-equipe{ grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; }
+.ga-poke-grid-equipe .ga-poke-card{ padding:16px; }
+.ga-poke-grid-equipe .ga-poke-card img{ width:88px; height:88px; }
+.ga-poke-grid-equipe .ga-poke-name{ font-size:1rem; }
+.ga-poke-grid-equipe .ga-poke-meta{ font-size:.76rem; }
 /* Cap. leva desta sessão (Centro Pokémon): card de Treinador/pedido de
    amizade -- reaproveita o MESMO grid `.ga-poke-grid` de sempre, só
    com um card mais simples (sem sprite, só nome + ação). */
@@ -407,6 +425,18 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
    usuário, diferente dos jogos oficiais); progressão de Insígnia é
    sempre sequencial (não dá pra pular Mestre). Tudo isso dá pra
    evoluir depois.
+
+   Cap. leva desta sessão, guardado pra quando a troca forçada (U-turn
+   etc.) acima for implementada: "Se alguma habilidade que troque
+   pokemon(como uturn) é ativa, o pokémon que voltar pra final da
+   fila" -- quando esse Movimento existir de verdade, ele NÃO deve
+   reusar proximoDaFila puro (que sempre pega o primeiro vivo do
+   array): o Pokémon trocado por U-turn continua VIVO (não desmaiou),
+   então antes de chamar o próximo da fila ele precisa ser MOVIDO pro
+   fim de STATE.party (mesmo `splice`+`push` de DT.gaArrastarEquipe) --
+   só depois disso chamar proximoDaFila normalmente. Documentado aqui
+   pra não se perder até a Movimento de troca forçada ser implementada
+   (Cap. "implementar Movimentos de troca forçada", em aberto).
 
    Salvamento: Firebase Firestore, MESMO projeto do Diário de
    Treinador (coleção nova `green_area_saves`) -- login por
@@ -5959,19 +5989,44 @@ function displayName(battler){
 }
 function currentOpponent(){ return STATE.battle.oppTeam[STATE.battle.oppIdx]; }
 
+/* Cap. leva desta sessão: "a ordem de entrada no combate, caso o
+   pokémon desmaie, seja a ordem da equipe... da esquerda pra direita
+   ... o primeiro que entra é o da esquerda e ele segue essa ordem até
+   o fim do combate caso algum pokémon desmaie" -- devolve o PRÓXIMO
+   Pokémon vivo na ordem do array STATE.party (nunca mais o Nível mais
+   alto nem escolha do jogador). "Vivo" aqui é o mesmo critério usado
+   em everyPartyFainted/trocaAutomaticaEscolha: sem chave de PV ainda
+   registrada na luta (nunca entrou) conta como PV cheio, ou chave >0. */
+function proximoDaFila(b){
+  for(var i=0;i<STATE.party.length;i++){
+    var p = STATE.party[i];
+    var key = 'p_'+p.id;
+    if(b.hp[key]===undefined || b.hp[key]>0) return p;
+  }
+  return null;
+}
 /* Desmaio (por golpe OU por dano residual de Status -- Cap. leva desta
    sessão, ver applyEndOfTurnStatus): trata os 2 casos com a MESMA
-   lógica (lado do jogador pausa pra trocar/perde se não sobrar
+   lógica (lado do jogador entra automaticamente com o PRÓXIMO da fila
+   -- ordem da Equipe, ver proximoDaFila -- ou perde se não sobrar
    ninguém; lado do oponente credita XP -- pro battler que acabou de
    agir, `user`, ou pro ativo do jogador quando é dano residual sem
    ninguém "atacando" de verdade, `user===null` -- e avança pro
    próximo do time). Devolve true quando runBattleUntilPause precisa
-   PAUSAR aqui (pendingSwitch, evolução, ou a luta já terminou). */
+   PAUSAR aqui (evolução, ou a luta já terminou -- a troca por desmaio
+   em si NUNCA pausa mais, é sempre resolvida na hora). */
 function resolveFaintAfterDamage(target, user, b){
   b.log.push('💥 '+displayName(target)+' desmaiou!');
   if(target.side==='player'){
     if(everyPartyFainted(b)){ finishBattle('derrota'); return true; }
-    b.pendingSwitch = true; return true;
+    var proximo = proximoDaFila(b);
+    if(proximo){
+      b.playerActive = buildBattlerFromParty(proximo);
+      if(b.usedPartyIds.indexOf(proximo.id)===-1) b.usedPartyIds.push(proximo.id);
+      b.log.push('🔄 Vai, '+displayName(b.playerActive)+'! (próximo da fila, ordem da Equipe)');
+      return false;
+    }
+    b.pendingSwitch = true; return true; // rede de segurança -- não deveria acontecer (everyPartyFainted já cobriu "ninguém vivo")
   }
   b.oppDefeatedLevels.push(target.level);
   var xpUser = (user && user.side==='player') ? user : battlerObj(b,'player');
@@ -7853,7 +7908,6 @@ function rollEliteTeam(zona){
    Pokémon da Equipe pode liderar em qualquer Zona, mesmo uma bem
    acima do Nível dele -- a decisão de arriscar (ou não) é do próprio
    Treinador, não do jogo. */
-DT.gaSetCapturaLead = function(pid){ SESSION.capturaLeadId = pid; render(); };
 /* Sorteia e inicia UMA luta da Zona (selvagem/Treinador/Elite, igual
    sempre) -- extraído de DT.gaEntrarCaptura pra virar a mesma peça
    reaproveitada tanto pelo clique manual quanto pelo encadeamento
@@ -8030,14 +8084,15 @@ function pokebolaRecomendada(num){
   return disponiveis[0];
 }
 /* Troca de Pokémon por desmaio SEMPRE acontece (não tem "recusar
-   troca" no jogo -- ver DT.gaTrocarPokemon), independente dos
-   toggles da sequência -- só decide QUAL: o vivo de Nível mais alto
-   (aposta mais segura). */
+   troca" no jogo -- ver DT.gaTrocarPokemon) -- na prática, hoje isso
+   já é resolvido DENTRO de resolveFaintAfterDamage assim que alguém
+   desmaia (ver proximoDaFila), então este caminho aqui é só a REDE DE
+   SEGURANÇA pro `b.pendingSwitch` de emergência (não deveria disparar
+   nunca de verdade). Mesmo critério de ordem: o PRÓXIMO da fila (o
+   primeiro vivo na ordem de STATE.party, esquerda pra direita) --
+   nunca mais o Nível mais alto. */
 function trocaAutomaticaEscolha(b){
-  var vivos = STATE.party.filter(function(p){ var k='p_'+p.id; return b.hp[k]===undefined || b.hp[k]>0; });
-  if(!vivos.length) return null;
-  vivos.sort(function(a,c){ return c.level-a.level; });
-  return vivos[0];
+  return proximoDaFila(b);
 }
 /* Roda a luta ATIVA sozinha, até terminar, sem esperar clique nenhum
    -- resolve toda pausa que apareceria pro jogador (cura/troca) do
@@ -8881,8 +8936,8 @@ function caixaFiltrosHTML(){
 }
 function equipeScreenHTML(){
   var out = '<div class="ga-card"><h2>🎒 Equipe ('+STATE.party.length+'/6)</h2>'+
-    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início, e o líder já vem selecionado sozinho ao entrar na Área de Captura) -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
-    '<div class="ga-poke-grid">'+
+    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início) -- é ele quem entra primeiro na Área de Captura, e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
+    '<div class="ga-poke-grid ga-poke-grid-equipe">'+
     STATE.party.map(function(p, i){
       var actions = '<div class="ga-poke-actions">'+
         (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
@@ -9294,15 +9349,20 @@ function dexPopupHTML(num){
 
 function capturaScreenHTML(){
   if(STATE.party.length===0) return '<div class="ga-card"><p>Sua Equipe está vazia.</p></div>';
-  if(!SESSION.capturaLeadId || !STATE.party.some(function(p){ return p.id===SESSION.capturaLeadId; })){
-    SESSION.capturaLeadId = STATE.party[0].id;
-  }
-  var lead = STATE.party.filter(function(p){ return p.id===SESSION.capturaLeadId; })[0];
+  /* Cap. leva desta sessão: "Faça com que a ordem de entrada no
+     combate... seja a ordem da equipe... Tire o botão de 'Liderando'
+     da área de captura para que ele use a ordem que definirmos" -- não
+     existe mais ESCOLHA de líder aqui: quem entra primeiro é sempre
+     STATE.party[0] (o mesmo "🎯 Ativo" da Equipe/arrastar), e quem
+     entra depois de um desmaio segue a MESMA ordem do array (ver
+     proximoDaFila, chamado de dentro de resolveFaintAfterDamage) --
+     não mais o Nível mais alto nem escolha manual no meio da luta. */
+  var lead = STATE.party[0];
   var leadSp = speciesByNum(lead.num);
   var leadNome = lead.apelido || leadSp.name;
 
   var out = '<div class="ga-card"><h2>🌿 Área de Captura</h2>'+
-    '<p class="ga-hint">Escolha quem vai liderar a luta -- todas as Zonas ficam abertas pra qualquer Pokémon da Equipe, mesmo bem acima do Nível dele (a responsabilidade de entrar numa Zona forte demais é do Treinador). Quanto mais alta a Zona, maior a chance de cair num Treinador aleatório em vez de um selvagem (selvagem forte fica mais raro na natureza) -- Treinador paga mais Pokédólares, mas não dá pra capturar o Pokémon dele. Só nas Zonas Elite/Lendário existe também uma chance rara de cair num Treinador de Elite (roster de 6, força de Mestre) -- o único encontro comum que também pode largar Pokéticket.</p>'+
+    '<p class="ga-hint">Todas as Zonas ficam abertas pra qualquer Pokémon da Equipe, mesmo bem acima do Nível dele (a responsabilidade de entrar numa Zona forte demais é do Treinador). Quanto mais alta a Zona, maior a chance de cair num Treinador aleatório em vez de um selvagem (selvagem forte fica mais raro na natureza) -- Treinador paga mais Pokédólares, mas não dá pra capturar o Pokémon dele. Só nas Zonas Elite/Lendário existe também uma chance rara de cair num Treinador de Elite (roster de 6, força de Mestre) -- o único encontro comum que também pode largar Pokéticket.</p>'+
     '<div class="ga-hint">🔋 '+STATE.energy+'/1000 de Energia · 🎫 '+(STATE.poketickets||0)+' Pokéticket(s)</div>'+
     /* Cap. leva desta sessão: "Se eu atualizar e voltar pra área de
        captura ele tem que estar lá pra eu ver o que aconteceu" -- essa
@@ -9315,12 +9375,10 @@ function capturaScreenHTML(){
       ? '<div class="ga-banner ok">🔁 Sequência automática rodando: luta '+(STATE.captureSequence.total-STATE.captureSequence.remaining)+' de '+STATE.captureSequence.total+' ('+STATE.captureSequence.vitorias+'✅ '+STATE.captureSequence.derrotas+'☠️) -- continua sozinha mesmo se você sair dessa tela ou recarregar a página.</div>'
       : '')+
     ticketParaEnergiaWidgetHTML('captura')+
-    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> e já vem selecionado sozinho pra liderar -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
+    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é quem entra primeiro na luta (e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita) -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
     '<div class="ga-poke-grid">'+STATE.party.map(function(p, i){
-      var sel = p.id===lead.id;
       var actions = '<div class="ga-poke-actions">'+
         (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
-        '<button class="ga-btn-sm'+(sel?' ga-btn-primary':'')+'" onclick="DT.gaSetCapturaLead(\''+p.id+'\')">'+(sel?'✔️ Liderando':'Escolher')+'</button>'+
         (STATE.party.length>1 ? '<div class="ga-btn-row">'+
           (i>0 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',-1)">⬆️</button>' : '')+
           (i<STATE.party.length-1 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',1)">⬇️</button>' : '')+
