@@ -113,7 +113,7 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    quando existe), pra nunca ficar em alturas diferentes entre cards
    vizinhos do mesmo grid. */
 .ga-stat-card{ display:flex; flex-direction:column; gap:6px; text-align:center; }
-.ga-stat-card > button{ margin-top:auto; align-self:center; }
+.ga-stat-card > button, .ga-stat-card > .ga-ticket-troca-row{ margin-top:auto; align-self:center; }
 .ga-stat-label{ font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); }
 .ga-stat-val{ font-size:1.2rem; font-weight:800; }
 .ga-bar{ height:10px; border-radius:999px; background:var(--bg2); overflow:hidden; border:1px solid var(--line); }
@@ -184,7 +184,18 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-zona-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; }
 .ga-zona-card.locked{ opacity:.5; }
 .ga-zona-nome{ font-weight:700; font-size:.92rem; margin-bottom:2px; }
-.ga-zona-card > button{ margin-top:auto; padding-top:8px; align-self:center; }
+.ga-zona-actions{ margin-top:auto; padding-top:8px; display:flex; flex-direction:column; gap:6px; align-items:center; }
+/* Cap. leva desta sessão ("lutar várias vezes"): input de quantidade +
+   botão de repetição lado a lado, sem estourar a largura do card. */
+.ga-capqtd-row{ display:flex; gap:4px; width:100%; }
+.ga-capqtd-input{ width:56px; text-align:center; flex:0 0 auto; }
+.ga-capqtd-row button{ flex:1; }
+/* Cap. leva desta sessão ("carregar múltiplos tickets... nas áreas
+   que usam energia"): mesmo padrão do input+botão de quantidade
+   acima, reaproveitado no widget de trocar Pokéticket por Energia
+   (Início/Área de Captura/Mestres). */
+.ga-ticket-troca-row{ display:flex; gap:6px; margin:6px 0; align-items:center; flex-wrap:wrap; }
+.ga-ticket-troca-row .ga-capqtd-input{ width:64px; }
 
 .ga-loja-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:10px; }
 .ga-loja-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; }
@@ -5243,7 +5254,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'' };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', capturaRepeat:null };
 
 function freshState(trainerName){
   return {
@@ -6715,9 +6726,42 @@ DT.gaJogarPokebola = function(ballKey){
   b.captureDone = true;
   mutate();
 };
+/* Cap. leva desta sessão: fecha a luta que acabou de terminar -- é o
+   ÚNICO ponto por onde TODA luta passa pra sair da tela de batalha de
+   verdade (clique em "Continuar" numa vitória sem captura, "Deixar
+   ir embora" recusando a Pokébola, "Continuar" depois de decidir a
+   Pokébola, ou "Continuar" numa derrota -- os 4 caminhos convergem
+   aqui). Por isso é o lugar certo pra encadear a PRÓXIMA luta de uma
+   sequência "lutar várias vezes" (SESSION.capturaRepeat) sem o
+   jogador precisar clicar "Entrar na mata" de novo -- toda decisão
+   DENTRO de cada luta (cura/troca/evolução/Pokébola) continua
+   pedindo confirmação normal, só o "ir pra próxima luta" que vira
+   automático. */
 DT.gaEncerrarBatalha = function(){
+  var cr = SESSION.capturaRepeat;
+  if(cr && STATE.battle){
+    if(STATE.battle.finished==='vitoria') cr.vitorias++; else cr.derrotas++;
+  }
   STATE.battle = null;
-  mutate();
+  if(!cr){ mutate(); return; }
+  if(cr.remaining<=0){
+    SESSION.capturaRepeat = null;
+    SESSION.notice = 'Sequência terminou: '+cr.vitorias+' vitória(s), '+cr.derrotas+' derrota(s) em '+cr.total+' luta(s).';
+    logAction('batalha', 'Sequência de lutas terminou: '+cr.vitorias+' vitória(s), '+cr.derrotas+' derrota(s) em '+cr.total+' luta(s).');
+    mutate();
+    return;
+  }
+  var zona = zonaByStatus(cr.zonaId);
+  var custo = zona ? custoEnergiaZona(ZONAS.indexOf(zona)) : Infinity;
+  if(!zona || STATE.energy < custo){
+    SESSION.capturaRepeat = null;
+    SESSION.notice = 'Sequência parou sem Energia suficiente pra continuar: '+cr.vitorias+' vitória(s), '+cr.derrotas+' derrota(s) em '+(cr.total-cr.remaining)+' de '+cr.total+' luta(s) pedidas.';
+    logAction('batalha', 'Sequência de lutas parou por falta de Energia: '+cr.vitorias+' vitória(s), '+cr.derrotas+' derrota(s) em '+(cr.total-cr.remaining)+' de '+cr.total+' luta(s) pedidas.');
+    mutate();
+    return;
+  }
+  cr.remaining--;
+  iniciarLutaDeZona(cr.leadId, cr.zonaId, true); // já confirmou a sequência 1x -- não pergunta discrepância de novo a cada luta
 };
 
 /* ============================================================
@@ -6839,7 +6883,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'' };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', capturaRepeat:null };
   render();
 };
 
@@ -7036,7 +7080,15 @@ function rollEliteTeam(zona){
    acima do Nível dele -- a decisão de arriscar (ou não) é do próprio
    Treinador, não do jogo. */
 DT.gaSetCapturaLead = function(pid){ SESSION.capturaLeadId = pid; render(); };
-DT.gaEntrarCaptura = function(leadId, zonaId){
+/* Sorteia e inicia UMA luta da Zona (selvagem/Treinador/Elite, igual
+   sempre) -- extraído de DT.gaEntrarCaptura pra virar a mesma peça
+   reaproveitada tanto pelo clique manual quanto pelo encadeamento
+   automático de "lutar várias vezes" (ver DT.gaEncerrarBatalha
+   abaixo, Cap. leva desta sessão). `skipDiscrepancia` só é true nos
+   encadeamentos automáticos de uma sequência já confirmada -- o
+   PRIMEIRO clique de qualquer sequência sempre passa pelo aviso
+   normal de luta muito difícil, se for o caso. */
+function iniciarLutaDeZona(leadId, zonaId, skipDiscrepancia){
   var zona = zonaByStatus(zonaId);
   if(!zona) return;
   var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
@@ -7049,7 +7101,7 @@ DT.gaEntrarCaptura = function(leadId, zonaId){
   if(idx>=8 && Math.random()<CHANCE_TREINADOR_ELITE){
     var timeElite = rollEliteTeam(zona);
     timeElite.forEach(function(slot){ markSeen(slot.num); });
-    startBattle('elite', { leadPartyId: leadId, eliteNome: rollEliteNome(), eliteTeam: timeElite, zonaIdx: idx });
+    startBattle('elite', { leadPartyId: leadId, eliteNome: rollEliteNome(), eliteTeam: timeElite, zonaIdx: idx }, skipDiscrepancia);
     return;
   }
   var chanceTr = chanceTreinadorZona(zona, idx);
@@ -7057,13 +7109,47 @@ DT.gaEntrarCaptura = function(leadId, zonaId){
   if(Math.random()<chanceTr || pool.length===0){
     var time = rollRivalTeam(zona);
     time.forEach(function(slot){ markSeen(slot.num); });
-    startBattle('rival', { leadPartyId: leadId, rivalNome: rollRivalNome(), rivalTeam: time, zonaIdx: idx });
+    startBattle('rival', { leadPartyId: leadId, rivalNome: rollRivalNome(), rivalTeam: time, zonaIdx: idx }, skipDiscrepancia);
     return;
   }
   var sp = pool[Math.floor(Math.random()*pool.length)];
   var level = zona.min + Math.floor(Math.random()*(zona.max-zona.min+1));
   markSeen(sp.num);
-  startBattle('wild', { leadPartyId: leadId, wildNum: sp.num, wildLevel: level, zonaIdx: idx });
+  startBattle('wild', { leadPartyId: leadId, wildNum: sp.num, wildLevel: level, zonaIdx: idx }, skipDiscrepancia);
+}
+DT.gaEntrarCaptura = function(leadId, zonaId){ iniciarLutaDeZona(leadId, zonaId, false); };
+
+/* Cap. leva desta sessão: "o treinador pode digitar a quantidade de
+   vezes que ele quer ir (que pode corresponder ao máximo de vezes
+   que ele tem energia) ou dar a opção de ele usar TODA a energia
+   disponível" -- lutar várias vezes seguidas numa Zona sem precisar
+   clicar "Entrar na mata" de novo a cada luta. SESSION.capturaRepeat
+   guarda o estado da sequência (sobrevive a cada STATE.battle indo e
+   voltando, já que cada luta some inteira ao terminar); o
+   encadeamento de verdade acontece dentro de DT.gaEncerrarBatalha
+   (o ÚNICO ponto onde toda luta -- vitória, derrota ou depois de
+   decidir a Pokébola -- realmente "fecha"), não aqui: aqui só
+   prepara o contador e dispara a 1ª luta, exatamente como um clique
+   normal em "Entrar na mata". */
+function iniciarSequenciaDeCaptura(leadId, zonaId, qtd){
+  var zona = zonaByStatus(zonaId);
+  if(!zona){ SESSION.error='Zona inválida.'; render(); return; }
+  qtd = Math.floor(Number(qtd));
+  if(!qtd || qtd<1){ SESSION.error='Digite uma quantidade de lutas válida (1 ou mais).'; render(); return; }
+  SESSION.capturaRepeat = { leadId:leadId, zonaId:zonaId, total:qtd, remaining:qtd-1, vitorias:0, derrotas:0 };
+  logAction('batalha', 'Iniciou uma sequência de '+qtd+' luta(s) na Zona '+zona.nome+'.');
+  iniciarLutaDeZona(leadId, zonaId, false);
+}
+DT.gaIniciarLutasVarias = function(leadId, zonaId, inputEl){
+  iniciarSequenciaDeCaptura(leadId, zonaId, inputEl && inputEl.value);
+};
+DT.gaIniciarLutasComTodaEnergia = function(leadId, zonaId){
+  var zona = zonaByStatus(zonaId);
+  if(!zona) return;
+  var custo = custoEnergiaZona(ZONAS.indexOf(zona));
+  var qtd = Math.floor((STATE.energy||0) / custo);
+  if(qtd<1){ SESSION.error = 'Energia insuficiente pra nem 1 luta nessa Zona (custa '+custo+', você tem '+(STATE.energy||0)+').'; render(); return; }
+  iniciarSequenciaDeCaptura(leadId, zonaId, qtd);
 };
 DT.gaDesafiarMestre = function(leadId, leaderId){
   var leader = GYM_LEADERS.filter(function(l){ return l.id===leaderId; })[0];
@@ -7093,14 +7179,56 @@ DT.gaDebugPoketicket = function(){ STATE.energy = clampInt(STATE.energy+100,0,10
    consumindo um Pokéticket de verdade (ganho em batalha, ver
    ticketReward) em vez de ser de graça. */
 var ENERGIA_POR_TICKET = 100;
-DT.gaTrocarTicketPorEnergia = function(){
-  if((STATE.poketickets||0)<=0){ SESSION.error='Sem Pokétickets pra trocar -- ganhe vencendo lutas.'; render(); return; }
-  STATE.poketickets--;
-  STATE.energy = clampInt(STATE.energy+ENERGIA_POR_TICKET, 0, 1000);
-  SESSION.notice = 'Trocou 1 Pokéticket por '+ENERGIA_POR_TICKET+' de Energia!';
-  logAction('economia', 'Trocou 1 Pokéticket por +'+ENERGIA_POR_TICKET+' de Energia.');
+/* Cap. leva desta sessão: "colocar uma opção nas áreas que usam
+   energia para carregar múltiplos tickets, caso no máximo 10.
+   Lembrando que nunca passará de 1000 energia, então avise o
+   jogador se ele for passar" -- troca de VÁRIOS Pokétickets de uma
+   vez (até 10, limitado ao estoque), em vez de só 1 por clique.
+   Nunca deixa a Energia passar de 1000 (garantido pelo clampInt de
+   sempre) -- e nunca DESPERDIÇA Pokéticket pra isso: se a
+   quantidade pedida encheria além do teto, usa só a quantidade
+   REALMENTE necessária pra chegar em 1000 e avisa o jogador que foi
+   menos do que ele pediu (em vez de gastar tickets à toa acima do
+   que cabe). */
+var TICKET_TROCA_MAX_POR_VEZ = 10;
+function trocarTicketsPorEnergiaCore(qtdPedida){
+  var estoque = STATE.poketickets||0;
+  if(estoque<=0){ SESSION.error='Sem Pokétickets pra trocar -- ganhe vencendo lutas.'; render(); return; }
+  qtdPedida = Math.floor(Number(qtdPedida));
+  if(!qtdPedida || qtdPedida<1) qtdPedida = 1;
+  qtdPedida = clampInt(qtdPedida, 1, Math.min(TICKET_TROCA_MAX_POR_VEZ, estoque));
+  var ganhoTotal = qtdPedida*ENERGIA_POR_TICKET;
+  var espaco = 1000 - STATE.energy;
+  if(ganhoTotal>espaco){
+    var qtdReal = Math.max(0, Math.ceil(espaco/ENERGIA_POR_TICKET));
+    if(qtdReal<=0){ SESSION.error='Sua Energia já está no teto (1000) -- não precisa trocar Pokéticket nenhum agora.'; render(); return; }
+    STATE.poketickets -= qtdReal;
+    STATE.energy = clampInt(STATE.energy + qtdReal*ENERGIA_POR_TICKET, 0, 1000);
+    SESSION.notice = '⚠️ Você pediu '+qtdPedida+' Pokéticket(s), mas isso passaria do teto de 1000 de Energia -- trocou só '+qtdReal+' (o suficiente pra encher), os outros '+(qtdPedida-qtdReal)+' continuam guardados.';
+    logAction('economia', 'Trocou '+qtdReal+' Pokéticket(s) por +'+(qtdReal*ENERGIA_POR_TICKET)+' de Energia (pediu '+qtdPedida+', só esses eram necessários pra chegar em 1000).');
+  } else {
+    STATE.poketickets -= qtdPedida;
+    STATE.energy = clampInt(STATE.energy + ganhoTotal, 0, 1000);
+    SESSION.notice = 'Trocou '+qtdPedida+' Pokéticket(s) por '+ganhoTotal+' de Energia!';
+    logAction('economia', 'Trocou '+qtdPedida+' Pokéticket(s) por +'+ganhoTotal+' de Energia.');
+  }
   mutate();
+}
+DT.gaTrocarTicketPorEnergia = function(qtdInputEl){
+  // sem argumento = 1 ticket (compatível com o botão antigo); com um <input> = lê a quantidade digitada nele
+  trocarTicketsPorEnergiaCore(qtdInputEl && typeof qtdInputEl==='object' && 'value' in qtdInputEl ? qtdInputEl.value : 1);
 };
+/* Widget reaproveitado nas telas que gastam Energia (Início, Área de
+   Captura, Mestres -- Cap. "nas áreas que usam energia") -- input de
+   quantidade (1 a 10, travado ao estoque real) + botão de trocar. */
+function ticketParaEnergiaWidgetHTML(idSuffix){
+  var maxQtd = Math.min(TICKET_TROCA_MAX_POR_VEZ, STATE.poketickets||0);
+  var inputId = 'gaTicketQtd_'+idSuffix;
+  return '<div class="ga-ticket-troca-row">'+
+    '<input type="number" min="1" max="'+TICKET_TROCA_MAX_POR_VEZ+'" step="1" id="'+inputId+'" placeholder="1–'+TICKET_TROCA_MAX_POR_VEZ+'" class="ga-capqtd-input" '+(maxQtd<1?'disabled':'')+'>'+
+    '<button class="ga-btn-sm" '+(maxQtd<1?'disabled':'')+' onclick="DT.gaTrocarTicketPorEnergia(document.getElementById(\''+inputId+'\'))">🎫 Trocar por Energia (até '+TICKET_TROCA_MAX_POR_VEZ+')</button>'+
+  '</div>';
+}
 DT.gaDebugItens = function(){
   STATE.pokebolas.pokebola+=10; STATE.pokebolas.greatball+=5; STATE.pokebolas.superball+=3; STATE.pokebolas.ultraball+=1;
   STATE.itens.pocao+=5; STATE.itens.superpocao+=3; STATE.itens.hiperpocao+=1;
@@ -7378,7 +7506,7 @@ function hubScreenHTML(){
          independente só dele. */
       '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.poketickets)+'"><div class="ga-stat-label">🎫 Pokétickets</div><div class="ga-stat-val">'+(STATE.poketickets||0)+'/'+POKETICKETS_MAX+'</div>'+
         '<div class="ga-hint">'+((STATE.poketickets||0)>=POKETICKETS_MAX ? 'Teto atingido -- gaste!' : '+'+POKETICKETS_POR_DIA+' em <span id="ga-ticket-countdown">'+formatHHMMSS(secondsToNextPoketicketTick())+'</span>')+'</div>'+
-        '<button class="ga-btn-sm" '+((STATE.poketickets||0)<1?'disabled':'')+' onclick="DT.gaTrocarTicketPorEnergia()">Trocar 1 por +'+ENERGIA_POR_TICKET+' de Energia</button></div>'+
+        ticketParaEnergiaWidgetHTML('hub')+'</div>'+
       '<div class="ga-card ga-stat-card" title="Itens que a luta automática usa -- Pokébolas pra capturar (depois de vencer um selvagem) e Poções pro gatilho de cura em PV baixo. Compre mais na 🏪 Loja."><div class="ga-stat-label">🎒 Mochila</div>'+
         '<div class="ga-hint ga-item-row">'+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+(STATE.pokebolas[bl.key]||0); }).join('')+'</div>'+
         '<div class="ga-hint ga-item-row">'+GA_ITEMS.map(function(it){ return itemIconHTML(it)+' '+(STATE.itens[it.key]||0); }).join('')+'</div></div>'+
@@ -7784,6 +7912,8 @@ function capturaScreenHTML(){
 
   var out = '<div class="ga-card"><h2>🌿 Área de Captura</h2>'+
     '<p class="ga-hint">Escolha quem vai liderar a luta -- todas as Zonas ficam abertas pra qualquer Pokémon da Equipe, mesmo bem acima do Nível dele (a responsabilidade de entrar numa Zona forte demais é do Treinador). Quanto mais alta a Zona, maior a chance de cair num Treinador aleatório em vez de um selvagem (selvagem forte fica mais raro na natureza) -- Treinador paga mais Pokédólares, mas não dá pra capturar o Pokémon dele. Só nas Zonas Elite/Lendário existe também uma chance rara de cair num Treinador de Elite (roster de 6, força de Mestre) -- o único encontro comum que também pode largar Pokéticket.</p>'+
+    '<div class="ga-hint">🔋 '+STATE.energy+'/1000 de Energia · 🎫 '+(STATE.poketickets||0)+' Pokéticket(s)</div>'+
+    ticketParaEnergiaWidgetHTML('captura')+
     '<div class="ga-poke-grid">'+STATE.party.map(function(p){
       var sel = p.id===lead.id;
       return pokeCardMini(p, '<div class="ga-poke-actions"><button class="ga-btn-sm'+(sel?' ga-btn-primary':'')+'" onclick="DT.gaSetCapturaLead(\''+p.id+'\')">'+(sel?'✔️ Liderando':'Escolher')+'</button></div>');
@@ -7795,11 +7925,21 @@ function capturaScreenHTML(){
       var chanceTr = chanceTreinadorZona(z, idx);
       var chanceTexto = chanceTr>=1 ? 'só Treinador (base selvagem esgotada)' : Math.round(chanceTr*100)+'% chance de Treinador';
       var arriscado = lead.level < z.min; // não trava mais -- só avisa que pode ser dureza
+      var custo = custoEnergiaZona(idx);
+      var maxComEnergia = Math.floor((STATE.energy||0)/custo);
+      var inputId = 'gaCapQtd_'+z.id;
       return '<div class="ga-zona-card">'+
         '<div class="ga-zona-nome">'+esc2(z.nome)+'</div>'+
-        '<div class="ga-hint">'+faixa+' · '+chanceTexto+'</div>'+
+        '<div class="ga-hint">'+faixa+' · '+chanceTexto+' · ⚡'+custo+' por luta</div>'+
         (arriscado ? '<div class="ga-hint">⚠️ '+esc2(leadNome)+' tá abaixo do Nível '+z.min+' -- entrar aqui é por sua conta e risco.</div>' : '')+
-        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntrarCaptura(\''+lead.id+'\',\''+z.id+'\')">⚔️ Entrar na mata</button>'+
+        '<div class="ga-zona-actions">'+
+          '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntrarCaptura(\''+lead.id+'\',\''+z.id+'\')">⚔️ Entrar na mata</button>'+
+          '<div class="ga-capqtd-row">'+
+            '<input type="number" min="1" step="1" id="'+inputId+'" placeholder="Qtd" class="ga-capqtd-input">'+
+            '<button class="ga-btn-sm" onclick="DT.gaIniciarLutasVarias(\''+lead.id+'\',\''+z.id+'\',document.getElementById(\''+inputId+'\'))">🔁 Lutar Várias Vezes</button>'+
+          '</div>'+
+          '<button class="ga-btn-sm" '+(maxComEnergia<1?'disabled':'')+' title="Sua Energia atual dá pra '+maxComEnergia+' luta(s) nessa Zona" onclick="DT.gaIniciarLutasComTodaEnergia(\''+lead.id+'\',\''+z.id+'\')">⚡ Usar Toda a Energia ('+maxComEnergia+' luta'+(maxComEnergia===1?'':'s')+')</button>'+
+        '</div>'+
       '</div>';
     }).join('')+
     '</div>'+
@@ -7820,7 +7960,10 @@ function ginasiosScreenHTML(){
       (conquistado ? '<span class="ga-badge-won">🎖️ Conquistada</span>' : (bloqueado ? '<span class="ga-hint">🔒 Vença o Mestre anterior</span>' : '<select id="gaLead-'+l.id+'">'+STATE.party.map(function(p){ return '<option value="'+p.id+'">'+esc2(p.apelido||speciesByNum(p.num).name)+' (Nv. '+p.level+')</option>'; }).join('')+'</select><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaDesafiarMestre(document.getElementById(\'gaLead-'+l.id+'\').value,\''+l.id+'\')">⚔️ Desafiar</button>'))+
     '</div>';
   }).join('');
-  return '<div class="ga-card"><h2>🎖️ Mestres Especialistas</h2><p class="ga-hint">Progressão sequencial — vença um Mestre pra liberar o próximo. "👁️ Ver Time" mostra o elenco de qualquer Mestre, mesmo o que você ainda não pode desafiar (Cap. "de a opção no menu para que os jogadores vejam quais Pokémon eles tem... tem que ser padrão pra todos").</p>'+rows+'</div>';
+  return '<div class="ga-card"><h2>🎖️ Mestres Especialistas</h2><p class="ga-hint">Progressão sequencial — vença um Mestre pra liberar o próximo. "👁️ Ver Time" mostra o elenco de qualquer Mestre, mesmo o que você ainda não pode desafiar (Cap. "de a opção no menu para que os jogadores vejam quais Pokémon eles tem... tem que ser padrão pra todos").</p>'+
+    '<div class="ga-hint">🔋 '+STATE.energy+'/1000 de Energia · 🎫 '+(STATE.poketickets||0)+' Pokéticket(s)</div>'+
+    ticketParaEnergiaWidgetHTML('ginasios')+
+    rows+'</div>';
 }
 /* Popup "Ver Time" (Cap. leva desta sessão: "de a opção no menu para
    que os jogadores vejam quais Pokémon eles tem. Tem que ser padrão
@@ -8087,6 +8230,7 @@ function battleScreenHTML(){
   var out = '<div class="ga-card ga-battle">'+
     '<h2>'+esc2(b.label)+'</h2>'+
     (w.tipo!=='neutro' ? '<div class="ga-weather-badge">'+WEATHER_ICONS[w.tipo]+' '+esc2(WEATHER_LABELS[w.tipo])+(w.turnsLeft!=null?' ('+w.turnsLeft+' turno'+(w.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
+    (SESSION.capturaRepeat ? '<div class="ga-weather-badge">🔁 Sequência: luta '+(SESSION.capturaRepeat.total-SESSION.capturaRepeat.remaining)+' de '+SESSION.capturaRepeat.total+' ('+SESSION.capturaRepeat.vitorias+'✅ '+SESSION.capturaRepeat.derrotas+'☠️)</div>' : '')+
     '<div class="ga-battle-field">'+
       '<div class="ga-battle-side"><img src="'+spriteUrl(opp.num)+'" alt=""><div>'+esc2(oppSp.name)+' Nv.'+opp.level+'</div>'+hpBarHTML(oppHP,oppMax)+'</div>'+
       '<div class="ga-battle-vs">VS</div>'+
