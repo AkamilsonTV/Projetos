@@ -168,6 +168,17 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-stat-table td{ border-bottom:1px solid var(--line); padding:4px 6px; }
 .ga-stat-table td.num{ text-align:right; font-weight:700; }
 
+/* Catálogo de Movimentos (Cap. leva desta sessão) -- tabela larga (847
+   linhas) precisa rolar na horizontal no celular em vez de espremer as
+   colunas (mesma régua de "tabela/diagrama pode ser mais larga que a
+   tela, dentro do próprio container com scroll" do resto do projeto). */
+.ga-movdex-tablewrap{ overflow-x:auto; margin-top:10px; max-height:70vh; overflow-y:auto; }
+.ga-movdex-table{ width:100%; border-collapse:collapse; font-size:.78rem; min-width:720px; }
+.ga-movdex-table th{ position:sticky; top:0; background:var(--bg2); text-align:left; padding:6px 8px; border-bottom:2px solid var(--line); white-space:nowrap; }
+.ga-movdex-table td{ padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+.ga-movdex-table td.num{ text-align:right; font-weight:700; white-space:nowrap; }
+.ga-movdex-efeito{ min-width:260px; color:var(--ink-dim); }
+
 .ga-subhead{ margin:16px 0 4px; font-size:.95rem; color:var(--accent); }
 .ga-zona-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:8px; }
 .ga-zona-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; }
@@ -5232,7 +5243,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'' };
 
 function freshState(trainerName){
   return {
@@ -6828,7 +6839,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'' };
   render();
 };
 
@@ -7202,7 +7213,7 @@ var TOOLTIPS = {
    -- fechada por padrão, abre com o botão ☰ na barrinha de topo
    compacta que só aparece nessa largura (ver mobileTopbarHTML +
    SESSION.sidebarOpen/DT.gaToggleSidebar). */
-var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
+var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','moves:🗡️:Movimentos','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
 function navListHTML(){
   return NAV_ITENS.map(function(item){
     var kv = item.split(':');
@@ -7259,6 +7270,7 @@ function screenHTML(){
   switch(SESSION.screen){
     case 'equipe': return wrap(equipeScreenHTML());
     case 'dex': return wrap(dexScreenHTML());
+    case 'moves': return wrap(movesScreenHTML());
     case 'captura': return wrap(capturaScreenHTML());
     case 'ginasios': return wrap(ginasiosScreenHTML());
     case 'loja': return wrap(lojaScreenHTML());
@@ -7578,6 +7590,93 @@ function dexScreenHTML(){
     '</div>'+
     '<p class="ga-hint">'+lista.length+' de '+counts.total+' espécies com esses filtros.</p>'+
     '<div class="ga-dex-grid">'+(grid||'<p class="ga-hint">Nenhuma espécie bate com esses filtros.</p>')+'</div></div>';
+  return out;
+}
+
+/* ============================================================
+   Catálogo de Movimentos (Cap. leva desta sessão: "Preciso que crie
+   o catálogo de moves pois não achei. Onde está?" -- tela nova de
+   consulta pros 847 Movimentos, dado 100% real (o motor de combate
+   OFICIAL já buscou tudo via PokeAPI em MOVES_OFICIAL, só faltava a
+   TELA): nome, Tipo, categoria, Poder/Precisão/PP REAIS (nunca a
+   escala comprimida 1-7 de MOVES_DEX.poder, que é só a herança do
+   RPG de mesa -- ver officialMoveData), papéis (Ataque/Defesa/
+   Suporte/Controle) e o efeito em português, com busca por nome e
+   filtro por Tipo/categoria/papel -- mesmo padrão de filtros já
+   usado na Pokédex (dexFilteredList/dexScreenHTML), só que numa
+   tabela em vez de grade de sprites (não tem imagem por Movimento). */
+DT.gaSetMovDexSearch = function(el){ SESSION.movDexSearch = (el.value||''); render(); };
+DT.gaSetMovDexFiltroTipo = function(el){ SESSION.movDexFiltroTipo = el.value||''; render(); };
+DT.gaSetMovDexFiltroCategoria = function(v){ SESSION.movDexFiltroCategoria = v; render(); };
+DT.gaSetMovDexFiltroPapel = function(v){ SESSION.movDexFiltroPapel = v; render(); };
+function todosOsTiposDeMovimento(){
+  if(!todosOsTiposDeMovimento._cache){
+    var set = {};
+    MOVES_DEX.forEach(function(m){ if(m.tipo) set[m.tipo]=1; });
+    todosOsTiposDeMovimento._cache = Object.keys(set).sort();
+  }
+  return todosOsTiposDeMovimento._cache;
+}
+function movDexFilteredList(){
+  var q = (SESSION.movDexSearch||'').trim().toLowerCase();
+  var tipo = SESSION.movDexFiltroTipo || '';
+  var categoria = SESSION.movDexFiltroCategoria || '';
+  var papel = SESSION.movDexFiltroPapel || '';
+  return MOVES_DEX.filter(function(m){
+    if(tipo && m.tipo!==tipo) return false;
+    if(categoria && m.categoria!==categoria) return false;
+    if(papel && !moveHasRole(m,papel)) return false;
+    if(q && m.name.toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  });
+}
+var MOVE_CATEGORIA_ICON = { 'Físico':'👊', 'Especial':'✨', 'Status':'💫' };
+function movesScreenHTML(){
+  var lista = movDexFilteredList();
+  var tipos = todosOsTiposDeMovimento();
+  var categoriaAtual = SESSION.movDexFiltroCategoria || '';
+  var papelAtual = SESSION.movDexFiltroPapel || '';
+  var linhas = lista.map(function(m){
+    var of = officialMoveData(m);
+    var roles = moveRoles(m).map(function(r){ return PAPEL_COMBATE_LABEL[r]; }).join(' ');
+    return '<tr>'+
+      '<td><b>'+esc2(m.name)+'</b></td>'+
+      '<td>'+esc2(m.tipo||'—')+'</td>'+
+      '<td>'+(MOVE_CATEGORIA_ICON[m.categoria]||'')+' '+esc2(m.categoria)+'</td>'+
+      '<td class="num">'+(of.power!=null?of.power:'—')+'</td>'+
+      '<td class="num">'+(of.accuracy!=null?of.accuracy+'%':'—')+'</td>'+
+      '<td class="num">'+of.ppMax+'</td>'+
+      '<td>'+roles+'</td>'+
+      '<td class="ga-movdex-efeito">'+esc2(m.efeito||'')+'</td>'+
+    '</tr>';
+  }).join('');
+  var out = '<div class="ga-card"><h2>🗡️ Movimentos — '+lista.length+' de '+MOVES_DEX.length+'</h2>'+
+    '<p class="ga-hint">Poder/Precisão/PP são os valores OFICIAIS reais do jogo (não a escala do Papel de Combate) -- ver "Usando as regras daqui" no README pra fórmula de dano completa.</p>'+
+    '<div class="ga-dex-filtros">'+
+      '<input type="text" id="gaMovDexSearch" placeholder="Nome do Movimento..." value="'+esc2(SESSION.movDexSearch||'')+'" onkeydown="if(event.key===\'Enter\')DT.gaSetMovDexSearch(document.getElementById(\'gaMovDexSearch\'))">'+
+      '<button class="ga-btn-sm" onclick="DT.gaSetMovDexSearch(document.getElementById(\'gaMovDexSearch\'))">🔍 Buscar</button>'+
+      (SESSION.movDexSearch ? '<button class="ga-btn-sm" onclick="DT.gaSetMovDexSearch({value:\'\'})">✕ Limpar busca</button>' : '')+
+      '<select onchange="DT.gaSetMovDexFiltroTipo(this)"><option value="">Tipo: qualquer</option>'+
+        tipos.map(function(t){ return '<option value="'+esc2(t)+'" '+(SESSION.movDexFiltroTipo===t?'selected':'')+'>'+esc2(t)+'</option>'; }).join('')+
+      '</select>'+
+      '<span class="ga-tabs">'+
+        [':Categoria: todas','Físico:👊 Físico','Especial:✨ Especial','Status:💫 Status'].map(function(pair){
+          var idx = pair.indexOf(':'), kv=[pair.slice(0,idx), pair.slice(idx+1)];
+          return '<button class="'+(categoriaAtual===kv[0]?'active':'')+'" onclick="DT.gaSetMovDexFiltroCategoria(\''+kv[0]+'\')">'+kv[1]+'</button>';
+        }).join('')+
+      '</span>'+
+      '<span class="ga-tabs">'+
+        [':Papel: todos'].concat(ROLES_COMBATE.map(function(r){ return r+':'+PAPEL_COMBATE_LABEL[r]; })).map(function(pair){
+          var idx = pair.indexOf(':'), kv=[pair.slice(0,idx), pair.slice(idx+1)];
+          return '<button class="'+(papelAtual===kv[0]?'active':'')+'" onclick="DT.gaSetMovDexFiltroPapel(\''+kv[0]+'\')">'+kv[1]+'</button>';
+        }).join('')+
+      '</span>'+
+    '</div>'+
+    '<div class="ga-movdex-tablewrap"><table class="ga-movdex-table"><thead><tr>'+
+      '<th>Nome</th><th>Tipo</th><th>Categoria</th><th>Poder</th><th>Precisão</th><th>PP</th><th>Papéis</th><th>Efeito</th>'+
+    '</tr></thead><tbody>'+
+    (linhas||'<tr><td colspan="8" class="ga-hint">Nenhum Movimento bate com esses filtros.</td></tr>')+
+    '</tbody></table></div></div>';
   return out;
 }
 /* Cap. leva desta sessão: "Pokédex, quando clicarmos no Pokémon,
@@ -7929,6 +8028,8 @@ function wikiScreenHTML(){
     '<p>Vencer dá a Insígnia dele -- e, se sobrar alguma Espécie do time vencido com Movimento de MT, também 1 MT de graça.</p>');
 
   out += wikiSecao('🔁 Troca de Movimento e 💿 MTs', '<p>Na tela 🎒 Equipe, troca qualquer Movimento do slot por outro que a Espécie JÁ tem liberado por Nível (custa 10 Energia) ou por uma MT que você tem em estoque (grátis, mas consome 1 da Mochila). Nunca um Movimento fora do Learnset real da Espécie. Subir de Nível sozinho NUNCA muda os Movimentos -- é sempre por aqui.</p>');
+
+  out += wikiSecao('🗡️ Movimentos (catálogo)', '<p>A tela 🗡️ Movimentos (menu lateral) lista os 847 Movimentos do jogo com o dado OFICIAL real -- Tipo, categoria, Poder/Precisão/PP de verdade (não a escala comprimida do Papel de Combate) e o efeito em português -- com busca por nome e filtro de Tipo/categoria/papel.</p>');
 
   out += wikiSecao('✨ Natureza e Habilidade', '<p>Sorteadas 1x quando o Pokémon nasce/é capturado, dentro da limitação real da Espécie (a Habilidade só pode ser uma das que a Espécie realmente pode ter, Oculta incluída). Natureza afeta o Atributo Efetivo de verdade (+1/-1 num Atributo); Habilidade por enquanto é só identidade (ainda não tem gatilho em batalha). Nunca mudam sozinhas -- evoluir remapeia a Habilidade pro slot equivalente, mas não sorteia de novo do zero.</p>');
 
