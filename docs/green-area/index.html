@@ -274,7 +274,16 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-loja-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; }
 .ga-loja-nome{ font-weight:700; font-size:.88rem; margin-bottom:2px; }
 .ga-loja-preco{ font-weight:700; color:var(--accent); margin:4px 0 8px; }
-.ga-loja-card > button{ margin-top:auto; align-self:center; }
+/* Cap. leva desta sessão: "Colocar na loja a opção comprar mais de 1
+   item por vez... Coloca a área digitável" -- mesmo padrão visual do
+   campo digitável de "Lutar Várias Vezes" (.ga-capqtd-row/input, ver
+   acima). O botão de Comprar deixou de ser filho DIRETO de
+   `.ga-loja-card` (agora mora dentro de `.ga-loja-qtd-row`, junto do
+   campo de quantidade), então o `margin-top:auto` que gruda a ação no
+   fundo do card precisou migrar pra esse wrapper novo. */
+.ga-loja-qtd-row{ display:flex; gap:6px; width:100%; margin-top:auto; align-self:center; }
+.ga-loja-qtd-input{ width:56px; text-align:center; flex:0 0 auto; }
+.ga-loja-qtd-row button{ flex:1; }
 
 .ga-admin-list{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
 .ga-admin-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; flex-wrap:wrap; }
@@ -8101,17 +8110,25 @@ DT.gaIniciarLutasComTodaEnergia = function(leadId, zonaId){
 };
 /* Popup de confirmação da sequência automática (Cap. leva desta
    sessão): "pergunta se ele quer tentar que o sistema capture, cure
-   automaticamente... elas precisam ser independentes" -- 2 toggles
-   sem relação um com o outro, lidos direto dos <input type=checkbox>
-   do popup (ver pendingSequenciaConfirmPopupHTML). */
-DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl){
+   automaticamente... elas precisam ser independentes" -- toggles sem
+   relação um com o outro, lidos direto dos <input type=checkbox> do
+   popup (ver pendingSequenciaConfirmPopupHTML). Cap. leva desta sessão
+   ("colocar uma opção que verifica se o treinador tem o pokémon na
+   box ou no time, e se ele quer ignorar um pokémon que já possua,
+   para não capturar"): 3º toggle, `ignorarPossuidos` -- só faz sentido
+   junto de `autoCapturar` (não aparece marcável se a captura
+   automática nem estiver ligada, ver pendingSequenciaConfirmPopupHTML),
+   mas guardado como campo PRÓPRIO da sequência (não um sub-estado de
+   autoCapturar) pra ficar simples de ler em resolverLutaAutomaticamente. */
+DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl){
   var psc = SESSION.pendingSequenciaConfirm; if(!psc) return;
   SESSION.pendingSequenciaConfirm = null;
   var autoCapturar = !!(autoCapEl && autoCapEl.checked);
   var autoCurar = !!(autoCurEl && autoCurEl.checked);
+  var ignorarPossuidos = autoCapturar && !!(ignorarPossuidosEl && ignorarPossuidosEl.checked);
   var zona = zonaByStatus(psc.zonaId);
-  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, finished:false, pararSemEnergia:false, relatorio:[] };
-  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
+  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, finished:false, pararSemEnergia:false, relatorio:[] };
+  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+(ignorarPossuidos?', ignorando quem já tem':'')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
   mutate();
   captureSequenceTick(); // dispara a 1ª luta na hora, sem esperar o próximo tick do relógio de fundo
 };
@@ -8162,6 +8179,12 @@ function itemCuraRecomendado(faltaPct){
    chance "boa o bastante" de captura (70%), só subindo pra mais forte
    se nenhuma disponível bater esse patamar. */
 var POKEBOLA_CHANCE_ALVO = 0.70;
+/* Cap. leva desta sessão: "verifica se o treinador tem o pokémon na
+   box ou no time" -- checa pelo NÚMERO da Pokédex (a mesma Espécie,
+   não o indivíduo exato), tanto na Equipe quanto na Caixa. */
+function especieJaPossuida(num){
+  return STATE.party.some(function(p){ return p.num===num; }) || STATE.box.some(function(p){ return p.num===num; });
+}
 function pokebolaRecomendada(num){
   var disponiveis = POKEBALLS.filter(function(bl){ return (STATE.pokebolas[bl.key]||0)>0; });
   if(!disponiveis.length) return null;
@@ -8227,6 +8250,17 @@ function resolverLutaAutomaticamente(cs){
   if(b2 && b2.finished==='vitoria' && b2.kind==='wild' && !b2.captureDone){
     if(cs.autoCapturar){
       var numAlvo = b2.oppTeam[0].num;
+      /* Cap. leva desta sessão: "colocar uma opção que verifica se o
+         treinador tem o pokémon na box ou no time, e se ele quer
+         ignorar um pokémon que já possua, para não capturar" -- só
+         quando o toggle está ligado; sem ele, o jogo continua
+         tentando capturar duplicatas de propósito (é uma escolha
+         explícita do jogador, não um comportamento padrão novo). */
+      if(cs.ignorarPossuidos && especieJaPossuida(numAlvo)){
+        b2.captureDone = true;
+        b2.capturaIgnoradaPossuida = { especie: speciesByNum(numAlvo).name };
+        return;
+      }
       var bola = pokebolaRecomendada(numAlvo);
       if(bola){
         DT.gaJogarPokebola(bola.key);
@@ -8259,6 +8293,7 @@ function battleReportEntry(b, numero){
     tickets: b.ticketsGanhos || 0,
     itensUsados: b.itensUsadosSequencia || [],
     captura: b.capturaTentativaSequencia || null, // {bola, especie, sucesso} ou null (não era selvagem / não tentou)
+    capturaIgnoradaPossuida: b.capturaIgnoradaPossuida || null, // {especie} -- ignorou de propósito (já tinha, toggle ligado)
     trocouPokemon: !!(b.usedPartyIds && b.usedPartyIds.length > 1),
     log: b.log.slice()
   };
@@ -8322,7 +8357,53 @@ function captureSequenceTick(){
   if(STATE.battle && STATE.battle.finished) fecharLutaDaSequencia(cs);
   mutate();
 }
-setInterval(function(){ if(STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick(); }, 1500);
+/* Cap. leva desta sessão: "A simulação de lutas pausa quando eu mudo
+   de aba, é possível fazer com que ela fique rodando mesmo quando eu
+   mudar de aba no navegador?" -- setInterval na thread PRINCIPAL é
+   "throttled" de propósito pelos navegadores modernos assim que a aba
+   fica em segundo plano (o Chrome, por exemplo, pode cair pra só 1
+   execução por MINUTO depois de alguns minutos escondida -- "Intensive
+   Throttling", pra economizar bateria/CPU de abas que o usuário não
+   está olhando) -- exatamente o sintoma relatado. Um Web Worker roda
+   numa THREAD SEPARADA, que os navegadores não sabem (nem se importam)
+   se está numa aba visível ou não -- então o relógio de verdade agora
+   mora DENTRO do worker (só um `setInterval` ali dentro, sem acesso a
+   STATE/DOM -- ele só existe na thread principal), e o worker manda um
+   "tick" (`postMessage`) pra thread principal de verdade aplicar. Se o
+   navegador não suportar Worker/Blob (raríssimo, ou algum ambiente
+   restrito tipo `file://` bloqueando Blob URL) ou a criação falhar por
+   qualquer motivo, cai pro `setInterval` antigo direto na thread
+   principal como rede de segurança -- nunca trava a sequência por
+   causa disso, só perde a mesma resistência a aba em segundo plano que
+   já existia antes desta leva. */
+function startCaptureSequenceTicker(){
+  var suportaWorker = typeof Worker!=='undefined' && typeof Blob!=='undefined' && typeof URL!=='undefined' && !!URL.createObjectURL;
+  if(suportaWorker){
+    try{
+      var workerSrc = 'setInterval(function(){ postMessage(1); }, 1500);';
+      var blobUrl = URL.createObjectURL(new Blob([workerSrc], { type:'application/javascript' }));
+      var worker = new Worker(blobUrl);
+      worker.onmessage = function(){ if(STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick(); };
+      worker.onerror = function(){ worker.terminate(); startCaptureSequenceTickerFallback(); };
+      return;
+    }catch(e){ /* cai pro fallback abaixo */ }
+  }
+  startCaptureSequenceTickerFallback();
+}
+function startCaptureSequenceTickerFallback(){
+  setInterval(function(){ if(STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick(); }, 1500);
+}
+startCaptureSequenceTicker();
+/* Complemento (não substitui o Worker acima): assim que a aba volta a
+   ficar visível, dispara um tick NA HORA -- não espera o próximo
+   intervalo (que pode estar a até 1500ms/60s de distância, dependendo
+   de qual dos 2 caminhos acima está ativo) pra mostrar o progresso que
+   rolou enquanto o jogador estava noutra aba. */
+if(typeof document!=='undefined' && document.addEventListener){
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick();
+  });
+}
 
 /* Quem, no Time atual, JÁ está no Nível certo pra evoluir agora (Cap.
    leva desta sessão -- pergunta adiada pro FIM da sequência): pura
@@ -8362,6 +8443,7 @@ function sequenciaRelatorioHTML(cs){
       if(r.captura) extras.push(r.captura.sucesso
         ? ('🎯 capturou '+esc2(r.captura.especie)+' com '+esc2(r.captura.bola))
         : ('💨 tentou capturar '+esc2(r.captura.especie)+' com '+esc2(r.captura.bola)+' -- escapou'));
+      if(r.capturaIgnoradaPossuida) extras.push('🚫 já tinha '+esc2(r.capturaIgnoradaPossuida.especie)+' -- não tentou capturar');
       if(r.trocouPokemon) extras.push('🔄 trocou de Pokémon');
       return '<details class="ga-seq-relatorio-item"><summary>Luta '+r.numero+' — '+esc2(KIND_LABEL[r.kind]||r.kind)+' ('+esc2(r.label)+') — '+resultTxt+(extras.length ? ' · '+extras.join(' · ') : '')+'</summary>'+
         '<div class="ga-battle-log">'+r.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>'+
@@ -9617,26 +9699,46 @@ function pendingSequenciaConfirmPopupHTML(){
     '<h2>🔁 Sequência de '+psc.qtd+' lutas — '+esc2(zona?zona.nome:'?')+'</h2>'+
     '<p class="ga-hint">Isso roda '+psc.qtd+' luta(s) seguidas de forma AUTOMÁTICA, sem parar nem pra evolução (a decisão de evoluir fica pra perguntar só no FINAL da sequência inteira). Escolha, de forma independente, o que o jogo pode resolver sozinho no meio de cada luta:</p>'+
     '<label class="ga-check-row"><input type="checkbox" id="gaSeqAutoCap"> 🎯 Tentar capturar automaticamente (usa a Pokébola mais recomendada pra situação)</label>'+
+    /* Cap. leva desta sessão: "colocar uma opção que verifica se o
+       treinador tem o pokémon na box ou no time, e se ele quer
+       ignorar um pokémon que já possua, para não capturar" -- só faz
+       sentido junto da captura automática (indentado visualmente, sem
+       depender de JS pra habilitar/desabilitar -- DT.gaConfirmarSequencia
+       já ignora esse checkbox se autoCapturar estiver desmarcado). */
+    '<label class="ga-check-row" style="margin-left:22px"><input type="checkbox" id="gaSeqIgnorarPossuidos"> 🚫 Não tentar capturar quem eu já tenho (Equipe ou Caixa)</label>'+
     '<label class="ga-check-row"><input type="checkbox" id="gaSeqAutoCur"> 💊 Curar automaticamente (usa o item de cura mais recomendado pra situação)</label>'+
-    '<p class="ga-hint">Se deixar as duas desmarcadas, a sequência roda do mesmo jeito, só que sem gastar nenhum item nem Pokébola.</p>'+
+    '<p class="ga-hint">Se deixar as duas primeiras desmarcadas, a sequência roda do mesmo jeito, só que sem gastar nenhum item nem Pokébola.</p>'+
     '<div class="ga-btn-row">'+
-      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarSequencia(document.getElementById(\'gaSeqAutoCap\'),document.getElementById(\'gaSeqAutoCur\'))">▶️ Começar sequência</button>'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarSequencia(document.getElementById(\'gaSeqAutoCap\'),document.getElementById(\'gaSeqAutoCur\'),document.getElementById(\'gaSeqIgnorarPossuidos\'))">▶️ Começar sequência</button>'+
       '<button class="ga-btn-sm" onclick="DT.gaCancelarSequencia()">Cancelar</button>'+
     '</div>'+
   '</div></div>';
 }
 
-DT.gaComprarItem = function(key){
+/* Cap. leva desta sessão: "Colocar na loja a opção comprar mais de 1
+   item por vez. Por exemplo 10 poções. Coloca a área digitável" --
+   `qtdEl` é OPCIONAL (retrocompatível com toda chamada antiga/de
+   teste que só passa a `key`, sempre 1 de cada vez). Mesmo espírito
+   de "só gasta o necessário, nunca mais do que cabe" já usado na
+   troca de Pokéticket por Energia (DT.gaTrocarTicketsPorEnergia) --
+   pedir mais do que o Pokédólar dá compra só o máximo que cabe, nunca
+   recusa a compra inteira por causa disso. */
+DT.gaComprarItem = function(key, qtdEl){
   var bola = POKEBALLS.filter(function(b){ return b.key===key; })[0];
   var item = GA_ITEMS.filter(function(i){ return i.key===key; })[0];
   var def = bola || item;
   if(!def) return;
-  if((STATE.pokedolares||0) < def.preco){ SESSION.error = 'Pokédólares insuficientes -- '+def.nome+' custa '+def.preco+' e você tem '+(STATE.pokedolares||0)+'.'; render(); return; }
-  STATE.pokedolares -= def.preco;
-  if(bola) STATE.pokebolas[key] = (STATE.pokebolas[key]||0) + 1;
-  else STATE.itens[key] = (STATE.itens[key]||0) + 1;
-  SESSION.notice = 'Comprou 1 '+def.nome+'!';
-  logAction('loja', 'Comprou 1 '+def.nome+' por '+def.preco+' Pokédólares.');
+  var qtdPedida = qtdEl ? clampInt(parseInt(qtdEl.value,10)||1, 1, 999) : 1;
+  var maxComDinheiro = Math.floor((STATE.pokedolares||0)/def.preco);
+  if(maxComDinheiro<1){ SESSION.error = 'Pokédólares insuficientes -- '+def.nome+' custa '+def.preco+' e você tem '+(STATE.pokedolares||0)+'.'; render(); return; }
+  var qtd = Math.min(qtdPedida, maxComDinheiro);
+  STATE.pokedolares -= def.preco*qtd;
+  if(bola) STATE.pokebolas[key] = (STATE.pokebolas[key]||0) + qtd;
+  else STATE.itens[key] = (STATE.itens[key]||0) + qtd;
+  SESSION.notice = qtd<qtdPedida
+    ? ('⚠️ Pediu '+qtdPedida+', mas só dava pra comprar '+qtd+' '+def.nome+' com os Pokédólares que tinha -- comprou '+qtd+'.')
+    : ('Comprou '+qtd+' '+def.nome+'!');
+  logAction('loja', 'Comprou '+qtd+' '+def.nome+' por '+(def.preco*qtd)+' Pokédólares.');
   mutate();
 };
 
@@ -9647,23 +9749,31 @@ function lojaScreenHTML(){
     POKEBALLS.map(function(bl){
       var qtdAtual = STATE.pokebolas[bl.key]||0;
       var podeComprar = (STATE.pokedolares||0) >= bl.preco;
+      var inputId = 'gaLojaQtd_'+bl.key;
       return '<div class="ga-loja-card">'+
         '<div class="ga-loja-nome">'+itemIconHTML(bl)+' '+esc2(bl.nome)+'</div>'+
         '<div class="ga-hint">'+esc2(bl.desc)+'</div>'+
         '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
-        '<div class="ga-loja-preco">💰 '+bl.preco+'</div>'+
-        '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+bl.key+'\')">Comprar</button>'+
+        '<div class="ga-loja-preco">💰 '+bl.preco+' cada</div>'+
+        '<div class="ga-loja-qtd-row">'+
+          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
+          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+bl.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
+        '</div>'+
       '</div>';
     }).join('')+
     GA_ITEMS.map(function(it){
       var qtdAtual = STATE.itens[it.key]||0;
       var podeComprar = (STATE.pokedolares||0) >= it.preco;
+      var inputId = 'gaLojaQtd_'+it.key;
       return '<div class="ga-loja-card">'+
         '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
         '<div class="ga-hint">'+esc2(it.desc)+'</div>'+
         '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
-        '<div class="ga-loja-preco">💰 '+it.preco+'</div>'+
-        '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\')">Comprar</button>'+
+        '<div class="ga-loja-preco">💰 '+it.preco+' cada</div>'+
+        '<div class="ga-loja-qtd-row">'+
+          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
+          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
+        '</div>'+
       '</div>';
     }).join('')+
     '</div></div>'+
@@ -9996,11 +10106,21 @@ function trocaScreenHTML(){
   out += trocaLadoHTML(trade.id, '🤝 Oferta de '+esc2(outroNome), ofertaOutro, false, outroNome);
 
   if(STATE.box.length){
+    /* Cap. leva desta sessão: "Colocar o menu de busca na box da troca
+       também para facilitar a busca" -- MESMO filtro (busca por
+       apelido/nome/número + Tipo 1/2 + Papel de Combate) já usado na
+       Caixa da Equipe/Pokédex, `caixaFiltrosHTML`/`caixaFilteredList`
+       -- estado compartilhado de propósito (SESSION.caixaSearch/*):
+       um filtro só, funciona igual em qualquer tela que mostre a
+       Caixa. */
+    var listaCaixaTroca = caixaFilteredList();
     out += '<div class="ga-card"><h3 class="ga-subhead">📦 Escolher Pokémon da Caixa</h3>'+
-      '<div class="ga-poke-grid">'+STATE.box.map(function(p){
+      caixaFiltrosHTML()+
+      '<p class="ga-hint">'+listaCaixaTroca.length+' de '+STATE.box.length+' Pokémon com esses filtros.</p>'+
+      '<div class="ga-poke-grid">'+(listaCaixaTroca.length ? listaCaixaTroca.map(function(p){
         var jaOferecido = (minhaOferta.pokemons||[]).some(function(x){ return x.id===p.id; });
         return pokeCardMini(p, '<button class="ga-btn-sm '+(jaOferecido?'active':'')+'" onclick="DT.gaToggleTrocaPokemon(\''+trade.id+'\',\''+p.id+'\')">'+(jaOferecido?'✔️ Na oferta':'➕ Oferecer')+'</button>');
-      }).join('')+'</div></div>';
+      }).join('') : '<p class="ga-hint">Nenhum Pokémon da Caixa bate com esses filtros.</p>')+'</div></div>';
   }
 
   return out;
