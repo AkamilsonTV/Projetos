@@ -5295,13 +5295,26 @@ var unsubscribeSnapshot = null;
        só o dono lê e remove (arrayRemove) o que já respondeu.
      - green_area_amizades/{par} -- 1 documento por PAR de amigos
        confirmado (id = os 2 docIds ordenados, unidos por "__" --
-       ver friendPairId), criado só quando o pedido é aceito. */
+       ver friendPairId), criado só quando o pedido é aceito.
+     - green_area_centro_presenca/{docId} -- 1 documento por CONTA
+       que está DE VERDADE com a tela do Centro Pokémon aberta agora
+       (Cap. leva desta sessão: "só quero que apareçam os treinadores
+       que estiverem no menu do Centro pokémon, ao sair ele sai dali
+       também") -- SEMPRE escrito só pelo PRÓPRIO dono (nunca por
+       outro jogador), então aqui não tem risco de atropelo nenhum,
+       `.set()` comum já basta. Apagado ao sair da tela/da conta, e
+       "expira" sozinho (filtrado na leitura, ver
+       CENTRO_PRESENCA_TIMEOUT_MS) se a aba fechar sem avisar --
+       ver entrarNaPresencaDoCentro/sairDaPresencaDoCentro. */
 var chatCol = null;
 var inboxCol = null;
 var amizadesCol = null;
+var presencaCol = null;
 var unsubscribeChat = null;
 var unsubscribeInbox = null;
 var unsubscribeAmizades = null;
+var unsubscribePresenca = null;
+var presencaHeartbeatTimer = null;
 
 var SESSION_CACHE_KEY = 'green_area_session_v1'; // {docId, pin} -- NUNCA o progresso em si
 var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só localStorage, antes da conta online)
@@ -5317,7 +5330,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
 
 function freshState(trainerName){
   return {
@@ -5527,7 +5540,18 @@ function attachSocialListeners(docId){
   unsubscribeInbox = inboxCol.doc(docId).onSnapshot(function(doc){
     SESSION.pedidosAmizade = (doc.exists && doc.data().pedidosAmizade) || [];
     render();
-  }, function(){ /* erro de rede -- silencioso, só fica sem atualizar até a conexão voltar */ });
+  }, function(err){
+    /* Cap. leva desta sessão ("Erro encontrado ao enviar pedido de
+       amizade, mensagem. resolva"): antes esse erro ficava TOTALMENTE
+       silencioso -- pedido de amizade nunca aparecia e ninguém sabia
+       por quê (o suspeito nº 1 de verdade: as regras do Firestore
+       ainda não liberaram as coleções novas do Centro Pokémon, ver
+       "Habilitar o salvamento online" no README -- passo manual que
+       precisa ser feito 1x no Console). Agora avisa de verdade, com o
+       motivo real do Firestore embutido na mensagem. */
+    SESSION.error = 'Não consegui ver seus pedidos de amizade ('+erroFirestoreMsg(err)+').';
+    render();
+  });
   if(unsubscribeAmizades) unsubscribeAmizades();
   unsubscribeAmizades = amizadesCol.onSnapshot(function(snap){
     var lista = [];
@@ -5539,7 +5563,7 @@ function attachSocialListeners(docId){
     });
     SESSION.amigos = lista;
     render();
-  }, function(){});
+  }, function(err){ SESSION.error = 'Não consegui ver sua lista de amigos ('+erroFirestoreMsg(err)+').'; render(); });
 }
 
 function bootApp(){
@@ -5550,6 +5574,7 @@ function bootApp(){
     chatCol = db.collection('green_area_chat_publico');
     inboxCol = db.collection('green_area_inbox');
     amizadesCol = db.collection('green_area_amizades');
+    presencaCol = db.collection('green_area_centro_presenca');
   }catch(e){
     SESSION.error = 'Erro ao iniciar o Firebase.';
     render();
@@ -7045,6 +7070,7 @@ DT.gaSair = function(){
     logAction('conta', 'Saiu da conta.');
     currentSaveRef.update({ state: sanitizeForFirestore(STATE), updatedAt: Date.now() }).catch(function(){});
   }
+  sairDaPresencaDoCentro(); // Cap. leva desta sessão: "ao sair ele sai dali também" -- vale pra SAIR DA CONTA também, não só trocar de tela
   if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot=null; }
   if(unsubscribeInbox){ unsubscribeInbox(); unsubscribeInbox=null; }
   if(unsubscribeAmizades){ unsubscribeAmizades(); unsubscribeAmizades=null; }
@@ -7052,7 +7078,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'' };
   render();
 };
 
@@ -7067,45 +7093,81 @@ DT.gaSair = function(){
    fases desta mesma leva (avisado na própria tela, não escondido).
    ============================================================ */
 function friendPairId(a, b){ return [a,b].sort().join('__'); }
-/* Abre a tela + carrega o diretório de Treinadores (savesCol.get(),
-   mesmo caminho que o Painel Admin já usa -- só filtra pros nomes,
-   nunca expõe o resto do save de ninguém na tela) + liga o listener
-   do chat público (só enquanto o jogador está OLHANDO essa tela --
-   ao contrário do inbox/amizades, que ficam sempre ligados desde o
-   login, o chat ao vivo só precisa rodar enquanto alguém está vendo
-   ele, ver DT.gaGoto que desliga ao sair daqui). */
+/* Cap. leva desta sessão: "No centro pokémon só quero que apareçam os
+   treinadores que estiverem no menu do Centro pokémon, ao sair ele
+   sai dali também" -- troca o diretório ESTÁTICO (savesCol.get() uma
+   vez só, listava TODA conta já criada) por PRESENÇA ao vivo: cada
+   Treinador só aparece pros outros enquanto está DE VERDADE com essa
+   tela aberta. `green_area_centro_presenca/{docId}` -- documento
+   escrito SÓ pelo próprio dono (nunca por outro jogador, ao contrário
+   do inbox/chat), então aqui não tem risco de atropelo -- `.set()`
+   comum já basta.
+
+   "ao sair ele sai dali também": apagado de verdade ao trocar de tela
+   (DT.gaGoto) ou sair da conta (DT.gaSair), e reforçado por um
+   "heartbeat" -- reescreve `ultimoPing` a cada
+   CENTRO_PRESENCA_HEARTBEAT_MS enquanto a tela continua aberta.
+   Qualquer entrada mais velha que CENTRO_PRESENCA_TIMEOUT_MS (3x o
+   heartbeat) é tratada como se já tivesse saído -- rede de segurança
+   honesta pra quando a aba fecha/trava sem dar tempo de avisar
+   ninguém (não existe backend aqui pra detectar isso na hora, mesma
+   limitação documentada da sequência automática de lutas). */
+var CENTRO_PRESENCA_HEARTBEAT_MS = 25000;
+var CENTRO_PRESENCA_TIMEOUT_MS = 75000;
 DT.gaAbrirCentro = function(){
   SESSION.screen = 'centro';
   SESSION.error = '';
   SESSION.sidebarOpen = false;
+  SESSION.centroDiretorioCarregando = true;
   render();
-  carregarDiretorioJogadores();
+  entrarNaPresencaDoCentro();
   if(unsubscribeChat) unsubscribeChat();
   unsubscribeChat = chatCol.doc(CENTRO_CHAT_DOC).onSnapshot(function(doc){
     SESSION.centroChat = (doc.exists && doc.data().mensagens) || [];
     render();
-  }, function(){ /* erro de rede -- silencioso, chat só fica sem atualizar */ });
+  }, function(err){ SESSION.error = 'Não consegui carregar o chat público ('+erroFirestoreMsg(err)+').'; render(); });
 };
-function carregarDiretorioJogadores(){
-  SESSION.centroDiretorioCarregando = true;
-  render();
-  savesCol.get().then(function(snap){
+function erroFirestoreMsg(err){ return (err && err.message) ? err.message : 'erro desconhecido'; }
+function entrarNaPresencaDoCentro(){
+  if(!STATE || !presencaCol) return;
+  var meuId = SESSION.currentDocId, meuNome = STATE.trainerName;
+  var ping = function(){ presencaCol.doc(meuId).set({ nome: meuNome, ultimoPing: Date.now() }).catch(function(){}); };
+  ping();
+  if(presencaHeartbeatTimer) clearInterval(presencaHeartbeatTimer);
+  presencaHeartbeatTimer = setInterval(function(){
+    if(SESSION.screen!=='centro' || !STATE){ clearInterval(presencaHeartbeatTimer); presencaHeartbeatTimer=null; return; }
+    ping();
+  }, CENTRO_PRESENCA_HEARTBEAT_MS);
+  if(unsubscribePresenca) unsubscribePresenca();
+  unsubscribePresenca = presencaCol.onSnapshot(function(snap){
+    var agora = Date.now();
     var lista = [];
     snap.forEach(function(doc){
-      if(doc.id===SESSION.currentDocId) return;
+      if(doc.id===meuId) return;
       var d = doc.data();
-      if(!d || d.banido) return;
-      lista.push({ docId: doc.id, nome: (d.state && d.state.trainerName) || doc.id });
+      if(!d) return;
+      if((agora - (d.ultimoPing||0)) > CENTRO_PRESENCA_TIMEOUT_MS) return; // presença velha demais -- trata como se já tivesse saído
+      lista.push({ docId: doc.id, nome: d.nome || doc.id });
     });
     lista.sort(function(a,b){ return a.nome.localeCompare(b.nome); });
     SESSION.centroDiretorio = lista;
     SESSION.centroDiretorioCarregando = false;
     render();
-  }).catch(function(){
+  }, function(err){
     SESSION.centroDiretorioCarregando = false;
-    SESSION.error = 'Não consegui carregar a lista de Treinadores -- verifique sua internet.';
+    SESSION.error = 'Não consegui ver quem está no Centro Pokémon agora ('+erroFirestoreMsg(err)+').';
     render();
   });
+}
+/* Chamado ao trocar de tela (DT.gaGoto) ou sair da conta (DT.gaSair)
+   -- apaga a PRÓPRIA presença (nunca mexe na de mais ninguém), pára o
+   heartbeat e desliga o listener da coleção inteira. Também tentado
+   (melhor esforço, sem garantia -- ver boot() mais abaixo) ao fechar
+   a aba de verdade via `beforeunload`. */
+function sairDaPresencaDoCentro(){
+  if(presencaHeartbeatTimer){ clearInterval(presencaHeartbeatTimer); presencaHeartbeatTimer=null; }
+  if(unsubscribePresenca){ unsubscribePresenca(); unsubscribePresenca=null; }
+  if(presencaCol && SESSION.currentDocId){ presencaCol.doc(SESSION.currentDocId).delete().catch(function(){}); }
 }
 
 /* ---- Amizade ----
@@ -7129,7 +7191,7 @@ DT.gaEnviarPedidoAmizade = function(paraDocId){
     STATE.pedidosEnviados.push({ paraDocId: paraDocId, paraNome: alvo.nome, ts: pedido.ts });
     logAction('amizade', 'Enviou um pedido de amizade pra '+alvo.nome+'.');
     mutate();
-  }).catch(function(){ SESSION.error='Não consegui enviar o pedido -- verifique sua internet.'; render(); });
+  }).catch(function(err){ SESSION.error='Não consegui enviar o pedido ('+erroFirestoreMsg(err)+').'; render(); });
 };
 /* Responde 1 pedido recebido -- acha o objeto EXATO dentro de
    SESSION.pedidosAmizade (que já veio do snapshot ao vivo do inbox,
@@ -7151,7 +7213,7 @@ DT.gaResponderPedidoAmizade = function(deDocId, ts, aceitar){
     removerDoInbox().then(function(){
       SESSION.notice = 'Pedido de '+pedido.deNome+' recusado.';
       render();
-    }).catch(function(){ SESSION.error='Não consegui recusar o pedido -- tente de novo.'; render(); });
+    }).catch(function(err){ SESSION.error='Não consegui recusar o pedido ('+erroFirestoreMsg(err)+').'; render(); });
     return;
   }
   var ids = [meuId, pedido.deDocId].sort();
@@ -7161,7 +7223,7 @@ DT.gaResponderPedidoAmizade = function(deDocId, ts, aceitar){
   }).then(function(){
     logAction('amizade', 'Aceitou o pedido de amizade de '+pedido.deNome+'.');
     mutate();
-  }).catch(function(){ SESSION.error='Não consegui aceitar o pedido -- verifique sua internet e tente de novo.'; render(); });
+  }).catch(function(err){ SESSION.error='Não consegui aceitar o pedido ('+erroFirestoreMsg(err)+').'; render(); });
 };
 /* Desfazer amizade (bônus -- grátis já que o par tem 1 documento só).
    NUNCA mexe no lado de ninguém além de apagar o documento do par --
@@ -7172,7 +7234,7 @@ DT.gaDesfazerAmizade = function(outroDocId){
   amizadesCol.doc(friendPairId(SESSION.currentDocId, outroDocId)).delete().then(function(){
     logAction('amizade', 'Desfez amizade.');
     mutate();
-  }).catch(function(){ SESSION.error='Não consegui desfazer a amizade -- tente de novo.'; render(); });
+  }).catch(function(err){ SESSION.error='Não consegui desfazer a amizade ('+erroFirestoreMsg(err)+').'; render(); });
 };
 
 /* ---- Chat público do Centro Pokémon ----
@@ -7210,7 +7272,7 @@ DT.gaEnviarMensagemChat = function(inputEl){
     logAction('chat', 'Mandou uma mensagem no chat público do Centro Pokémon.');
     mutate();
     trimChatSeNecessario();
-  }).catch(function(){ SESSION.error='Não consegui mandar a mensagem -- verifique sua internet.'; render(); });
+  }).catch(function(err){ SESSION.error='Não consegui mandar a mensagem ('+erroFirestoreMsg(err)+').'; render(); });
 };
 
 /* ============================================================
@@ -7936,13 +7998,18 @@ DT.gaDebugReset = function(){
 };
 
 DT.gaGoto = function(screen){
-  /* Chat ao vivo do Centro Pokémon só roda enquanto o jogador está
-     OLHANDO essa tela (ao contrário do inbox/amizades, sempre ligados
-     desde o login) -- desliga o listener ao sair daqui pra QUALQUER
-     outra tela, economizando banda sem perder nada (o histórico
-     continua salvo em green_area_chat_publico, é só a atualização ao
-     vivo que pausa). */
-  if(SESSION.screen==='centro' && screen!=='centro' && unsubscribeChat){ unsubscribeChat(); unsubscribeChat=null; }
+  /* Chat ao vivo E presença do Centro Pokémon só rodam enquanto o
+     jogador está OLHANDO essa tela (ao contrário do inbox/amizades,
+     sempre ligados desde o login) -- Cap. leva desta sessão: "ao
+     sair ele sai dali também" -- desliga os 2 ao sair daqui pra
+     QUALQUER outra tela: o chat só pausa a atualização ao vivo (o
+     histórico continua salvo), mas a presença é APAGADA de verdade
+     (ver sairDaPresencaDoCentro), então o Treinador some da tela dos
+     outros na hora. */
+  if(SESSION.screen==='centro' && screen!=='centro'){
+    if(unsubscribeChat){ unsubscribeChat(); unsubscribeChat=null; }
+    sairDaPresencaDoCentro();
+  }
   SESSION.screen = screen; SESSION.error=''; SESSION.sidebarOpen=false; render();
 };
 DT.gaDismiss = function(){ SESSION.error=''; SESSION.notice=''; render(); };
@@ -8947,7 +9014,7 @@ function wikiScreenHTML(){
    attachSocialListeners/gaAbrirCentro). */
 function centroScreenHTML(){
   var out = '<div class="ga-card"><h2>🏥 Centro Pokémon</h2>'+
-    '<p class="ga-hint">Ponto de encontro entre Treinadores -- veja quem mais está jogando, peça amizade e converse no chat público (visível pra TODO MUNDO). Troca de Pokémon/itens/dinheiro e desafios de PvP chegam nas próximas atualizações.</p>';
+    '<p class="ga-hint">Ponto de encontro entre Treinadores -- peça amizade e converse no chat público (visível pra TODO MUNDO). A lista de Treinadores abaixo só mostra quem está com ESSA tela aberta agora, igual um lugar de verdade -- sai daqui e você some da tela dos outros também. Troca de Pokémon/itens/dinheiro e desafios de PvP chegam nas próximas atualizações.</p>';
 
   var pedidos = SESSION.pedidosAmizade||[];
   if(pedidos.length){
@@ -8968,11 +9035,11 @@ function centroScreenHTML(){
         }).join('')+'</div>'
       : '<p class="ga-hint">Você ainda não tem nenhum amigo -- peça amizade pra alguém da lista de Treinadores abaixo.</p>');
 
-  out += '<h3 class="ga-subhead">🧑‍🤝‍🧑 Treinadores</h3>'+
+  out += '<h3 class="ga-subhead">🧑‍🤝‍🧑 Treinadores aqui agora</h3>'+
     (SESSION.centroDiretorioCarregando
-      ? '<p class="ga-hint">Carregando lista de Treinadores...</p>'
+      ? '<p class="ga-hint">Vendo quem está no Centro Pokémon agora...</p>'
       : (!SESSION.centroDiretorio || !SESSION.centroDiretorio.length
-          ? '<p class="ga-hint">Nenhum outro Treinador tem conta ainda -- volte aqui quando mais gente entrar.</p>'
+          ? '<p class="ga-hint">Nenhum outro Treinador está aqui agora -- avise seus amigos pra entrarem no Centro Pokémon também.</p>'
           : '<div class="ga-poke-grid">'+SESSION.centroDiretorio.map(function(p){
               var jaAmigo = amigos.some(function(a){ return a.outro===p.docId; });
               var pedidoPendente = (STATE.pedidosEnviados||[]).some(function(e){ return e.paraDocId===p.docId; });
@@ -9101,6 +9168,18 @@ var booted = false;
 function boot(){ if(booted) return; booted = true; render(); bootApp(); }
 document.addEventListener('DOMContentLoaded', boot);
 if(document.readyState==='complete' || document.readyState==='interactive') boot();
+/* Cap. leva desta sessão ("ao sair ele sai dali também"): tentativa de
+   MELHOR ESFORÇO de apagar a própria presença ao fechar a aba de
+   verdade -- escritas assíncronas durante `beforeunload` não têm
+   garantia nenhuma de terminar (limitação conhecida da Web, documentada
+   aqui em vez de escondida), então o heartbeat/timeout já implementado
+   em entrarNaPresencaDoCentro/CENTRO_PRESENCA_TIMEOUT_MS continua sendo
+   a rede de segurança de verdade -- isso aqui só acelera a saída
+   quando FUNCIONA. `typeof window!=='undefined' && window.addEventListener`
+   protege o harness de teste em Node, que não tem essa API. */
+if(typeof window!=='undefined' && window.addEventListener){
+  window.addEventListener('beforeunload', function(){ sairDaPresencaDoCentro(); });
+}
 
 })();
 
