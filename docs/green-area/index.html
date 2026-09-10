@@ -263,6 +263,14 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-hpnum{ font-size:.68rem; color:var(--ink-dim); margin-top:2px; }
 .ga-battle-log{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; max-height:220px; overflow-y:auto; font-size:.82rem; display:flex; flex-direction:column; gap:3px; }
 .ga-battle-prompt{ background:var(--panel2); border:1px dashed var(--accent-dim); border-radius:8px; padding:12px; margin-top:10px; }
+/* Cap. leva desta sessão ("relatório final de cada luta" da sequência
+   automática): 1 <details> por luta -- fechado por padrão, abre pra
+   mostrar o log turno-a-turno sem lotar a tela de quem só quer o
+   resumo da linha (summary). */
+.ga-seq-relatorio{ display:flex; flex-direction:column; gap:6px; margin:6px 0 12px; }
+.ga-seq-relatorio-item{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+.ga-seq-relatorio-item summary{ cursor:pointer; font-size:.85rem; }
+.ga-seq-relatorio-item .ga-battle-log{ margin-top:8px; max-height:180px; }
 
 /* Cap. leva desta sessão: "adaptado também para quando abrir no
    celular não oter problema" -- fica no FINAL do arquivo de propósito
@@ -5997,11 +6005,13 @@ function finishBattle(result){
     var premio = battleReward(b);
     STATE.pokedolares = (STATE.pokedolares||0) + premio;
     b.log.push('💰 Você ganhou '+premio+' Pokédólares!');
+    b.premioGanho = premio; // guardado no PRÓPRIO objeto da luta -- Cap. leva desta sessão (relatório da sequência), pra não precisar recalcular depois
     var tix = ticketReward(b);
     if(tix>0){
       // teto de 1000 vale pra QUALQUER fonte, essa recompensa de batalha incluída
       STATE.poketickets = clampInt((STATE.poketickets||0) + tix, 0, POKETICKETS_MAX);
       b.log.push('🎫 Você ganhou '+tix+' Pokétickets!');
+      b.ticketsGanhos = tix; // idem -- ticketReward() usa Math.random() (Treinador de Elite), NUNCA recalcular de novo pro relatório
     }
     /* XP/Nível/evolução JÁ foram resolvidos no meio da luta, golpe a
        golpe (ver grantXpAndMaybeEvolve, chamado de dentro de
@@ -7281,7 +7291,7 @@ DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl){
   var autoCapturar = !!(autoCapEl && autoCapEl.checked);
   var autoCurar = !!(autoCurEl && autoCurEl.checked);
   var zona = zonaByStatus(psc.zonaId);
-  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, finished:false, pararSemEnergia:false };
+  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, finished:false, pararSemEnergia:false, relatorio:[] };
   logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
   mutate();
   captureSequenceTick(); // dispara a 1ª luta na hora, sem esperar o próximo tick do relógio de fundo
@@ -7374,7 +7384,13 @@ function resolverLutaAutomaticamente(cs){
       if(cs.autoCurar){
         var faltaPct = 1 - (battlerCurrentHP(b.playerActive)/gaHpMax(b.playerActive));
         var it = itemCuraRecomendado(faltaPct);
-        if(it) DT.gaUsarItemCura(it.key); else DT.gaRecusarItemCura();
+        if(it){
+          DT.gaUsarItemCura(it.key);
+          /* Cap. leva desta sessão ("relatório final de cada luta...
+             uso de poção"): guarda no PRÓPRIO objeto da luta, na hora,
+             em vez de tentar reconstruir depois vasculhando b.log. */
+          (STATE.battle.itensUsadosSequencia = STATE.battle.itensUsadosSequencia || []).push(it.nome);
+        } else DT.gaRecusarItemCura();
       } else {
         DT.gaRecusarItemCura(); // toggle desligado -- "a batalha segue sem uso de nada que ele pediu"
       }
@@ -7390,20 +7406,55 @@ function resolverLutaAutomaticamente(cs){
   var b2 = STATE.battle;
   if(b2 && b2.finished==='vitoria' && b2.kind==='wild' && !b2.captureDone){
     if(cs.autoCapturar){
-      var bola = pokebolaRecomendada(b2.oppTeam[0].num);
-      if(bola) DT.gaJogarPokebola(bola.key); else b2.captureDone = true; // sem bola nenhuma na Mochila -- não força
+      var numAlvo = b2.oppTeam[0].num;
+      var bola = pokebolaRecomendada(numAlvo);
+      if(bola){
+        DT.gaJogarPokebola(bola.key);
+        /* Cap. leva desta sessão ("se teve captura"): sucesso/fracasso
+           é decidido DENTRO de gaJogarPokebola (rola a Taxa de
+           Captura) -- a própria última linha do log da luta já conta
+           qual dos 2 desfechos aconteceu (🎯 capturou / 💨 escapou),
+           então só lê ela de volta em vez de duplicar o sorteio. */
+        var ultimaLinha = b2.log[b2.log.length-1] || '';
+        b2.capturaTentativaSequencia = { bola: bola.nome, especie: speciesByNum(numAlvo).name, sucesso: ultimaLinha.indexOf('🎯 ')===0 };
+      } else b2.captureDone = true; // sem bola nenhuma na Mochila -- não força
     } else {
       b2.captureDone = true; // toggle desligado -- nunca tenta capturar, "sem uso de nada que ele pediu"
     }
   }
 }
+/* Cap. leva desta sessão ("gere um relatório final de cada luta como
+   foi cada uma e o resultado, se teve captura, uso de poção etc"):
+   1 entrada por luta fechada, guardada em STATE.captureSequence.relatorio
+   -- lida de volta em sequenciaFimScreenHTML() no fim da sequência
+   inteira. Guarda o log COMPLETO da luta junto (pra quem quiser abrir
+   o detalhe turno a turno), não só o resumo estruturado. */
+function battleReportEntry(b, numero){
+  return {
+    numero: numero,
+    kind: b.kind,
+    label: b.label,
+    resultado: b.finished, // 'vitoria' | 'derrota'
+    premio: b.premioGanho || 0,
+    tickets: b.ticketsGanhos || 0,
+    itensUsados: b.itensUsadosSequencia || [],
+    captura: b.capturaTentativaSequencia || null, // {bola, especie, sucesso} ou null (não era selvagem / não tentou)
+    trocouPokemon: !!(b.usedPartyIds && b.usedPartyIds.length > 1),
+    log: b.log.slice()
+  };
+}
 /* Fecha a luta que acabou de terminar DENTRO de uma sequência
    automática -- mesma contabilidade de vitórias/derrotas que o
    clique manual em "Continuar" fazia, só que sem esperar clique
-   nenhum (ver DT.gaEncerrarBatalha, agora só pro caminho manual). */
+   nenhum (ver DT.gaEncerrarBatalha, agora só pro caminho manual) --
+   e, a mais, empilha a entrada do relatório dessa luta. */
 function fecharLutaDaSequencia(cs){
   var b = STATE.battle;
-  if(b){ if(b.finished==='vitoria') cs.vitorias++; else cs.derrotas++; }
+  if(b){
+    if(b.finished==='vitoria') cs.vitorias++; else cs.derrotas++;
+    cs.relatorio = cs.relatorio || [];
+    cs.relatorio.push(battleReportEntry(b, cs.relatorio.length+1));
+  }
   STATE.battle = null;
 }
 /* Sequência acabou (ou parou sem Energia no meio do caminho) -- NÃO
@@ -7467,12 +7518,44 @@ function elegiveisParaEvoluirAgora(){
    STATE.captureSequence.finished vira true (ver screenHTML mais
    abaixo -- aparece por CIMA de qualquer tela, do mesmo jeito que a
    tela de batalha, até o jogador fechar o resumo). */
+/* Cap. leva desta sessão: "gere um relatório final de cada luta como
+   foi cada uma e o resultado, se teve captura, uso de poção etc" --
+   1 linha-resumo por luta (resultado, prêmio, item usado, captura,
+   troca de Pokémon), com o log turno-a-turno completo escondido num
+   <details> nativo (sem JS nenhum pra abrir/fechar) pra quem quiser
+   ver "como foi" de verdade, sem lotar a tela de quem só quer o
+   placar. Lê STATE.captureSequence.relatorio (ver battleReportEntry/
+   fecharLutaDaSequencia) -- monta vazio (nada a mostrar) se a
+   sequência era só de 1 luta cancelada/etc antes de fechar nenhuma. */
+function sequenciaRelatorioHTML(cs){
+  var itens = cs.relatorio || [];
+  if(!itens.length) return '';
+  var KIND_LABEL = { wild:'Selvagem', rival:'Treinador', elite:'Treinador de Elite', trainer:'Mestre Especialista' };
+  return '<h3 class="ga-subhead">📋 Relatório da sequência</h3>'+
+    '<div class="ga-seq-relatorio">'+
+    itens.map(function(r){
+      var resultTxt = r.resultado==='vitoria' ? '🏆 Vitória' : '☠️ Derrota';
+      var extras = [];
+      if(r.premio) extras.push('💰 +'+r.premio);
+      if(r.tickets) extras.push('🎫 +'+r.tickets);
+      if(r.itensUsados.length) extras.push('💊 usou '+r.itensUsados.map(esc2).join(', '));
+      if(r.captura) extras.push(r.captura.sucesso
+        ? ('🎯 capturou '+esc2(r.captura.especie)+' com '+esc2(r.captura.bola))
+        : ('💨 tentou capturar '+esc2(r.captura.especie)+' com '+esc2(r.captura.bola)+' -- escapou'));
+      if(r.trocouPokemon) extras.push('🔄 trocou de Pokémon');
+      return '<details class="ga-seq-relatorio-item"><summary>Luta '+r.numero+' — '+esc2(KIND_LABEL[r.kind]||r.kind)+' ('+esc2(r.label)+') — '+resultTxt+(extras.length ? ' · '+extras.join(' · ') : '')+'</summary>'+
+        '<div class="ga-battle-log">'+r.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>'+
+      '</details>';
+    }).join('')+
+    '</div>';
+}
 function sequenciaFimScreenHTML(){
   var cs = STATE.captureSequence;
   var zona = zonaByStatus(cs.zonaId);
   var elegiveis = elegiveisParaEvoluirAgora();
   var out = '<div class="ga-card"><h2>🔁 Sequência automática terminou — '+esc2(zona?zona.nome:'?')+'</h2>'+
-    '<p class="ga-hint">'+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' -- parou sem Energia suficiente pra continuar':'')+'.</p>';
+    '<p class="ga-hint">'+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' -- parou sem Energia suficiente pra continuar':'')+'.</p>'+
+    sequenciaRelatorioHTML(cs);
   if(elegiveis.length){
     out += '<h3 class="ga-subhead">✨ Algum Pokémon pode evoluir agora</h3>'+
       '<p class="ga-hint">Evolução nunca é decidida no meio de uma sequência automática -- fica pra perguntar só aqui, depois que TODAS as lutas pedidas já terminaram.</p>'+
