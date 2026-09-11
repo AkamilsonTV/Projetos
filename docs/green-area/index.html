@@ -5083,8 +5083,42 @@ var EVOLUTION_STONES = [
   { key:'pedra-gelo', item:'ice-stone', icon:'ice-stone', nome:'Ice Stone', preco:300 },
   { key:'pedra-brilhante', item:'shiny-stone', icon:'shiny-stone', nome:'Shiny Stone', preco:400 },
   { key:'pedra-crepusculo', item:'dusk-stone', icon:'dusk-stone', nome:'Dusk Stone', preco:400 },
-  { key:'pedra-alvorada', item:'dawn-stone', icon:'dawn-stone', nome:'Dawn Stone', preco:400 }
+  { key:'pedra-alvorada', item:'dawn-stone', icon:'dawn-stone', nome:'Dawn Stone', preco:400 },
+  /* Cap. leva desta sessão (pedido explícito do jogador, fechando o
+     grupo 🟡 do checklist -- Feebas/Magneton/Nosepass/Eevee×2/
+     Charjabug/Crabrawler, que exigiam Beleza/Afeto/Localização, 3
+     sistemas que este protótipo não tem): Prism Scale é a
+     alternativa OFICIAL de verdade pro Feebas->Milotic desde a
+     Geração 5 (item, em vez do stat de Beleza) -- ver EVOLUTION_
+     STONE_OVERRIDE logo abaixo. Rock Stone NÃO existe nos jogos
+     oficiais -- item novo criado só pra este protótipo (mesmo
+     espírito da Super Ball, ver comentário de POKEBALLS), sem sprite
+     nenhum disponível (cai pro emoji, ver itemIconHTML). */
+  { key:'escama-prisma', item:'prism-scale', icon:'prism-scale', nome:'Prism Scale', preco:300 },
+  { key:'pedra-rocha', icon:null, emoji:'🪨', nome:'Rock Stone', preco:300, desc:'Item NÃO oficial, criado só pra este protótipo (mesmo espírito da Super Ball) -- sem sprite disponível.' }
 ];
+/* Cap. leva desta sessão: decisão de design do jogador SUBSTITUINDO a
+   condição real de 7 arestas (Beleza/Localização, ambas impraticáveis
+   aqui -- ver checklist) por uma alternativa baseada em item -- a
+   OFICIAL quando existe de verdade (Prism Scale pro Feebas; Ice/Leaf
+   Stone pro Glaceon/Leafeon, alternativas REAIS desde a Geração 8),
+   ou uma REAPROVEITADA/NOVA quando não existe nenhuma oficial (Pedra
+   Trovão pro Magnezone/Vikavolt, Rock Stone pro Probopass/
+   Crabominable). Indexado pela Espécie DESTINO (`to`), igual os
+   outros mapas de override -- `pedrasElegiveisPara` confere isso pra
+   QUALQUER aresta da Espécie (não só as que já eram `trigger:
+   'use-item'` no PokeAPI) e `eligibleEvolution` exclui essas mesmas
+   arestas do fluxo de Nível normal (agora só evoluem pela pedra,
+   nunca mais pelo nivelTipico() aproximado de antes). */
+var EVOLUTION_STONE_OVERRIDE = {
+  350: 'escama-prisma', // Feebas -> Milotic (Prism Scale -- alternativa OFICIAL de verdade)
+  462: 'pedra-trovao',  // Magneton -> Magnezone
+  476: 'pedra-rocha',   // Nosepass -> Probopass
+  470: 'pedra-folha',   // Eevee -> Leafeon (Leaf Stone -- alternativa OFICIAL desde Ger. 8)
+  471: 'pedra-gelo',    // Eevee -> Glaceon (Ice Stone -- alternativa OFICIAL desde Ger. 8)
+  738: 'pedra-trovao',  // Charjabug -> Vikavolt
+  740: 'pedra-gelo'     // Crabrawler -> Crabominable
+};
 /* Cap. leva desta sessão ("Segue com seu próximo palpite" -- 3º grupo
    do checklist, "📦 item exclusivo (10)"): os ~10 itens de evolução
    Gen 8/9 exclusivos de 1 espécie cada, até esta leva de propósito
@@ -5125,6 +5159,15 @@ function pedrasElegiveisPara(p){
   var opts = EVOLUTIONS_DEX[p.num] || [];
   var out = [];
   opts.forEach(function(e){
+    /* Cap. leva desta sessão -- EVOLUTION_STONE_OVERRIDE acima: confere
+       ANTES do resto (mesmo pra arestas que nem eram `use-item` no
+       PokeAPI, ex. Feebas/Magneton/Nosepass/Eevee/Charjabug/Crabrawler). */
+    var overrideKey = EVOLUTION_STONE_OVERRIDE[e.to];
+    if(overrideKey){
+      var pedraOverride = stoneByKey(overrideKey);
+      if(pedraOverride) out.push({ pedra: pedraOverride, to: e.to });
+      return;
+    }
     if(e.trigger!=='use-item' || !e.item) return;
     var pedra = EVOLUTION_STONES.filter(function(s){ return s.item===e.item; })[0] || EVOLUTION_EXCLUSIVE_ITEMS.filter(function(s){ return s.item===e.item; })[0];
     if(!pedra) return;
@@ -5207,6 +5250,20 @@ var EVOLUTION_KNOWN_MOVE_REQUIRED = {
    mapa pequeno, indexado igual aos outros 2 acima, em vez de um
    catálogo inteiro só pra 1 aresta. */
 var EVOLUTION_PARTY_SPECIES_REQUIRED = { 226: 223 };
+/* Cap. leva desta sessão (pedido explícito do jogador, fechando o
+   grupo 🟡 do checklist): Eevee->Sylveon (#700) na verdade depende do
+   stat de AFETO (Pokémon-Amie/Refresh), que este protótipo não tem --
+   decisão de design do jogador: reusa `p.felicidade` (0-255, já
+   existe) com limiar de 80% (204) em vez de Afeto, mesmo espírito de
+   aproximação documentado no resto do arquivo -- MESMO mecanismo de
+   `e.minHappiness`, só que pra uma aresta que não tinha esse campo no
+   PokeAPI (`EVOLUTION_MIN_HAPPINESS_OVERRIDE`, indexado pela Espécie
+   destino). `EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED` cobre o outro lado
+   da condição oficial que SOBREVIVE (golpe de Tipo Fada conhecido) --
+   `p.moves[*].tipo` já vem preenchido, sem precisar consultar
+   MOVES_DEX de novo. */
+var EVOLUTION_MIN_HAPPINESS_OVERRIDE = { 700: 204 };
+var EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED = { 700: 'Fada' }; // mesma grafia de MOVES_DEX[*].tipo (ex. Moonblast: tipo:'Fada')
 /* Dia/Noite (Cap. leva desta sessão -- 3º pedido: "Clima, dia e noite
    eu queria ver algo sobre isso também pra gente colocar no
    sistema"): ciclo de verdade baseado no RELÓGIO REAL do servidor,
@@ -7257,6 +7314,26 @@ function xpParaVitoria(nivelProprio, nivelOponente){
    tem Nível mínimo oficial (só a condição real) -- não caem mais em
    nivelTipico() nenhum depois de bater a condição.
 
+   Cap. leva SEGUINTE desta sessão ("Feebas→Milotic - Prism Scale...
+   Eevee→Sylveon - Ter um move fada e 80% de felicidade... Magneton -
+   Pedra elétrica..." -- decisão de design do JOGADOR fechando o
+   último grupo do checklist, 🟡, que dependia de Beleza/Afeto/
+   Localização, 3 sistemas que este protótipo não tem): 7 arestas
+   trocam a condição real por um item (ver EVOLUTION_STONE_OVERRIDE
+   acima, mesmo fluxo das pedras clássicas) -- Feebas->Milotic (Prism
+   Scale, alternativa OFICIAL de verdade desde a Ger. 5), Eevee->
+   Leafeon/Glaceon (Leaf/Ice Stone, alternativas OFICIAIS desde a Ger.
+   8), e Magneton->Magnezone/Nosepass->Probopass/Charjabug->Vikavolt/
+   Crabrawler->Crabominable (Pedra Trovão reaproveitada ou Rock Stone,
+   item NOVO sem equivalente oficial -- mesmo espírito da Super Ball).
+   Eevee->Sylveon (#700) troca Afeto por Felicidade 80% (204/255) +
+   golpe de Tipo Fada conhecido -- ver EVOLUTION_MIN_HAPPINESS_
+   OVERRIDE/EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED acima, mesmo mecanismo
+   de `e.minHappiness` só que numa aresta que não tinha esse campo no
+   PokeAPI. Com isso, o grupo 🟡 do checklist ("falta -- precisa de
+   sistema novo") fica ZERADO -- só sobram os grupos 🔴 (mecânica
+   praticamente impossível de replicar) e ⛔ (Shedinja, sem solução).
+
    `shed` (Nincada->Shedinja) é o ÚNICO caso que precisa ficar de fora
    de propósito (não só "aproximado"): no jogo oficial ele NÃO troca
    a Espécie -- ele ADICIONA um Shedinja novo no time/Caixa por cima
@@ -7276,6 +7353,20 @@ function eligibleEvolution(p){
   if(!opts.length) return null;
   var elegiveis = opts.filter(function(e){
     if(e.trigger==='use-item' || e.trigger==='trade' || e.trigger==='shed') return false;
+    /* Cap. leva desta sessão -- EVOLUTION_STONE_OVERRIDE acima: essas
+       arestas saem do fluxo de Nível normal por completo, só evoluem
+       pela pedra agora (ver pedrasElegiveisPara/DT.gaUsarPedra). */
+    if(EVOLUTION_STONE_OVERRIDE[e.to]) return false;
+    /* Cap. leva desta sessão -- Eevee->Sylveon (ver EVOLUTION_MIN_
+       HAPPINESS_OVERRIDE/EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED acima):
+       Felicidade 80% + golpe de Tipo Fada, no lugar do stat de Afeto
+       que este protótipo não tem. */
+    var felicidadeOverride = EVOLUTION_MIN_HAPPINESS_OVERRIDE[e.to];
+    if(felicidadeOverride!=null){
+      var tipoFadaNecessario = EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED[e.to];
+      if(tipoFadaNecessario && !(p.moves||[]).some(function(m){ return m.tipo===tipoFadaNecessario; })) return false;
+      return (p.felicidade||0) >= felicidadeOverride;
+    }
     /* Cap. leva desta sessão -- Dia/Noite de verdade (ver
        horaAtualDoJogo acima) em vez de ignorar `timeOfDay`
        completamente como até esta leva. */
