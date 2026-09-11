@@ -5326,31 +5326,51 @@ var EVOLUTION_PARTY_SPECIES_REQUIRED = { 226: 223 };
 var EVOLUTION_MIN_HAPPINESS_OVERRIDE = { 700: 204 };
 var EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED = { 700: 'Fada' }; // mesma grafia de MOVES_DEX[*].tipo (ex. Moonblast: tipo:'Fada')
 /* Dia/Noite -- Cap. leva desta sessão ("Quero colocar o esquema de dia
-   e noite no jogo... 4 períodos durante 24h, 1 dia dura 6h: Dia 1: 00h-
-   5:59, Dia 2: 6h-11:59, Dia 3: 12h-17:59, Dia 4: 18h-23:59, e assim
-   sucessivamente. Metade do dia (3h) será dia, a outra metade será
-   noite"): SUBSTITUI o corte antigo de 12h/12h (1 troca de Dia/Noite
-   por dia real) por esse esquema novo, mais rápido -- ciclo continua
-   baseado no RELÓGIO REAL do servidor em UTC, de propósito NÃO no
-   fuso horário de cada jogador, pelo mesmo motivo de antes (2
-   jogadores em fusos diferentes precisam ver o MESMO Dia/Noite ao
-   mesmo tempo, pra mecânicas como Troca ao vivo nunca discordarem
-   sobre isso). Cada "Dia do jogo" dura 6h reais -- `numeroDiaDoJogo()`
-   é um contador que NUNCA reinicia, cresce pra sempre a cada 6h reais
-   que passam desde a época (1970-01-01 00:00 UTC, referência
-   arbitrária mas fixa só pra "Dia 1" bater exatamente com o exemplo do
-   pedido, 00h-5:59 UTC) -- é o que `tickPoketickets()` usa embaixo pra
-   saber quando resetar os Pokétickets pra 50 (ver mais abaixo). Dentro
-   de CADA bloco de 6h, a 1ª metade (3h) é "dia" e a 2ª metade (3h) é
-   "noite" -- 8 trocas de Dia/Noite por dia real agora, não mais 2.
+   e noite no jogo... 4 períodos durante 24h, 1 dia dura 6h..."), COM a
+   correção da leva seguinte ("A hora ainda não tá legal. Não é pra
+   basear ela no real e sim no tempo do jogo. Exemplo: se o dia começa
+   18h, tem que ser 00h no jogo. Aí entra o comparativo com a hora
+   real. 3h no mundo real (horário de Brasília) tem que passar 12h de
+   jogo. Aí seria o primeiro período 00h até 5:59h noite, 6h até
+   17:59h dia e depois 18h em diante, noite, até o dia rodar de novo e
+   reiniciar o ciclo"): o relógio NÃO é mais o relógio real (UTC) cru
+   -- é um relógio ACELERADO, próprio do jogo, que NUNCA sincroniza
+   com a hora de parede de ninguém (nem UTC nem Brasília -- "se o dia
+   começa 18h [de verdade], tem que ser 00h no jogo": o relógio do
+   jogo sempre ZERA pro 00:00 no início de um novo "Dia do jogo",
+   não importa que horas são de verdade nesse instante). Razão fixa:
+   4h de jogo pra cada 1h real ("3h no mundo real tem que passar 12h
+   de jogo" = 3×4=12) -- cada "Dia do jogo" dura 6h reais (igual já
+   era, MS_POR_PERIODO_JOGO) e cabe DENTRO dele um dia inteiro de 24h
+   aceleradas (6h reais × 4 = 24h de jogo), sempre recomeçando do
+   00:00 exatamente quando o "Dia do jogo" vira. Continua sem depender
+   do fuso de cada jogador (2 jogadores em fusos diferentes têm que
+   ver o MESMO relógio de jogo ao mesmo tempo, pra mecânicas como
+   Troca ao vivo nunca discordarem) -- só que agora nem UTC nem
+   Brasília importam pro CÁLCULO em si (é só uma razão de tempo
+   decorrido, não uma hora de parede), a menção a Brasília no pedido
+   foi só a forma do jogador pensar a proporção.
+
+   `numeroDiaDoJogo()` continua sendo o contador de QUAL "Dia do jogo"
+   (bloco de 6h reais) estamos, ciclando 1-4 (ver correção "Dia 82832"
+   de uma leva anterior) -- isso não mudou nesta leva, só o hh:mm:ss
+   DENTRO de cada Dia. Dia/Noite pela hora ACELERADA agora: 00h-5:59
+   noite, 6h-17:59 dia, 18h-23:59 noite (pedido explícito, mesmo corte
+   madrugada/dia longo/noite dos jogos oficiais) -- 2 trocas de
+   Dia/Noite por "Dia do jogo" (a mesma contagem de 8 por dia real de
+   antes, só que a duração real de cada trecho não é mais simétrica:
+   os 12h de jogo "dia" cabem em 3h reais contínuas no meio do bloco,
+   e os 12h de jogo "noite" ficam divididos em 2 pontas de 1h30 reais
+   cada, no início e no fim do bloco).
    Usado em eligibleEvolution pra checar `timeOfDay` de verdade (Eevee
    -> Espeon/Umbreon, Gligar -> Gliscor, Lycanroc etc., ~18 arestas ao
-   todo) -- COM esse novo ciclo mais rápido automaticamente, sem
-   precisar mexer em nenhuma delas (todas leem só `horaAtualDoJogo()`).
+   todo) -- automaticamente, sem precisar mexer em nenhuma delas
+   (todas leem só `horaAtualDoJogo()`).
    Exibido de forma permanente no topo do site (sidebar no PC, barra
    superior no celular -- ver sidebarHTML/mobileTopbarHTML) no formato
    exato pedido: "Dia N -- hh:mm -- dia/noite". */
 var MS_POR_PERIODO_JOGO = 6*60*60*1000; // 6h reais = 1 "Dia do jogo"
+var MS_POR_DIA_JOGO_ACELERADO = 24*60*60*1000; // 1 dia de jogo inteiro (24h aceleradas) cabe dentro de 1 "Dia do jogo" (6h reais) -- razão fixa de 4h de jogo por 1h real
 function periodoDoJogoIndex(){ return Math.floor(Date.now()/MS_POR_PERIODO_JOGO); } // 0-based, cresce pra sempre, nunca reinicia -- uso INTERNO (diff de Dia pro grant de Pokéticket), nunca exibido cru
 /* Cap. leva desta sessão ("Isso aqui tá muito estranho. Porque tá com
    esses dias e essa hora bugada?" -- "Dia 82832" apareceu na tela):
@@ -5365,23 +5385,32 @@ function periodoDoJogoIndex(){ return Math.floor(Date.now()/MS_POR_PERIODO_JOGO)
    por baixo, sem nenhuma mudança de comportamento no grant de
    Pokéticket nem nas evoluções). */
 function numeroDiaDoJogo(){ return (periodoDoJogoIndex()%4)+1; }
+/* Quanto tempo (em ms de jogo ACELERADO, 0..MS_POR_DIA_JOGO_ACELERADO)
+   já passou dentro do "Dia do jogo" atual -- zera de verdade toda vez
+   que um novo bloco de 6h reais começa, escalando proporcionalmente
+   (razão fixa de 4x) o tempo real decorrido dentro do bloco atual. */
+function msDentroDoDiaJogoAcelerado(){
+  var msDentroDoBloco = Date.now() % MS_POR_PERIODO_JOGO; // 0..6h reais
+  var fracaoDoBloco = msDentroDoBloco / MS_POR_PERIODO_JOGO; // 0..1
+  return Math.floor(fracaoDoBloco * MS_POR_DIA_JOGO_ACELERADO); // 0..24h aceleradas
+}
+function horaDoJogoAcelerada(){ return Math.floor(msDentroDoDiaJogoAcelerado()/3600000) % 24; }
+function minutoDoJogoAcelerado(){ return Math.floor(msDentroDoDiaJogoAcelerado()/60000) % 60; }
+function segundoDoJogoAcelerado(){ return Math.floor(msDentroDoDiaJogoAcelerado()/1000) % 60; }
 function horaAtualDoJogo(){
-  var h = new Date().getUTCHours();
-  return (h%6)<3 ? 'day' : 'night'; // 1ª metade (3h) de cada bloco de 6h = dia, 2ª metade = noite
+  var h = horaDoJogoAcelerada();
+  return (h>=6 && h<18) ? 'day' : 'night'; // 6h-17:59 (12h aceleradas) = dia, 18h-5:59 (12h aceleradas, dividida nas 2 pontas do bloco) = noite
 }
 /* Relógio do jogo formatado -- string única "Dia N -- hh:mm:ss -- ☀️
-   Dia"/"🌙 Noite", pronta pra exibir. Cap. leva desta sessão ("quero
-   que corram os segundos, é possível??"): ganhou `:ss` (antes só
-   hh:mm) -- já era atualizado a cada segundo de verdade no DOM (ver
-   energyTickLoop), só o TEXTO não mudava dentro do mesmo minuto,
-   parecendo travado. `hh:mm:ss` é o mesmo relógio UTC que já decide
-   tudo acima (Dia do jogo E dia/noite), de propósito -- nunca mostra
-   uma hora diferente da que realmente comanda a mecânica. */
+   Dia"/"🌙 Noite", pronta pra exibir. `hh:mm:ss` é sempre o relógio
+   ACELERADO do jogo (nunca a hora real crua) -- o mesmo que decide
+   Dia/Noite acima, de propósito, nunca mostra uma hora diferente da
+   que realmente comanda a mecânica. Continua atualizado a cada
+   segundo de verdade no DOM (ver energyTickLoop). */
 function relogioDoJogoTexto(){
-  var agora = new Date();
-  var hh = String(agora.getUTCHours()).padStart(2,'0');
-  var mm = String(agora.getUTCMinutes()).padStart(2,'0');
-  var ss = String(agora.getUTCSeconds()).padStart(2,'0');
+  var hh = String(horaDoJogoAcelerada()).padStart(2,'0');
+  var mm = String(minutoDoJogoAcelerado()).padStart(2,'0');
+  var ss = String(segundoDoJogoAcelerado()).padStart(2,'0');
   var tipo = horaAtualDoJogo();
   return 'Dia '+numeroDiaDoJogo()+' -- '+hh+':'+mm+':'+ss+' -- '+(tipo==='day'?'☀️ Dia':'🌙 Noite');
 }
@@ -7478,7 +7507,9 @@ var XP_BONUS_MESTRE = 3;
        ver HELD_ITEMS/p.itemSegurado).
      - As 17 de NÍVEL+DIA-NOITE (Eevee->Espeon/Umbreon, Gligar->
        Gliscor etc.) -- ver horaAtualDoJogo()/eligibleEvolution logo
-       abaixo, checado de verdade contra o relógio real (UTC) em vez
+       abaixo, checado de verdade contra o relógio do jogo (ver
+       horaDoJogoAcelerada, relógio ACELERADO próprio -- não mais o
+       relógio real cru desde a leva do esquema de Dia/Noite) em vez
        de cair direto no nivelTipico() ignorando o período do dia.
        4 delas (Gligar, Sneasel x2, Happiny) TAMBÉM exigem item
        segurado -- mesmo mapa acima, indexado pela Espécie destino.
@@ -11928,7 +11959,7 @@ function sidebarHTML(){
        página) -- `id` pra `energyTickLoop` atualizar o texto a cada
        segundo sem precisar re-renderizar a tela inteira (mesmo padrão
        já usado pro contador de Energia/Pokéticket). */
-    '<div class="ga-game-clock" id="ga-game-clock-side" title="Relógio do jogo (horário real do servidor, UTC) -- algumas evoluções só acontecem de Dia ou de Noite, e os Pokétickets resetam a cada Dia do jogo novo">'+esc2(relogioDoJogoTexto())+'</div>'+
+    '<div class="ga-game-clock" id="ga-game-clock-side" title="Relógio ACELERADO do jogo (4h de jogo pra cada 1h real -- nunca a hora real de verdade) -- algumas evoluções só acontecem de Dia ou de Noite, e os Pokétickets somam a cada Dia do jogo novo">'+esc2(relogioDoJogoTexto())+'</div>'+
     '<div class="ga-side-stats">'+
       '<span title="'+esc2(TOOLTIPS.energia)+'">🔋 '+STATE.energy+'/1000</span>'+
       '<span title="'+esc2(TOOLTIPS.pokedolares)+'">💰 '+(STATE.pokedolares||0)+'</span>'+
@@ -11954,7 +11985,7 @@ function mobileTopbarHTML(){
     '<button class="ga-hamburger" onclick="DT.gaToggleSidebar()" aria-label="Abrir menu">☰</button>'+
     '<div class="ga-brand" onclick="DT.gaGoto(\'hub\')">🟢 GREEN ÁREA</div>'+
     '<span class="ga-mobtop-energia" title="'+esc2(TOOLTIPS.energia)+'">🔋 '+STATE.energy+'</span>'+
-    '<div class="ga-game-clock ga-game-clock-mob" id="ga-game-clock-mob" title="Relógio do jogo (UTC) -- algumas evoluções só acontecem de Dia ou de Noite, Pokétickets resetam a cada Dia do jogo novo">'+esc2(relogioDoJogoTexto())+'</div>'+
+    '<div class="ga-game-clock ga-game-clock-mob" id="ga-game-clock-mob" title="Relógio ACELERADO do jogo (4h de jogo pra cada 1h real) -- algumas evoluções só acontecem de Dia ou de Noite, Pokétickets somam a cada Dia do jogo novo">'+esc2(relogioDoJogoTexto())+'</div>'+
   '</div>';
 }
 DT.gaToggleSidebar = function(){ SESSION.sidebarOpen = !SESSION.sidebarOpen; render(); };
