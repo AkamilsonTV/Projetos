@@ -5095,6 +5095,77 @@ function pedrasElegiveisPara(p){
   });
   return out;
 }
+/* Cap. leva desta sessão ("faça o que você tá recomendando" -- 1º dos
+   3 pedidos: checar o item segurado de verdade nas evoluções por
+   Troca): ~15 das 25 arestas de Troca do jogo oficial na VERDADE
+   exigem segurar um item específico durante a troca (Onix precisa de
+   Revestimento de Metal, Poliwhirl de Pedra do Rei etc.) -- até esta
+   leva, evoluíam em QUALQUER troca, sem checar nada. `EVOLUTIONS_
+   DETAILS.heldItem` deveria ter esse dado (extraído do PokeAPI, ver
+   fetch_evolution_details.js), mas vem `null` em TODA entrada --bug
+   real no fetch original, nunca corrigido até agora -- então este
+   catálogo + mapa foram preenchidos À MÃO com o item oficial de cada
+   aresta (fatos bem documentados no Bulbapedia, nunca inventados).
+
+   Reusa o MESMO slot único de item segurado de sempre (`p.
+   itemSegurado`, ver HELD_ITEMS/DT.gaEquiparItem) -- exatamente como
+   no jogo oficial, onde segurar um item de combate OU um item de
+   evolução usa o mesmo slot. Vendido na Loja igual todo o resto do
+   catálogo (ver lojaScreenHTML), sem efeito de combate nenhum (por
+   isso um catálogo à parte de HELD_ITEMS, que É só efeito de
+   combate) -- `heldItemByKey` casa os dois catálogos pra tudo que só
+   precisa achar "qual item é esse" (ficha, popup de equipar etc.)
+   nunca precisar saber de qual catálogo veio.
+
+   4 das arestas aqui NÃO são Troca -- são Nível+Dia/Noite (Gligar,
+   Sneasel x2, Happiny, ver mais abaixo em eligibleEvolution) que
+   TAMBÉM exigem item segurado no jogo oficial e caíam no mesmo bug
+   de heldItem=null -- por isso o mapa é indexado pela Espécie
+   DESTINO (`to`), não pelo gatilho: serve pros 2 call sites. */
+var EVOLUTION_HELD_ITEMS = [
+  { key:'revestimento-metal', item:'metal-coat', icon:'metal-coat', nome:'Revestimento de Metal', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Onix (Steelix) ou Scyther (Scizor).' },
+  { key:'escama-dragao', item:'dragon-scale', icon:'dragon-scale', nome:'Escama de Dragão', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Seadra em Kingdra.' },
+  { key:'pedra-do-rei', item:'kings-rock', icon:'kings-rock', nome:'Pedra do Rei', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Poliwhirl (Politoed) ou Slowpoke (Slowking).' },
+  { key:'dente-abissal', item:'deep-sea-tooth', icon:'deep-sea-tooth', nome:'Dente Abissal', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Clamperl em Huntail.' },
+  { key:'escama-abissal', item:'deep-sea-scale', icon:'deep-sea-scale', nome:'Escama Abissal', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Clamperl em Gorebyss.' },
+  { key:'protetor', item:'protector', icon:'protector', nome:'Protetor', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Rhydon em Rhyperior.' },
+  { key:'eletrizador', item:'electirizer', icon:'electirizer', nome:'Eletrizador', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Electabuzz em Electivire.' },
+  { key:'magmatizador', item:'magmarizer', icon:'magmarizer', nome:'Magmatizador', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Magmar em Magmortar.' },
+  { key:'upgrade', item:'up-grade', icon:'up-grade', nome:'Upgrade', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Porygon em Porygon2.' },
+  { key:'disco-duvidoso', item:'dubious-disc', icon:'dubious-disc', nome:'Disco Duvidoso', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Porygon2 em Porygon-Z.' },
+  { key:'manto-ceifador', item:'reaper-cloth', icon:'reaper-cloth', nome:'Manto do Ceifador', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Dusclops em Dusknoir.' },
+  { key:'sache', item:'sachet', icon:'sachet', nome:'Sachê', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Spritzee em Aromatisse.' },
+  { key:'chantili-sonhos', item:'whipped-dream', icon:'whipped-dream', nome:'Chantili dos Sonhos', preco:250, desc:'Sem efeito em combate -- segure durante uma Troca pra evoluir Swirlix em Slurpuff.' },
+  { key:'presa-afiada', item:'razor-fang', icon:'razor-fang', nome:'Presa Afiada', preco:250, desc:'Sem efeito em combate -- segure e suba de Nível durante a NOITE pra evoluir Gligar em Gliscor.' },
+  { key:'garra-afiada', item:'razor-claw', icon:'razor-claw', nome:'Garra Afiada', preco:250, desc:'Sem efeito em combate -- segure e suba de Nível durante a NOITE pra evoluir Sneasel em Weavile.' },
+  { key:'pedra-oval', item:'oval-stone', icon:'oval-stone', nome:'Pedra Oval', preco:250, desc:'Sem efeito em combate -- segure e suba de Nível durante o DIA pra evoluir Happiny em Chansey.' }
+];
+function evoItemByKey(key){ return EVOLUTION_HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
+var EVOLUTION_HELD_ITEM_REQUIRED = {
+  367:'dente-abissal', 368:'escama-abissal', 477:'manto-ceifador', 466:'eletrizador', 467:'magmatizador',
+  208:'revestimento-metal', 186:'pedra-do-rei', 233:'upgrade', 474:'disco-duvidoso', 464:'protetor',
+  212:'revestimento-metal', 230:'escama-dragao', 199:'pedra-do-rei', 683:'sache', 685:'chantili-sonhos',
+  472:'presa-afiada', 461:'garra-afiada', 903:'garra-afiada', 113:'pedra-oval'
+};
+/* Dia/Noite (Cap. leva desta sessão -- 3º pedido: "Clima, dia e noite
+   eu queria ver algo sobre isso também pra gente colocar no
+   sistema"): ciclo de verdade baseado no RELÓGIO REAL do servidor,
+   em UTC -- de propósito NÃO no fuso horário de cada jogador, senão
+   2 jogadores em fusos diferentes veriam Dia/Noite diferentes ao
+   mesmo tempo, quebrando qualquer mecânica que dependa disso ser
+   IGUAL pros dois lados (ex.: uma Troca ao vivo completando bem na
+   virada). Dia = 06h-17h59 UTC, Noite = 18h-05h59 UTC -- corte simples
+   de 12h/12h, sem nascer/pôr do sol gradual (mesmo espírito de
+   simplificação do resto do arquivo). Usado em eligibleEvolution pra
+   checar `timeOfDay` de verdade (Eevee -> Espeon/Umbreon, Gligar ->
+   Gliscor etc., 17 arestas ao todo) em vez de cair só no
+   nivelTipico() aproximado como até esta leva -- e exibido no menu
+   lateral (ver sidebarHTML) pro jogador saber que horas são "no
+   jogo" agora. */
+function horaAtualDoJogo(){
+  var h = new Date().getUTCHours();
+  return (h>=6 && h<18) ? 'day' : 'night';
+}
 /* Cap. leva desta sessão: "Nos itens use os icones originais,
    pixelados... Todos os icones do jogo usa pixelado pra ficar legal":
    ícone OFICIAL de cada item (mesmo CDN público de sempre --
@@ -5440,8 +5511,16 @@ function aplicarHabilidadeDeEntrada(entrando, oponente, b){
    selvagem/Treinador de Zona/Mestre não têm itens curados,
    simplificação documentada (mesmo "roster genérico" de sempre).
    `icon` usa o mesmo slug oficial de sprite da PokeAPI que todo o
-   resto do catálogo de item já usa (ver itemIconUrl). */
+   resto do catálogo de item já usa (ver itemIconUrl).
+
+   Cap. leva desta sessão ("sistema de felicidade"): Chá de Amizade é
+   a ÚNICA exceção do catálogo -- SEM efeito em combate nenhum, só
+   dobra todo ganho de Felicidade (ver gainFelicidade) enquanto
+   equipado, igual Sino Encanto/Chá de Amizade oficial. Fica aqui (e
+   não num catálogo à parte) porque compartilha o MESMO slot único de
+   item segurado de todo o resto -- exatamente como no jogo oficial. */
 var HELD_ITEMS = [
+  { key:'cha-amizade', nome:'Chá de Amizade', icon:'soothe-bell', preco:150, desc:'Sem efeito em combate -- dobra todo ganho de Felicidade do Pokémon enquanto estiver equipado.' },
   { key:'restos', nome:'Restos', icon:'leftovers', preco:200, desc:'Cura 1/16 do PV Máximo no fim de cada Rodada.' },
   { key:'lama-negra', nome:'Lama Negra', icon:'black-sludge', preco:200, desc:'Cura 1/16 do PV Máximo por Rodada em Pokémon do Tipo Venenoso -- qualquer outro Tipo PERDE 1/8 do PV Máximo por Rodada.' },
   { key:'pedra-vida', nome:'Pedra Vida', icon:'life-orb', preco:250, desc:'Aumenta o dano causado em 30%, mas causa recuo de 1/10 do PRÓPRIO PV Máximo a cada golpe que causa dano.' },
@@ -5462,7 +5541,7 @@ var HELD_ITEMS = [
   { key:'sino-concha', nome:'Sino Concha', icon:'shell-bell', preco:200, desc:'Cura 1/8 do dano CAUSADO de volta pro próprio PV.' },
   { key:'balao-de-ar', nome:'Balão de Ar', icon:'air-balloon', preco:150, desc:'Imune a golpes de Tipo Terra -- estoura (e some) na primeira vez que toma QUALQUER dano.' }
 ];
-function heldItemByKey(key){ return HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
+function heldItemByKey(key){ return HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || EVOLUTION_HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
 function temItemSegurado(battler, key){ return !!battler && battler.item===key; }
 var CHOICE_ITEMS = { 'faixa-escolha':'atk', 'oculos-escolha':'spa', 'lenco-escolha':'spe' };
 /* Ainda PODE evoluir (qualquer gatilho -- Nível/pedra/troca/felicidade
@@ -5622,13 +5701,36 @@ var NIVEL_MAX = 100;
    verdade"): "Felicidade" (0-255, igual jogo oficial) nasce em 70 --
    o valor inicial oficial pra quase toda Espécie capturada/recebida
    nos jogos de verdade -- e sobe +2 a cada level up (ver
-   grantXpAndMaybeEvolve), aproximando o ganho por Nível oficial (o
-   jogo de verdade também soma felicidade por caminhar/usar item/nunca
-   desmaiar, que este protótipo não tem como simular -- documentado
-   como simplificação de propósito, ver eligibleEvolution). */
+   grantXpAndMaybeEvolve).
+
+   Cap. leva desta sessão ("seria interessante implementar o sistema
+   de felicidade nos pokémon"): antes disso, Felicidade era só um
+   número interno (nunca mostrado, só existia pra decidir a evolução
+   por Felicidade) -- agora fica VISÍVEL em todo card (ver
+   pokeCardMini) e ganha 2 gatilhos novos, no mesmo espírito do jogo
+   oficial (que soma por caminhar/usar item/nunca desmaiar, coisas que
+   este protótipo não tem como simular 1:1 -- aproximado pros
+   equivalentes que EXISTEM aqui):
+     - Vencer uma luta finalizando ela (mesmo Pokémon que ganha V: no
+       histórico -- ver finishBattle/aplicarMeuResultadoDuelo): +3.
+     - Desmaiar em luta (mesmo Pokémon que ganha D: no histórico):
+       -1 (igual jogo oficial -- desmaiar SEMPRE reduz a Felicidade,
+       nunca fica positivo).
+   `gainFelicidade` centraliza o ganho (nunca a perda, que nunca
+   dobra) pra sempre respeitar o Chá de Amizade (ver HELD_ITEMS) --
+   item segurado sem efeito nenhum em combate, só dobra todo ganho de
+   Felicidade, igual Sino Encanto/Chá de Amizade oficial. */
 var FELICIDADE_INICIAL = 70;
 var FELICIDADE_POR_LEVEL = 2;
 var FELICIDADE_MAX = 255;
+var FELICIDADE_POR_VITORIA = 3;
+var FELICIDADE_POR_DESMAIO = -1;
+var CHA_AMIZADE_KEY = 'cha-amizade';
+function gainFelicidade(p, delta){
+  if(!p || !delta) return;
+  var mult = (delta>0 && p.itemSegurado===CHA_AMIZADE_KEY) ? 2 : 1;
+  p.felicidade = clampInt((p.felicidade!=null?p.felicidade:FELICIDADE_INICIAL) + delta*mult, 0, FELICIDADE_MAX);
+}
 function spawnPoke(num, level){
   return {
     id: uid(), num: num, level: clampInt(level,1,NIVEL_MAX), apelido:'',
@@ -6917,11 +7019,11 @@ function finishBattle(result){
      (nunca desmaiou, nunca terminou a luta) não ganha nem soma nada. */
   (b.faintedPartyIds||[]).forEach(function(pid){
     var p = STATE.party.filter(function(x){ return x.id===pid; })[0];
-    if(p) p.derrotas = (p.derrotas||0)+1;
+    if(p){ p.derrotas = (p.derrotas||0)+1; gainFelicidade(p, FELICIDADE_POR_DESMAIO); } // Cap. leva desta sessão -- sistema de felicidade
   });
   if(result==='vitoria' && b.playerActive && b.playerActive.partyId){
     var pFinalizador = STATE.party.filter(function(x){ return x.id===b.playerActive.partyId; })[0];
-    if(pFinalizador) pFinalizador.vitorias = (pFinalizador.vitorias||0)+1;
+    if(pFinalizador){ pFinalizador.vitorias = (pFinalizador.vitorias||0)+1; gainFelicidade(pFinalizador, FELICIDADE_POR_VITORIA); } // Cap. leva desta sessão -- sistema de felicidade
   }
   if(result==='vitoria'){
     b.log.push('🏆 Vitória!');
@@ -7050,6 +7152,28 @@ function xpParaVitoria(nivelProprio, nivelOponente){
        de sempre como limiar aproximado -- documentado, mesmo
        espírito de aproximação do resto do arquivo.
 
+   Cap. leva desta sessão ("Faça o que você tá recomendando... e
+   [depois] implementar o sistema de felicidade... clima, dia e
+   noite"): das 133 arestas acima, mais 3 grupos ficaram de verdade
+   nesta leva (deixavam de ser aproximação):
+     - As ~15 de TROCA que também exigem item segurado (Onix precisa
+       de Revestimento de Metal etc.) -- ver EVOLUTION_HELD_ITEM_
+       REQUIRED/EVOLUTION_HELD_ITEMS acima, checado dentro de
+       evolucaoTrocaSeElegivel. Não evolui mais em QUALQUER troca --
+       só quando o item certo está equipado (mesmo slot de sempre,
+       ver HELD_ITEMS/p.itemSegurado).
+     - As 17 de NÍVEL+DIA-NOITE (Eevee->Espeon/Umbreon, Gligar->
+       Gliscor etc.) -- ver horaAtualDoJogo()/eligibleEvolution logo
+       abaixo, checado de verdade contra o relógio real (UTC) em vez
+       de cair direto no nivelTipico() ignorando o período do dia.
+       4 delas (Gligar, Sneasel x2, Happiny) TAMBÉM exigem item
+       segurado -- mesmo mapa acima, indexado pela Espécie destino.
+     - FELICIDADE (as 18 já existentes) ganhou 2 gatilhos novos de
+       ganho/perda de verdade (vitória/desmaio) e ficou VISÍVEL em
+       todo card -- ver gainFelicidade()/FELICIDADE_POR_VITORIA/
+       FELICIDADE_POR_DESMAIO acima, não muda a mecânica de evolução
+       em si, só deixa de ser um número invisível.
+
    `shed` (Nincada->Shedinja) é o ÚNICO caso que precisa ficar de fora
    de propósito (não só "aproximado"): no jogo oficial ele NÃO troca
    a Espécie -- ele ADICIONA um Shedinja novo no time/Caixa por cima
@@ -7069,8 +7193,25 @@ function eligibleEvolution(p){
   if(!opts.length) return null;
   var elegiveis = opts.filter(function(e){
     if(e.trigger==='use-item' || e.trigger==='trade' || e.trigger==='shed') return false;
+    /* Cap. leva desta sessão -- Dia/Noite de verdade (ver
+       horaAtualDoJogo acima) em vez de ignorar `timeOfDay`
+       completamente como até esta leva. */
+    if((e.timeOfDay==='day' || e.timeOfDay==='night') && horaAtualDoJogo()!==e.timeOfDay) return false;
+    /* Cap. leva desta sessão -- item segurado de verdade pras 4
+       arestas Nível+Dia-Noite que também exigem 1 (Gligar/Sneasel x2/
+       Happiny, ver EVOLUTION_HELD_ITEM_REQUIRED acima). */
+    var itemNecessario = EVOLUTION_HELD_ITEM_REQUIRED[e.to];
+    if(itemNecessario && p.itemSegurado!==itemNecessario) return false;
     if(e.minHappiness!=null) return (p.felicidade||0) >= e.minHappiness;
-    var reqLevel = (e.level!=null) ? e.level : nivelTipico(e.to);
+    /* Cap. leva desta sessão -- as 4 arestas com item segurado
+       exigido (`itemNecessario` acima) NÃO têm Nível mínimo oficial
+       nenhum (só item+período do dia) -- antes desta leva caíam no
+       nivelTipico() aproximado por falta de opção melhor, mas agora
+       que o item de verdade já é uma trava forte o suficiente, exigir
+       nivelTipico() em CIMA disso só atrapalharia sem nenhum motivo
+       oficial (ex.: um Happiny de Nível baixo com Pedra Oval de dia
+       deveria poder evoluir, igual jogo original). */
+    var reqLevel = (e.level!=null) ? e.level : (itemNecessario ? 1 : nivelTipico(e.to));
     return p.level >= reqLevel;
   });
   if(!elegiveis.length) return null;
@@ -7092,7 +7233,7 @@ function grantXpAndMaybeEvolve(b, partyId, xpGain){
     p.xpNivel -= XP_PARA_LEVEL_UP;
     var oldMax = gaHpMax(p);
     p.level = clampInt(p.level+1, 1, NIVEL_MAX);
-    p.felicidade = clampInt((p.felicidade||FELICIDADE_INICIAL)+FELICIDADE_POR_LEVEL, 0, FELICIDADE_MAX); // Cap. leva desta sessão (tarefa #183) -- mesma aproximação documentada em eligibleEvolution
+    gainFelicidade(p, FELICIDADE_POR_LEVEL); // Cap. leva desta sessão (tarefa #183/#felicidade) -- mesma aproximação documentada em eligibleEvolution, agora passando pelo Chá de Amizade também
     var newMax = gaHpMax(p);
     if(b.playerActive && b.playerActive.partyId===p.id){
       b.playerActive.level = p.level; // sincroniza o battler ativo -- senão o dano da luta continua com o Nível velho
@@ -9617,12 +9758,12 @@ function aplicarMeuResultadoDuelo(d){
   var meusFaintedIds = (souA ? b.faintedA : b.faintedB) || [];
   meusFaintedIds.forEach(function(pid){
     var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
-    if(p) p.derrotas = (p.derrotas||0)+1;
+    if(p){ p.derrotas = (p.derrotas||0)+1; gainFelicidade(p, FELICIDADE_POR_DESMAIO); } // Cap. leva desta sessão -- sistema de felicidade
   });
   if(b.vencedor===meuLado){
     var finalizadorId = (meuLado==='a' ? b.ativoA : b.ativoB).partyId;
     var pFin = STATE.party.filter(function(x){return x.id===finalizadorId;})[0] || STATE.box.filter(function(x){return x.id===finalizadorId;})[0];
-    if(pFin) pFin.vitorias = (pFin.vitorias||0)+1;
+    if(pFin){ pFin.vitorias = (pFin.vitorias||0)+1; gainFelicidade(pFin, FELICIDADE_POR_VITORIA); } // Cap. leva desta sessão -- sistema de felicidade
   }
   logAction('duelo', 'Duelo PvP com '+(souA?d.bNome:d.aNome)+' terminou: '+(b.vencedor===meuLado?'🏆 vitória':'☠️ derrota')+'.');
   mutate();
@@ -10487,6 +10628,15 @@ function evolucaoTrocaSeElegivel(p){
       var tem = STATE.party.some(function(x){ return x.num===e.tradeSpeciesId; }) || STATE.box.some(function(x){ return x.num===e.tradeSpeciesId; });
       if(!tem) return false;
     }
+    /* Cap. leva desta sessão ("faça o que você tá recomendando" -- 1º
+       pedido, item segurado na Troca de verdade): ver EVOLUTION_HELD_
+       ITEM_REQUIRED acima -- ~15 das 25 arestas de Troca exigem um
+       item específico segurado NA HORA que a troca chega (o item
+       segurado do Pokémon inteiro viaja junto na troca, ver
+       aplicarMinhaParteDaTroca, então checar p.itemSegurado aqui
+       DEPOIS de já ter chegado é a mesma coisa que checar antes). */
+    var itemNecessario = EVOLUTION_HELD_ITEM_REQUIRED[e.to];
+    if(itemNecessario && p.itemSegurado!==itemNecessario) return false;
     return true;
   })[0];
   if(!evo) return;
@@ -10835,7 +10985,7 @@ function itemSeguradoPopupHTML(pid){
   var p = STATE.party.filter(function(x){ return x.id===pid; })[0];
   if(!p) return '';
   var sp = speciesByNum(p.num);
-  var disponiveis = HELD_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0 || p.itemSegurado===it.key; });
+  var disponiveis = HELD_ITEMS.concat(EVOLUTION_HELD_ITEMS).filter(function(it){ return (STATE.itens[it.key]||0)>0 || p.itemSegurado===it.key; }); // Cap. leva desta sessão -- os 2 catálogos dividem o MESMO slot único (ver p.itemSegurado), então aparecem juntos aqui
   return '<div class="ga-overlay" onclick="DT.gaCancelItemSegurado()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCancelItemSegurado()">✕</button>'+
     '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
@@ -10994,6 +11144,11 @@ function sidebarHTML(){
       '<span title="'+esc2(TOOLTIPS.poketickets)+'">🎫 '+(STATE.poketickets||0)+'</span>'+
       '<span title="'+esc2(TOOLTIPS.insignias)+'">🎖️ '+STATE.badges.length+'/'+GYM_LEADERS.length+'</span>'+
       '<span title="'+esc2(TOOLTIPS.pokedex)+'">📕 '+counts.caught+'/'+counts.total+'</span>'+
+      /* Cap. leva desta sessão ("clima, dia e noite... pra gente
+         colocar no sistema"): ciclo de verdade (ver horaAtualDoJogo
+         acima), só informativo aqui -- quem realmente USA isso é
+         eligibleEvolution (Eevee -> Espeon/Umbreon etc.). */
+      '<span title="Dia/Noite de verdade (horário real do servidor, UTC) -- algumas evoluções só acontecem num dos dois">'+(horaAtualDoJogo()==='day'?'☀️ Dia':'🌙 Noite')+'</span>'+
     '</div>'+
     '<nav class="ga-nav">'+navListHTML()+'</nav>'+
     '<button class="ga-nav-sair" title="Sair da conta" onclick="DT.gaSair()">🚪 Sair</button>'+
@@ -11163,6 +11318,11 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
     '<div class="ga-poke-meta">Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
     '<div class="ga-hint">'+esc2(poke.natureza||'—')+' · '+esc2(poke.habilidade||'—')+'</div>'+
     '<div class="ga-hint">'+progresso+'</div>'+
+    /* Cap. leva desta sessão ("sistema de felicidade"): antes disso
+       Felicidade era só um número interno (ver gainFelicidade acima)
+       -- agora aparece em TODO card, mesmo espírito do V:/D: acima
+       (só informativo, sem ação nenhuma atrelada). */
+    '<div class="ga-hint" title="Felicidade -- sobe com Nível/vitória, desce ao desmaiar; algumas evoluções dependem dela">❤️ '+(poke.felicidade!=null?poke.felicidade:FELICIDADE_INICIAL)+'/'+FELICIDADE_MAX+'</div>'+
     (actionsHTML||'')+
   '</div>';
 }
@@ -11948,7 +12108,7 @@ DT.gaComprarItem = function(key, qtdEl){
   var bola = POKEBALLS.filter(function(b){ return b.key===key; })[0];
   var item = GA_ITEMS.filter(function(i){ return i.key===key; })[0];
   var pedra = stoneByKey(key); // Cap. leva desta sessão (tarefa #183) -- mesmo catálogo genérico, cai no "else" (STATE.itens) igual GA_ITEMS
-  var itemSeg = heldItemByKey(key); // Cap. leva desta sessão (tarefa #195) -- mesmo catálogo genérico também, cai no "else" (STATE.itens)
+  var itemSeg = heldItemByKey(key); // Cap. leva desta sessão (tarefa #195) -- mesmo catálogo genérico também, cai no "else" (STATE.itens); já cobre EVOLUTION_HELD_ITEMS também (ver heldItemByKey)
   var def = bola || item || pedra || itemSeg;
   if(!def) return;
   var qtdPedida = qtdEl ? clampInt(parseInt(qtdEl.value,10)||1, 1, 999) : 1;
@@ -12031,6 +12191,29 @@ function lojaScreenHTML(){
     '<p class="ga-hint">Compre aqui, depois EQUIPE num Pokémon da Equipe (botão "🎒 Item" no card dele) -- item segurado é permanente (igual Habilidade/Natureza), nunca reseta sozinho entre lutas, mas alguns se CONSOMEM no uso (bagas, Cinto Foco, Política de Fraqueza, Balão de Ar) e precisam ser comprados/equipados de novo depois.</p>'+
     '<div class="ga-loja-grid">'+
     HELD_ITEMS.map(function(it){
+      var qtdAtual = STATE.itens[it.key]||0;
+      var podeComprar = (STATE.pokedolares||0) >= it.preco;
+      var inputId = 'gaLojaQtd_'+it.key;
+      return '<div class="ga-loja-card">'+
+        '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
+        '<div class="ga-hint">'+esc2(it.desc)+'</div>'+
+        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
+        '<div class="ga-loja-preco">💰 '+it.preco+' cada</div>'+
+        '<div class="ga-loja-qtd-row">'+
+          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
+          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
+        '</div>'+
+      '</div>';
+    }).join('')+
+    '</div></div>'+
+    /* Cap. leva desta sessão ("faça o que você tá recomendando" --
+       item segurado de verdade na Troca/Nível+Dia-Noite): mesmo
+       catálogo genérico de sempre, cai em STATE.itens por chave --
+       ver EVOLUTION_HELD_ITEMS/EVOLUTION_HELD_ITEM_REQUIRED acima. */
+    '<div class="ga-card"><h2>🔄 Itens de Evolução</h2>'+
+    '<p class="ga-hint">Compre aqui, EQUIPE num Pokémon (mesmo botão "🎒 Item" do card dele, mesmo slot dos Itens Segurados) -- sem efeito nenhum em combate, só destravam uma evolução por Troca ou por Nível+Dia/Noite específica quando equipados na hora certa.</p>'+
+    '<div class="ga-loja-grid">'+
+    EVOLUTION_HELD_ITEMS.map(function(it){
       var qtdAtual = STATE.itens[it.key]||0;
       var podeComprar = (STATE.pokedolares||0) >= it.preco;
       var inputId = 'gaLojaQtd_'+it.key;
