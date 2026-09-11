@@ -6559,6 +6559,19 @@ setInterval(energyTickLoop, 1000);
    preto e branco vira colorida quando capturado")
    ============================================================ */
 function dexEntry(num){ return STATE.dex[num] || {seen:false, caught:false}; }
+/* Cap. leva desta sessão ("Deixar toda pokedex liberada para os
+   admin"): visão exclusiva da TELA/popup da Pokédex -- Admin (ver
+   ADMIN_DOC_IDS/SESSION.isAdmin) enxerga QUALQUER Espécie como
+   visto+capturado ali, pra poder consultar Atributos Base/Movimentos
+   possíveis/Habilidades/Lore de tudo sem precisar jogar normal.
+   Nunca escreve em STATE.dex (não é uma migração nem conquista de
+   verdade) -- por isso `dexEntry` cru continua sendo usado em todo
+   resto do jogo que depende do progresso GENUINO da própria conta
+   (ex. capturadoBadgeHTML na Arena: mesmo um Admin merece ver se JÁ
+   capturou aquele selvagem específico de verdade, não um "sim" fixo
+   que tornaria o badge inútil). */
+function dexEntryView(num){ return SESSION.isAdmin ? {seen:true, caught:true} : dexEntry(num); }
+function dexCountsView(){ return SESSION.isAdmin ? {seen:SPECIES_DEX.length, caught:SPECIES_DEX.length, total:SPECIES_DEX.length} : dexCounts(); }
 /* Cap. leva desta sessão: "Acrescentar a informação de pokémon
    capturado uma pokebola pixelada ao lado do pokémon que você estiver
    lutando contra para saber se já capturou ou não" -- reusa o MESMO
@@ -11946,7 +11959,7 @@ function dexFilteredList(){
   var t1 = SESSION.dexFiltroTipo1 || '';
   var t2 = SESSION.dexFiltroTipo2 || '';
   return SPECIES_DEX.filter(function(sp){
-    var d = dexEntry(sp.num);
+    var d = dexEntryView(sp.num);
     if(status==='capturado' && !d.caught) return false;
     if(status==='nao_capturado' && d.caught) return false;
     if(t1 && sp.tipo1!==t1) return false;
@@ -11960,11 +11973,11 @@ function dexFilteredList(){
   });
 }
 function dexScreenHTML(){
-  var counts = dexCounts();
+  var counts = dexCountsView();
   var lista = dexFilteredList();
   var tipos = todosOsTipos();
   var grid = lista.map(function(sp){
-    var d = dexEntry(sp.num);
+    var d = dexEntryView(sp.num);
     var cls = d.caught ? 'caught' : (d.seen ? 'seen' : 'unseen');
     return '<div class="ga-dex-tile '+cls+'" onclick="DT.gaOpenDex('+sp.num+')" title="'+(d.caught?esc2(sp.name):(d.seen?'Visto':'?'))+'">'+
       '<img src="'+spriteUrl(sp.num)+'" loading="lazy" alt="">'+
@@ -11973,6 +11986,7 @@ function dexScreenHTML(){
   }).join('');
   var statusAtual = SESSION.dexFiltroStatus || 'todos';
   var out = '<div class="ga-card"><h2>📕 Pokédex — '+counts.caught+' capturados / '+counts.seen+' vistos / '+counts.total+' no total</h2>'+
+    (SESSION.isAdmin ? '<p class="ga-hint">🛡️ Pokédex liberada como Admin -- toda Espécie aparece como vista/capturada aqui (Atributos Base, Movimentos, Habilidades e Lore de qualquer um), sem mexer no seu progresso real (ex. o badge de Pokébola na Arena continua mostrando o que você capturou DE VERDADE).</p>' : '')+
     '<p class="ga-hint">Cinza = nunca visto ainda. Contorno = já visto em batalha. Colorido = capturado. Clique num quadro pra ver os detalhes.</p>'+
     '<div class="ga-dex-filtros">'+
       '<input type="text" id="gaDexSearch" placeholder="Nome ou número..." value="'+esc2(SESSION.dexSearch||'')+'" onkeydown="if(event.key===\'Enter\')DT.gaSetDexSearch(document.getElementById(\'gaDexSearch\'))">'+
@@ -12143,7 +12157,7 @@ function movimentosPossiveisLista(num){
 }
 function dexPopupHTML(num){
   var sp = speciesByNum(num);
-  var d = dexEntry(num);
+  var d = dexEntryView(num);
   var seen = !!d.seen, caught = !!d.caught;
   /* Cap. leva desta sessão -- ABA de formas alternativas (ver ALT_FORMS
      acima): quando a Espécie tem formas cadastradas, a aba ATIVA decide
