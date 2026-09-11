@@ -5147,6 +5147,28 @@ var EVOLUTION_HELD_ITEM_REQUIRED = {
   212:'revestimento-metal', 230:'escama-dragao', 199:'pedra-do-rei', 683:'sache', 685:'chantili-sonhos',
   472:'presa-afiada', 461:'garra-afiada', 903:'garra-afiada', 113:'pedra-oval'
 };
+/* Cap. leva desta sessão ("Começa pela sua recomendação" -- os 2
+   grupos "fáceis" do levantamento anterior, "Quais evoluções
+   específicas que falta pra gente resolver?"): 13 arestas exigem
+   CONHECER um Movimento específico pra evoluir (nunca checado até
+   esta leva, todas caíam no nivelTipico() aproximado) -- indexado
+   pela Espécie DESTINO (`to`), igual EVOLUTION_HELD_ITEM_REQUIRED.
+   Nome do Movimento no MESMO formato que `p.moves[*].name`/MOVES_DEX
+   já usa (Title Case com espaço, ex. "Ancient Power") -- conferido
+   contra MOVES_DEX pra nunca ter erro de digitação. */
+var EVOLUTION_KNOWN_MOVE_REQUIRED = {
+  463:'Rollout', 465:'Ancient Power', 424:'Double Hit', 469:'Ancient Power', 981:'Twin Beam',
+  982:'Hyper Drill', 473:'Ancient Power', 185:'Mimic', 122:'Mimic', 763:'Stomp',
+  804:'Dragon Pulse', 853:'Taunt', 1019:'Dragon Cheer'
+};
+/* Mantyke (#458) -> Mantine (#226): precisa ter um Remoraid (#223) em
+   QUALQUER LUGAR do time (Equipe OU Caixa) -- mesma interpretação
+   oficial já usada em Karrablast<->Shelmet (ver evolucaoTrocaSeElegivel
+   acima), só que essa aqui é por NÍVEL (não Troca), então mora em
+   eligibleEvolution. Único caso desse tipo entre os 133 -- por isso 1
+   mapa pequeno, indexado igual aos outros 2 acima, em vez de um
+   catálogo inteiro só pra 1 aresta. */
+var EVOLUTION_PARTY_SPECIES_REQUIRED = { 226: 223 };
 /* Dia/Noite (Cap. leva desta sessão -- 3º pedido: "Clima, dia e noite
    eu queria ver algo sobre isso também pra gente colocar no
    sistema"): ciclo de verdade baseado no RELÓGIO REAL do servidor,
@@ -7174,6 +7196,22 @@ function xpParaVitoria(nivelProprio, nivelOponente){
        FELICIDADE_POR_DESMAIO acima, não muda a mecânica de evolução
        em si, só deixa de ser um número invisível.
 
+   Cap. leva SEGUINTE desta sessão ("Quais evoluções específicas que
+   falta pra gente resolver?... Começa pela sua recomendação"): dos
+   ~47 que sobraram aproximados/incompletos depois da leva acima, os
+   2 grupos "fáceis" (não precisam de sistema novo nenhum, só faltava
+   ler o dado certo):
+     - 13 arestas por MOVIMENTO CONHECIDO (Lickitung->Lickilicky via
+       Rollout, Tangela->Tangrowth/Yanma->Yanmega/Piloswine->Mamoswine
+       via Ancient Power etc.) -- ver EVOLUTION_KNOWN_MOVE_REQUIRED
+       acima, checa `p.moves` de verdade em vez de nivelTipico().
+     - Mantyke->Mantine (precisa de um Remoraid em qualquer lugar do
+       time) -- ver EVOLUTION_PARTY_SPECIES_REQUIRED acima, mesma
+       interpretação de Karrablast<->Shelmet só que por Nível.
+   Igual às arestas de item/Dia-Noite da leva anterior, nenhuma das 14
+   tem Nível mínimo oficial (só a condição real) -- não caem mais em
+   nivelTipico() nenhum depois de bater a condição.
+
    `shed` (Nincada->Shedinja) é o ÚNICO caso que precisa ficar de fora
    de propósito (não só "aproximado"): no jogo oficial ele NÃO troca
    a Espécie -- ele ADICIONA um Shedinja novo no time/Caixa por cima
@@ -7202,16 +7240,30 @@ function eligibleEvolution(p){
        Happiny, ver EVOLUTION_HELD_ITEM_REQUIRED acima). */
     var itemNecessario = EVOLUTION_HELD_ITEM_REQUIRED[e.to];
     if(itemNecessario && p.itemSegurado!==itemNecessario) return false;
+    /* Cap. leva desta sessão ("Começa pela sua recomendação"): 13
+       arestas exigem CONHECER um Movimento específico -- ver
+       EVOLUTION_KNOWN_MOVE_REQUIRED acima. */
+    var moveNecessario = EVOLUTION_KNOWN_MOVE_REQUIRED[e.to];
+    if(moveNecessario && !(p.moves||[]).some(function(m){ return m.name===moveNecessario; })) return false;
+    /* Mantyke -> Mantine: precisa de um Remoraid em qualquer lugar do
+       time (Equipe OU Caixa) -- ver EVOLUTION_PARTY_SPECIES_REQUIRED
+       acima, mesma checagem de Karrablast<->Shelmet. */
+    var especieNecessaria = EVOLUTION_PARTY_SPECIES_REQUIRED[e.to];
+    if(especieNecessaria){
+      var temEspecie = STATE.party.some(function(x){ return x.num===especieNecessaria; }) || STATE.box.some(function(x){ return x.num===especieNecessaria; });
+      if(!temEspecie) return false;
+    }
     if(e.minHappiness!=null) return (p.felicidade||0) >= e.minHappiness;
-    /* Cap. leva desta sessão -- as 4 arestas com item segurado
-       exigido (`itemNecessario` acima) NÃO têm Nível mínimo oficial
-       nenhum (só item+período do dia) -- antes desta leva caíam no
-       nivelTipico() aproximado por falta de opção melhor, mas agora
-       que o item de verdade já é uma trava forte o suficiente, exigir
+    /* Cap. leva desta sessão -- as arestas com item segurado, Movimento
+       conhecido ou Espécie no time exigidos (`itemNecessario`/
+       `moveNecessario`/`especieNecessaria` acima) NÃO têm Nível mínimo
+       oficial nenhum -- antes desta leva caíam no nivelTipico()
+       aproximado por falta de opção melhor, mas agora que a condição
+       de verdade já é uma trava forte o suficiente, exigir
        nivelTipico() em CIMA disso só atrapalharia sem nenhum motivo
        oficial (ex.: um Happiny de Nível baixo com Pedra Oval de dia
        deveria poder evoluir, igual jogo original). */
-    var reqLevel = (e.level!=null) ? e.level : (itemNecessario ? 1 : nivelTipico(e.to));
+    var reqLevel = (e.level!=null) ? e.level : ((itemNecessario||moveNecessario||especieNecessaria) ? 1 : nivelTipico(e.to));
     return p.level >= reqLevel;
   });
   if(!elegiveis.length) return null;
