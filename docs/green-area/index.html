@@ -6317,7 +6317,7 @@ function attachSaveListener(docId){
        vez que esse snapshot dispara depois de uma entrada de verdade,
        nunca nos disparos seguintes causados por qualquer outra
        mutação salva). */
-    if(SESSION.screen==='login'){ SESSION.screen = 'hub'; logAction('conta', 'Entrou na conta.'); queueSave(); }
+    if(SESSION.screen==='login'){ SESSION.screen = 'hub'; logAction('conta', 'Entrou na conta.'); catchUpCaptureSequence(); queueSave(); }
     render();
   }, function(err){
     SESSION.error = 'Não consegui conectar ao banco de dados. Verifique sua internet e recarregue a página. (' + (err && err.message ? err.message : 'erro desconhecido') + ')';
@@ -10420,7 +10420,7 @@ DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl){
   var autoCurar = !!(autoCurEl && autoCurEl.checked);
   var ignorarPossuidos = autoCapturar && !!(ignorarPossuidosEl && ignorarPossuidosEl.checked);
   var zona = zonaByStatus(psc.zonaId);
-  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, finished:false, pararSemEnergia:false, relatorio:[] };
+  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, finished:false, pararSemEnergia:false, relatorio:[], lastTickAt: Date.now() };
   logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+(ignorarPossuidos?', ignorando quem já tem':'')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
   mutate();
   captureSequenceTick(); // dispara a 1ª luta na hora, sem esperar o próximo tick do relógio de fundo
@@ -10676,6 +10676,7 @@ function trocaAutomaticaLiderSeNecessario(cs){
 function captureSequenceTick(){
   var cs = STATE.captureSequence;
   if(!cs || cs.finished) return;
+  cs.lastTickAt = Date.now(); // Cap. leva desta sessão (catch-up retroativo) -- todo tick de verdade (periódico OU dentro de um catch-up) atualiza o checkpoint, pra nunca contar 2x o mesmo intervalo
   if(STATE.battle){
     // uma luta já tava em andamento (ex.: retomando depois de um F5 no meio dela) -- resolve ela agora
     resolverLutaAutomaticamente(cs);
@@ -10705,6 +10706,44 @@ function captureSequenceTick(){
   resolverLutaAutomaticamente(cs);
   if(STATE.battle && STATE.battle.finished) fecharLutaDaSequencia(cs);
   mutate();
+}
+/* Cap. leva desta sessão ("Estou vendo os dois cenários. Então pra
+   resolver isso de vez, não é possível eu ter uma estrutura que não
+   pause, como um jogo online de verdade. O navegador é só o acesso,
+   apenas, tudo tem que rodar no servidor. Dá pra fazer isso?"):
+   resposta completa dada ao jogador no chat -- um servidor de verdade
+   sempre ligado é possível, mas é uma mudança grande de arquitetura
+   (sair do site estático grátis atual pra um processo com custo
+   mensal fixo). O caminho escolhido aqui (sem preferência explícita do
+   jogador, decisão tomada dentro do escopo já sinalizado) foi o de
+   CÁLCULO RETROATIVO, sem servidor novo nenhum -- mesmo espírito já
+   usado no contador de Energia (`tickEnergy`, que já faz catch-up de
+   blocos de 10min mesmo sem o jogador olhando): a sequência guarda
+   `lastTickAt` (Date.now() de quando foi processada por último) e,
+   toda vez que a sessão VOLTA a ficar ativa (login/criar conta/migrar/
+   sessão recuperada ao recarregar a página -- ver o hook em
+   attachSaveListener -- e também ao voltar de aba escondida), calcula
+   quantos "ticks" de 1500ms passaram de verdade desde então e roda
+   `captureSequenceTick()` esse tanto de vezes DE UMA VEZ, na hora --
+   não é "ao vivo" com o app fechado (nenhum cálculo acontece enquanto
+   ninguém olha), mas o RESULTADO final é o mesmo que o jogador pediu:
+   voltar e achar a sequência inteira já resolvida, sem precisar ficar
+   com a aba aberta e olhando. Nunca precisa de loop sem fim -- o
+   próprio `captureSequenceTick()` já para sozinho (Energia acabou,
+   `remaining` chegou a 0 etc.), então o teto de segurança
+   (`CATCHUP_MAX_TICKS`) na prática nunca é alcançado de verdade. */
+var CATCHUP_MAX_TICKS = 10000; // rede de segurança -- a sequência sempre termina bem antes disso (total de lutas é travado pela Energia atual)
+function catchUpCaptureSequence(){
+  var cs = STATE && STATE.captureSequence;
+  if(!cs || cs.finished) return;
+  var agora = Date.now();
+  var ticksElapsed = Math.floor((agora - (cs.lastTickAt||agora)) / 1500);
+  var ticksAFazer = Math.min(Math.max(ticksElapsed,0), CATCHUP_MAX_TICKS);
+  for(var i=0; i<ticksAFazer; i++){
+    if(!STATE.captureSequence || STATE.captureSequence.finished) break;
+    captureSequenceTick();
+  }
+  if(STATE.captureSequence) STATE.captureSequence.lastTickAt = agora;
 }
 /* Cap. leva desta sessão: "A simulação de lutas pausa quando eu mudo
    de aba, é possível fazer com que ela fique rodando mesmo quando eu
@@ -10760,7 +10799,7 @@ startCaptureSequenceTicker();
    rolou enquanto o jogador estava noutra aba. */
 if(typeof document!=='undefined' && document.addEventListener){
   document.addEventListener('visibilitychange', function(){
-    if(!document.hidden) backgroundTick();
+    if(!document.hidden){ catchUpCaptureSequence(); backgroundTick(); }
   });
 }
 
@@ -12735,41 +12774,81 @@ DT.gaComprarItem = function(key, qtdEl){
   mutate();
 };
 
+/* Cap. leva desta sessão ("Crie um menu de busca e filtro na loja"):
+   a Loja cresceu bastante (6 catálogos de item em cards + TMs à
+   parte), então virou pedido justo. `SESSION.lojaSearch` (texto livre,
+   casa contra `.nome`) e `SESSION.lojaCategoria` (uma das 7 seções, ou
+   '' pra Todas) filtram JUNTOS, mesmo padrão de filtro combinável já
+   usado na Dex/Caixa (`caixaFiltrosHTML` acima). `lojaCardHTML`
+   extraído da repetição idêntica que existia nos 6 catálogos (Pokébola
+   lê de `STATE.pokebolas`, o resto de `STATE.itens` -- `lojaQtdAtual`
+   decide qual, comparando por REFERÊNCIA se o item pertence ao array
+   `POKEBALLS`). Pokébolas e Itens Gerais ganharam cards/título PRÓPRIOS
+   agora (antes ficavam juntos, sem cabeçalho, dentro do card "🏪 Loja")
+   -- só assim dá pra filtrar por categoria "só Pokébolas" de verdade;
+   nenhum catálogo/preço/efeito mudou, só a organização visual. */
+function lojaQtdAtual(it){ return (POKEBALLS.indexOf(it)!==-1 ? STATE.pokebolas[it.key] : STATE.itens[it.key]) || 0; }
+function lojaCardHTML(it){
+  var qtdAtual = lojaQtdAtual(it);
+  var podeComprar = (STATE.pokedolares||0) >= it.preco;
+  var inputId = 'gaLojaQtd_'+it.key;
+  return '<div class="ga-loja-card">'+
+    '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
+    (it.desc ? '<div class="ga-hint">'+esc2(it.desc)+'</div>' : '')+
+    '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
+    '<div class="ga-loja-preco">💰 '+it.preco+' cada</div>'+
+    '<div class="ga-loja-qtd-row">'+
+      '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
+      '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
+    '</div>'+
+  '</div>';
+}
+function lojaBuscaAtual(){ return (SESSION.lojaSearch||'').trim().toLowerCase(); }
+function lojaItemBateBusca(it){ var q = lojaBuscaAtual(); return !q || it.nome.toLowerCase().indexOf(q)!==-1; }
+function lojaSecaoHTML(catKey, titulo, descTopo, itens){
+  if(SESSION.lojaCategoria && SESSION.lojaCategoria!==catKey) return ''; // filtro de categoria escondeu a seção inteira
+  var filtrados = itens.filter(lojaItemBateBusca);
+  if(!filtrados.length) return ''; // busca não achou nada NESSA seção -- some (nunca mostra card vazio)
+  return '<div class="ga-card"><h2>'+titulo+'</h2>'+
+    (descTopo ? '<p class="ga-hint">'+descTopo+'</p>' : '')+
+    '<div class="ga-loja-grid">'+filtrados.map(lojaCardHTML).join('')+'</div></div>';
+}
+function lojaSecaoTmHTML(){
+  if(SESSION.lojaCategoria && SESSION.lojaCategoria!=='tms') return '';
+  var q = lojaBuscaAtual();
+  var moves = tmMovesDisponiveis().filter(function(nome){ return !q || nome.toLowerCase().indexOf(q)!==-1; });
+  if(!moves.length) return '';
+  return '<div class="ga-card"><h2>💿 TMs</h2>'+
+    '<p class="ga-hint">Ensina um Movimento pra qualquer Pokémon que a Espécie aprenda por TM (grátis, na tela 🎒 Equipe → 🔁 Movimentos) -- comprada aqui ou ganha de graça vencendo um Mestre Especialista.</p>'+
+    '<div class="ga-btn-row">'+
+      '<select id="gaTmSelect">'+moves.map(function(nome){
+        var qtd = STATE.tms[nome]||0;
+        return '<option value="'+esc2(nome)+'">'+esc2(nome)+(qtd?' (você tem '+qtd+')':'')+'</option>';
+      }).join('')+'</select>'+
+      '<button class="ga-btn-sm ga-btn-primary" '+((STATE.pokedolares||0)>=PRECO_TM?'':'disabled')+' onclick="DT.gaComprarTM(document.getElementById(\'gaTmSelect\').value)">Comprar por 💰 '+PRECO_TM+'</button>'+
+    '</div></div>';
+}
+var LOJA_CATEGORIAS = [
+  ['', 'Todas'], ['pokebolas','⚾ Pokébolas'], ['itens','🧪 Itens Gerais'], ['pedras','🪨 Pedras/Evolução'],
+  ['segurados','🎒 Segurados'], ['evolucao-troca','🔄 Evolução por Troca'], ['nectares','🌺 Néctares'], ['tms','💿 TMs']
+];
+function lojaFiltrosHTML(){
+  var catAtual = SESSION.lojaCategoria || '';
+  return '<div class="ga-dex-filtros">'+
+      '<input type="text" id="gaLojaSearch" placeholder="Nome do item..." value="'+esc2(SESSION.lojaSearch||'')+'" onkeydown="if(event.key===\'Enter\')DT.gaSetLojaSearch(document.getElementById(\'gaLojaSearch\'))">'+
+      '<button class="ga-btn-sm" onclick="DT.gaSetLojaSearch(document.getElementById(\'gaLojaSearch\'))">🔍 Buscar</button>'+
+      (SESSION.lojaSearch ? '<button class="ga-btn-sm" onclick="DT.gaSetLojaSearch({value:\'\'})">✕ Limpar busca</button>' : '')+
+      '<span class="ga-tabs">'+LOJA_CATEGORIAS.map(function(c){
+        return '<button class="'+(catAtual===c[0]?'active':'')+'" onclick="DT.gaSetLojaCategoria(\''+c[0]+'\')">'+c[1]+'</button>';
+      }).join('')+'</span>'+
+    '</div>';
+}
+DT.gaSetLojaSearch = function(el){ SESSION.lojaSearch = (el && el.value || '').trim(); render(); };
+DT.gaSetLojaCategoria = function(key){ SESSION.lojaCategoria = key||''; render(); };
 function lojaScreenHTML(){
-  var out = '<div class="ga-card"><h2>🏪 Loja</h2>'+
-    '<p class="ga-hint">💰 '+(STATE.pokedolares||0)+' Pokédólares — ganhos depois de vencer lutas (Treinadores sempre pagam mais que selvagens do mesmo Nível, Mestres Especialistas pagam o melhor de todos).</p>'+
-    '<div class="ga-loja-grid">'+
-    POKEBALLS.map(function(bl){
-      var qtdAtual = STATE.pokebolas[bl.key]||0;
-      var podeComprar = (STATE.pokedolares||0) >= bl.preco;
-      var inputId = 'gaLojaQtd_'+bl.key;
-      return '<div class="ga-loja-card">'+
-        '<div class="ga-loja-nome">'+itemIconHTML(bl)+' '+esc2(bl.nome)+'</div>'+
-        '<div class="ga-hint">'+esc2(bl.desc)+'</div>'+
-        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
-        '<div class="ga-loja-preco">💰 '+bl.preco+' cada</div>'+
-        '<div class="ga-loja-qtd-row">'+
-          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
-          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+bl.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
-        '</div>'+
-      '</div>';
-    }).join('')+
-    GA_ITEMS.map(function(it){
-      var qtdAtual = STATE.itens[it.key]||0;
-      var podeComprar = (STATE.pokedolares||0) >= it.preco;
-      var inputId = 'gaLojaQtd_'+it.key;
-      return '<div class="ga-loja-card">'+
-        '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
-        '<div class="ga-hint">'+esc2(it.desc)+'</div>'+
-        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
-        '<div class="ga-loja-preco">💰 '+it.preco+' cada</div>'+
-        '<div class="ga-loja-qtd-row">'+
-          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
-          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
-        '</div>'+
-      '</div>';
-    }).join('')+
-    '</div></div>'+
+  var secoes = [
+    lojaSecaoHTML('pokebolas', '⚾ Pokébolas', '', POKEBALLS),
+    lojaSecaoHTML('itens', '🧪 Itens Gerais', '', GA_ITEMS),
     /* Cap. leva desta sessão (tarefa #183 -- "evoluções não-por-Nível
        de verdade"): as 10 pedras "clássicas" (ver EVOLUTION_STONES) --
        usadas na Equipe/Caixa (botão "🪨 Usar Item", só aparece quando
@@ -12779,72 +12858,18 @@ function lojaScreenHTML(){
        na MESMA seção/grid -- mesmo fluxo, mesmo botão "🪨 Usar Item",
        só sem sprite oficial disponível (emoji no lugar, ver
        itemIconHTML). */
-    '<div class="ga-card"><h2>🪨 Pedras e Itens de Evolução</h2>'+
-    '<p class="ga-hint">Usam-se direto num Pokémon (Equipe ou Caixa) que já esteja pronto pra evoluir com aquele item -- fora de luta.</p>'+
-    '<div class="ga-loja-grid">'+
-    EVOLUTION_STONES.concat(EVOLUTION_EXCLUSIVE_ITEMS).map(function(st){
-      var qtdAtual = STATE.itens[st.key]||0;
-      var podeComprar = (STATE.pokedolares||0) >= st.preco;
-      var inputId = 'gaLojaQtd_'+st.key;
-      return '<div class="ga-loja-card">'+
-        '<div class="ga-loja-nome">'+itemIconHTML(st)+' '+esc2(st.nome)+'</div>'+
-        (st.desc ? '<div class="ga-hint">'+esc2(st.desc)+'</div>' : '')+
-        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
-        '<div class="ga-loja-preco">💰 '+st.preco+' cada</div>'+
-        '<div class="ga-loja-qtd-row">'+
-          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
-          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+st.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
-        '</div>'+
-      '</div>';
-    }).join('')+
-    '</div></div>'+
+    lojaSecaoHTML('pedras', '🪨 Pedras e Itens de Evolução', 'Usam-se direto num Pokémon (Equipe ou Caixa) que já esteja pronto pra evoluir com aquele item -- fora de luta.', EVOLUTION_STONES.concat(EVOLUTION_EXCLUSIVE_ITEMS)),
     /* Cap. leva desta sessão (tarefa #195 -- "itens segurados em
        batalha"): compra aqui, EQUIPA num Pokémon da Equipe (botão
        "🎒 Item" no card, ver equipeScreenHTML) -- mesmo fluxo genérico
        de compra de sempre, só cai em STATE.itens por chave igual GA_
        ITEMS/EVOLUTION_STONES. */
-    '<div class="ga-card"><h2>🎒 Itens Segurados</h2>'+
-    '<p class="ga-hint">Compre aqui, depois EQUIPE num Pokémon da Equipe (botão "🎒 Item" no card dele) -- item segurado é permanente (igual Habilidade/Natureza), nunca reseta sozinho entre lutas, mas alguns se CONSOMEM no uso (bagas, Focus Sash, Weakness Policy, Air Balloon) e precisam ser comprados/equipados de novo depois.</p>'+
-    '<div class="ga-loja-grid">'+
-    HELD_ITEMS.map(function(it){
-      var qtdAtual = STATE.itens[it.key]||0;
-      var podeComprar = (STATE.pokedolares||0) >= it.preco;
-      var inputId = 'gaLojaQtd_'+it.key;
-      return '<div class="ga-loja-card">'+
-        '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
-        '<div class="ga-hint">'+esc2(it.desc)+'</div>'+
-        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
-        '<div class="ga-loja-preco">💰 '+it.preco+' cada</div>'+
-        '<div class="ga-loja-qtd-row">'+
-          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
-          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
-        '</div>'+
-      '</div>';
-    }).join('')+
-    '</div></div>'+
+    lojaSecaoHTML('segurados', '🎒 Itens Segurados', 'Compre aqui, depois EQUIPE num Pokémon da Equipe (botão "🎒 Item" no card dele) -- item segurado é permanente (igual Habilidade/Natureza), nunca reseta sozinho entre lutas, mas alguns se CONSOMEM no uso (bagas, Focus Sash, Weakness Policy, Air Balloon) e precisam ser comprados/equipados de novo depois.', HELD_ITEMS),
     /* Cap. leva desta sessão ("faça o que você tá recomendando" --
        item segurado de verdade na Troca/Nível+Dia-Noite): mesmo
        catálogo genérico de sempre, cai em STATE.itens por chave --
        ver EVOLUTION_HELD_ITEMS/EVOLUTION_HELD_ITEM_REQUIRED acima. */
-    '<div class="ga-card"><h2>🔄 Itens de Evolução</h2>'+
-    '<p class="ga-hint">Compre aqui, EQUIPE num Pokémon (mesmo botão "🎒 Item" do card dele, mesmo slot dos Itens Segurados) -- sem efeito nenhum em combate, só destravam uma evolução por Troca ou por Nível+Dia/Noite específica quando equipados na hora certa.</p>'+
-    '<div class="ga-loja-grid">'+
-    EVOLUTION_HELD_ITEMS.map(function(it){
-      var qtdAtual = STATE.itens[it.key]||0;
-      var podeComprar = (STATE.pokedolares||0) >= it.preco;
-      var inputId = 'gaLojaQtd_'+it.key;
-      return '<div class="ga-loja-card">'+
-        '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
-        '<div class="ga-hint">'+esc2(it.desc)+'</div>'+
-        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
-        '<div class="ga-loja-preco">💰 '+it.preco+' cada</div>'+
-        '<div class="ga-loja-qtd-row">'+
-          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
-          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
-        '</div>'+
-      '</div>';
-    }).join('')+
-    '</div></div>'+
+    lojaSecaoHTML('evolucao-troca', '🔄 Itens de Evolução', 'Compre aqui, EQUIPE num Pokémon (mesmo botão "🎒 Item" do card dele, mesmo slot dos Itens Segurados) -- sem efeito nenhum em combate, só destravam uma evolução por Troca ou por Nível+Dia/Noite específica quando equipados na hora certa.', EVOLUTION_HELD_ITEMS),
     /* Cap. leva desta sessão ("Grupo 1" de formas alternativas --
        Oricorio): seção nova, mesmo padrão genérico de sempre -- compra
        aqui, USA fora de luta (botão "🌺 Trocar Estilo" no card do
@@ -12853,35 +12878,17 @@ function lojaScreenHTML(){
        (diferente da seção "Pedras e Itens de Evolução" acima) -- só
        troca o Tipo/aparência do PRÓPRIO Oricorio, a qualquer momento,
        quantas vezes quiser. */
-    '<div class="ga-card"><h2>🌺 Néctares de Oricorio</h2>'+
-    '<p class="ga-hint">Usam-se direto num Oricorio (Equipe ou Caixa) fora de luta pra trocar de Estilo na hora -- não evolui nada, só muda o Tipo (ver popup da Dex de Oricorio pros 4 Estilos).</p>'+
-    '<div class="ga-loja-grid">'+
-    ORICORIO_NECTAR_ITEMS.map(function(n){
-      var qtdAtual = STATE.itens[n.key]||0;
-      var podeComprar = (STATE.pokedolares||0) >= n.preco;
-      var inputId = 'gaLojaQtd_'+n.key;
-      return '<div class="ga-loja-card">'+
-        '<div class="ga-loja-nome">'+itemIconHTML(n)+' '+esc2(n.nome)+'</div>'+
-        '<div class="ga-hint">'+esc2(n.desc)+'</div>'+
-        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
-        '<div class="ga-loja-preco">💰 '+n.preco+' cada</div>'+
-        '<div class="ga-loja-qtd-row">'+
-          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
-          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+n.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
-        '</div>'+
-      '</div>';
-    }).join('')+
-    '</div></div>'+
-    '<div class="ga-card"><h2>💿 TMs</h2>'+
-    '<p class="ga-hint">Ensina um Movimento pra qualquer Pokémon que a Espécie aprenda por TM (grátis, na tela 🎒 Equipe → 🔁 Movimentos) -- comprada aqui ou ganha de graça vencendo um Mestre Especialista.</p>'+
-    '<div class="ga-btn-row">'+
-      '<select id="gaTmSelect">'+tmMovesDisponiveis().map(function(nome){
-        var qtd = STATE.tms[nome]||0;
-        return '<option value="'+esc2(nome)+'">'+esc2(nome)+(qtd?' (você tem '+qtd+')':'')+'</option>';
-      }).join('')+'</select>'+
-      '<button class="ga-btn-sm ga-btn-primary" '+((STATE.pokedolares||0)>=PRECO_TM?'':'disabled')+' onclick="DT.gaComprarTM(document.getElementById(\'gaTmSelect\').value)">Comprar por 💰 '+PRECO_TM+'</button>'+
-    '</div></div>';
-  return out;
+    lojaSecaoHTML('nectares', '🌺 Néctares de Oricorio', 'Usam-se direto num Oricorio (Equipe ou Caixa) fora de luta pra trocar de Estilo na hora -- não evolui nada, só muda o Tipo (ver popup da Dex de Oricorio pros 4 Estilos).', ORICORIO_NECTAR_ITEMS),
+    lojaSecaoTmHTML()
+  ];
+  var filtroAtivo = !!(lojaBuscaAtual() || SESSION.lojaCategoria);
+  var nadaEncontrado = filtroAtivo && secoes.every(function(s){ return !s; });
+  return '<div class="ga-card"><h2>🏪 Loja</h2>'+
+    '<p class="ga-hint">💰 '+(STATE.pokedolares||0)+' Pokédólares — ganhos depois de vencer lutas (Treinadores sempre pagam mais que selvagens do mesmo Nível, Mestres Especialistas pagam o melhor de todos).</p>'+
+    lojaFiltrosHTML()+
+    '</div>'+
+    (nadaEncontrado ? '<div class="ga-card"><p class="ga-hint">Nenhum item encontrado com esse filtro.</p></div>' : '')+
+    secoes.join('');
 }
 
 function adminScreenHTML(){
