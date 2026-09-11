@@ -5091,11 +5091,11 @@ var EVOLUTION_STONES = [
      alternativa OFICIAL de verdade pro Feebas->Milotic desde a
      Geração 5 (item, em vez do stat de Beleza) -- ver EVOLUTION_
      STONE_OVERRIDE logo abaixo. Rock Stone NÃO existe nos jogos
-     oficiais -- item novo criado só pra este protótipo (mesmo
-     espírito da Super Ball, ver comentário de POKEBALLS), sem sprite
+     oficiais -- item novo criado só pra este protótipo, mesmo espírito
+     de "degrau extra" documentado no resto do arquivo, sem sprite
      nenhum disponível (cai pro emoji, ver itemIconHTML). */
   { key:'escama-prisma', item:'prism-scale', icon:'prism-scale', nome:'Prism Scale', preco:300 },
-  { key:'pedra-rocha', icon:null, emoji:'🪨', nome:'Rock Stone', preco:300, desc:'Item NÃO oficial, criado só pra este protótipo (mesmo espírito da Super Ball) -- sem sprite disponível.' }
+  { key:'pedra-rocha', icon:null, emoji:'🪨', nome:'Rock Stone', preco:300, desc:'Item NÃO oficial, criado só pra este protótipo -- sem sprite disponível.' }
 ];
 /* Cap. leva desta sessão: decisão de design do jogador SUBSTITUINDO a
    condição real de 7 arestas (Beleza/Localização, ambas impraticáveis
@@ -5287,11 +5287,7 @@ function horaAtualDoJogo(){
    pixelados... Todos os icones do jogo usa pixelado pra ficar legal":
    ícone OFICIAL de cada item (mesmo CDN público de sempre --
    PokeAPI/sprites, pasta items/ -- nunca desenhado à mão). `icon` é o
-   nome de arquivo oficial (ex.: "potion" -> potion.png); a Super Ball
-   não existe nos jogos oficiais (é o degrau extra criado só aqui,
-   ver comentário de POKEBALLS abaixo), então usa o ícone da Premier
-   Ball como substituto visual mais próximo (mesma "família" de bola
-   premium, documentado aqui pra não parecer engano). */
+   nome de arquivo oficial (ex.: "potion" -> potion.png). */
 function itemIconUrl(icon){ return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/'+icon+'.png'; }
 /* Cap. leva desta sessão (EVOLUTION_EXCLUSIVE_ITEMS acima): `icon:null`
    cai pro `emoji` do próprio item -- só os 10 itens de evolução Gen
@@ -5304,21 +5300,23 @@ function itemIconHTML(def, cls){
 
 /* Pokébolas (Cap. "aproveita e adiciona as outras pokébolas
    compráveis no jogo: great, super e ultra... e nelas as descrição
-   de captura para que facilite na hora da compra"): 4 níveis agora
-   (a Pokébola de sempre + 3 novas), cada uma com um multiplicador de
-   captura e uma descrição explicando exatamente o que ela faz -- ver
-   catchChance() logo abaixo pra fórmula completa (Taxa de Captura
-   oficial da Espécie × este multiplicador). Great ×1,5 e Ultra ×2,0
-   são os multiplicadores REAIS do jogo oficial; Super ×1,75 é o
-   degrau extra criado só aqui, no meio dos dois, pra dar uma
-   progressão de 4 preços em vez de 2. */
+   de captura para que facilite na hora da compra"): cada uma com um
+   multiplicador de captura e uma descrição explicando exatamente o
+   que ela faz -- ver catchChance() logo abaixo pra fórmula completa
+   (Taxa de Captura oficial da Espécie × este multiplicador). Great
+   ×1,5 e Ultra ×2,0 são os multiplicadores REAIS do jogo oficial.
+
+   Cap. leva desta sessão ("remova a super ball do jogo"): a Super
+   Ball (×1,75, ícone da Premier Ball como substituto -- nunca existiu
+   nos jogos oficiais, era um degrau extra criado só aqui) saiu do
+   catálogo por pedido explícito do jogador -- ver migrateState pra
+   como saves antigos com Super Ball em estoque são tratados (devolve
+   o valor em Pokédólares, nunca só apaga). */
 var POKEBALLS = [
   { key:'pokebola', nome:"Poké Ball", emoji:'⚪', icon:'poke-ball', preco:10, mult:1.00,
     desc:'Multiplicador de captura: ×1,00 sobre a Taxa de Captura da Espécie.' },
   { key:'greatball', nome:'Great Ball', emoji:'🟡', icon:'great-ball', preco:25, mult:1.50,
     desc:'Multiplicador de captura: ×1,50 sobre a Taxa de Captura da Espécie.' },
-  { key:'superball', nome:'Super Ball', emoji:'🔵', icon:'premier-ball', preco:40, mult:1.75,
-    desc:'Multiplicador de captura: ×1,75 sobre a Taxa de Captura da Espécie.' },
   { key:'ultraball', nome:'Ultra Ball', emoji:'🟣', icon:'ultra-ball', preco:60, mult:2.00,
     desc:'Multiplicador de captura: ×2,00 sobre a Taxa de Captura da Espécie.' }
 ];
@@ -6052,7 +6050,7 @@ function freshState(trainerName){
     energy: 1000,
     energyUpdatedAt: Date.now(),
     badges: [],
-    pokebolas: { pokebola:10, greatball:0, superball:0, ultraball:0 },
+    pokebolas: { pokebola:10, greatball:0, ultraball:0 },
     poketickets: 100, // Cap. leva desta sessão: "Novos jogadores começam com 100 tickets"
     poketicketsUpdatedAt: Date.now(),
     pokedolares: 200,
@@ -6089,9 +6087,19 @@ function migrateState(){
   STATE.poketickets = clampInt(STATE.poketickets, 0, POKETICKETS_MAX); // uma conta antiga pode já ter passado do teto novo (nunca dava antes) -- trava em 1000 na migração também
   if(!STATE.actionLog || !Array.isArray(STATE.actionLog)) STATE.actionLog = []; // conta sem log ainda (Cap. "log pra o Admin saber o que cada jogador tá fazendo") nasce com histórico vazio, nunca tenta reconstruir o passado
   if(!STATE.tms || typeof STATE.tms!=='object') STATE.tms = {};
-  if(typeof STATE.pokebolas==='number') STATE.pokebolas = { pokebola: STATE.pokebolas, greatball:0, superball:0, ultraball:0 };
-  if(!STATE.pokebolas || typeof STATE.pokebolas!=='object') STATE.pokebolas = { pokebola:0, greatball:0, superball:0, ultraball:0 };
+  if(typeof STATE.pokebolas==='number') STATE.pokebolas = { pokebola: STATE.pokebolas, greatball:0, ultraball:0 };
+  if(!STATE.pokebolas || typeof STATE.pokebolas!=='object') STATE.pokebolas = { pokebola:0, greatball:0, ultraball:0 };
   POKEBALLS.forEach(function(b){ if(typeof STATE.pokebolas[b.key]!=='number') STATE.pokebolas[b.key] = 0; });
+  /* Cap. leva desta sessão ("remova a super ball do jogo"): saída do
+     catálogo (ver comentário de POKEBALLS) -- conta antiga que já
+     tinha Super Ball em estoque NUNCA perde o valor de graça: devolve
+     em Pokédólares (mesmo preço de compra, 40 cada) e só então apaga
+     o campo -- idempotente sozinho (na 2ª migração `superball` já não
+     existe mais, esse bloco não faz nada de novo). */
+  if(STATE.pokebolas.superball){
+    STATE.pokedolares = (STATE.pokedolares||0) + STATE.pokebolas.superball*40;
+    delete STATE.pokebolas.superball;
+  }
   [STATE.party, STATE.box].forEach(function(lista){
     (lista||[]).forEach(function(p){
       if(typeof p.xpNivel!=='number') p.xpNivel = 0;
@@ -7325,7 +7333,7 @@ function xpParaVitoria(nivelProprio, nivelOponente){
    Leafeon/Glaceon (Leaf/Ice Stone, alternativas OFICIAIS desde a Ger.
    8), e Magneton->Magnezone/Nosepass->Probopass/Charjabug->Vikavolt/
    Crabrawler->Crabominable (Pedra Trovão reaproveitada ou Rock Stone,
-   item NOVO sem equivalente oficial -- mesmo espírito da Super Ball).
+   item NOVO sem equivalente oficial nenhum).
    Eevee->Sylveon (#700) troca Afeto por Felicidade 80% (204/255) +
    golpe de Tipo Fada conhecido -- ver EVOLUTION_MIN_HAPPINESS_
    OVERRIDE/EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED acima, mesmo mecanismo
@@ -11044,7 +11052,7 @@ function ticketParaEnergiaWidgetHTML(idSuffix){
   '</div>';
 }
 DT.gaDebugItens = function(){
-  STATE.pokebolas.pokebola+=10; STATE.pokebolas.greatball+=5; STATE.pokebolas.superball+=3; STATE.pokebolas.ultraball+=1;
+  STATE.pokebolas.pokebola+=10; STATE.pokebolas.greatball+=5; STATE.pokebolas.ultraball+=1;
   STATE.itens.pocao+=5; STATE.itens.superpocao+=3; STATE.itens.hiperpocao+=1;
   logAction('debug', 'Ferramenta de teste: +itens (Pokébolas + Poções).');
   mutate();
@@ -12522,11 +12530,11 @@ function wikiScreenHTML(){
     '<p>Contra Treinador, o XP conta por CADA Pokémon do time dele que cai, no MEIO da luta -- seu Pokémon pode subir de Nível (e até evoluir) antes da luta terminar.</p>'+
     '<p>Quando o Nível bate o requisito de evolução da Espécie, a luta pausa perguntando se você quer evoluir. Recusar não é definitivo -- no próximo Nível que também bater o requisito, a pergunta volta. Evoluir nunca muda os Movimentos que o Pokémon já sabe, nem a Natureza.</p>');
 
-  out += wikiSecao('⚪ Pokébolas e Captura', '<p>Só é oferecida depois de VENCER uma luta selvagem (nunca contra Treinador). 4 tipos: Poké Ball (×1,00), Great Ball (×1,50), Super Ball (×1,75) e Ultra Ball (×2,00) -- o multiplicador é sobre a Taxa de Captura oficial da Espécie (3 a 255, quanto maior mais fácil).</p>');
+  out += wikiSecao('⚪ Pokébolas e Captura', '<p>Só é oferecida depois de VENCER uma luta selvagem (nunca contra Treinador). 3 tipos: Poké Ball (×1,00), Great Ball (×1,50) e Ultra Ball (×2,00) -- o multiplicador é sobre a Taxa de Captura oficial da Espécie (3 a 255, quanto maior mais fácil).</p>');
 
   out += wikiSecao('💰 Pokédólares, 🎫 Pokétickets e 🏪 Loja', '<p>'+esc2(TOOLTIPS.pokedolares).replace(/\n/g,'<br>')+'</p>'+
     '<p>'+esc2(TOOLTIPS.poketickets).replace(/\n/g,'<br>')+'</p>'+
-    '<p>Na Loja dá pra comprar as 4 Pokébolas, as 3 Poções (com a descrição exata de quanto cada uma cura) e TMs.</p>');
+    '<p>Na Loja dá pra comprar as 3 Pokébolas, as 3 Poções (com a descrição exata de quanto cada uma cura) e TMs.</p>');
 
   out += wikiSecao('🎖️ Mestres Especialistas', '<p>8 Mestres temáticos por Tipo, 6 Pokémon cada (sempre de famílias/linhas evolutivas DIFERENTES entre si -- nunca duas formas do mesmo Pokémon no mesmo time), na mesma ordem e com o mesmo elenco pra QUALQUER Treinador que desafiar. Progressão sempre sequencial -- não dá pra pular nenhum.</p>'+
     '<p>Botão "👁️ Ver Time" mostra o elenco de qualquer Mestre (mesmo os que você ainda não pode desafiar), Nível incluso.</p>'+
