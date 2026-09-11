@@ -9923,7 +9923,12 @@ function equipeScreenHTML(){
         '</div>' : '';
       /* Cap. leva desta sessão: "junta Movimentos e caixa ali embaixo"
          -- os 2 na MESMA linha agora, em vez de Movimentos sozinho
-         numa linha e Caixa/Soltar noutra. */
+         numa linha e Caixa/Soltar noutra. Cap. leva seguinte: "Tirar o
+         botão soltar daqui deixar só na caixa" -- Soltar sai de vez da
+         Equipe ativa (o jogador manda o Pokémon pra 📦 Caixa primeiro,
+         com o botão que já existe logo ali, e solta de lá -- ver a
+         seção da Caixa abaixo, que mantém o próprio botão Soltar
+         dela). */
       var actions = orderControls+'<div class="ga-poke-actions">'+
         (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
         papelCombateSeletorHTML(p)+
@@ -9934,9 +9939,6 @@ function equipeScreenHTML(){
            pedra de verdade evoluiria esse Pokémon -- pedrasElegiveisPara
            já confere a Espécie contra EVOLUTIONS_DEX. */
         (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Pedra</button>' : '')+
-        (STATE.party.length>1
-          ? '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>'
-          : '<span class="ga-hint">último da Equipe</span>')+
       '</div>';
       /* Arrastar de verdade (Cap. "Coloca a opção de arrastar a ordem
          do pokémon"): HTML5 `draggable` nativo -- carrega o PRÓPRIO id
