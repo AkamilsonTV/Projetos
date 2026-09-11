@@ -7025,7 +7025,22 @@ function resolveFaintAfterDamage(target, user, b, moveUsado){
   b.oppDefeatedLevels.push(target.level);
   var xpUser = (user && user.side==='player') ? user : battlerObj(b,'player');
   if(xpUser.side==='player' && xpUser.partyId){
-    var pausouEvolucao = grantXpAndMaybeEvolve(b, xpUser.partyId, xpParaVitoria(xpUser.level, target.level));
+    /* Cap. leva desta sessão ("cada pokémon desmaiado pelo jogador ele
+       ganha a XP correspondente. Se for treinador, correspondente a
+       área, a formula que já usamos. Se for mestre ele usará um range
+       parecido com as áreas e premiar sempre com um bônus de +3, além
+       da XP padrão"): Treinador (kind 'wild'/'rival'/'elite') usa a
+       MESMA fórmula de Faixa de sempre (xpParaVitoria), sem bônus --
+       já é "correspondente a área". Mestre (kind 'trainer', o único
+       kind que dá Insígnia) usa a MESMA fórmula de Faixa por baixo
+       ("um range parecido com as áreas" = a régua já existente, não
+       uma nova), só que SEMPRE soma +3 fixo em cima, por Pokémon
+       desmaiado -- mesmo quando xpParaVitoria() sozinha devolveria 0
+       (2+ Faixas abaixo do jogador), o bônus do Mestre ainda entra,
+       porque o pedido foi "premiar SEMPRE com um bônus de +3". */
+    var xpBase = xpParaVitoria(xpUser.level, target.level);
+    var xpGanho = xpBase + (b.kind==='trainer' ? XP_BONUS_MESTRE : 0);
+    var pausouEvolucao = grantXpAndMaybeEvolve(b, xpUser.partyId, xpGanho);
     if(pausouEvolucao) return true;
   }
   advanceOpponent();
@@ -7409,6 +7424,12 @@ function xpParaVitoria(nivelProprio, nivelOponente){
   if(diff===0) return 2;
   return 2+diff; // 1+ Faixas acima
 }
+/* Cap. leva desta sessão ("Se for mestre ele usará um range parecido
+   com as áreas e premiar sempre com um bônus de +3, além da XP
+   padrão"): bônus FIXO por Pokémon desmaiado, só em luta de Mestre
+   (b.kind==='trainer'), somado em cima de xpParaVitoria() de sempre --
+   ver resolveFaintAfterDamage. */
+var XP_BONUS_MESTRE = 3;
 
 /* Evolução (Cap. "Na hora de evoluir, peço que pergunte ao treinador
    se ele quer impedir a evolução ou manter. Se ele impedir, todo
