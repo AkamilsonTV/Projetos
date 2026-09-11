@@ -6663,7 +6663,7 @@ function initBattlerExtras(b){
   return b;
 }
 function buildBattlerFromParty(poke){
-  return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade, item: poke.itemSegurado||null });
+  return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade, item: poke.itemSegurado||null, forma: poke.forma||null });
 }
 function buildBattlerWild(num, level){
   return initBattlerExtras({ key:'w_'+num, side:'wild', num:num, level:level, moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num) });
@@ -7774,7 +7774,7 @@ function applyWeatherResidual(atkB, defB, b){
       if(b.hp[battler.key]>antesHeal) b.log.push('💚 '+displayName(battler)+' recuperou '+(b.hp[battler.key]-antesHeal)+' PV ('+battler.habilidade+').');
     }
     if(w!=='areia' && w!=='granizo') return;
-    var sp = speciesByNum(battler.num);
+    var sp = tiposEfetivos(battler);
     var imune = WEATHER_CHIP_IMMUNE[w] && ((sp.tipo1 && WEATHER_CHIP_IMMUNE[w][sp.tipo1]) || (sp.tipo2 && WEATHER_CHIP_IMMUNE[w][sp.tipo2]));
     if(imune || temHab(battler,'Magic Guard')) return; // Cap. Habilidade Magic Guard: imune a chip de Clima também
     var maxHp = gaHpMax(battler), dano = Math.max(1, Math.floor(maxHp/16));
@@ -7816,7 +7816,7 @@ function applyHeldItemEndOfTurn(battler, b){
     b.hp[battler.key] = Math.min(max, antes+Math.max(1, Math.floor(max/16)));
     if(b.hp[battler.key]>antes) b.log.push('🍂 '+displayName(battler)+' recuperou '+(b.hp[battler.key]-antes)+' PV (Leftovers).');
   } else if(battler.item==='lama-negra'){
-    var sp = speciesByNum(battler.num);
+    var sp = tiposEfetivos(battler);
     if(sp.tipo1==='Venenoso' || sp.tipo2==='Venenoso'){
       b.hp[battler.key] = Math.min(max, antes+Math.max(1, Math.floor(max/16)));
       if(b.hp[battler.key]>antes) b.log.push('⚫ '+displayName(battler)+' recuperou '+(b.hp[battler.key]-antes)+' PV (Black Sludge).');
@@ -7867,7 +7867,7 @@ function terrainTipo(){ return (STATE && STATE.battle && STATE.battle.terrain &&
 /* "No chão" (aproximação documentada acima): todo mundo, exceto Tipo
    Voador -- Levitate/Air Balloon ficam pra leva de Habilidades/Itens. */
 function noChao(battler){
-  var sp = speciesByNum(battler.num);
+  var sp = tiposEfetivos(battler);
   return sp.tipo1!=='Voador' && sp.tipo2!=='Voador';
 }
 /* Bônus ×1,3 de dano por Tipo do golpe (Elétrico/Grama/Psíquico no
@@ -8042,7 +8042,7 @@ function aplicarArmadilhasDeEntrada(battler, ladoAlvo, b){
   b.hazards = b.hazards || { player:{stealthRock:false,toxicSpikes:0}, opponent:{stealthRock:false,toxicSpikes:0} };
   var haz = b.hazards[ladoAlvo]; if(!haz) return;
   var nome = displayName(battler);
-  var sp = speciesByNum(battler.num);
+  var sp = tiposEfetivos(battler);
   if(haz.stealthRock && b.hp[battler.key]>0 && !temHab(battler,'Magic Guard')){
     var mult = typeEffMultiplier('Pedra', sp.tipo1, sp.tipo2);
     var dano = Math.max(1, Math.floor(gaHpMax(battler) * mult / 8));
@@ -8176,7 +8176,7 @@ function officialDamage(user, target, move, crit, ofPreCalculado){
   // Grace/Sheer Force em resolveGaTurn (nunca recalcula do zero) --
   // só recalcula aqui se chamado direto (ex.: Struggle/testes).
   var of = ofPreCalculado || officialMoveData(move);
-  var userSp = speciesByNum(user.num), targetSp = speciesByNum(target.num);
+  var userSp = tiposEfetivos(user), targetSp = tiposEfetivos(target);
   var fisico = move.categoria==='Físico';
   var atkStatKey = fisico ? 'atk' : 'spa';
   var defStatKey = fisico ? 'def' : 'spd';
@@ -8321,7 +8321,7 @@ function applyAilment(battler, ailmentEn, moveName, b, logPrefix, atacante){
   var statusPt = AILMENT_PT[ailmentEn]; if(!statusPt) return;
   if(moveName==='Toxic') statusPt = 'veneno_grave'; // Cap. "Veneno Grave" oficial do Toxic (a PokeAPI só marca 'poison' genérico)
   if(battler.status) return; // já tem Status persistente -- só 1 por vez
-  var sp = speciesByNum(battler.num);
+  var sp = tiposEfetivos(battler);
   // Cap. Corrosion: fura só a imunidade de TIPO a Veneno (regra
   // oficial -- "pode envenenar Venenoso/Aço"), nunca imunidade de
   // Habilidade (Immunity continua bloqueando normalmente).
@@ -8578,7 +8578,7 @@ function resolveGaTurn(user, target, preSelectedMove){
   // vem de typeEffMultiplier) + a imunidade extra só do Sheer Cold
   // (Tipo Gelo nunca afeta outro Gelo, regra específica dele).
   if(OHKO_MOVES[move.name]){
-    var targetSpOhko = speciesByNum(target.num);
+    var targetSpOhko = tiposEfetivos(target);
     var typeEffOhko = typeEffMultiplier(move.tipo, targetSpOhko.tipo1, targetSpOhko.tipo2);
     var imuneGeloSheer = move.name==='Sheer Cold' && (targetSpOhko.tipo1==='Gelo' || targetSpOhko.tipo2==='Gelo');
     if(typeEffOhko===0 || imuneGeloSheer){
@@ -8622,7 +8622,7 @@ function resolveGaTurn(user, target, preSelectedMove){
   // própria conta, ver FIXED_DAMAGE_MOVES acima.
   if(FIXED_DAMAGE_MOVES[move.name]){
     var fd = FIXED_DAMAGE_MOVES[move.name];
-    var targetSpFd = speciesByNum(target.num);
+    var targetSpFd = tiposEfetivos(target);
     var typeEffFd = typeEffMultiplier(move.tipo, targetSpFd.tipo1, targetSpFd.tipo2);
     if(typeEffFd===0){
       b.log.push('🛡️ '+userName+' usou '+move.name+' -- não afeta '+targetName+' (imune).');
@@ -8736,7 +8736,7 @@ function resolveGaTurn(user, target, preSelectedMove){
     // Cap. Semente Maligna: planta no ALVO -- Tipo Grama é imune
     // (regra oficial), não empilha se já está plantada.
     if(move.name===LEECH_SEED_MOVE){
-      var targetSpSeed = speciesByNum(target.num);
+      var targetSpSeed = tiposEfetivos(target);
       if([targetSpSeed.tipo1, targetSpSeed.tipo2].indexOf('Grama')!==-1){
         b.log.push('🌱 '+userName+' tentou plantar Semente Maligna em '+targetName+', mas Tipo Grama é imune.');
       } else if(target.leechSeeded){
@@ -8796,7 +8796,7 @@ function resolveGaTurn(user, target, preSelectedMove){
     b.log.push('🔇 '+userName+' usou '+move.name+' -- '+targetName+' é imune (Soundproof).');
     return;
   }
-  var targetSp = speciesByNum(target.num);
+  var targetSp = tiposEfetivos(target);
   var typeEff = typeEffMultiplier(move.tipo, targetSp.tipo1, targetSp.tipo2);
   // Cap. Habilidade Scrappy: Normal/Lutador acertam Fantasma normalmente
   if(typeEff===0 && temHab(user,'Scrappy') && (move.tipo==='Normal'||move.tipo==='Lutador') && (targetSp.tipo1==='Fantasma'||targetSp.tipo2==='Fantasma')){
@@ -11274,6 +11274,26 @@ function formaEvoMove(num, forma){
 /* Qual Pergaminho (ver EVOLUTION_EXCLUSIVE_ITEMS) vira qual forma --
    consultado por DT.gaUsarPedra na hora de evoluir Kubfu. */
 var URSHIFU_FORM_BY_ITEM = { 'pergaminho-trevas':'single-strike', 'pergaminho-aguas':'rapid-strike' };
+/* Cap. leva desta sessão ("Porque não faz a consulta do tipo do
+   ataque x o tipo de pokémon que usa para aplicar o stab? Porque não
+   é só esse pokémon que tem duas formas"): pedido certo -- o motor de
+   combate lia Tipo direto de `speciesByNum(x.num).tipo1/tipo2` em
+   TODO lugar que precisa de Tipo pra cálculo (STAB, efetividade,
+   imunidade de Tipo a Status/Armadilha, Scrappy etc.), ignorando
+   `forma` por completo -- generalizado agora pra QUALQUER Espécie
+   com ALT_FORMS cadastrado (não só Urshifu): `tiposEfetivos(x)`
+   confere se `x.forma` bate com alguma entrada de `ALT_FORMS[x.num]`
+   e devolve o Tipo DAQUELA forma; sem entrada (todo o resto do jogo,
+   ou uma forma desconhecida), devolve o Tipo cru de `speciesByNum`,
+   idêntico ao comportamento de sempre. Único requisito pra funcionar
+   em combate de verdade: o battler carregar `.forma` -- ver
+   `buildBattlerFromParty` (copia de `poke.forma`) logo abaixo. */
+function tiposEfetivos(x){
+  var sp = speciesByNum(x.num);
+  var formas = ALT_FORMS[x.num];
+  var formaObj = (formas && x.forma) ? formas.filter(function(f){ return f.key===x.forma; })[0] : null;
+  return formaObj ? { tipo1: formaObj.tipo1, tipo2: formaObj.tipo2 } : { tipo1: sp.tipo1, tipo2: sp.tipo2 };
+}
 /* Cap. leva desta sessão: "Coloca a opção de apelido dos pokémon.
    Inicialmente só poderemos colocar uma vez, depois disso fica
    travado. Vamos desenvolver um item depois pra mudar nome, por
