@@ -6045,6 +6045,14 @@ function initBattlerExtras(b){
   b.flinch = false;
   b.pp = {};
   (b.moves||[]).forEach(function(m){ b.pp[m.name] = officialMoveData(m).ppMax; });
+  // Cap. leva desta sessão (mecânicas específicas faltando -- ver bloco
+  // "Substituto (Cap. ..." acima): tudo abaixo vive só no battler,
+  // igual Estágio -- reseta sozinho a cada entrada nova em campo.
+  b.subHp = 0;
+  b.leechSeeded = false;
+  b.chargingMove = null;
+  b.lastHitTaken = null;
+  b._hazardsApplied = false;
   return b;
 }
 function buildBattlerFromParty(poke){
@@ -6157,7 +6165,8 @@ function startBattle(kind, opts, skipDiscrepancia){
     finished: null,
     captureDone: false,
     weather: { tipo:'neutro', turnsLeft:null }, // Cap. Clima -- por LUTA, sempre começa Neutro
-    terrain: { tipo:'neutro', turnsLeft:null } // Cap. Terreno -- por LUTA, sempre começa Neutro
+    terrain: { tipo:'neutro', turnsLeft:null }, // Cap. Terreno -- por LUTA, sempre começa Neutro
+    hazards: { player:{stealthRock:false,toxicSpikes:0}, opponent:{stealthRock:false,toxicSpikes:0} } // Cap. Armadilhas de Campo -- por LUTA, sempre começa limpo
   };
   runBattleUntilPause();
   mutate();
@@ -6277,6 +6286,21 @@ function runBattleUntilPause(){
 
     var atkB = battlerObj(b, 'player');
     var defB = currentOpponent();
+
+    // Cap. Armadilhas de Campo: bate em quem acabou de entrar em campo
+    // (1x por battler NOVO -- marcado com _hazardsApplied, cobre até o
+    // próprio líder que abre a luta, igual ao jogo oficial).
+    if(!atkB._hazardsApplied){
+      atkB._hazardsApplied = true;
+      aplicarArmadilhasDeEntrada(atkB, 'player', b);
+      if(b.hp[atkB.key]<=0){ if(resolveFaintAfterDamage(atkB, null, b)) return; continue; }
+    }
+    if(!defB._hazardsApplied){
+      defB._hazardsApplied = true;
+      aplicarArmadilhasDeEntrada(defB, 'opponent', b);
+      if(b.hp[defB.key]<=0){ if(resolveFaintAfterDamage(defB, null, b)) return; continue; }
+    }
+
     var atkHP = b.hp[atkB.key], defHP = b.hp[defB.key];
     if(atkHP<=0){ // não deveria acontecer aqui (switch já tratado), rede de segurança
       b.pendingSwitch = true; return;
@@ -6287,19 +6311,32 @@ function runBattleUntilPause(){
       continue;
     }
 
-    // ordem de Iniciativa pela Velocidade Efetiva (empate: sorteio) -- já
-    // considera Estágio de Velocidade E Paralisia (que corta a Velocidade
-    // pela metade oficialmente) via effStatWithStage.
+    // Movimento de cada lado decidido ANTES da ordem (Cap. Counter/
+    // Mirror Coat precisam de Prioridade real na Iniciativa -- ver
+    // decidirMovimentoDoTurno acima). Ordem de Iniciativa: Prioridade
+    // do Movimento primeiro (regra oficial -- Cap. leva desta sessão,
+    // antes só usava Velocidade e nenhum Movimento de Prioridade real
+    // tinha efeito nenhum na ordem), Velocidade Efetiva como
+    // desempate (considera Estágio de Velocidade E Paralisia, que
+    // corta a Velocidade pela metade oficialmente, via
+    // effStatWithStage), sorteio em último caso.
+    var atkMove = decidirMovimentoDoTurno(atkB);
+    var defMove = decidirMovimentoDoTurno(defB);
+    var atkPrio = officialMoveData(atkMove).priority||0;
+    var defPrio = officialMoveData(defMove).priority||0;
     var atkSpe = effStatWithStage(atkB,'spe') * (atkB.status==='paralisia'?0.5:1);
     var defSpe = effStatWithStage(defB,'spe') * (defB.status==='paralisia'?0.5:1);
-    var order = (atkSpe===defSpe ? Math.random()<0.5 : atkSpe>defSpe) ? [atkB,defB] : [defB,atkB];
+    var atkFirst = atkPrio!==defPrio ? atkPrio>defPrio : (atkSpe===defSpe ? Math.random()<0.5 : atkSpe>defSpe);
+    var order = atkFirst ? [atkB,defB] : [defB,atkB];
+    var moveOrder = atkFirst ? [atkMove,defMove] : [defMove,atkMove];
     atkB.flinch = false; defB.flinch = false; // Hesitação só dura até a PRÓPRIA ação, dentro desta Rodada
+    atkB.lastHitTaken = null; defB.lastHitTaken = null; // Cap. Counter/Mirror Coat: só vale dentro da MESMA Rodada
 
     for(var i=0;i<order.length;i++){
       var user = order[i], target = order[i]===atkB ? defB : atkB;
       if(b.hp[user.key]<=0 || b.hp[target.key]<=0) continue;
       if(user.flinch){ b.log.push('😨 '+displayName(user)+' hesitou e não conseguiu agir.'); user.flinch = false; continue; }
-      resolveGaTurn(user, target);
+      resolveGaTurn(user, target, moveOrder[i]);
       if(b.hp[target.key]<=0){
         /* Cap. "a experiência ganha quando for contra treinador será a
            vitória de CADA pokémon... isso é no meio da luta, ou seja ele
@@ -6333,6 +6370,13 @@ function runBattleUntilPause(){
     applyEndOfTurnStatus(atkB, b);
     if(b.hp[atkB.key]<=0 && resolveFaintAfterDamage(atkB, null, b)) return;
     applyEndOfTurnStatus(defB, b);
+    if(b.hp[defB.key]<=0 && resolveFaintAfterDamage(defB, null, b)) return;
+
+    /* Cap. Semente Maligna: drena/cura de FIM de Rodada, depois do
+       dano residual de Status normal e antes do chip de Clima -- mesmo
+       cuidado de checar desmaio antes de seguir. */
+    applyLeechSeedResidual(atkB, defB, b);
+    if(b.hp[atkB.key]<=0 && resolveFaintAfterDamage(atkB, null, b)) return;
     if(b.hp[defB.key]<=0 && resolveFaintAfterDamage(defB, null, b)) return;
 
     /* Cap. Clima: chip-dano de Areia/Granizo + conta regressiva dos
@@ -6988,6 +7032,178 @@ function tickTerrainDuration(b){
   }
 }
 
+/* ============================================================
+   Mecânicas específicas faltando (Cap. leva desta sessão -- escopo
+   escolhido pelo jogador entre as opções apresentadas pra tarefa
+   #148: "Mecânicas específicas faltando"). O motor genérico
+   (officialMoveData/resolveGaTurn) já cobre a esmagadora maioria dos
+   847 Movimentos automaticamente -- essas são as poucas mecânicas
+   GENUINAMENTE únicas que a PokeAPI não descreve com dado estruturado
+   nenhum (sem flag de "isso é carga de 2 turnos"/"isso é Nocaute em 1
+   Golpe"/"isso é dano fixo" em lugar nenhum de `meta`), então viram
+   tabelas curadas por NOME, mesmo padrão já usado em WEATHER_SET_MOVES/
+   TERRAIN_SET_MOVES acima (regra sobre dado sempre que dá, tabela
+   pequena e documentada só quando não dá). Vale tanto pra luta normal
+   (runBattleUntilPause) quanto pro Duelo PvP (resolverRodadaDuelo) --
+   os 2 compartilham resolveGaTurn/applyEndOfTurnStatus de verdade,
+   então tudo abaixo funciona nos 2 lugares de graça, EXCETO as
+   Armadilhas de Campo (ver aplicarArmadilhasDeEntrada) -- essas
+   dependem de saber qual é o lado "player"/"opponent" de cada
+   battler (ver b.hazards), o que só existe de verdade na luta normal;
+   no Duelo os 2 lados usam side:'player' igual (mesmo
+   buildBattlerFromParty dos 2), então Armadilha de Campo usada num
+   Duelo só gasta a Rodada sem fazer efeito nenhum -- limitação
+   documentada de propósito, caso raro (aposta em qual Movimento típico
+   de Nível 16 o jogador carrega no Duelo). */
+
+/* Substituto (Cap. "Substituto"): custa 1/4 do PRÓPRIO PV Máximo (falha
+   se não sobrar PV suficiente pra pagar sem desmaiar -- precisa ficar
+   com PELO MENOS 1 depois de pagar), cria um "boneco" com esse PV que
+   absorve dano/efeito secundário no lugar do usuário até quebrar (ver
+   o uso de subHp na seção de dano em resolveGaTurn). Vive só no
+   battler (reseta sozinho a cada troca/entrada nova, igual Estágio). */
+var SUBSTITUTE_MOVE = 'Substitute';
+/* Semente Maligna (Cap. "Semente Maligna"): planta no ALVO (Tipo Grama
+   é imune, regra oficial) -- a cada FIM de Rodada, drena 1/8 do PV
+   Máximo de quem está com a semente e cura o mesmo tanto em quem
+   estiver ATIVO do lado oposto NAQUELE momento (não precisa ser quem
+   plantou -- regra oficial: cura o lado, não o Pokémon específico). */
+var LEECH_SEED_MOVE = 'Leech Seed';
+/* Armadilhas de Campo (Cap. "armadilhas de campo (Stealth Rock/Toxic
+   Spikes)"): ficam no CAMPO do lado adversário de quem usou (não num
+   Pokémon -- por isso não são bloqueadas por Substituto, que só
+   protege quem está NO CAMPO agora), e batem em quem ENTRAR depois
+   (ver aplicarArmadilhasDeEntrada, chamado 1x por battler novo em
+   runBattleUntilPause). Pedras Pontiagudas: dano por Efetividade de
+   Tipo Pedra (1/32 a 1/2 do PV Máximo conforme o Tipo de quem entra),
+   sem limite de camada (1 é o máximo oficial mesmo). Escamas
+   Venenosas: até 2 camadas (1 = Veneno normal, 2 = Veneno Grave),
+   Tipo Voador imune (simplificação -- Levitate de Habilidade real fica
+   pra leva de Habilidade em luta, mesma régua do resto do Terreno),
+   Tipo Venenoso absorve e REMOVE a armadilha ao entrar (regra
+   oficial). */
+var HAZARD_MOVES = { 'Stealth Rock':'stealthRock', 'Toxic Spikes':'toxicSpikes' };
+/* Golpes de carregar 2 turnos (Cap. "golpes de carregar 2 turnos (Solar
+   Beam etc.)"): 1º turno só anuncia a carga (sem agir de verdade,
+   `user.chargingMove` guarda o Movimento pro próximo turno); 2º turno
+   libera o golpe igual qualquer outro (pula a pausa de novo -- ver o
+   topo de resolveGaTurn). PP só é gasto UMA VEZ, na carga (regra
+   oficial). Solar Beam/Solar Blade dispensam a carga inteira sob Sol
+   Forte (regra oficial, `SOLAR_CHARGE_MOVES`). Simplificação
+   documentada: a invulnerabilidade de meio-turno de Fly/Dig/Dive/
+   Bounce/Shadow Force/Phantom Force (esquivar de quase tudo durante a
+   carga) NÃO é simulada -- só o "carrega 1 turno, ataca no outro" -- e
+   Meteor Beam não ganha o bônus de Ataque Especial próprio na carga
+   (casos únicos de mais fora do "bem enxuto" já documentado alhures). */
+var CHARGE_MOVES = { 'Solar Beam':1, 'Solar Blade':1, 'Sky Attack':1, 'Razor Wind':1, 'Skull Bash':1, 'Fly':1, 'Dig':1, 'Dive':1, 'Bounce':1, 'Freeze Shock':1, 'Ice Burn':1, 'Meteor Beam':1, 'Geomancy':1, 'Shadow Force':1, 'Phantom Force':1 };
+var SOLAR_CHARGE_MOVES = { 'Solar Beam':1, 'Solar Blade':1 };
+/* Nocaute em 1 Golpe (Cap. "Nocaute em 1 Golpe"): fórmula oficial de
+   acerto -- 30% + (Nível do usuário - Nível do alvo), falha sempre se
+   o alvo tem Nível MAIOR que o usuário. Sheer Cold tem a imunidade
+   extra oficial de Tipo Gelo (nunca afeta outro Gelo, mesmo não
+   estando na tabela de Tipo -- regra específica só dela). Contra um
+   Substituto, quebra o Substituto sem afetar o PV real (regra
+   oficial). */
+var OHKO_MOVES = { 'Fissure':1, 'Guillotine':1, 'Horn Drill':1, 'Sheer Cold':1 };
+/* Golpes de dano fixo (Cap. "golpes de dano fixo"): ignoram a fórmula
+   de dano inteira (Ataque/Defesa/Tipo -- só a IMUNIDADE completa por
+   Tipo ainda bloqueia, regra oficial), cada um com sua própria conta:
+   fixo = valor fixo sempre igual; nivel = dano igual ao Nível de quem
+   usou (Night Shade/Seismic Toss); metadeAtual = metade do PV ATUAL do
+   alvo (Super Fang); igualaAtual = corta o PV do alvo até igualar o do
+   usuário (Endeavor -- falha se o alvo já tem PV igual ou menor);
+   igualaProprio = dano igual ao PRÓPRIO PV atual, e o usuário desmaia
+   em seguida (Final Gambit). */
+var FIXED_DAMAGE_MOVES = {
+  'Sonic Boom': { fixo: 20 },
+  'Dragon Rage': { fixo: 40 },
+  'Night Shade': { nivel: true },
+  'Seismic Toss': { nivel: true },
+  'Super Fang': { metadeAtual: true },
+  'Endeavor': { igualaAtual: true },
+  'Final Gambit': { igualaProprio: true }
+};
+/* Counter/Mirror Coat (Cap. "Counter/Mirror Coat"): revidam o DOBRO do
+   dano REAL (não absorvido por Substituto) que o PRÓPRIO usuário
+   sofreu NESTA RODADA por um golpe da categoria certa (Físico pro
+   Counter, Especial pro Mirror Coat) -- falham sem efeito nenhum se
+   não sofreram nada da categoria certa ainda nesta Rodada. `lastHitTaken`
+   é zerado no INÍCIO de cada Rodada (mesmo lugar que já zerava
+   `flinch`) e setado dentro do golpe de dano em resolveGaTurn --
+   funciona sozinho contra quem for mais rápido (Prioridade -5 dos
+   2 Movimentos, ver a ordem de Iniciativa por Prioridade em
+   runBattleUntilPause/resolverRodadaDuelo, que agora considera
+   Prioridade ANTES de Velocidade -- antes desta leva só usava
+   Velocidade, então nenhum Movimento de Prioridade real (nem os 2
+   golpes de Prioridade -5 nem os de +1/+2 que já existiam nos dados)
+   tinha efeito nenhum na ordem). */
+var COUNTER_MOVES = { 'Counter':'Físico', 'Mirror Coat':'Especial' };
+
+/* Armadilha do campo aplicada em quem ACABOU de entrar em campo do
+   lado `ladoAlvo` ("player" ou "opponent") -- chamada 1x por battler
+   NOVO (marcado com `_hazardsApplied`, checado no topo de
+   runBattleUntilPause antes até da 1ª Rodada, cobrindo o próprio líder
+   que abre a luta -- igual ao jogo oficial). */
+function aplicarArmadilhasDeEntrada(battler, ladoAlvo, b){
+  b.hazards = b.hazards || { player:{stealthRock:false,toxicSpikes:0}, opponent:{stealthRock:false,toxicSpikes:0} };
+  var haz = b.hazards[ladoAlvo]; if(!haz) return;
+  var nome = displayName(battler);
+  var sp = speciesByNum(battler.num);
+  if(haz.stealthRock && b.hp[battler.key]>0){
+    var mult = typeEffMultiplier('Pedra', sp.tipo1, sp.tipo2);
+    var dano = Math.max(1, Math.floor(gaHpMax(battler) * mult / 8));
+    b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
+    b.log.push('🪨 Pedras Pontiagudas cravaram em '+nome+' ao entrar -- '+dano+' de dano.');
+  }
+  if(haz.toxicSpikes>0 && b.hp[battler.key]>0){
+    var tipos = [sp.tipo1, sp.tipo2];
+    if(tipos.indexOf('Voador')===-1){
+      if(tipos.indexOf('Venenoso')!==-1){
+        haz.toxicSpikes = 0;
+        b.log.push('☠️ '+nome+' (Tipo Venenoso) absorveu as Escamas Venenosas ao entrar -- a armadilha some do campo.');
+      } else if(!battler.status){
+        battler.status = haz.toxicSpikes>=2 ? 'veneno_grave' : 'veneno';
+        battler.statusTurns = battler.status==='veneno_grave' ? 1 : 0;
+        b.log.push('☠️ '+nome+' pisou nas Escamas Venenosas ao entrar e ficou com '+STATUS_LABELS_PT[battler.status]+'!');
+      }
+    }
+  }
+}
+/* Drenagem de FIM de Rodada da Semente Maligna (ver LEECH_SEED_MOVE
+   acima) -- chamada 1x por Rodada pro par de battlers, depois do dano
+   residual de Status normal e antes do chip de Clima (mesmo padrão de
+   applyWeatherResidual/applyTerrainResidual: 1 função de CAMPO só,
+   nunca por battler individual). */
+function applyLeechSeedResidual(atkB, defB, b){
+  [[atkB,defB],[defB,atkB]].forEach(function(par){
+    var semeado = par[0], oposto = par[1];
+    if(!semeado || !semeado.leechSeeded || b.hp[semeado.key]===undefined || b.hp[semeado.key]<=0) return;
+    var maxSemeado = gaHpMax(semeado);
+    var dreno = Math.min(b.hp[semeado.key], Math.max(1, Math.floor(maxSemeado/8)));
+    b.hp[semeado.key] = Math.max(0, b.hp[semeado.key]-dreno);
+    b.log.push('🌱 Semente Maligna drenou '+dreno+' PV de '+displayName(semeado)+'.');
+    if(oposto && b.hp[oposto.key]!==undefined && b.hp[oposto.key]>0){
+      var maxOposto = gaHpMax(oposto);
+      var antes = b.hp[oposto.key];
+      b.hp[oposto.key] = Math.min(maxOposto, b.hp[oposto.key]+dreno);
+      if(b.hp[oposto.key]>antes) b.log.push('🌱 '+displayName(oposto)+' recuperou '+(b.hp[oposto.key]-antes)+' PV com a Semente Maligna.');
+    }
+  });
+}
+/* Movimento efetivo de cada lado ANTES de decidir a ordem de Iniciativa
+   da Rodada (Cap. Counter/Mirror Coat precisam de Prioridade real na
+   ordem, ver acima) -- respeita golpe carregando (2º turno sempre
+   libera o MESMO Movimento da carga, sem sortear de novo) e nunca
+   sorteia 2 vezes o Movimento normal (pickMoveByRole é aleatório --
+   sortear de novo dentro de resolveGaTurn escolheria OUTRO Movimento).
+   O resultado é repassado pra resolveGaTurn como `preSelectedMove` pra
+   ela reusar em vez de sortear sozinha. */
+function decidirMovimentoDoTurno(user){
+  if(user.chargingMove) return user.chargingMove;
+  var pool = (user.moves && user.moves.length) ? user.moves : [];
+  return pickMoveByRole(pool, user.papelCombate, user.pp) || FALLBACK_MOVE;
+}
+
 /* Precisão/Evasão (Cap. "quero tudo dos combates mesmo"): rolagem por
    PORCENTAGEM de verdade (não mais o d10 de mesa) -- Precisão do
    Movimento × multiplicador de Estágio de Precisão do usuário ÷
@@ -7193,17 +7409,30 @@ function applyStatChanges(statChanges, moveTarget, user, target, b, userName, ta
    vindo direto de MOVES_OFICIAL (dado real da PokeAPI), não mais um
    efeito por papel inventado. */
 var STRUGGLE_RECOIL_PCT = 0.25;
-function resolveGaTurn(user, target){
+function resolveGaTurn(user, target, preSelectedMove){
   var b = STATE.battle;
   var userName = displayName(user), targetName = speciesByNum(target.num).name;
 
   var impedido = statusImpedeAcao(user, b);
   if(impedido) return;
 
-  var pool = (user.moves && user.moves.length) ? user.moves : [];
-  var move = pickMoveByRole(pool, user.papelCombate, user.pp) || FALLBACK_MOVE;
+  // Cap. golpes de carregar 2 turnos: o 2º turno (liberando a carga)
+  // sempre reusa o MESMO Movimento guardado, nunca sorteia outro nem
+  // gasta PP de novo (já foi gasto na carga). `preSelectedMove` (pré-
+  // decidido em runBattleUntilPause/resolverRodadaDuelo pra Prioridade
+  // valer na ordem da Rodada) só é usado quando não está carregando --
+  // ver decidirMovimentoDoTurno.
+  var move, liberandoCarga = false;
+  if(user.chargingMove){
+    move = user.chargingMove;
+    user.chargingMove = null;
+    liberandoCarga = true;
+  } else {
+    var pool = (user.moves && user.moves.length) ? user.moves : [];
+    move = preSelectedMove || pickMoveByRole(pool, user.papelCombate, user.pp) || FALLBACK_MOVE;
+  }
   var of = officialMoveData(move);
-  if(move.name!=='Struggle' && user.pp && user.pp[move.name]!==undefined) user.pp[move.name] = Math.max(0, user.pp[move.name]-1);
+  if(!liberandoCarga && move.name!=='Struggle' && user.pp && user.pp[move.name]!==undefined) user.pp[move.name] = Math.max(0, user.pp[move.name]-1);
 
   // Struggle: sempre acerta, sem Tipo (nunca Super/Pouco Efetivo), recuo de 1/4 do próprio PV Máximo
   if(move.name==='Struggle'){
@@ -7212,6 +7441,117 @@ function resolveGaTurn(user, target){
     var recuo = Math.max(1, Math.floor(gaHpMax(user)*STRUGGLE_RECOIL_PCT));
     b.hp[user.key] = Math.max(0, b.hp[user.key]-recuo);
     b.log.push('💢 '+userName+' usou Struggle (sem PP sobrando!) em '+targetName+' -- '+struggleDano+' de dano, e sofreu '+recuo+' de recuo.');
+    return;
+  }
+
+  // Cap. golpes de carregar 2 turnos: 1º turno só anuncia e guarda o
+  // Movimento (`user.chargingMove`) pro próximo -- nunca rola Precisão/
+  // Crítico/dano nesse turno. Solar Beam/Solar Blade pulam essa pausa
+  // inteira sob Sol Forte (regra oficial).
+  if(!liberandoCarga && CHARGE_MOVES[move.name] && !(SOLAR_CHARGE_MOVES[move.name] && weatherTipo()==='sol')){
+    user.chargingMove = move;
+    b.log.push('✨ '+userName+' está carregando energia pra usar '+move.name+'!');
+    return;
+  }
+  if(liberandoCarga) b.log.push('💥 '+userName+' liberou a energia carregada!');
+
+  // Cap. Counter/Mirror Coat: revidam o DOBRO do dano REAL sofrido
+  // nesta Rodada por um golpe da categoria certa -- fora da fórmula de
+  // dano genérica (Poder null nesses 2) e sem passar pela Precisão
+  // normal (sempre "acertam" quando têm o que revidar).
+  if(COUNTER_MOVES[move.name]){
+    var categoriaEsperada = COUNTER_MOVES[move.name];
+    var golpeSofrido = user.lastHitTaken;
+    if(!golpeSofrido || golpeSofrido.categoria!==categoriaEsperada){
+      b.log.push('💢 '+userName+' usou '+move.name+', mas não havia nada pra revidar.');
+      return;
+    }
+    var danoContra = Math.min(b.hp[target.key], golpeSofrido.dano*2);
+    if(target.subHp>0){
+      var absorvidoContra = Math.min(target.subHp, danoContra);
+      target.subHp -= absorvidoContra;
+      b.log.push('💢 '+userName+' usou '+move.name+' -- atingiu o Substituto de '+targetName+' ('+absorvidoContra+' de dano absorvido).'+(target.subHp<=0?' O Substituto quebrou!':''));
+    } else {
+      b.hp[target.key] = Math.max(0, b.hp[target.key]-danoContra);
+      b.log.push('💢 '+userName+' usou '+move.name+' e revidou '+danoContra+' de dano em '+targetName+'!');
+    }
+    return;
+  }
+
+  // Cap. Nocaute em 1 Golpe: fórmula oficial de acerto por diferença de
+  // Nível (nunca acerta contra Nível maior), imunidade de Tipo normal
+  // (Voador imune a Fissure/Terra, Fantasma imune a Normal etc. -- já
+  // vem de typeEffMultiplier) + a imunidade extra só do Sheer Cold
+  // (Tipo Gelo nunca afeta outro Gelo, regra específica dele).
+  if(OHKO_MOVES[move.name]){
+    var targetSpOhko = speciesByNum(target.num);
+    var typeEffOhko = typeEffMultiplier(move.tipo, targetSpOhko.tipo1, targetSpOhko.tipo2);
+    var imuneGeloSheer = move.name==='Sheer Cold' && (targetSpOhko.tipo1==='Gelo' || targetSpOhko.tipo2==='Gelo');
+    if(typeEffOhko===0 || imuneGeloSheer){
+      b.log.push('🛡️ '+userName+' usou '+move.name+' -- não afeta '+targetName+' (imune).');
+      return;
+    }
+    if(target.level > user.level){
+      b.log.push('❌ '+userName+' usou '+move.name+', mas '+targetName+' tem Nível maior -- não tem como acertar.');
+      return;
+    }
+    var chanceOhko = clampInt(30 + (user.level-target.level), 0, 100);
+    if(Math.random()*100 >= chanceOhko){
+      b.log.push('❌ '+userName+' usou '+move.name+', mas errou '+targetName+'.');
+      return;
+    }
+    if(target.subHp>0){
+      target.subHp = 0;
+      b.log.push('💀 '+userName+' usou '+move.name+' -- quebrou o Substituto de '+targetName+' (Nocaute em 1 Golpe não afeta o PV real através dele).');
+      return;
+    }
+    b.hp[target.key] = 0;
+    b.log.push('💀 '+userName+' usou '+move.name+' -- Nocaute em 1 Golpe! '+targetName+' desmaiou na hora!');
+    return;
+  }
+
+  // Cap. golpes de dano fixo: ignoram a fórmula de dano inteira (só a
+  // imunidade completa de Tipo ainda bloqueia) -- cada um com sua
+  // própria conta, ver FIXED_DAMAGE_MOVES acima.
+  if(FIXED_DAMAGE_MOVES[move.name]){
+    var fd = FIXED_DAMAGE_MOVES[move.name];
+    var targetSpFd = speciesByNum(target.num);
+    var typeEffFd = typeEffMultiplier(move.tipo, targetSpFd.tipo1, targetSpFd.tipo2);
+    if(typeEffFd===0){
+      b.log.push('🛡️ '+userName+' usou '+move.name+' -- não afeta '+targetName+' (imune).');
+      return;
+    }
+    var hitFd = officialAccuracyRoll(move, user, target);
+    if(!hitFd){
+      b.log.push('❌ '+userName+' usou '+move.name+', mas errou '+targetName+'.');
+      return;
+    }
+    var danoFd;
+    if(fd.fixo!=null) danoFd = fd.fixo;
+    else if(fd.nivel) danoFd = user.level;
+    else if(fd.metadeAtual) danoFd = Math.max(1, Math.floor(b.hp[target.key]/2));
+    else if(fd.igualaAtual){
+      if(b.hp[target.key] <= b.hp[user.key]){
+        b.log.push(userName+' usou '+move.name+', mas falhou ('+targetName+' já está com PV igual ou menor).');
+        return;
+      }
+      danoFd = b.hp[target.key] - b.hp[user.key];
+    } else if(fd.igualaProprio){
+      danoFd = b.hp[user.key];
+    }
+    if(target.subHp>0){
+      var absorvidoFd = Math.min(target.subHp, danoFd);
+      target.subHp -= absorvidoFd;
+      b.log.push('⚔️ '+userName+' usou '+move.name+' -- atingiu o Substituto de '+targetName+' ('+absorvidoFd+' de dano).'+(target.subHp<=0?' O Substituto quebrou!':''));
+    } else {
+      b.hp[target.key] = Math.max(0, b.hp[target.key]-danoFd);
+      target.lastHitTaken = { dano: danoFd, categoria: move.categoria };
+      b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+' -- '+danoFd+' de dano.');
+    }
+    if(fd.igualaProprio){
+      b.hp[user.key] = 0;
+      b.log.push(userName+' desmaiou pelo recuo total de '+move.name+'!');
+    }
     return;
   }
 
@@ -7238,6 +7578,66 @@ function resolveGaTurn(user, target){
     if(TERRAIN_SET_MOVES[move.name]){
       setTerrain(TERRAIN_SET_MOVES[move.name]);
       b.log.push(TERRAIN_ICONS[TERRAIN_SET_MOVES[move.name]]+' '+userName+' usou '+move.name+' -- o campo virou '+TERRAIN_LABELS[TERRAIN_SET_MOVES[move.name]]+'!');
+      return;
+    }
+    // Cap. Armadilhas de Campo: ficam no CAMPO do lado adversário de
+    // quem usou (não bloqueado por Substituto -- é o campo, não o
+    // Pokémon), batem em quem ENTRAR depois (ver
+    // aplicarArmadilhasDeEntrada em runBattleUntilPause).
+    if(HAZARD_MOVES[move.name]){
+      b.hazards = b.hazards || { player:{stealthRock:false,toxicSpikes:0}, opponent:{stealthRock:false,toxicSpikes:0} };
+      var ladoAlvoHaz = user.side==='player' ? 'opponent' : 'player';
+      var hazArmado = b.hazards[ladoAlvoHaz];
+      var chaveArmadilha = HAZARD_MOVES[move.name];
+      if(chaveArmadilha==='stealthRock'){
+        if(hazArmado.stealthRock){ b.log.push(userName+' usou '+move.name+', mas o campo adversário já tem Pedras Pontiagudas.'); return; }
+        hazArmado.stealthRock = true;
+        b.log.push('🪨 '+userName+' espalhou Pedras Pontiagudas do lado adversário!');
+      } else {
+        if(hazArmado.toxicSpikes>=2){ b.log.push(userName+' usou '+move.name+', mas o campo adversário já está no máximo (2 camadas).'); return; }
+        hazArmado.toxicSpikes = (hazArmado.toxicSpikes||0)+1;
+        b.log.push('☠️ '+userName+' espalhou Escamas Venenosas do lado adversário ('+hazArmado.toxicSpikes+' camada(s))!');
+      }
+      return;
+    }
+    // Cap. Substituto: golpe de Status que mira o OPONENTE (não o
+    // próprio usuário) falha por completo contra quem está atrás de um
+    // Substituto de verdade (oficial) -- cura/buff no PRÓPRIO usuário
+    // continua passando batido (o Substituto só protege de quem mira
+    // ELE, não do próprio dono).
+    if(of.moveTarget!=='user' && target.subHp>0){
+      b.log.push('🟫 '+userName+' usou '+move.name+', mas o Substituto de '+targetName+' bloqueou.');
+      return;
+    }
+    // Cap. Substituto: cria o "boneco" com 1/4 do próprio PV Máximo --
+    // falha se não sobrar PV suficiente pra pagar sem desmaiar.
+    if(move.name===SUBSTITUTE_MOVE){
+      if(user.subHp>0){
+        b.log.push(userName+' já tem um Substituto.');
+      } else {
+        var maxSub = gaHpMax(user), custoSub = Math.floor(maxSub/4);
+        if(b.hp[user.key] <= custoSub){
+          b.log.push(userName+' não tem PV suficiente pra criar um Substituto.');
+        } else {
+          b.hp[user.key] -= custoSub;
+          user.subHp = Math.max(1, custoSub);
+          b.log.push('🟫 '+userName+' criou um Substituto! (custou '+custoSub+' PV)');
+        }
+      }
+      return;
+    }
+    // Cap. Semente Maligna: planta no ALVO -- Tipo Grama é imune
+    // (regra oficial), não empilha se já está plantada.
+    if(move.name===LEECH_SEED_MOVE){
+      var targetSpSeed = speciesByNum(target.num);
+      if([targetSpSeed.tipo1, targetSpSeed.tipo2].indexOf('Grama')!==-1){
+        b.log.push('🌱 '+userName+' tentou plantar Semente Maligna em '+targetName+', mas Tipo Grama é imune.');
+      } else if(target.leechSeeded){
+        b.log.push('🌱 '+targetName+' já está com Semente Maligna plantada.');
+      } else {
+        target.leechSeeded = true;
+        b.log.push('🌱 '+userName+' plantou Semente Maligna em '+targetName+'!');
+      }
       return;
     }
     // cura (Recover/Roost/Synthesis...) -- healing% do PV Máximo de quem usou
@@ -7274,19 +7674,33 @@ function resolveGaTurn(user, target){
     return;
   }
   var hits = officialHitCount(of.minHits, of.maxHits);
-  var totalDano = 0, ultimoResult = null;
+  var totalDano = 0, ultimoResult = null, atingiuSubstituto = false;
   for(var h=0; h<hits; h++){
-    if(b.hp[target.key]<=0) break; // desmaiou no meio de um golpe de vários hits -- para aqui
+    if(b.hp[target.key]<=0 && target.subHp<=0) break; // desmaiou (ou o Substituto quebrou) no meio de um golpe de vários hits -- para aqui
     var result = officialDamage(user, target, move, crit);
-    b.hp[target.key] = Math.max(0, b.hp[target.key]-result.dano);
-    totalDano += result.dano;
     ultimoResult = result;
+    if(target.subHp>0){
+      // Cap. Substituto: absorve o dano no lugar do PV real -- quebrar encerra os hits restantes (regra oficial)
+      atingiuSubstituto = true;
+      var absorvido = Math.min(target.subHp, result.dano);
+      target.subHp -= absorvido;
+      totalDano += absorvido;
+      if(target.subHp<=0) break;
+    } else {
+      b.hp[target.key] = Math.max(0, b.hp[target.key]-result.dano);
+      totalDano += result.dano;
+    }
   }
   var extra = (ultimoResult.typeEff>=2?' Super efetivo!':(ultimoResult.typeEff>0&&ultimoResult.typeEff<1?' Pouco efetivo.':'')) + (crit?' Crítico!':'');
   var hitsMsg = hits>1 ? ' ('+hits+' vezes)' : '';
-  b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- '+totalDano+' de dano.'+extra);
+  if(atingiuSubstituto){
+    b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- atingiu o Substituto ('+totalDano+' de dano absorvido).'+extra+(target.subHp<=0?' O Substituto quebrou!':''));
+  } else {
+    target.lastHitTaken = { dano: totalDano, categoria: move.categoria }; // Cap. Counter/Mirror Coat: só dano REAL conta
+    b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- '+totalDano+' de dano.'+extra);
+  }
 
-  // recuo/dreno (Cap. oficial -- % do dano causado, positivo dreno/negativo recuo)
+  // recuo/dreno (Cap. oficial -- % do dano causado, positivo dreno/negativo recuo -- vale mesmo contra Substituto, regra oficial)
   if(of.drain!==0 && totalDano>0){
     var drainQtd = Math.max(1, Math.round(totalDano*Math.abs(of.drain)/100));
     if(of.drain>0){
@@ -7301,13 +7715,17 @@ function resolveGaTurn(user, target){
   }
 
   if(b.hp[target.key]>0){
-    // efeitos secundários só valem se o alvo continua de pé
-    if(of.flinchChance>0 && Math.random()*100<of.flinchChance){ target.flinch = true; b.log.push('😨 '+targetName+' hesitou!'); }
-    if(of.ailment && of.ailment!=='none'){
-      var chanceAilment = of.ailmentChance>0 ? of.ailmentChance : 0; // golpe de dano SEM ailmentChance>0 não tem efeito secundário de status
-      if(chanceAilment>0 && Math.random()*100<chanceAilment) applyAilment(target, of.ailment, move.name, b, targetName);
+    // efeitos secundários só valem se o alvo continua de pé, e o
+    // Substituto bloqueia os que mirariam ELE (não os que mirariam o
+    // próprio usuário, caso raro de golpe de dano com buff próprio)
+    if(!atingiuSubstituto){
+      if(of.flinchChance>0 && Math.random()*100<of.flinchChance){ target.flinch = true; b.log.push('😨 '+targetName+' hesitou!'); }
+      if(of.ailment && of.ailment!=='none'){
+        var chanceAilment = of.ailmentChance>0 ? of.ailmentChance : 0; // golpe de dano SEM ailmentChance>0 não tem efeito secundário de status
+        if(chanceAilment>0 && Math.random()*100<chanceAilment) applyAilment(target, of.ailment, move.name, b, targetName);
+      }
     }
-    applyStatChanges(of.statChance>0 && Math.random()*100<of.statChance ? of.statChanges : null, of.moveTarget, user, target, b, userName, targetName);
+    applyStatChanges((!atingiuSubstituto || of.moveTarget==='user') && of.statChance>0 && Math.random()*100<of.statChance ? of.statChanges : null, of.moveTarget, user, target, b, userName, targetName);
   }
 }
 
@@ -8229,10 +8647,23 @@ function resolverRodadaDuelo(d){
     return;
   }
   var aB = b.ativoA, bB = b.ativoB;
+  // Cap. mecânicas específicas faltando: MESMA ordem por Prioridade
+  // (Counter/Mirror Coat) da luta normal -- ver decidirMovimentoDoTurno/
+  // runBattleUntilPause. Armadilha de Campo fica de fora do Duelo de
+  // propósito (ver o comentário grande logo acima de COUNTER_MOVES) --
+  // os 2 lados usam side:'player' igual (mesmo buildBattlerFromParty),
+  // então não dá pra saber "o lado adversário" de verdade aqui.
+  var aMove = decidirMovimentoDoTurno(aB);
+  var bMove = decidirMovimentoDoTurno(bB);
+  var aPrio = officialMoveData(aMove).priority||0;
+  var bPrio = officialMoveData(bMove).priority||0;
   var aSpe = effStatWithStage(aB,'spe') * (aB.status==='paralisia'?0.5:1);
   var bSpe = effStatWithStage(bB,'spe') * (bB.status==='paralisia'?0.5:1);
-  var order = (aSpe===bSpe ? Math.random()<0.5 : aSpe>bSpe) ? [aB,bB] : [bB,aB];
+  var aFirst = aPrio!==bPrio ? aPrio>bPrio : (aSpe===bSpe ? Math.random()<0.5 : aSpe>bSpe);
+  var order = aFirst ? [aB,bB] : [bB,aB];
+  var moveOrder = aFirst ? [aMove,bMove] : [bMove,aMove];
   aB.flinch=false; bB.flinch=false;
+  aB.lastHitTaken=null; bB.lastHitTaken=null;
   var backupBattle = STATE.battle;
   STATE.battle = b;
   var pausou = false;
@@ -8241,7 +8672,7 @@ function resolverRodadaDuelo(d){
       var user = order[i], target = order[i]===aB ? bB : aB;
       if(b.hp[user.key]<=0 || b.hp[target.key]<=0) continue;
       if(user.flinch){ b.log.push('😨 '+displayName(user)+' hesitou e não conseguiu agir.'); user.flinch=false; continue; }
-      resolveGaTurn(user, target);
+      resolveGaTurn(user, target, moveOrder[i]);
       if(b.hp[target.key]<=0){
         if(duelResolveFaint(d, target===aB?'a':'b')){ pausou=true; }
       } else {
@@ -8256,6 +8687,11 @@ function resolverRodadaDuelo(d){
     if(!pausou && !b.vencedor){
       applyEndOfTurnStatus(aB,b); if(b.hp[aB.key]<=0 && duelResolveFaint(d,'a')) pausou=true;
       if(!pausou){ applyEndOfTurnStatus(bB,b); if(b.hp[bB.key]<=0 && duelResolveFaint(d,'b')) pausou=true; }
+      if(!pausou){
+        applyLeechSeedResidual(aB,bB,b);
+        if(b.hp[aB.key]<=0 && duelResolveFaint(d,'a')) pausou=true;
+        else if(b.hp[bB.key]<=0 && duelResolveFaint(d,'b')) pausou=true;
+      }
       if(!pausou){
         applyWeatherResidual(aB,bB,b);
         if(b.hp[aB.key]<=0 && duelResolveFaint(d,'a')) pausou=true;
