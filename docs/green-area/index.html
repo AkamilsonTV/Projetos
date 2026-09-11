@@ -10840,15 +10840,34 @@ function evolucaoSequenciaPopupHTML(p){
    troca têm o PRÓPRIO gatilho, checado por quem chama isto -- ver os
    2 call sites). `motivoLog` vai só no Registro de ações, pra diferenciar
    "evoluiu por Nível" de "evoluiu com uma Pedra Trovão" etc. */
-function aplicarEvolucaoForaDeLuta(p, toNum, motivoLog){
+function aplicarEvolucaoForaDeLuta(p, toNum, motivoLog, forma){
   var oldSp = speciesByNum(p.num);
   var newSp = speciesByNum(toNum);
   var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
   p.num = toNum;
+  /* Cap. leva desta sessão ("Cada urshifu tem que ter seus moveset
+     específico"): `forma` só vem preenchido quando quem chamou já
+     sabe qual (hoje só DT.gaUsarPedra, indexado por URSHIFU_FORM_
+     BY_ITEM) -- pra qualquer OUTRA evolução (Nível/Troca/Felicidade),
+     `forma` vem undefined e essa linha não faz nada, `p.forma` nunca
+     é setado à toa numa Espécie sem SPECIES_FORM_LEARNSET_OVERRIDE. */
+  if(forma) p.forma = forma;
   if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
   else p.habilidade = rollAbilityForSpecies(p.num);
   markSeen(p.num); markCaught(p.num);
   logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+motivoLog+'.');
+  /* Golpe de evolução da forma (Wicked Blow/Surging Strikes) --
+     ensinado automaticamente e de graça, sem perguntar (é o próprio
+     golpe que DEFINE a forma, diferente do bônus eletivo genérico
+     logo abaixo) -- só se sobrar espaço vazio, igual todo o resto. */
+  var evoMove = formaEvoMove(p.num, p.forma);
+  if(evoMove){
+    var evoMoveObj = findMoveByName(evoMove);
+    if(evoMoveObj && (p.moves||[]).length<4 && !(p.moves||[]).some(function(m){ return m.name===evoMove; })){
+      p.moves[p.moves.length] = evoMoveObj;
+      logAction('equipe', (p.apelido||newSp.name)+' aprendeu '+evoMove+' (golpe de evolução, grátis).');
+    }
+  }
   if((p.moves||[]).length<4 && movimentosElegiveis(p).length>0){
     SESSION.pendingAprenderMovimentoSequencia = { partyId: p.id };
   }
@@ -10937,7 +10956,7 @@ DT.gaUsarPedra = function(pid, stoneKey){
   var alvo = pedrasElegiveisPara(p).filter(function(x){ return x.pedra.key===stoneKey; })[0];
   if(!alvo) return;
   STATE.itens[stoneKey] = STATE.itens[stoneKey]-1;
-  aplicarEvolucaoForaDeLuta(p, alvo.to, ' (usou '+pedra.nome+')');
+  aplicarEvolucaoForaDeLuta(p, alvo.to, ' (usou '+pedra.nome+')', URSHIFU_FORM_BY_ITEM[stoneKey]);
   SESSION.usarPedraFor = null;
   mutate();
 };
@@ -11002,7 +11021,7 @@ function aprenderMovimentoSequenciaPopupHTML(pa){
   var sp = speciesByNum(p.num);
   var elegiveis = movimentosElegiveis(p);
   var opts = elegiveis.map(function(o){
-    var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : ' (TM)');
+    var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : (o.fonte==='evolucao' ? ' (golpe de evolução)' : ' (TM)'));
     return '<option value="'+esc2(o.name)+'">'+esc2(rotulo)+'</option>';
   }).join('');
   return '<div class="ga-overlay" onclick="DT.gaAprenderMovimentoSequencia(\'\')"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
@@ -11186,6 +11205,75 @@ var ALT_FORMS = {
     { key:'rapid-strike', nome:'Rapid Strike Style', tipo1:'Lutador', tipo2:'Água', spriteNum:10191, golpeAssinatura:'Surging Strikes' }
   ]
 };
+/* Cap. leva desta sessão ("Cada urshifu tem que ter seus moveset
+   específico. Isso tem que estar incluso no rpg também"): até esta
+   leva, a aba de forma alternativa acima era só EXIBIÇÃO -- qualquer
+   Urshifu (não importa qual Pergaminho usado pra evoluir) tinha o
+   MESMO kit de Movimentos disponíveis (o de Single Strike, que é o
+   único que `extract.js` puxou -- Rapid Strike é uma "variedade" não-
+   padrão da PokeAPI, nunca buscada). Corrigido de verdade: cada
+   INDIVÍDUO agora carrega `p.forma` ('single-strike'/'rapid-strike',
+   undefined = comportamento de sempre = Single Strike), atribuído no
+   momento da evolução conforme qual Pergaminho foi usado (ver
+   URSHIFU_FORM_BY_ITEM + DT.gaUsarPedra/aplicarEvolucaoForaDeLuta
+   abaixo) -- nunca uma Espécie nova, só um campo a mais no Pokémon.
+
+   Dados confirmados por request direto (curl) na PokeAPI antes de
+   escrever isso, nunca inventados -- diff exato entre as 2 variedades
+   reais (`urshifu-single-strike` é a que já embasa LEARNSETS[892]
+   inteiro, então só precisamos documentar a DIFERENÇA da Rapid
+   Strike em cima dele): o Movimento de Nível 1 "Sucker Punch" vira
+   "Aqua Jet" (mesmo Nível), o golpe de evolução some (Wicked Blow,
+   nunca ensinado por LEARNSETS[*].evo até esta leva -- essa chave
+   nunca foi lida em lugar nenhum do código, dado morto -- ver
+   formaEvoMove abaixo) e vira "Surging Strikes", e 8 TMs exclusivas
+   de Tipo Sombrio (Crunch/Dark Pulse/Foul Play/Lash Out/Metal Claw/
+   Roar/Snarl/Throat Chop -- as que EXISTEM em LEARNSETS[892].tm hoje)
+   saem pra dar lugar a 9 TMs de Tipo Água (Brine/Chilling Water/Dive/
+   Ice Spinner/Liquidation/Rain Dance/Scald/Waterfall/Whirlpool,
+   confirmadas learnable-por-TM na variedade Rapid Strike de verdade).
+   Todo o resto do Learnset (16 Movimentos de Nível compartilhados +
+   demais ~44 TMs) é IDÊNTICO entre as 2 formas -- só a diferença
+   entra no mapa, nunca reescrevendo LEARNSETS[892] inteiro à mão. */
+var SPECIES_FORM_LEARNSET_OVERRIDE = {
+  892: {
+    'single-strike': { evoMove: 'Wicked Blow' }, // levelup/tm ficam iguais ao LEARNSETS[892] cru -- só documenta o golpe de evolução que a chave "evo" original nunca ensinava de verdade
+    'rapid-strike': {
+      levelupRemove: ['Sucker Punch'],
+      levelupAdd: [['Aqua Jet', 1]],
+      evoMove: 'Surging Strikes',
+      tmRemove: ['Crunch','Dark Pulse','Foul Play','Lash Out','Metal Claw','Roar','Snarl','Throat Chop'],
+      tmAdd: ['Brine','Chilling Water','Dive','Ice Spinner','Liquidation','Rain Dance','Scald','Waterfall','Whirlpool']
+    }
+  }
+};
+/* Devolve o Learnset (mesmo formato de LEARNSETS[num]) já com a
+   diferença de forma aplicada -- pra QUALQUER Espécie sem entrada em
+   SPECIES_FORM_LEARNSET_OVERRIDE (todas menos Urshifu hoje), devolve
+   LEARNSETS[num] cru, sem tocar em nada (`forma` undefined também cai
+   aqui de propósito). */
+function learnsetForma(num, forma){
+  var ls = LEARNSETS[num];
+  if(!ls) return ls;
+  var ov = SPECIES_FORM_LEARNSET_OVERRIDE[num] && SPECIES_FORM_LEARNSET_OVERRIDE[num][forma||'single-strike'];
+  if(!ov) return ls;
+  var levelup = (ls.levelup||[]).filter(function(pair){ return (ov.levelupRemove||[]).indexOf(pair[0])===-1; }).concat(ov.levelupAdd||[]);
+  var tm = (ls.tm||[]).filter(function(m){ return (ov.tmRemove||[]).indexOf(m)===-1; }).concat(ov.tmAdd||[]);
+  return { levelup: levelup, tm: tm, evo: ov.evoMove ? [ov.evoMove] : (ls.evo||[]), egg: ls.egg||[] };
+}
+/* Golpe de evolução da forma (Wicked Blow/Surging Strikes) -- só
+   existe pra Espécie com SPECIES_FORM_LEARNSET_OVERRIDE (só Urshifu
+   hoje); pra qualquer outra Espécie (mesmo as 245 com LEARNSETS[*].evo
+   não-vazio) devolve null de propósito -- ensinar esse golpe pras
+   outras 244 é um gap pré-existente maior, fora do escopo desta leva
+   (só Urshifu foi pedido). */
+function formaEvoMove(num, forma){
+  var ov = SPECIES_FORM_LEARNSET_OVERRIDE[num] && SPECIES_FORM_LEARNSET_OVERRIDE[num][forma||'single-strike'];
+  return (ov && ov.evoMove) || null;
+}
+/* Qual Pergaminho (ver EVOLUTION_EXCLUSIVE_ITEMS) vira qual forma --
+   consultado por DT.gaUsarPedra na hora de evoluir Kubfu. */
+var URSHIFU_FORM_BY_ITEM = { 'pergaminho-trevas':'single-strike', 'pergaminho-aguas':'rapid-strike' };
 /* Cap. leva desta sessão: "Coloca a opção de apelido dos pokémon.
    Inicialmente só poderemos colocar uma vez, depois disso fica
    travado. Vamos desenvolver um item depois pra mudar nome, por
@@ -11851,7 +11939,12 @@ function equipeScreenHTML(){
    Nível já liberado (10 Energia) ou TM que o Treinador tem em
    estoque (grátis, consome 1 TM) -- excluindo o que já conhece. */
 function movimentosElegiveis(poke){
-  var ls = LEARNSETS[poke.num];
+  /* Cap. leva desta sessão ("Cada urshifu tem que ter seus moveset
+     específico"): `learnsetForma` já devolve LEARNSETS[poke.num] cru
+     pra qualquer Pokémon sem `forma`/sem override (todo o resto do
+     jogo, sem exceção) -- só muda de verdade pra um Urshifu com
+     `poke.forma` setado. */
+  var ls = learnsetForma(poke.num, poke.forma);
   var conhecidos = {};
   (poke.moves||[]).forEach(function(m){ conhecidos[m.name]=true; });
   var opcoes = [];
@@ -11869,6 +11962,16 @@ function movimentosElegiveis(poke){
       }
     });
   }
+  /* Golpe de evolução da forma (Wicked Blow/Surging Strikes) -- SEM
+     custo nenhum (nem Nível nem TM), igual o bônus automático já
+     ensina na hora de evoluir (ver aplicarEvolucaoForaDeLuta); essa
+     entrada aqui cobre o caso de não ter sobrado espaço NAQUELA hora
+     -- o Treinador ainda consegue trocar pra ele depois, na tela
+     normal de Movimentos. */
+  var evoMove = formaEvoMove(poke.num, poke.forma);
+  if(evoMove && !conhecidos[evoMove] && !opcoes.some(function(o){ return o.name===evoMove; })){
+    opcoes.push({ name:evoMove, fonte:'evolucao' });
+  }
   opcoes.sort(function(a,b){ return a.name<b.name?-1:(a.name>b.name?1:0); });
   return opcoes;
 }
@@ -11880,22 +11983,27 @@ DT.gaTrocarMovimento = function(pid, slotIndex, moveName){
   var moveObj = findMoveByName(moveName);
   if(!moveObj){ SESSION.error='Movimento não encontrado.'; render(); return; }
   if((p.moves||[]).some(function(m){ return m.name===moveObj.name; })){ SESSION.error='Esse Pokémon já conhece esse Movimento.'; render(); return; }
-  var ls = LEARNSETS[p.num];
+  var ls = learnsetForma(p.num, p.forma);
   var viaNivel = ls && ls.levelup && ls.levelup.some(function(pair){ return pair[0]===moveObj.name && pair[1]<=p.level; });
   var viaTM = ls && ls.tm && ls.tm.indexOf(moveObj.name)!==-1;
+  /* Golpe de evolução da forma (Wicked Blow/Surging Strikes) -- cobre
+     o caso de não ter sobrado espaço na hora de evoluir (ver
+     movimentosElegiveis acima): dá pra aprender depois aqui, sempre
+     GRÁTIS, mesmo espírito do bônus automático. */
+  var viaEvolucao = formaEvoMove(p.num, p.forma)===moveObj.name;
   if(viaNivel){
     if(STATE.energy<10){ SESSION.error='Energia insuficiente -- trocar Movimento de Nível custa 10.'; render(); return; }
     STATE.energy -= 10;
   } else if(viaTM){
     if((STATE.tms[moveObj.name]||0)<=0){ SESSION.error='Você não tem essa TM -- compre na Loja primeiro.'; render(); return; }
     STATE.tms[moveObj.name] -= 1;
-  } else {
+  } else if(!viaEvolucao){
     SESSION.error='Esse Pokémon não pode aprender esse Movimento (nem por Nível nem por TM).'; render(); return;
   }
   var nomeAntigo = p.moves[slotIndex] ? p.moves[slotIndex].name : '(vazio)';
   p.moves[slotIndex] = moveObj;
   SESSION.notice = (p.apelido||speciesByNum(p.num).name)+' agora conhece '+moveObj.name+'!';
-  logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou o Movimento '+nomeAntigo+' por '+moveObj.name+' (via '+(viaNivel?'Nível, 10 Energia':'TM, grátis')+').');
+  logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou o Movimento '+nomeAntigo+' por '+moveObj.name+' (via '+(viaNivel?'Nível, 10 Energia':(viaTM?'TM, grátis':'golpe de evolução, grátis'))+').');
   mutate();
 };
 function movesPopupHTML(pid){
@@ -11905,7 +12013,7 @@ function movesPopupHTML(pid){
   var elegiveis = movimentosElegiveis(p);
   var moves = p.moves||[];
   var opts = elegiveis.map(function(o){
-    var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : ' (TM — você tem '+(STATE.tms[o.name]||0)+')');
+    var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : (o.fonte==='evolucao' ? ' (golpe de evolução, grátis)' : ' (TM — você tem '+(STATE.tms[o.name]||0)+')'));
     return '<option value="'+esc2(o.name)+'">'+esc2(rotulo)+'</option>';
   }).join('');
   /* Cap. leva desta sessão: "Os 4 tem que estar disponíveis para serem
@@ -12157,12 +12265,19 @@ function areaHintForSpecies(num){
   if(chanceTr>=1) return 'Zona '+zona.nome+' (Níveis '+zona.min+'–'+zona.max+') -- só via Treinador (raro demais na natureza nesse Nível).';
   return 'Zona '+zona.nome+' (Níveis '+zona.min+'–'+zona.max+') -- '+Math.round((1-chanceTr)*100)+'% de chance de ser selvagem lá (o resto é Treinador aleatório).';
 }
-function movimentosPossiveisLista(num){
-  var ls = LEARNSETS[num];
+/* `forma` opcional -- Cap. leva desta sessão ("Cada urshifu tem que
+   ter seus moveset específico"): passada pela aba ativa do popup da
+   Dex (ver dexPopupHTML) pra mostrar o kit de Movimentos REAL de cada
+   forma de Urshifu, não só o de Single Strike sempre. `learnsetForma`
+   já devolve LEARNSETS[num] cru pra qualquer outra Espécie. */
+function movimentosPossiveisLista(num, forma){
+  var ls = learnsetForma(num, forma);
   if(!ls) return [];
   var set = {};
   (ls.levelup||[]).forEach(function(p){ set[p[0]]=true; });
   (ls.tm||[]).forEach(function(n){ set[n]=true; });
+  var evoMove = formaEvoMove(num, forma);
+  if(evoMove) set[evoMove] = true;
   return Object.keys(set).sort();
 }
 function dexPopupHTML(num){
@@ -12201,9 +12316,9 @@ function dexPopupHTML(num){
       (caught
         ? ('<table class="ga-stat-table"><tbody>'+STAT_ORDER.map(function(s){ return '<tr><td>'+STAT_LABELS[s]+'</td><td class="num">'+sp.base[s]+'</td></tr>'; }).join('')+'</tbody></table>')
         : '<p class="ga-hint">Visto, mas ainda não capturado -- os Atributos Base só aparecem depois de capturar.</p>')+
-      (formas ? '<p class="ga-hint">🥋 <strong>Golpe de assinatura ('+esc2(formaAtiva.nome)+'):</strong> '+esc2(formaAtiva.golpeAssinatura)+' <em>(informativo -- os Atributos Base e a Habilidade são idênticos nas 2 formas; este protótipo não distingue golpe exclusivo de forma, o learnset é o mesmo pras 2 abas)</em></p>' : '')+
+      (formas ? '<p class="ga-hint">🥋 <strong>Golpe de assinatura ('+esc2(formaAtiva.nome)+'):</strong> '+esc2(formaAtiva.golpeAssinatura)+' <em>(os Atributos Base e a Habilidade são idênticos nas 2 formas -- só o Tipo secundário e o kit de Movimentos abaixo mudam de verdade, ver "Movimentos possíveis")</em></p>' : '')+
       '<p class="ga-hint">📍 <strong>Onde encontrar:</strong> '+esc2(areaHintForSpecies(num))+'</p>'+
-      '<p class="ga-hint">🗡️ <strong>Movimentos possíveis:</strong> '+esc2(movimentosPossiveisLista(num).join(', ')||'—')+'</p>'+
+      '<p class="ga-hint">🗡️ <strong>Movimentos possíveis:</strong> '+esc2(movimentosPossiveisLista(num, formaAtiva?formaAtiva.key:undefined).join(', ')||'—')+'</p>'+
       '<p class="ga-hint">✨ <strong>Habilidades possíveis:</strong> '+esc2((sp.hab||[]).map(function(h){ return h.n+(h.h?' (oculta)':''); }).join(', ')||'—')+'</p>'+
       loreHTML+
       '<audio controls preload="none" src="https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/'+num+'.ogg">Seu navegador não suporta áudio.</audio>';
@@ -13115,7 +13230,7 @@ function aprenderMovimentoPopupHTML(pa){
   var sp = speciesByNum(p.num);
   var elegiveis = movimentosElegiveis(p);
   var opts = elegiveis.map(function(o){
-    var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : ' (TM)');
+    var rotulo = o.name + (o.fonte==='nivel' ? ' (Nível '+o.reqLevel+')' : (o.fonte==='evolucao' ? ' (golpe de evolução)' : ' (TM)'));
     return '<option value="'+esc2(o.name)+'">'+esc2(rotulo)+'</option>';
   }).join('');
   return '<div class="ga-overlay" onclick="DT.gaResponderAprenderMovimento(\'\')"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
