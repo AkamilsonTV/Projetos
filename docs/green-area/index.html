@@ -5117,7 +5117,29 @@ var EVOLUTION_STONE_OVERRIDE = {
   470: 'pedra-folha',   // Eevee -> Leafeon (Leaf Stone -- alternativa OFICIAL desde Ger. 8)
   471: 'pedra-gelo',    // Eevee -> Glaceon (Ice Stone -- alternativa OFICIAL desde Ger. 8)
   738: 'pedra-trovao',  // Charjabug -> Vikavolt
-  740: 'pedra-gelo'     // Crabrawler -> Crabominable
+  740: 'pedra-gelo',    // Crabrawler -> Crabominable
+  /* Cap. leva desta sessão ("Grupo A" do checklist de evoluções --
+     auditoria fresca em cima de EVOLUTIONS_DETAILS.js, o arquivo
+     COMPLETO da extração original da PokeAPI, nunca embarcado no jogo
+     em si -- ver assemble.js `dataBlocks`, só EVOLUTIONS_DEX.js roda
+     de verdade): Kubfu -> Urshifu (#892) tinha 4 arestas no dado
+     completo (2 gatilhos de localização "tower-of-darkness"/"tower-of-
+     waters" do Legends Arceus + 2 use-item "scroll-of-darkness"/
+     "scroll-of-waters" do Espada/Escudo, todas pro MESMO destino, já
+     que este protótipo não distingue as formas Single/Rapid Strike de
+     Urshifu, só tem 1 entrada #892) -- mas `extract.js` deduplicou pra
+     só 1 aresta (`tower-of-darkness`) em EVOLUTIONS_DEX.js, o dado que
+     RODA de verdade. Como `eligibleEvolution` só exclui explicitamente
+     os gatilhos 'use-item'/'trade'/'shed' do fluxo de Nível normal,
+     qualquer trigger desconhecido (como esse) caía direto no
+     nivelTipico() aproximado -- Kubfu evoluía "por Nível" sem nenhuma
+     base oficial. Corrigido aqui com os 2 itens REAIS (Scroll of
+     Darkness/Waters, ver EVOLUTION_EXCLUSIVE_ITEMS abaixo) -- o valor
+     é um ARRAY (única exceção neste mapa, resto é sempre 1 item por
+     destino) porque os 2 pergaminhos são igualmente válidos pra essa
+     ÚNICA espécie destino aqui (`pedrasElegiveisPara`/`stoneByKey`
+     abaixo tratam string OU array do mesmo jeito). */
+  892: ['pergaminho-trevas', 'pergaminho-aguas']
 };
 /* Cap. leva desta sessão ("Segue com seu próximo palpite" -- 3º grupo
    do checklist, "📦 item exclusivo (10)"): os ~10 itens de evolução
@@ -5145,7 +5167,14 @@ var EVOLUTION_EXCLUSIVE_ITEMS = [
   { key:'liga-metalica', item:'metal-alloy', icon:null, emoji:'🔩', nome:'Metal Alloy', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Duraludon em Archaludon.' },
   { key:'armadura-auspiciosa', item:'auspicious-armor', icon:null, emoji:'🛡️', nome:'Auspicious Armor', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Charcadet em Armarouge.' },
   { key:'armadura-maligna', item:'malicious-armor', icon:null, emoji:'🖤', nome:'Malicious Armor', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Charcadet em Ceruledge.' },
-  { key:'xicara-comum', item:'unremarkable-teacup', icon:null, emoji:'🍵', nome:'Unremarkable Teacup', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Poltchageist em Sinistcha.' }
+  { key:'xicara-comum', item:'unremarkable-teacup', icon:null, emoji:'🍵', nome:'Unremarkable Teacup', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Poltchageist em Sinistcha.' },
+  /* Cap. leva desta sessão ("Grupo A" do checklist -- ver EVOLUTION_
+     STONE_OVERRIDE[892] acima pro porquê): confirmado por curl que
+     NENHUM dos 2 tem sprite oficial na PokeAPI/sprites -- mesmo
+     tratamento dos outros 10 acima. Qualquer um dos 2 evolui Kubfu em
+     Urshifu (só 1 forma aqui, sem Single/Rapid Strike distintos). */
+  { key:'pergaminho-trevas', item:'scroll-of-darkness', icon:null, emoji:'📜', nome:'Scroll of Darkness', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Kubfu em Urshifu.' },
+  { key:'pergaminho-aguas', item:'scroll-of-waters', icon:null, emoji:'📜', nome:'Scroll of Waters', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Kubfu em Urshifu.' }
 ];
 function stoneByKey(key){ return EVOLUTION_STONES.filter(function(s){ return s.key===key; })[0] || EVOLUTION_EXCLUSIVE_ITEMS.filter(function(s){ return s.key===key; })[0] || null; }
 /* Toda pedra/item exclusivo que EXISTE E evoluiria esse Pokémon AGORA
@@ -5161,11 +5190,18 @@ function pedrasElegiveisPara(p){
   opts.forEach(function(e){
     /* Cap. leva desta sessão -- EVOLUTION_STONE_OVERRIDE acima: confere
        ANTES do resto (mesmo pra arestas que nem eram `use-item` no
-       PokeAPI, ex. Feebas/Magneton/Nosepass/Eevee/Charjabug/Crabrawler). */
+       PokeAPI, ex. Feebas/Magneton/Nosepass/Eevee/Charjabug/Crabrawler).
+       Valor pode ser 1 chave (a maioria) OU um array de chaves (só
+       Kubfu->Urshifu, os 2 Pergaminhos servem igual pra essa ÚNICA
+       Espécie destino aqui) -- ambos os formatos empurram 1 opção por
+       item pra `out`, nunca colapsam num só. */
     var overrideKey = EVOLUTION_STONE_OVERRIDE[e.to];
     if(overrideKey){
-      var pedraOverride = stoneByKey(overrideKey);
-      if(pedraOverride) out.push({ pedra: pedraOverride, to: e.to });
+      var overrideKeys = Array.isArray(overrideKey) ? overrideKey : [overrideKey];
+      overrideKeys.forEach(function(k){
+        var pedraOverride = stoneByKey(k);
+        if(pedraOverride) out.push({ pedra: pedraOverride, to: e.to });
+      });
       return;
     }
     if(e.trigger!=='use-item' || !e.item) return;
