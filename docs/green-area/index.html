@@ -5237,6 +5237,187 @@ function rollAbilityForSpecies(num){
   return sp.hab[Math.floor(Math.random()*sp.hab.length)].n;
 }
 
+/* ============================================================
+   Habilidades com gatilho REAL em combate (Cap. "Pode iniciar tudo
+   isso, mas tudo que for mecânica quero do jogo original" -- item
+   "Em aberto" há muito tempo). MESMA lista curada `ABILITY_MECH_SET`
+   já usada no RPG de mesa principal (docs/pokemon-rpg -- 84,5% das
+   1025 Espécies têm pelo menos 1 Habilidade real nela), reaproveitada
+   IGUAL (mesmos ~90 nomes) -- mas a EXECUÇÃO é toda nova aqui, porque
+   o motor da Green Área é bem diferente do de mesa (fórmula oficial
+   de dano/Precisão/Crítico, não d10) e já tem Clima/Terreno/PP/
+   Hesitação/multi-hit que o RPG principal não tinha quando curou essa
+   lista -- então dá pra cobrir tudo isso de verdade. `battler.habilidade`
+   já existe (rolada aleatória na captura, ver rollAbilityForSpecies) --
+   só faltava CONSUMIR ela no motor.
+   Telepathy/Healer/Run Away ficam de fora de propósito (sem efeito
+   possível numa luta 1x1 sem aliado em campo nem sistema de fuga
+   ligado a Habilidade aqui). */
+var ABILITY_MECH_SET = {
+  'Sturdy':1,'Intimidate':1,'Levitate':1,'Own Tempo':1,'Water Absorb':1,'Thick Fat':1,'Flash Fire':1,
+  'Oblivious':1,'Guts':1,'Regenerator':1,'Weak Armor':1,'Hydration':1,'Hustle':1,'Flame Body':1,'Shed Skin':1,
+  'Static':1,'Technician':1,'Leaf Guard':1,'Mold Breaker':1,'Clear Body':1,'Ice Body':1,'Natural Cure':1,
+  'Sap Sipper':1,'Poison Point':1,'Iron Fist':1,'Sniper':1,'Lightning Rod':1,'Synchronize':1,'Insomnia':1,
+  'Vital Spirit':1,'Rattled':1,'Moxie':1,'Defiant':1,'Soundproof':1,'Unaware':1,'Rain Dish':1,'Competitive':1,
+  'Water Veil':1,'Speed Boost':1,'Compound Eyes':1,'Serene Grace':1,'Scrappy':1,'Volt Absorb':1,'Shield Dust':1,
+  'Tinted Lens':1,'Swarm':1,'Overgrow':1,'Blaze':1,'Torrent':1,'Shell Armor':1,'Battle Armor':1,'Telepathy':1,
+  'White Smoke':1,'Full Metal Body':1,'Hyper Cutter':1,'Inner Focus':1,'Contrary':1,'Guard Dog':1,'Limber':1,
+  'Magma Armor':1,'Immunity':1,'Effect Spore':1,'Rough Skin':1,'Iron Barbs':1,'Gooey':1,'Tangling Hair':1,
+  'Aftermath':1,'Poison Touch':1,'Wonder Guard':1,'Teravolt':1,'Turboblaze':1,'Storm Drain':1,
+  'Sheer Force':1,'Run Away':1,'Beast Boost':1,'Protosynthesis':1,'Quark Drive':1,'Healer':1,'Justified':1,
+  'Fluffy':1,'Adaptability':1,'Download':1,'Super Luck':1,'Sweet Veil':1,'Strong Jaw':1,'Wonder Skin':1,
+  'Huge Power':1,'Pure Power':1,'Magic Guard':1,'No Guard':1,'Defeatist':1,'Heatproof':1,'Pressure':1,
+  'Corrosion':1
+};
+/* Habilidades que ignoram a Habilidade DEFENSIVA do alvo (Cap. oficial
+   "Mold Breaker") -- usadas em vários pontos abaixo (imunidade de
+   Tipo por Habilidade, redução de dano, Wonder Guard...) pra decidir
+   se o golpe do ATACANTE furou a proteção do defensor. */
+function ignoraHabilidadeDefensiva(atacante){
+  var h = atacante && atacante.habilidade;
+  return h==='Mold Breaker' || h==='Teravolt' || h==='Turboblaze';
+}
+/* "Faz contato" (Cap. Habilidades de gatilho por contato -- Static/
+   Flame Body/Rough Skin/etc.): PokeAPI não expõe a flag de contato
+   por Movimento nesta versão da API (só `meta`, sem `flags`) --
+   simplificação documentada: todo golpe de categoria FÍSICO conta
+   como contato (a esmagadora maioria realmente é), sem distinguir os
+   ~15 golpes Físicos oficialmente "sem contato" (Rock Slide,
+   Earthquake, Bullet Seed...). Especial/Status nunca fazem contato
+   aqui (também bate com o oficial na esmagadora maioria dos casos). */
+function golpeFazContato(move){ return move && move.categoria==='Físico'; }
+/* Golpes de Soco (Iron Fist, ×1,2 de Poder) -- lista curada, conferida
+   contra MOVES_DEX (só nomes que realmente existem no jogo). */
+var PUNCHING_MOVES = { 'Bullet Punch':1,'Comet Punch':1,'Dizzy Punch':1,'Drain Punch':1,'Dynamic Punch':1,'Fire Punch':1,'Focus Punch':1,'Hammer Arm':1,'Ice Punch':1,'Mach Punch':1,'Mega Punch':1,'Meteor Mash':1,'Plasma Fists':1,'Power-Up Punch':1,'Shadow Punch':1,'Sky Uppercut':1,'Thunder Punch':1,'Double Iron Bash':1,'Jet Punch':1 };
+/* Golpes de Mordida (Strong Jaw, ×1,5 de Poder) -- mesma régua acima. */
+var BITING_MOVES = { 'Bite':1,'Crunch':1,'Fire Fang':1,'Hyper Fang':1,'Ice Fang':1,'Poison Fang':1,'Psychic Fangs':1,'Thunder Fang':1,'Jaw Lock':1,'Fishious Rend':1 };
+/* Golpes Sonoros (Soundproof bloqueia por completo) -- mesma régua acima. */
+var SOUND_MOVES = { 'Boomburst':1,'Bug Buzz':1,'Chatter':1,'Clanging Scales':1,'Clangorous Soul':1,'Confide':1,'Disarming Voice':1,'Echoed Voice':1,'Grass Whistle':1,'Growl':1,'Heal Bell':1,'Howl':1,'Hyper Voice':1,'Metal Sound':1,'Noble Roar':1,'Overdrive':1,'Parting Shot':1,'Perish Song':1,'Relic Song':1,'Roar':1,'Round':1,'Screech':1,'Sing':1,'Snarl':1,'Snore':1,'Sparkling Aria':1,'Supersonic':1,'Uproar':1,'Torch Song':1,'Psychic Noise':1 };
+function temHab(battler, nome){ return !!battler && battler.habilidade===nome; }
+/* Cap. Habilidades Protosynthesis/Quark Drive (Gen9): sob Sol Forte
+   (Protosynthesis) ou Terreno Elétrico (Quark Drive), o Atributo MAIS
+   ALTO do dono (dos 5 de batalha, calculado sobre o valor BASE sem
+   Estágio -- igual oficial) ganha ×1,3 (×1,5 se for Velocidade).
+   Empate de valor: prioridade Ataque > Defesa > Ataque Especial >
+   Defesa Especial > Velocidade (mesma ordem oficial). */
+function statMaisAltoDoBattler(battler){
+  var stats = ['atk','def','spa','spd','spe'];
+  var melhor = stats[0], melhorValor = effStat(battler, stats[0]);
+  stats.forEach(function(s){
+    var v = effStat(battler, s);
+    if(v>melhorValor){ melhorValor=v; melhor=s; }
+  });
+  return melhor;
+}
+function abilityStatMult(battler, stat){
+  if(stat!=='atk' && stat!=='def' && stat!=='spa' && stat!=='spd' && stat!=='spe') return 1;
+  var ativa = (temHab(battler,'Protosynthesis') && weatherTipo()==='sol') || (temHab(battler,'Quark Drive') && terrainTipo()==='eletrico');
+  if(!ativa || statMaisAltoDoBattler(battler)!==stat) return 1;
+  return stat==='spe' ? 1.5 : 1.3;
+}
+/* Cap. Habilidades de imunidade de TIPO com efeito extra ao absorver
+   (Levitate: só imune; Water Absorb/Volt Absorb: cura 25% do PV
+   Máximo; Storm Drain/Lightning Rod: +1 Estágio de Ataque Especial;
+   Sap Sipper: +1 Estágio de Ataque; Flash Fire: fica imune E o
+   PRÓPRIO Fogo fica ×1,5 mais forte pro resto da luta) -- furadas por
+   Mold Breaker/Teravolt/Turboblaze do atacante. */
+var TYPE_IMMUNITY_ABILITIES = {
+  'Levitate': { tipo:'Terra', efeito:'imune' },
+  'Water Absorb': { tipo:'Água', efeito:'cura' },
+  'Volt Absorb': { tipo:'Elétrico', efeito:'cura' },
+  'Storm Drain': { tipo:'Água', efeito:'spa' },
+  'Lightning Rod': { tipo:'Elétrico', efeito:'spa' },
+  'Sap Sipper': { tipo:'Grama', efeito:'atk' },
+  'Flash Fire': { tipo:'Fogo', efeito:'flashfire' }
+};
+function checaImunidadeDeTipoPorHabilidade(move, user, target, b, userName, targetName){
+  if(ignoraHabilidadeDefensiva(user)) return false;
+  var def = TYPE_IMMUNITY_ABILITIES[target.habilidade];
+  if(!def || move.tipo!==def.tipo) return false;
+  var h = target.habilidade;
+  if(def.efeito==='imune'){
+    b.log.push('🛡️ '+userName+' usou '+move.name+' -- '+targetName+' é imune ('+h+').');
+  } else if(def.efeito==='cura'){
+    var maxT = gaHpMax(target), antesT = b.hp[target.key];
+    b.hp[target.key] = Math.min(maxT, b.hp[target.key]+Math.max(1, Math.round(maxT*0.25)));
+    b.log.push('💚 '+userName+' usou '+move.name+' -- '+targetName+' absorveu e recuperou '+(b.hp[target.key]-antesT)+' PV ('+h+').');
+  } else if(def.efeito==='spa' || def.efeito==='atk'){
+    b.log.push('🛡️ '+userName+' usou '+move.name+' -- '+targetName+' é imune ('+h+').');
+    bumpStageAbility(target, def.efeito, 1, b, targetName, h);
+  } else if(def.efeito==='flashfire'){
+    if(!target.flashFireBoost){
+      target.flashFireBoost = true;
+      b.log.push('🔥 '+userName+' usou '+move.name+' -- '+targetName+' absorveu com Flash Fire (o próprio Fogo fica mais forte pro resto da luta)!');
+    } else {
+      b.log.push('🔥 '+userName+' usou '+move.name+' -- '+targetName+' é imune (Flash Fire).');
+    }
+  }
+  return true;
+}
+/* Cap. Habilidades de CONTATO do ALVO (dispara em cima de quem
+   ATACOU, quando o golpe recebido faz contato -- Static/Flame Body/
+   Poison Point 30% de Status cada, Effect Spore 30% total dividido
+   entre os 3; Rough Skin/Iron Barbs 1/8 do PV Máximo de recuo; Gooey/
+   Tangling Hair -1 Estágio de Velocidade). `atacante` aqui é sempre
+   quem tocou o `alvo` (dono da Habilidade). */
+function aplicarHabilidadeDeContatoDoAlvo(alvo, atacante, b, alvoNome, atacanteNome){
+  var h = alvo.habilidade;
+  if(h==='Static' && Math.random()<0.3) applyAilment(atacante, 'paralysis', '', b, atacanteNome, alvo);
+  else if(h==='Flame Body' && Math.random()<0.3) applyAilment(atacante, 'burn', '', b, atacanteNome, alvo);
+  else if(h==='Poison Point' && Math.random()<0.3) applyAilment(atacante, 'poison', '', b, atacanteNome, alvo);
+  else if(h==='Effect Spore' && Math.random()<0.3){
+    var r = Math.random();
+    applyAilment(atacante, r<1/3?'poison':(r<2/3?'paralysis':'sleep'), '', b, atacanteNome, alvo);
+  }
+  if((h==='Rough Skin' || h==='Iron Barbs') && b.hp[atacante.key]>0 && !temHab(atacante,'Magic Guard')){
+    var maxA = gaHpMax(atacante), dano = Math.max(1, Math.floor(maxA/8));
+    b.hp[atacante.key] = Math.max(0, b.hp[atacante.key]-dano);
+    b.log.push('🩸 '+atacanteNome+' sofreu '+dano+' de dano ao tocar '+alvoNome+' ('+h+').');
+  }
+  if((h==='Gooey' || h==='Tangling Hair') && !ignoraHabilidadeDefensiva(atacante)){
+    bumpStageAbility(atacante, 'spe', -1, b, atacanteNome, h);
+  }
+}
+/* Cap. Habilidades de ENTRADA (Intimidate/Download) -- disparam 1x
+   quando `entrando` acaba de pisar em campo (ver runBattleUntilPause,
+   mesmo ponto que já checa Armadilha de Campo). Intimidate: -1
+   Ataque no OPONENTE, bloqueado por Clear Body/White Smoke/Full Metal
+   Body/Hyper Cutter/Own Tempo/Oblivious/Inner Focus/Scrappy (Gen 8+,
+   regra oficial atual), Guard Dog vira +1 Ataque no PRÓPRIO dono em
+   vez de reagir; Defiant/Competitive/Rattled do oponente disparam
+   normalmente se o Ataque baixou de verdade. Download: compara Defesa
+   x Defesa Especial do oponente (valor BASE, sem Estágio) e dá +1 no
+   Atributo ofensivo correspondente pro que ACABOU de entrar. */
+function aplicarHabilidadeDeEntrada(entrando, oponente, b){
+  var h = entrando.habilidade;
+  if(h==='Intimidate'){
+    if(b.hp[oponente.key]===undefined || b.hp[oponente.key]<=0) return;
+    var opH = oponente.habilidade;
+    if(opH==='Guard Dog'){
+      bumpStageAbility(oponente,'atk',1,b,displayName(oponente),'Guard Dog reage ao Intimidate');
+      return;
+    }
+    if(opH==='Hyper Cutter' || opH==='Clear Body' || opH==='White Smoke' || opH==='Full Metal Body' || opH==='Own Tempo' || opH==='Oblivious' || opH==='Inner Focus' || opH==='Scrappy'){
+      b.log.push('🛡️ '+displayName(oponente)+' bloqueou o Intimidate de '+displayName(entrando)+' ('+opH+').');
+      return;
+    }
+    var antes = (oponente.estagios&&oponente.estagios.atk)||0;
+    bumpStage(oponente,'atk',-1);
+    var depois = oponente.estagios.atk;
+    if(depois===antes) return;
+    b.log.push('😠 '+displayName(entrando)+' usou Intimidate! '+displayName(oponente)+': Ataque foi pra Estágio '+(depois>0?'+':'')+depois+'.');
+    if(depois<antes){
+      if(temHab(oponente,'Defiant')) bumpStageAbility(oponente,'atk',2,b,displayName(oponente),'Defiant');
+      if(temHab(oponente,'Competitive')) bumpStageAbility(oponente,'spa',2,b,displayName(oponente),'Competitive');
+      if(temHab(oponente,'Rattled')) bumpStageAbility(oponente,'spe',1,b,displayName(oponente),'Rattled');
+    }
+  } else if(h==='Download'){
+    if(b.hp[oponente.key]===undefined || b.hp[oponente.key]<=0) return;
+    var statAlvo = effStat(oponente,'def') <= effStat(oponente,'spd') ? 'atk' : 'spa';
+    bumpStageAbility(entrando, statAlvo, 1, b, displayName(entrando), 'Download');
+  }
+}
+
 /* effStat/gaHpMax continuam com o MESMO nome/assinatura de sempre
    (chamados em dezenas de lugares do motor de batalha) -- só a conta
    por dentro virou a oficial. `poke`/battler só precisa de .num,
@@ -5259,10 +5440,15 @@ function stageMultiplier(stage){
 function effStatWithStage(b, stat){
   var base = effStat(b, stat);
   var stage = (b.estagios && b.estagios[stat]) || 0;
-  return Math.max(1, Math.floor(base * stageMultiplier(stage)));
+  return Math.max(1, Math.floor(base * stageMultiplier(stage) * abilityStatMult(b, stat)));
 }
 function bumpStage(b, stat, delta){
   if(!b.estagios) b.estagios = {atk:0,def:0,spa:0,spd:0,spe:0,accuracy:0,evasion:0};
+  // Cap. Habilidade Contrary: INVERTE toda mudança de Estágio no
+  // PRÓPRIO dono (buff vira debuff, debuff vira buff) -- regra
+  // oficial, vale pra mudança auto-infligida E pra que o oponente
+  // causar nele.
+  if(temHab(b,'Contrary')) delta = -delta;
   b.estagios[stat] = clampInt((b.estagios[stat]||0)+delta, -6, 6);
 }
 function accuracyStageMultiplier(stage){
@@ -6250,6 +6436,18 @@ function tentarTrocaForcada(saindo, b, carregarEstagios){
     STATE.party.splice(idx,0,saindoPoke);
     return null;
   }
+  // Cap. Habilidade Regenerator: cura 1/3 do PV Máximo de quem SAI --
+  // única saída VOLUNTÁRIA (ainda vivo) que existe neste motor, então
+  // é o único gatilho de troca real que faz sentido aqui (Natural
+  // Cure, "cura Status ao trocar", não tem efeito OBSERVÁVEL nesta
+  // arquitetura -- todo battler novo já nasce sem Status nenhum a
+  // cada entrada, ver initBattlerExtras -- documentado de propósito,
+  // não implementado por ser um no-op garantido).
+  if(temHab(saindo,'Regenerator') && b.hp[saindo.key]>0){
+    var maxSaindo = gaHpMax(saindo), antesSaindo = b.hp[saindo.key];
+    b.hp[saindo.key] = Math.min(maxSaindo, b.hp[saindo.key]+Math.max(1, Math.floor(maxSaindo/3)));
+    if(b.hp[saindo.key]>antesSaindo) b.log.push('💚 '+displayName(saindo)+' recuperou '+(b.hp[saindo.key]-antesSaindo)+' PV ao sair (Regenerator).');
+  }
   var novoBattler = buildBattlerFromParty(proximo);
   if(carregarEstagios) novoBattler.estagios = { atk:saindo.estagios.atk, def:saindo.estagios.def, spa:saindo.estagios.spa, spd:saindo.estagios.spd, spe:saindo.estagios.spe, accuracy:saindo.estagios.accuracy, evasion:saindo.estagios.evasion };
   if(b.usedPartyIds.indexOf(proximo.id)===-1) b.usedPartyIds.push(proximo.id);
@@ -6265,8 +6463,22 @@ function tentarTrocaForcada(saindo, b, carregarEstagios){
    próximo do time). Devolve true quando runBattleUntilPause precisa
    PAUSAR aqui (evolução, ou a luta já terminou -- a troca por desmaio
    em si NUNCA pausa mais, é sempre resolvida na hora). */
-function resolveFaintAfterDamage(target, user, b){
+function resolveFaintAfterDamage(target, user, b, moveUsado){
   b.log.push('💥 '+displayName(target)+' desmaiou!');
+  // Cap. Habilidade Aftermath: quem desmaiou com essa Habilidade, NUM
+  // GOLPE DE CONTATO, dá 1/4 do PRÓPRIO PV Máximo de dano em quem
+  // desferiu o golpe (bloqueado só pelo Magic Guard de quem recebe).
+  if(temHab(target,'Aftermath') && user && moveUsado && golpeFazContato(moveUsado) && b.hp[user.key]>0 && !temHab(user,'Magic Guard')){
+    var maxAfter = gaHpMax(target), danoAfter = Math.max(1, Math.floor(maxAfter/4));
+    b.hp[user.key] = Math.max(0, b.hp[user.key]-danoAfter);
+    b.log.push('💢 '+displayName(user)+' sofreu '+danoAfter+' de dano (Aftermath de '+displayName(target)+').');
+  }
+  // Cap. Habilidades Moxie (+1 Ataque) e Beast Boost (+1 no MAIOR
+  // Atributo) de QUEM finalizou -- vale pros 2 lados igual.
+  if(user && b.hp[user.key]>0){
+    if(temHab(user,'Moxie')) bumpStageAbility(user,'atk',1,b,displayName(user),'Moxie');
+    if(temHab(user,'Beast Boost')) bumpStageAbility(user, statMaisAltoDoBattler(user), 1, b, displayName(user), 'Beast Boost');
+  }
   if(target.side==='player'){
     /* Cap. leva desta sessão: "desmaio é derrota do pokémon. ele só
        pode receber a vitória se ele finalizar a luta. Se outro entrar
@@ -6327,18 +6539,25 @@ function runBattleUntilPause(){
     var atkB = battlerObj(b, 'player');
     var defB = currentOpponent();
 
-    // Cap. Armadilhas de Campo: bate em quem acabou de entrar em campo
-    // (1x por battler NOVO -- marcado com _hazardsApplied, cobre até o
-    // próprio líder que abre a luta, igual ao jogo oficial).
+    // Cap. Armadilhas de Campo + Habilidade de entrada (Intimidate/
+    // Download): batem/disparam em quem acabou de entrar em campo
+    // (1x por battler NOVO -- marcado com _hazardsApplied, reusado
+    // como "efeitos de entrada já aplicados" pros 2, cobre até o
+    // próprio líder que abre a luta, igual ao jogo oficial). Ordem
+    // oficial: Armadilha ANTES da Habilidade de entrada.
     if(!atkB._hazardsApplied){
       atkB._hazardsApplied = true;
       aplicarArmadilhasDeEntrada(atkB, 'player', b);
       if(b.hp[atkB.key]<=0){ if(resolveFaintAfterDamage(atkB, null, b)) return; continue; }
+      aplicarHabilidadeDeEntrada(atkB, defB, b);
+      if(b.hp[defB.key]<=0){ if(resolveFaintAfterDamage(defB, null, b)) return; continue; }
     }
     if(!defB._hazardsApplied){
       defB._hazardsApplied = true;
       aplicarArmadilhasDeEntrada(defB, 'opponent', b);
       if(b.hp[defB.key]<=0){ if(resolveFaintAfterDamage(defB, null, b)) return; continue; }
+      aplicarHabilidadeDeEntrada(defB, atkB, b);
+      if(b.hp[atkB.key]<=0){ if(resolveFaintAfterDamage(atkB, null, b)) return; continue; }
     }
 
     var atkHP = b.hp[atkB.key], defHP = b.hp[defB.key];
@@ -6399,7 +6618,7 @@ function runBattleUntilPause(){
            pode passar de nível e evoluir no meio da luta": XP creditado
            NA HORA (não só no fim da luta) pro Pokémon que acabou de dar
            o golpe. */
-        if(resolveFaintAfterDamage(target, user, b)) return;
+        if(resolveFaintAfterDamage(target, user, b, moveOrder[i])) return;
         break;
       }
       // gatilho de cura -- só do lado do jogador, só uma vez por "queda" abaixo do limiar
@@ -6449,6 +6668,12 @@ function runBattleUntilPause(){
     applyTerrainResidual(atkB, defB, b);
     if(b.hp[atkB.key]<=0 && resolveFaintAfterDamage(atkB, null, b)) return;
     if(b.hp[defB.key]<=0 && resolveFaintAfterDamage(defB, null, b)) return;
+
+    /* Cap. Habilidades passivas de FIM de Rodada (Speed Boost/Shed
+       Skin/Hydration) -- nunca causam desmaio, então sem checagem de
+       PV depois. */
+    applyAbilityEndOfTurn(atkB, b);
+    applyAbilityEndOfTurn(defB, b);
   }
   // guard estourou (não deveria em uso normal) -- força um resultado justo, sem travar o jogo
   if(!b.finished){
@@ -6962,7 +7187,7 @@ var WEATHER_SET_MOVES = { 'Rain Dance':'chuva', 'Sunny Day':'sol', 'Sandstorm':'
 var WEATHER_MOVE_DURATION = 5;
 var WEATHER_CHIP_IMMUNE = { areia: { 'Pedra':1, 'Terra':1, 'Aço':1 }, granizo: { 'Gelo':1 } };
 var WEATHER_SUN_HEAL_MOVES = { 'Moonlight':1, 'Synthesis':1, 'Morning Sun':1 };
-function weatherTipo(){ return (STATE.battle && STATE.battle.weather && STATE.battle.weather.tipo) || 'neutro'; }
+function weatherTipo(){ return (STATE && STATE.battle && STATE.battle.weather && STATE.battle.weather.tipo) || 'neutro'; }
 /* Bônus/penalidade oficial ×1,5/×0,5 de dano por Tipo do golpe, sob
    Chuva/Sol -- entra multiplicando junto com STAB/Efetividade/Crítico
    em officialDamage, nunca substituindo nenhum dos outros fatores. */
@@ -6992,17 +7217,40 @@ function setWeather(tipo){
    pra Neutro sozinho quando os turnos acabam. */
 function applyWeatherResidual(atkB, defB, b){
   var w = weatherTipo();
-  if(w!=='areia' && w!=='granizo') { tickWeatherDuration(b); return; }
   [atkB, defB].forEach(function(battler){
     if(!battler || b.hp[battler.key]===undefined || b.hp[battler.key]<=0) return;
+    // Cap. Habilidades Rain Dish (sob Chuva) / Ice Body (sob Granizo):
+    // curam 1/16 do PV Máximo no FIM da Rodada.
+    if((w==='chuva' && temHab(battler,'Rain Dish')) || (w==='granizo' && temHab(battler,'Ice Body'))){
+      var maxHeal = gaHpMax(battler), antesHeal = b.hp[battler.key];
+      b.hp[battler.key] = Math.min(maxHeal, b.hp[battler.key]+Math.max(1, Math.floor(maxHeal/16)));
+      if(b.hp[battler.key]>antesHeal) b.log.push('💚 '+displayName(battler)+' recuperou '+(b.hp[battler.key]-antesHeal)+' PV ('+battler.habilidade+').');
+    }
+    if(w!=='areia' && w!=='granizo') return;
     var sp = speciesByNum(battler.num);
     var imune = WEATHER_CHIP_IMMUNE[w] && ((sp.tipo1 && WEATHER_CHIP_IMMUNE[w][sp.tipo1]) || (sp.tipo2 && WEATHER_CHIP_IMMUNE[w][sp.tipo2]));
-    if(imune) return;
+    if(imune || temHab(battler,'Magic Guard')) return; // Cap. Habilidade Magic Guard: imune a chip de Clima também
     var maxHp = gaHpMax(battler), dano = Math.max(1, Math.floor(maxHp/16));
     b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
     b.log.push((w==='areia'?'🏜️':'🌨️')+' '+displayName(battler)+' sofreu '+dano+' de dano do '+WEATHER_LABELS[w]+'.');
   });
   tickWeatherDuration(b);
+}
+/* Cap. Habilidades passivas de FIM de Rodada: Speed Boost (+1
+   Velocidade), Shed Skin (33% de curar o PRÓPRIO Status), Hydration
+   (100% de curar o PRÓPRIO Status, só sob Chuva). */
+function applyAbilityEndOfTurn(battler, b){
+  if(!battler || b.hp[battler.key]===undefined || b.hp[battler.key]<=0) return;
+  if(temHab(battler,'Speed Boost')) bumpStageAbility(battler,'spe',1,b,displayName(battler),'Speed Boost');
+  if(battler.status){
+    if(temHab(battler,'Shed Skin') && Math.random()<1/3){
+      b.log.push('✨ '+displayName(battler)+' curou a própria '+STATUS_LABELS_PT[battler.status]+' (Shed Skin)!');
+      battler.status = null; battler.statusTurns = 0;
+    } else if(temHab(battler,'Hydration') && weatherTipo()==='chuva'){
+      b.log.push('✨ '+displayName(battler)+' curou a própria '+STATUS_LABELS_PT[battler.status]+' (Hydration)!');
+      battler.status = null; battler.statusTurns = 0;
+    }
+  }
 }
 function tickWeatherDuration(b){
   var wObj = b.weather;
@@ -7040,7 +7288,7 @@ var TERRAIN_ICONS = { neutro:'⛰️', eletrico:'⚡', grama:'🌱', neblina:'�
 var TERRAIN_SET_MOVES = { 'Electric Terrain':'eletrico', 'Grassy Terrain':'grama', 'Misty Terrain':'neblina', 'Psychic Terrain':'psiquico' };
 var TERRAIN_MOVE_DURATION = 5;
 var TERRAIN_TYPE_BOOST = { eletrico:'Elétrico', grama:'Grama', psiquico:'Psíquico' };
-function terrainTipo(){ return (STATE.battle && STATE.battle.terrain && STATE.battle.terrain.tipo) || 'neutro'; }
+function terrainTipo(){ return (STATE && STATE.battle && STATE.battle.terrain && STATE.battle.terrain.tipo) || 'neutro'; }
 /* "No chão" (aproximação documentada acima): todo mundo, exceto Tipo
    Voador -- Levitate/Air Balloon ficam pra leva de Habilidades/Itens. */
 function noChao(battler){
@@ -7220,7 +7468,7 @@ function aplicarArmadilhasDeEntrada(battler, ladoAlvo, b){
   var haz = b.hazards[ladoAlvo]; if(!haz) return;
   var nome = displayName(battler);
   var sp = speciesByNum(battler.num);
-  if(haz.stealthRock && b.hp[battler.key]>0){
+  if(haz.stealthRock && b.hp[battler.key]>0 && !temHab(battler,'Magic Guard')){
     var mult = typeEffMultiplier('Pedra', sp.tipo1, sp.tipo2);
     var dano = Math.max(1, Math.floor(gaHpMax(battler) * mult / 8));
     b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
@@ -7249,6 +7497,7 @@ function applyLeechSeedResidual(atkB, defB, b){
   [[atkB,defB],[defB,atkB]].forEach(function(par){
     var semeado = par[0], oposto = par[1];
     if(!semeado || !semeado.leechSeeded || b.hp[semeado.key]===undefined || b.hp[semeado.key]<=0) return;
+    if(temHab(semeado,'Magic Guard')) return; // Cap. Habilidade Magic Guard: imune ao dreno da Semente Maligna também
     var maxSemeado = gaHpMax(semeado);
     var dreno = Math.min(b.hp[semeado.key], Math.max(1, Math.floor(maxSemeado/8)));
     b.hp[semeado.key] = Math.max(0, b.hp[semeado.key]-dreno);
@@ -7282,11 +7531,20 @@ function decidirMovimentoDoTurno(user){
    1-100. Movimento sem Precisão (`accuracy: null`, ex.: Swift/status
    como Recover) NUNCA erra. */
 function officialAccuracyRoll(move, user, target){
+  // Cap. Habilidade No Guard: TODO golpe acerta de verdade (do usuário
+  // OU contra o alvo, qualquer um dos 2 lados já garante 100%).
+  if(temHab(user,'No Guard') || temHab(target,'No Guard')) return true;
   var of = officialMoveData(move);
   if(of.accuracy===null || of.accuracy===undefined) return true;
+  var acc = of.accuracy;
+  // Cap. Habilidade Wonder Skin: golpe de Status contra quem tem essa
+  // Habilidade nunca passa de 50% de chance (antes de Estágio).
+  if(move.categoria==='Status' && temHab(target,'Wonder Skin') && !ignoraHabilidadeDefensiva(user)) acc = Math.min(acc, 50);
   var accMult = accuracyStageMultiplier((user.estagios&&user.estagios.accuracy)||0);
   var evaMult = accuracyStageMultiplier((target.estagios&&target.estagios.evasion)||0);
-  var chance = of.accuracy * accMult / evaMult;
+  var chance = acc * accMult / evaMult;
+  if(temHab(user,'Compound Eyes')) chance *= 1.3; // Cap. Habilidade Compound Eyes: ×1,3 na própria Precisão
+  if(move.categoria==='Físico' && temHab(user,'Hustle')) chance *= 0.8; // Cap. Habilidade Hustle: ×0,8 na Precisão de golpe Físico próprio (troca por ×1,5 de Ataque, ver officialDamage)
   return (Math.random()*100) < chance;
 }
 /* Crítico oficial (Gen 6+): taxa base 1/24 no Estágio 0, dobrando por
@@ -7296,9 +7554,16 @@ function officialAccuracyRoll(move, user, target){
    aumentam ainda mais o Estágio (Foco Energia, Scope Lens...) ficam
    pra uma leva futura de Habilidades/Itens reais em batalha. */
 var CRIT_CHANCE_BY_STAGE = [1/24, 1/8, 1/2, 1];
-function officialCritRoll(critStage){
-  var i = clampInt(critStage||0, 0, 3);
-  return Math.random() < CRIT_CHANCE_BY_STAGE[i];
+/* Cap. Habilidade Super Luck (+1 Estágio de Crítico no ATACANTE) e
+   Battle Armor/Shell Armor (o DEFENSOR nunca sofre Crítico, furado por
+   Mold Breaker/Teravolt/Turboblaze do atacante). */
+function officialCritRoll(critStage, user, target){
+  var stage = critStage||0;
+  if(temHab(user,'Super Luck')) stage += 1;
+  var i = clampInt(stage, 0, 3);
+  if(Math.random() >= CRIT_CHANCE_BY_STAGE[i]) return false;
+  if((temHab(target,'Battle Armor')||temHab(target,'Shell Armor')) && !ignoraHabilidadeDefensiva(user)) return false;
+  return true;
 }
 /* Fórmula de dano oficial (Cap. "sistema de combate bem fiel"):
      Dano = (((2×Nível/5 + 2) × Poder × Ataque/Defesa) / 50 + 2)
@@ -7314,27 +7579,85 @@ function critClampStage(stage, isAttacker){
   if(isAttacker) return Math.max(0, stage||0); // ignora Estágio NEGATIVO do atacante
   return Math.min(0, stage||0); // ignora Estágio POSITIVO do defensor
 }
-function officialDamage(user, target, move, crit){
-  var of = officialMoveData(move);
+function officialDamage(user, target, move, crit, ofPreCalculado){
+  // Cap. Habilidades: `of` reusa o MESMO objeto já mutado por Serene
+  // Grace/Sheer Force em resolveGaTurn (nunca recalcula do zero) --
+  // só recalcula aqui se chamado direto (ex.: Struggle/testes).
+  var of = ofPreCalculado || officialMoveData(move);
   var userSp = speciesByNum(user.num), targetSp = speciesByNum(target.num);
-  var atkStatKey = move.categoria==='Físico' ? 'atk' : 'spa';
-  var defStatKey = move.categoria==='Físico' ? 'def' : 'spd';
-  var atkStageRaw = (user.estagios&&user.estagios[atkStatKey])||0;
-  var defStageRaw = (target.estagios&&target.estagios[defStatKey])||0;
+  var fisico = move.categoria==='Físico';
+  var atkStatKey = fisico ? 'atk' : 'spa';
+  var defStatKey = fisico ? 'def' : 'spd';
+  var ignoraDefHab = ignoraHabilidadeDefensiva(user);
+  // Cap. Habilidade Unaware: ignora o ESTÁGIO do OPONENTE (nunca o
+  // próprio) -- de quem ataca (Defesa/Defesa Especial do alvo) e de
+  // quem defende (Ataque/Ataque Especial de quem atacou).
+  var atkStageRaw = temHab(target,'Unaware') ? 0 : ((user.estagios&&user.estagios[atkStatKey])||0);
+  var defStageRaw = temHab(user,'Unaware') ? 0 : ((target.estagios&&target.estagios[defStatKey])||0);
   var atkStage = crit ? critClampStage(atkStageRaw, true) : atkStageRaw;
   var defStage = crit ? critClampStage(defStageRaw, false) : defStageRaw;
-  var atkEff = Math.max(1, Math.floor(effStat(user, atkStatKey) * stageMultiplier(atkStage)));
-  var defEff = Math.max(1, Math.floor(effStat(target, defStatKey) * stageMultiplier(defStage)));
-  var poder = of.power || 1;
+  var atkEff = Math.max(1, Math.floor(effStat(user, atkStatKey) * stageMultiplier(atkStage) * abilityStatMult(user, atkStatKey)));
+  var defEff = Math.max(1, Math.floor(effStat(target, defStatKey) * stageMultiplier(defStage) * abilityStatMult(target, defStatKey)));
+  // Cap. Habilidades que multiplicam o ATRIBUTO ofensivo (só valem no
+  // golpe Físico -- as 3 mexem oficialmente no Ataque, nunca no Ataque
+  // Especial): Huge Power/Pure Power sempre ×2; senão Guts (só com
+  // Status persistente) OU Hustle, ×1,5 cada (nunca empilham -- só 1
+  // Habilidade ativa por vez).
+  if(fisico){
+    if(temHab(user,'Huge Power') || temHab(user,'Pure Power')) atkEff = Math.floor(atkEff*2);
+    else if(temHab(user,'Guts') && user.status) atkEff = Math.floor(atkEff*1.5);
+    else if(temHab(user,'Hustle')) atkEff = Math.floor(atkEff*1.5);
+  }
+  // Cap. Habilidade Defeatist: metade de Ataque E Ataque Especial com PV atual <= 50% do Máximo
+  var bAtual = STATE && STATE.battle, userHpPct = (bAtual && bAtual.hp[user.key]!==undefined) ? bAtual.hp[user.key]/gaHpMax(user) : 1;
+  if(temHab(user,'Defeatist') && userHpPct<=0.5) atkEff = Math.floor(atkEff*0.5);
+  // Cap. Habilidades que multiplicam o PODER do golpe (Technician só
+  // até Poder 60 -- confere o Poder ORIGINAL, antes de qualquer outro
+  // multiplicador; Iron Fist em Soco; Strong Jaw em Mordida;
+  // Overgrow/Blaze/Torrent/Swarm só com PV atual <= 1/3 do Máximo E o
+  // golpe do Tipo certo).
+  var poderMult = 1;
+  if(of.power && of.power<=60 && temHab(user,'Technician')) poderMult *= 1.5;
+  if(PUNCHING_MOVES[move.name] && temHab(user,'Iron Fist')) poderMult *= 1.2;
+  if(BITING_MOVES[move.name] && temHab(user,'Strong Jaw')) poderMult *= 1.5;
+  if(userHpPct<=1/3){
+    if(move.tipo==='Grama' && temHab(user,'Overgrow')) poderMult *= 1.5;
+    if(move.tipo==='Fogo' && temHab(user,'Blaze')) poderMult *= 1.5;
+    if(move.tipo==='Água' && temHab(user,'Torrent')) poderMult *= 1.5;
+    if(move.tipo==='Inseto' && temHab(user,'Swarm')) poderMult *= 1.5;
+  }
+  // Cap. Habilidade Flash Fire: depois de absorver 1 golpe de Fogo (ver
+  // checaImunidadeDeTipoPorHabilidade), o PRÓPRIO Fogo fica ×1,5 mais
+  // forte pro resto da luta (flag persiste no battler).
+  if(move.tipo==='Fogo' && user.flashFireBoost) poderMult *= 1.5;
+  var poder = Math.max(1, Math.round((of.power||1)*poderMult));
   var base = Math.floor((2*user.level/5 + 2) * poder * atkEff/defEff / 50) + 2;
-  var stab = (move.tipo && (move.tipo===userSp.tipo1 || move.tipo===userSp.tipo2)) ? 1.5 : 1;
+  // Cap. Habilidade Adaptability: STAB ×2 em vez de ×1,5
+  var stab = (move.tipo && (move.tipo===userSp.tipo1 || move.tipo===userSp.tipo2)) ? (temHab(user,'Adaptability')?2:1.5) : 1;
   var typeEff = typeEffMultiplier(move.tipo, targetSp.tipo1, targetSp.tipo2);
-  var critMult = crit ? 1.5 : 1;
-  var burnHalving = (move.categoria==='Físico' && user.status==='queimadura') ? 0.5 : 1;
+  // Cap. Habilidade Sniper: Crítico ×2,25 em vez de ×1,5
+  var critMult = crit ? (temHab(user,'Sniper')?2.25:1.5) : 1;
+  // Cap. Habilidade Guts: ignora a redução de golpe Físico por Queimadura
+  var burnHalving = (fisico && user.status==='queimadura' && !temHab(user,'Guts')) ? 0.5 : 1;
   var climaMult = weatherDamageMultiplier(move.tipo);
   var terrenoMult = terrainDamageMultiplier(move.tipo, target);
+  // Cap. Habilidades defensivas de REDUÇÃO de dano (Thick Fat: Fogo/
+  // Gelo ×0,5; Heatproof: Fogo ×0,5; Fluffy: contato ×0,5 E Fogo ×2,
+  // os 2 empilham se o golpe for Físico de contato E Tipo Fogo ao
+  // mesmo tempo) -- furadas por Mold Breaker/Teravolt/Turboblaze.
+  var defesaHabMult = 1;
+  if(!ignoraDefHab){
+    if((move.tipo==='Fogo'||move.tipo==='Gelo') && temHab(target,'Thick Fat')) defesaHabMult *= 0.5;
+    if(move.tipo==='Fogo' && temHab(target,'Heatproof')) defesaHabMult *= 0.5;
+    if(temHab(target,'Fluffy')){
+      if(golpeFazContato(move)) defesaHabMult *= 0.5;
+      if(move.tipo==='Fogo') defesaHabMult *= 2;
+    }
+  }
+  // Cap. Habilidade Tinted Lens: dobra dano de golpe Pouco Efetivo (<1x)
+  var tintedMult = (typeEff>0 && typeEff<1 && temHab(user,'Tinted Lens')) ? 2 : 1;
   var aleatorio = (85 + Math.floor(Math.random()*16))/100; // 0,85 a 1,00
-  var dano = Math.floor(base * stab * typeEff * critMult * burnHalving * climaMult * terrenoMult * aleatorio);
+  var dano = Math.floor(base * stab * typeEff * critMult * burnHalving * climaMult * terrenoMult * defesaHabMult * tintedMult * aleatorio);
   return { dano: Math.max(typeEff>0 ? 1 : 0, dano), typeEff: typeEff };
 }
 
@@ -7357,10 +7680,30 @@ function statusBloqueadoPorTipo(sp, statusPt){
   if(statusPt==='congelamento' && tipos.indexOf('Gelo')!==-1) return true;
   return false;
 }
-function applyAilment(battler, ailmentEn, moveName, b, logPrefix){
+/* Cap. Habilidades de imunidade a Status/Confusão (Immunity/Water Veil/
+   Limber/Magma Armor/Insomnia/Vital Spirit/Sweet Veil/Own Tempo) +
+   Leaf Guard, que bloqueia QUALQUER Status persistente sob Sol Forte
+   (não só imunidade a um Status específico) -- ignorado (a Habilidade,
+   nunca a imunidade de TIPO, ver Corrosion abaixo) quando quem causou
+   tem Mold Breaker/Teravolt/Turboblaze. */
+function abilityBlocksAilment(battler, statusPt, atacante){
+  if(ignoraHabilidadeDefensiva(atacante)) return false;
+  if(temHab(battler,'Leaf Guard') && weatherTipo()==='sol') return true;
+  if(statusPt==='veneno' || statusPt==='veneno_grave') return temHab(battler,'Immunity');
+  if(statusPt==='queimadura') return temHab(battler,'Water Veil');
+  if(statusPt==='paralisia') return temHab(battler,'Limber');
+  if(statusPt==='congelamento') return temHab(battler,'Magma Armor');
+  if(statusPt==='sono') return temHab(battler,'Insomnia') || temHab(battler,'Vital Spirit') || temHab(battler,'Sweet Veil');
+  return false;
+}
+function applyAilment(battler, ailmentEn, moveName, b, logPrefix, atacante){
   if(ailmentEn==='none') return;
   if(ailmentEn==='confusion'){
     if(battler.confusao>0) return; // já confuso -- não empilha
+    if(temHab(battler,'Own Tempo') && !ignoraHabilidadeDefensiva(atacante)){
+      b.log.push(logPrefix+' não ficou confuso (Own Tempo).');
+      return;
+    }
     battler.confusao = 2 + Math.floor(Math.random()*4); // 2 a 5 turnos
     b.log.push(logPrefix+' ficou confuso!');
     return;
@@ -7369,13 +7712,24 @@ function applyAilment(battler, ailmentEn, moveName, b, logPrefix){
   if(moveName==='Toxic') statusPt = 'veneno_grave'; // Cap. "Veneno Grave" oficial do Toxic (a PokeAPI só marca 'poison' genérico)
   if(battler.status) return; // já tem Status persistente -- só 1 por vez
   var sp = speciesByNum(battler.num);
-  if(statusBloqueadoPorTipo(sp, statusPt)) return;
+  // Cap. Corrosion: fura só a imunidade de TIPO a Veneno (regra
+  // oficial -- "pode envenenar Venenoso/Aço"), nunca imunidade de
+  // Habilidade (Immunity continua bloqueando normalmente).
+  var venenoComCorrosion = (statusPt==='veneno'||statusPt==='veneno_grave') && temHab(atacante,'Corrosion');
+  if(!venenoComCorrosion && statusBloqueadoPorTipo(sp, statusPt)) return;
+  if(abilityBlocksAilment(battler, statusPt, atacante)) return;
   if(statusPt==='congelamento' && weatherTipo()==='sol') return; // Cap. Clima: ninguém congela sob Sol Forte (oficial)
   if(statusPt==='sono' && terrainTipo()==='eletrico' && noChao(battler)) return; // Cap. Terreno: ninguém pega Sono no chão sob Terreno Elétrico (oficial)
   if(terrainTipo()==='neblina' && noChao(battler)) return; // Cap. Terreno: ninguém pega Condição persistente nenhuma no chão sob Terreno de Névoa (oficial)
   battler.status = statusPt;
   battler.statusTurns = statusPt==='sono' ? (1+Math.floor(Math.random()*3)) : (statusPt==='veneno_grave' ? 1 : 0);
   b.log.push(logPrefix+' ficou com '+STATUS_LABELS_PT[statusPt]+'!');
+  // Cap. Habilidade Synchronize: reflete o MESMO Status pro atacante
+  // (só quando um Movimento de OUTRO battler causou -- nunca em
+  // residual/auto-infligido; Confusão nunca é refletida, regra oficial).
+  if(atacante && atacante!==battler && temHab(battler,'Synchronize')){
+    applyAilment(atacante, ailmentEn, moveName, b, displayName(atacante));
+  }
 }
 var STATUS_LABELS_PT = { queimadura:'Queimadura', veneno:'Veneno', veneno_grave:'Veneno Grave', paralisia:'Paralisia', sono:'Sono', congelamento:'Congelamento' };
 /* Checagem de INÍCIO de ação (Cap. oficial): Sono/Congelamento
@@ -7427,6 +7781,11 @@ function applyEndOfTurnStatus(battler, b){
   if(battler.status==='queimadura') dano = Math.max(1, Math.floor(maxHp/16));
   else if(battler.status==='veneno') dano = Math.max(1, Math.floor(maxHp/8));
   else if(battler.status==='veneno_grave'){ dano = Math.max(1, Math.floor(maxHp*battler.statusTurns/16)); battler.statusTurns++; }
+  // Cap. Habilidade Magic Guard: imune a QUALQUER dano indireto
+  // (Status residual incluso) -- Heatproof reduz só o residual de
+  // Queimadura à metade (regra oficial), nunca bloqueia por completo.
+  if(dano>0 && temHab(battler,'Magic Guard')) dano = 0;
+  else if(dano>0 && battler.status==='queimadura' && temHab(battler,'Heatproof')) dano = Math.max(1, Math.floor(dano/2));
   if(dano>0){
     b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
     b.log.push((battler.status==='queimadura'?'🔥':'☠️')+' '+nome+' sofreu '+dano+' de dano por '+STATUS_LABELS_PT[battler.status]+'.');
@@ -7452,18 +7811,50 @@ function officialHitCount(minHits, maxHits){
    caem no alvo único da luta). Loga só quando teve efeito de verdade
    (Estágio já no teto/piso não muda nada -- oficial não avisa nesse
    caso, então também não logamos). */
+var ESTAGIO_LABEL = { atk:'Ataque', def:'Defesa', spa:'Ataque Especial', spd:'Defesa Especial', spe:'Velocidade', accuracy:'Precisão', evasion:'Evasão' };
+/* Mudança de Estágio disparada por uma HABILIDADE (Defiant/Competitive/
+   Weak Armor/Moxie/Beast Boost/Justified/Rattled/Guard Dog...) -- MESMO
+   padrão de log do resto do motor, só reusável fora do contexto de um
+   Movimento específico. */
+function bumpStageAbility(battler, stat, delta, b, nome, motivo){
+  var antes = (battler.estagios&&battler.estagios[stat])||0;
+  bumpStage(battler, stat, delta);
+  var depois = battler.estagios[stat];
+  if(depois===antes) return;
+  b.log.push('✨ '+nome+': '+ESTAGIO_LABEL[stat]+' foi pra Estágio '+(depois>0?'+':'')+depois+' ('+motivo+').');
+}
 function applyStatChanges(statChanges, moveTarget, user, target, b, userName, targetName){
   if(!statChanges || !statChanges.length) return;
   var quem = moveTarget==='user' ? user : target;
   var nomeQuem = moveTarget==='user' ? userName : targetName;
+  var deOponente = moveTarget!=='user'; // mudança causada por ALGUÉM DE FORA (o oponente) -- nunca auto-infligida (Overheat baixando o próprio Ataque Especial, por exemplo)
   statChanges.forEach(function(sc){
     var key = STAT_KEY_FROM_POKEAPI[sc.stat]; if(!key) return;
+    // Cap. Habilidades que bloqueiam REDUÇÃO de Estágio causada pelo
+    // OPONENTE (nunca a auto-infligida): Clear Body/White Smoke/Full
+    // Metal Body bloqueiam qualquer Atributo; Hyper Cutter só Ataque.
+    // Ignorado se quem causou tem Mold Breaker/Teravolt/Turboblaze.
+    if(deOponente && sc.change<0 && !ignoraHabilidadeDefensiva(user)){
+      if(temHab(quem,'Clear Body') || temHab(quem,'White Smoke') || temHab(quem,'Full Metal Body')){
+        b.log.push('🛡️ '+nomeQuem+' bloqueou a redução de Estágio (Habilidade).');
+        return;
+      }
+      if(key==='atk' && temHab(quem,'Hyper Cutter')){
+        b.log.push('🛡️ '+nomeQuem+' bloqueou a redução de Ataque (Hyper Cutter).');
+        return;
+      }
+    }
     var antes = (quem.estagios&&quem.estagios[key])||0;
     bumpStage(quem, key, sc.change);
     var depois = quem.estagios[key];
     if(depois===antes) return;
-    var label = { atk:'Ataque', def:'Defesa', spa:'Ataque Especial', spd:'Defesa Especial', spe:'Velocidade', accuracy:'Precisão', evasion:'Evasão' }[key];
-    b.log.push((sc.change>0?'📈 ':'📉 ')+nomeQuem+': '+label+' foi pra Estágio '+(depois>0?'+':'')+depois+'.');
+    b.log.push((sc.change>0?'📈 ':'📉 ')+nomeQuem+': '+ESTAGIO_LABEL[key]+' foi pra Estágio '+(depois>0?'+':'')+depois+'.');
+    // Cap. Defiant/Competitive: gatilho de QUEM SOFREU a redução
+    // causada pelo oponente (nunca a auto-infligida).
+    if(deOponente && depois<antes){
+      if(temHab(quem,'Defiant')) bumpStageAbility(quem,'atk',2,b,nomeQuem,'Defiant');
+      if(temHab(quem,'Competitive')) bumpStageAbility(quem,'spa',2,b,nomeQuem,'Competitive');
+    }
   });
 }
 
@@ -7503,7 +7894,28 @@ function resolveGaTurn(user, target, preSelectedMove){
     move = preSelectedMove || pickMoveByRole(pool, user.papelCombate, user.pp) || FALLBACK_MOVE;
   }
   var of = officialMoveData(move);
+  // Cap. Habilidades Serene Grace (dobra a chance de QUALQUER efeito
+  // secundário do PRÓPRIO golpe) e Sheer Force (golpe com efeito
+  // secundário ganha ×1,3 de Poder e PERDE o efeito por completo --
+  // as 2 nunca convivem no mesmo Pokémon, oficial) -- mutam o `of`
+  // desta chamada (nunca o MOVES_OFICIAL original), então valem tanto
+  // pro resto desta função quanto pra officialDamage logo abaixo (que
+  // reusa este MESMO `of`, nunca recalcula por conta própria).
+  if(temHab(user,'Serene Grace')){
+    if(of.ailmentChance>0) of.ailmentChance = Math.min(100, of.ailmentChance*2);
+    if(of.flinchChance>0) of.flinchChance = Math.min(100, of.flinchChance*2);
+    if(of.statChance>0) of.statChance = Math.min(100, of.statChance*2);
+  }
+  if(temHab(user,'Sheer Force') && (of.ailmentChance>0 || of.flinchChance>0 || of.statChance>0)){
+    if(of.power) of.power = Math.round(of.power*1.3);
+    of.ailmentChance = 0; of.flinchChance = 0; of.statChance = 0;
+  }
   if(!liberandoCarga && move.name!=='Struggle' && user.pp && user.pp[move.name]!==undefined) user.pp[move.name] = Math.max(0, user.pp[move.name]-1);
+  // Cap. Habilidade Pressure: golpe usado CONTRA quem tem essa
+  // Habilidade gasta 1 PP A MAIS (oficial: "custa o dobro").
+  if(!liberandoCarga && move.name!=='Struggle' && temHab(target,'Pressure') && user.pp && user.pp[move.name]!==undefined){
+    user.pp[move.name] = Math.max(0, user.pp[move.name]-1);
+  }
 
   // Struggle: sempre acerta, sem Tipo (nunca Super/Pouco Efetivo), recuo de 1/4 do próprio PV Máximo
   if(move.name==='Struggle'){
@@ -7576,6 +7988,11 @@ function resolveGaTurn(user, target, preSelectedMove){
       b.log.push('💀 '+userName+' usou '+move.name+' -- quebrou o Substituto de '+targetName+' (Nocaute em 1 Golpe não afeta o PV real através dele).');
       return;
     }
+    // Cap. Habilidade Sturdy: imune de verdade a Nocaute em 1 Golpe (regra oficial), furada por Mold Breaker e companhia
+    if(temHab(target,'Sturdy') && !ignoraHabilidadeDefensiva(user)){
+      b.log.push('🛡️ '+userName+' usou '+move.name+', mas '+targetName+' é imune a Nocaute em 1 Golpe (Sturdy).');
+      return;
+    }
     b.hp[target.key] = 0;
     b.log.push('💀 '+userName+' usou '+move.name+' -- Nocaute em 1 Golpe! '+targetName+' desmaiou na hora!');
     return;
@@ -7631,7 +8048,7 @@ function resolveGaTurn(user, target, preSelectedMove){
     b.log.push('❌ '+userName+' usou '+move.name+', mas errou '+targetName+'.');
     return;
   }
-  var crit = move.categoria!=='Status' && officialCritRoll(of.critRate);
+  var crit = move.categoria!=='Status' && officialCritRoll(of.critRate, user, target);
 
   if(move.categoria==='Status'){
     // Cap. Clima: Rain Dance/Sunny Day/Sandstorm/Hail armam o clima de
@@ -7729,7 +8146,7 @@ function resolveGaTurn(user, target, preSelectedMove){
     if(of.ailment && of.ailment!=='none'){
       var ailmentAlvo = of.moveTarget==='user' ? user : target;
       var ailmentAlvoNome = of.moveTarget==='user' ? userName : targetName;
-      applyAilment(ailmentAlvo, of.ailment, move.name, b, ailmentAlvoNome);
+      applyAilment(ailmentAlvo, of.ailment, move.name, b, ailmentAlvoNome, user);
     }
     if(of.healing<=0 && (!of.statChanges||!of.statChanges.length) && (!of.ailment||of.ailment==='none')){
       b.log.push('➡️ '+userName+' usou '+move.name+'.');
@@ -7753,17 +8170,43 @@ function resolveGaTurn(user, target, preSelectedMove){
   }
 
   // Movimento de dano (Físico/Especial)
+  // Cap. Habilidade Soundproof: bloqueia golpe Sonoro por completo
+  // (SOUND_MOVES curada) -- oficialmente NUNCA furada por Mold
+  // Breaker e companhia.
+  if(SOUND_MOVES[move.name] && temHab(target,'Soundproof')){
+    b.log.push('🔇 '+userName+' usou '+move.name+' -- '+targetName+' é imune (Soundproof).');
+    return;
+  }
   var targetSp = speciesByNum(target.num);
   var typeEff = typeEffMultiplier(move.tipo, targetSp.tipo1, targetSp.tipo2);
+  // Cap. Habilidade Scrappy: Normal/Lutador acertam Fantasma normalmente
+  if(typeEff===0 && temHab(user,'Scrappy') && (move.tipo==='Normal'||move.tipo==='Lutador') && (targetSp.tipo1==='Fantasma'||targetSp.tipo2==='Fantasma')){
+    typeEff = 1;
+  }
+  if(checaImunidadeDeTipoPorHabilidade(move, user, target, b, userName, targetName)) return;
   if(typeEff===0){
     b.log.push('🛡️ '+userName+' usou '+move.name+' -- não afeta '+targetName+' (imune).');
     return;
   }
+  // Cap. Habilidade Wonder Guard: só golpe SUPER efetivo (>1x) afeta
+  if(typeEff<=1 && temHab(target,'Wonder Guard') && !ignoraHabilidadeDefensiva(user)){
+    b.log.push('🛡️ '+userName+' usou '+move.name+' -- '+targetName+' só é afetado por golpes Super Efetivos (Wonder Guard).');
+    return;
+  }
+  // Cap. borda: se o alvo já desmaiou ANTES do golpe acontecer (nunca
+  // deveria rolar no fluxo normal -- quem desmaia sai de campo na hora
+  // -- mas é uma guarda barata contra qualquer estado zoado), nunca
+  // entra no laço de hits (deixaria ultimoResult null e quebraria a
+  // leitura de typeEff logo abaixo).
+  if(b.hp[target.key]<=0 && target.subHp<=0){
+    b.log.push('⚔️ '+userName+' usou '+move.name+' -- '+targetName+' já não está mais em campo.');
+    return;
+  }
   var hits = officialHitCount(of.minHits, of.maxHits);
-  var totalDano = 0, ultimoResult = null, atingiuSubstituto = false;
+  var totalDano = 0, ultimoResult = null, atingiuSubstituto = false, salvoPeloSturdy = false;
   for(var h=0; h<hits; h++){
     if(b.hp[target.key]<=0 && target.subHp<=0) break; // desmaiou (ou o Substituto quebrou) no meio de um golpe de vários hits -- para aqui
-    var result = officialDamage(user, target, move, crit);
+    var result = officialDamage(user, target, move, crit, of);
     ultimoResult = result;
     if(target.subHp>0){
       // Cap. Substituto: absorve o dano no lugar do PV real -- quebrar encerra os hits restantes (regra oficial)
@@ -7773,8 +8216,15 @@ function resolveGaTurn(user, target, preSelectedMove){
       totalDano += absorvido;
       if(target.subHp<=0) break;
     } else {
-      b.hp[target.key] = Math.max(0, b.hp[target.key]-result.dano);
-      totalDano += result.dano;
+      // Cap. Habilidade Sturdy: com PV cheio, NUNCA desmaia num golpe
+      // só -- sobra sempre com 1 PV (furada por Mold Breaker e
+      // companhia). Só faz sentido testar ENQUANTO o PV ainda tá
+      // cheio (num golpe de vários hits, só o 1º hit pode salvar).
+      var maxTarget = gaHpMax(target), hpAntesHit = b.hp[target.key];
+      var vaiSturdy = hpAntesHit===maxTarget && result.dano>=hpAntesHit && temHab(target,'Sturdy') && !ignoraHabilidadeDefensiva(user);
+      b.hp[target.key] = vaiSturdy ? 1 : Math.max(0, b.hp[target.key]-result.dano);
+      totalDano += vaiSturdy ? (hpAntesHit-1) : result.dano;
+      if(vaiSturdy){ salvoPeloSturdy = true; break; } // encerra os hits restantes -- já não tem mais o que derrubar
     }
   }
   var extra = (ultimoResult.typeEff>=2?' Super efetivo!':(ultimoResult.typeEff>0&&ultimoResult.typeEff<1?' Pouco efetivo.':'')) + (crit?' Crítico!':'');
@@ -7783,10 +8233,10 @@ function resolveGaTurn(user, target, preSelectedMove){
     b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- atingiu o Substituto ('+totalDano+' de dano absorvido).'+extra+(target.subHp<=0?' O Substituto quebrou!':''));
   } else {
     target.lastHitTaken = { dano: totalDano, categoria: move.categoria }; // Cap. Counter/Mirror Coat: só dano REAL conta
-    b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- '+totalDano+' de dano.'+extra);
+    b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- '+totalDano+' de dano.'+extra+(salvoPeloSturdy?' '+targetName+' aguentou com 1 PV (Sturdy)!':''));
   }
 
-  // recuo/dreno (Cap. oficial -- % do dano causado, positivo dreno/negativo recuo -- vale mesmo contra Substituto, regra oficial)
+  // recuo/dreno (Cap. oficial -- % do dano causado, positivo dreno/negativo recuo -- vale mesmo contra Substituto, regra oficial). Cap. Habilidade Magic Guard: bloqueia o RECUO (dano indireto) no PRÓPRIO usuário -- nunca o dreno, que é cura, não dano.
   if(of.drain!==0 && totalDano>0){
     var drainQtd = Math.max(1, Math.round(totalDano*Math.abs(of.drain)/100));
     if(of.drain>0){
@@ -7794,7 +8244,7 @@ function resolveGaTurn(user, target, preSelectedMove){
       var antesD = b.hp[user.key];
       b.hp[user.key] = Math.min(maxUserD, b.hp[user.key]+drainQtd);
       if(b.hp[user.key]>antesD) b.log.push('🩸 '+userName+' drenou '+(b.hp[user.key]-antesD)+' PV de '+targetName+'.');
-    } else {
+    } else if(!temHab(user,'Magic Guard')){
       b.hp[user.key] = Math.max(0, b.hp[user.key]-drainQtd);
       b.log.push('💥 '+userName+' sofreu '+drainQtd+' de recuo.');
     }
@@ -7803,15 +8253,44 @@ function resolveGaTurn(user, target, preSelectedMove){
   if(b.hp[target.key]>0){
     // efeitos secundários só valem se o alvo continua de pé, e o
     // Substituto bloqueia os que mirariam ELE (não os que mirariam o
-    // próprio usuário, caso raro de golpe de dano com buff próprio)
+    // próprio usuário, caso raro de golpe de dano com buff próprio).
+    // Cap. Habilidade Inner Focus: nunca hesita. Cap. Habilidade
+    // Shield Dust: bloqueia TODO efeito secundário do golpe recebido
+    // (Status E Estágio, nunca a própria mudança auto-infligida do
+    // usuário).
+    var bloqueadoPorShieldDust = temHab(target,'Shield Dust');
     if(!atingiuSubstituto){
-      if(of.flinchChance>0 && Math.random()*100<of.flinchChance){ target.flinch = true; b.log.push('😨 '+targetName+' hesitou!'); }
-      if(of.ailment && of.ailment!=='none'){
+      if(of.flinchChance>0 && !temHab(target,'Inner Focus') && Math.random()*100<of.flinchChance){ target.flinch = true; b.log.push('😨 '+targetName+' hesitou!'); }
+      if(!bloqueadoPorShieldDust && of.ailment && of.ailment!=='none'){
         var chanceAilment = of.ailmentChance>0 ? of.ailmentChance : 0; // golpe de dano SEM ailmentChance>0 não tem efeito secundário de status
-        if(chanceAilment>0 && Math.random()*100<chanceAilment) applyAilment(target, of.ailment, move.name, b, targetName);
+        if(chanceAilment>0 && Math.random()*100<chanceAilment) applyAilment(target, of.ailment, move.name, b, targetName, user);
       }
     }
-    applyStatChanges((!atingiuSubstituto || of.moveTarget==='user') && of.statChance>0 && Math.random()*100<of.statChance ? of.statChanges : null, of.moveTarget, user, target, b, userName, targetName);
+    applyStatChanges((!atingiuSubstituto || of.moveTarget==='user') && (!bloqueadoPorShieldDust || of.moveTarget==='user') && of.statChance>0 && Math.random()*100<of.statChance ? of.statChanges : null, of.moveTarget, user, target, b, userName, targetName);
+
+    // Cap. Habilidades de CONTATO do ALVO (Static/Flame Body/Poison
+    // Point/Effect Spore, chance de Status no atacante; Rough Skin/
+    // Iron Barbs, 1/8 de recuo no atacante; Gooey/Tangling Hair, -1
+    // Velocidade no atacante) + Poison Touch do PRÓPRIO atacante
+    // (chance própria de envenenar no contato) -- só valem se o golpe
+    // realmente fez contato e ninguém já desmaiou nesse meio-tempo.
+    if(!atingiuSubstituto && golpeFazContato(move)){
+      if(b.hp[user.key]>0) aplicarHabilidadeDeContatoDoAlvo(target, user, b, targetName, userName);
+      if(temHab(user,'Poison Touch') && b.hp[target.key]>0 && Math.random()<0.3) applyAilment(target, 'poison', move.name, b, targetName, user);
+    }
+    // Cap. Habilidades Justified (golpe Sombrio, +1 Ataque) e Rattled
+    // (golpe Sombrio/Inseto/Fantasma, +1 Velocidade) do ALVO, por
+    // TIPO do golpe -- nunca precisam de contato. Weak Armor (golpe
+    // Físico, -1 Defesa/+2 Velocidade do ALVO) também por categoria,
+    // não Tipo.
+    if(!atingiuSubstituto && b.hp[target.key]>0){
+      if(move.tipo==='Sombrio' && temHab(target,'Justified')) bumpStageAbility(target,'atk',1,b,targetName,'Justified');
+      if((move.tipo==='Sombrio'||move.tipo==='Inseto'||move.tipo==='Fantasma') && temHab(target,'Rattled')) bumpStageAbility(target,'spe',1,b,targetName,'Rattled');
+      if(move.categoria==='Físico' && temHab(target,'Weak Armor')){
+        bumpStageAbility(target,'def',-1,b,targetName,'Weak Armor');
+        bumpStageAbility(target,'spe',2,b,targetName,'Weak Armor');
+      }
+    }
   }
 
   // Cap. Movimentos de troca forçada (U-turn/Volt Switch/Flip Turn):
@@ -8800,6 +9279,15 @@ function resolverRodadaDuelo(d){
         applyTerrainResidual(aB,bB,b);
         if(b.hp[aB.key]<=0 && duelResolveFaint(d,'a')) pausou=true;
         else if(b.hp[bB.key]<=0 && duelResolveFaint(d,'b')) pausou=true;
+      }
+      // Cap. Habilidades passivas de FIM de Rodada (Speed Boost/Shed
+      // Skin/Hydration) -- valem no Duelo também, nunca causam
+      // desmaio. Armadilha de Campo/Intimidate/Download NÃO valem no
+      // Duelo de propósito (documentado -- os 2 lados usam
+      // side:'player' igual, sem como saber "o lado adversário").
+      if(!pausou){
+        applyAbilityEndOfTurn(aB, b);
+        applyAbilityEndOfTurn(bB, b);
       }
     }
   } finally { STATE.battle = backupBattle; }
