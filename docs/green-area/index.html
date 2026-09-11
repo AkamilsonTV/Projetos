@@ -204,6 +204,17 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    e sem nenhum botão, só texto -- é puramente informativo (ver
    pokeCardMini/finishBattle). */
 .ga-vd-badge{ position:absolute; top:6px; right:6px; font-size:11px; line-height:1.3; background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:2px 5px; z-index:2; white-space:nowrap; opacity:.9; }
+/* Cap. leva desta sessão (Raids -- "adicionar um R, pixelado (que
+   significa raid) no card dele e na pokedex de quem capturou"): sem
+   sprite oficial (mecânica não existe nos jogos reais) -- quadrado
+   sólido desenhado em CSS, sem raio de borda nenhum (mesmo espírito
+   "pixelado" -- sem anti-serrilhado, cantos retos de verdade), canto
+   OPOSTO ao V:/D: pra nunca sobrepor. `.ga-raid-badge-dex` é a mesma
+   coisa, só reposicionada pros 2 lugares que não são `.ga-poke-card`
+   (tile da grade da Pokédex e popup de detalhe). */
+.ga-raid-badge{ position:absolute; top:6px; left:6px; width:20px; height:20px; line-height:20px; font-size:12px; font-weight:700; text-align:center; background:var(--accent-dim); color:#04170c; border-radius:0; z-index:2; }
+.ga-dex-tile{ position:relative; }
+.ga-raid-badge-dex{ position:absolute; top:2px; left:2px; }
 /* Cap. leva desta sessão: "O botão de apelido pode ser apenas um lápis
    ao lado do nome de cada pokémon. Após trocar o nome ele fica cinza,
    mas não some" -- ícone inline (não mais botão separado nas ações),
@@ -5474,6 +5485,572 @@ var POKEBALLS = [
     desc:'Multiplicador de captura: ×2,00 sobre a Taxa de Captura da Espécie.' }
 ];
 
+/* ============================================================
+   RAIDS (Cap. leva desta sessão -- "Quero criar raid. Um sistema onde
+   os jogadores vão enfrentar um pokémon mais forte e que ele
+   distribuirá experiência e outras premiações além de poder ser
+   capturado..."): item NOVO, só ganho (nunca comprado na Loja, por
+   isso fora de POKEBALLS/GA_ITEMS) -- sem sprite oficial (mecânica não
+   existe nos jogos reais), emoji fallback como já é feito pros outros
+   itens exclusivos deste protótipo (Rock Stone etc.). */
+var RAID_PASS_ITEM = { key:'raidpass', nome:'Raid Pass', emoji:'🎟️', icon:null,
+  desc:'Só ganho, nunca comprado. Cobrado ao entrar numa luta de Raid -- some do inventário sozinho quando o evento de Raid termina (nunca acumula pra próxima).' };
+
+/* Configuração do Raid (Cap. "Quero que tenha um console onde eu
+   possa, como admin, mexer nas configurações da raid pra equilibrar.
+   Tudo mesmo, raid pass, os stats do pokemon etc. De quantos em
+   quantos dias ele aparece, quando expira o tempo dele e etc. A
+   experiência, pokedolar e lista de itens, por participaçao que vão
+   ganhar"): valores PADRÃO usados até o Admin mudar alguma coisa
+   (`green_area_config/raid`, ver GA_RAID_CONFIG/bootApp) -- mesmo
+   espírito do override de Dia do jogo já implementado (documento
+   GLOBAL, escutado ao vivo desde o boot, afeta TODO mundo na hora).
+   `duracaoDias` é em "Dia do jogo" (blocos de 6h reais, mesma unidade
+   já usada em todo o resto do relógio), não dia real. */
+var RAID_CONFIG_PADRAO = {
+  statMult: 4,          // "300% a mais em todos os atributos" = 100% + 300% = ×4
+  hpMult: 21,            // "2000% a mais de vida" = 100% + 2000% = ×21
+  captureMult: 0.15,     // "chance bem menor de captura" -- fração da Taxa de Captura normal da Espécie, ANTES do multiplicador da Pokébola
+  passDropChance: 0.05,  // chance de dropar 1 Raid Pass por vitória selvagem, SÓ enquanto uma Raid está ativa
+  passPorDia: 1,         // Raid Pass ganho por Dia do jogo, enquanto a Raid estiver ativa
+  duracaoDiasPadrao: 3,  // duração padrão (em Dias do jogo) sugerida ao Admin ao iniciar uma Raid nova
+  xpParticipacao: 15,
+  pokedolarParticipacao: 500,
+  itensParticipacao: { hiperpocao: 2 }
+};
+function raidConfigAtual(){
+  return Object.assign({}, RAID_CONFIG_PADRAO, GA_RAID_CONFIG||{});
+}
+
+/* ============================================================
+   RAIDS -- núcleo (Cap. leva desta sessão). Dados no Firestore
+   GLOBAL (green_area_raids/green_area_raid_chat/
+   green_area_raid_recompensas, ver bootApp/attachSocialListeners) --
+   motor de combate 100% REUSADO (STATE.battle de sempre, mesmo
+   runBattleUntilPause/resolveGaTurn/resolveFaintAfterDamage/
+   finishBattle -- só ganharam um `if(b.kind==='raid')` cada, comentado
+   no lugar certo), nunca um motor paralelo -- Clima/Terreno/
+   Habilidade/Item/Status/PP continuam funcionando exatamente igual.
+
+   MODELO DE DADOS (1 documento por Raid, `green_area_raids/{id}` --
+   id aleatório via uid()):
+     { num, level, startedAt, expiresAt, hpMax, hpAtual,
+       statMultUsado, hpMultUsado, captureMultUsado (CONGELADOS no
+       início desta Raid -- nunca mudam no meio, mesmo que o Admin
+       ajuste RAID_CONFIG depois; só a PRÓXIMA Raid usa os valores
+       novos), xpParticipacao/pokedolarParticipacao/itensParticipacao
+       (idem, congelados), finished (null|'derrotado'|'expirado'|
+       'encerrado_admin'), finishedAt, finishedBy, tentativas: [
+       {docId, nome, dano, ts, resultado, bolaEscolhida} -- 1 entrada
+       por TENTATIVA de luta, nunca por jogador -- soma de `dano` por
+       docId = ranking/HP total causado; NUNCA um mapa com
+       update({'tentativas.x.y':...}) -- esta e outras coleções
+       sociais deste jogo (chat/troca/duelo) já documentaram por que:
+       2 jogadores terminando ao mesmo tempo não podem se atropelar,
+       então é sempre arrayUnion, nunca lê-modifica-escreve], criadaPor }.
+
+   `green_area_raid_chat/{mesmoId}` -- 1 documento, `mensagens` via
+   arrayUnion, mesmo padrão exato do chat público do Centro Pokémon.
+
+   `green_area_raid_recompensas/{docId}` -- "caixa de entrada" de
+   prêmio pendente por CONTA (mesmo padrão de green_area_inbox) --
+   quem termina de derrotar uma Raid escreve ali pra CADA participante
+   que causou dano (mesmo offline, "mesmo que não estejam online
+   receberão o prêmio") -- ver distribuirRecompensasRaid/
+   processarRecompensasRaidPendentes/aplicarRecompensaRaid. */
+
+/* Raids ainda "vivas" pra mostrar em "RAIDS ATIVAS" -- só filtra o
+   cache local (GA_RAIDS_TODAS), nunca escreve nada. A EXPIRAÇÃO de
+   verdade (gravar finished:'expirado') é PREGUIÇOSA -- só acontece
+   quando algum cliente de fato mexe numa Raid vencida pelo relógio
+   (ver raidExpirarSeNecessario) -- mesmo espírito já documentado da
+   presença do Centro Pokémon/trim do chat: não tem servidor rodando
+   sozinho num site 100% estático pra fazer isso na hora exata. */
+function raidsAtivas(){
+  var agora = Date.now();
+  return GA_RAIDS_TODAS.filter(function(r){ return !r.finished && r.expiresAt>agora; });
+}
+function raidPorId(raidId){ return GA_RAIDS_TODAS.filter(function(r){ return r.id===raidId; })[0] || null; }
+function raidExpirarSeNecessario(raid){
+  if(!raid || raid.finished || !raidsCol) return;
+  if(Date.now()>=raid.expiresAt){
+    raidsCol.doc(raid.id).update({ finished:'expirado', finishedAt:Date.now() }).catch(function(){});
+  }
+}
+/* Ranking de dano (top 3, mas devolve TODO mundo -- quem chama corta
+   os 3 primeiros) -- soma `dano` de TODAS as tentativas de cada docId
+   (uma conta pode ter lutado várias vezes contra a MESMA Raid, com
+   Passes de Dias diferentes). */
+function raidRankingDano(raid){
+  var porConta = {};
+  (raid.tentativas||[]).forEach(function(t){
+    if(!t.dano) return;
+    if(!porConta[t.docId]) porConta[t.docId] = { docId:t.docId, nome:t.nome, dano:0 };
+    porConta[t.docId].dano += t.dano;
+  });
+  return Object.keys(porConta).map(function(k){ return porConta[k]; }).sort(function(a,b){ return b.dano-a.dano; });
+}
+
+/* Raid Pass -- economia (Cap. "Os jogadores poderão enfrentar ele uma
+   vez por dia usando o Raid Pass... Treinadores ganham raid pass uma
+   vez ao dia do jogo enquanto a raid estiver ativa, e os raid pass
+   restantes expiram e somem do inventário assim que o evento de raid
+   acaba"): mesmo padrão de tickEnergy/tickPoketickets -- chamado de
+   dentro de mutate() E do timer de fundo (energyTickLoop), então roda
+   sozinho, não importa a tela. `STATE.raidPassTrack` guarda QUAL Raid
+   está sendo acompanhada agora -- trocar de Raid (a antiga acabou, uma
+   nova começou) NUNCA carrega passe sobrando: zera puro. Fase 1 (ver
+   README/changelog): só 1 Raid ativa por vez, então "a Raid ativa" é
+   sempre a primeira (e única) de raidsAtivas(). */
+function tickRaidPass(){
+  if(!STATE) return;
+  STATE.itens = STATE.itens||{};
+  var ativa = raidsAtivas()[0] || null;
+  if(!ativa){
+    if(STATE.raidPassTrack){ STATE.itens.raidpass = 0; STATE.raidPassTrack = null; }
+    return;
+  }
+  var cfg = raidConfigAtual();
+  if(!STATE.raidPassTrack || STATE.raidPassTrack.raidId!==ativa.id){
+    // 1ª vez vendo ESTA Raid -- credita a 1ª parcela na hora (não espera o Dia do jogo virar de novo)
+    STATE.itens.raidpass = (STATE.itens.raidpass||0) + cfg.passPorDia;
+    STATE.raidPassTrack = { raidId: ativa.id, lastGameDay: periodoDoJogoIndex() };
+    return;
+  }
+  var diaAtual = periodoDoJogoIndex();
+  var diasPassados = diaAtual - STATE.raidPassTrack.lastGameDay;
+  if(diasPassados>0){
+    STATE.itens.raidpass = (STATE.itens.raidpass||0) + diasPassados*cfg.passPorDia;
+    STATE.raidPassTrack.lastGameDay = diaAtual;
+  }
+}
+
+/* Entrar numa Raid (Cap. "Para entrar na batalha os jogadores
+   precisam: ter o raid pass e escolher uma pokébola para usar, ou
+   simplesmente decidir não tentar capturar... Se for a primeira vez
+   de entrada na Raid, ele vai perguntar da pokebola também, as
+   proximas entradas não"): `STATE.raidEntradas[raidId]` guarda a
+   escolha feita na 1ª entrada -- entradas seguintes NUNCA perguntam de
+   novo, vão direto pra luta com a MESMA bola (ou sem tentar captura,
+   se foi essa a escolha). */
+DT.gaEntrarRaid = function(raidId, leadPartyId){
+  if(!leadPartyId){ SESSION.error='Escolha um Pokémon da Equipe pra liderar.'; render(); return; }
+  if(STATE.battle){ SESSION.error='Já tem uma luta em andamento -- termine ela primeiro.'; render(); return; }
+  var raid = raidPorId(raidId);
+  raidExpirarSeNecessario(raid);
+  if(!raid || raid.finished || Date.now()>=raid.expiresAt){ SESSION.error='Essa Raid não está mais ativa.'; render(); return; }
+  if((STATE.itens.raidpass||0)<1){ SESSION.error='Você não tem nenhum Raid Pass.'; render(); return; }
+  STATE.raidEntradas = STATE.raidEntradas||{};
+  if(!STATE.raidEntradas[raidId]){
+    SESSION.pendingRaidBola = { raidId: raidId, leadPartyId: leadPartyId };
+    render();
+    return;
+  }
+  iniciarBatalhaRaid(raidId, leadPartyId, STATE.raidEntradas[raidId].bola);
+};
+DT.gaResponderBolaRaid = function(bolaKeyOuVazio){
+  var pend = SESSION.pendingRaidBola; if(!pend) return;
+  SESSION.pendingRaidBola = null;
+  var bola = bolaKeyOuVazio || null;
+  STATE.raidEntradas = STATE.raidEntradas||{};
+  STATE.raidEntradas[pend.raidId] = { bola: bola };
+  iniciarBatalhaRaid(pend.raidId, pend.leadPartyId, bola);
+};
+DT.gaCancelarBolaRaid = function(){ SESSION.pendingRaidBola = null; render(); };
+
+/* Começa a luta de verdade -- busca a Raid FRESQUINHA no Firestore
+   (não confia só no cache local GA_RAIDS_TODAS, que pode estar
+   levemente atrasado) pra pegar o `hpAtual` real bem na hora de
+   entrar. `b.raidHpAtualNoInicio` guarda esse valor -- é contra ELE
+   que o dano desta tentativa é medido no final (ver
+   finalizarBatalhaRaid), nunca contra hpMax. */
+function iniciarBatalhaRaid(raidId, leadPartyId, bolaEscolhida){
+  var lead = STATE.party.filter(function(p){ return p.id===leadPartyId; })[0];
+  if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar.'; render(); return; }
+  if(!raidsCol){ SESSION.error='Banco de dados ainda não conectou -- espere um instante e tente de novo.'; render(); return; }
+  raidsCol.doc(raidId).get().then(function(doc){
+    if(!doc.exists){ SESSION.error='Essa Raid não existe mais.'; render(); return; }
+    var raid = Object.assign({id:doc.id}, doc.data());
+    if(raid.finished || Date.now()>=raid.expiresAt){
+      raidExpirarSeNecessario(raid);
+      SESSION.error='Essa Raid já terminou -- seu Raid Pass não foi gasto.'; render(); return;
+    }
+    if((STATE.itens.raidpass||0)<1){ SESSION.error='Você não tem nenhum Raid Pass.'; render(); return; }
+    if(STATE.battle){ SESSION.error='Já tem uma luta em andamento -- termine ela primeiro.'; render(); return; }
+    STATE.itens.raidpass--;
+    var bossBattler = buildBattlerRaid(raid);
+    var hpAtualFetched = Math.max(0, raid.hpAtual);
+    var playerBattler = buildBattlerFromParty(lead);
+    var hp = {};
+    hp[playerBattler.key] = gaHpMax(playerBattler);
+    hp[bossBattler.key] = hpAtualFetched;
+    markSeen(raid.num);
+    var spNome = (speciesByNum(raid.num)||{}).name || ('#'+raid.num);
+    STATE.battle = {
+      kind:'raid', raidId: raidId, raidHpAtualNoInicio: hpAtualFetched,
+      label: spNome+' (Raid)',
+      playerActive: playerBattler, playerPartyOrder: STATE.party.map(function(p){return p.id;}), usedPartyIds:[lead.id],
+      oppTeam:[bossBattler], oppIdx:0, hp:hp,
+      log:['⚔️ Entrou na Raid contra '+spNome+'! Você mandou '+displayName(playerBattler)+' -- Regra de Ouro: você ataca primeiro, sempre.'],
+      healedThisFaint:{}, pendingHeal:null, pendingSwitch:false, pendingEvolution:null, pendingAprenderMovimento:null,
+      oppDefeatedLevels:[], finished:null, captureDone:false,
+      weather:{tipo:'neutro',turnsLeft:null}, terrain:{tipo:'neutro',turnsLeft:null},
+      hazards:{player:{stealthRock:false,toxicSpikes:0}, opponent:{stealthRock:false,toxicSpikes:0}}
+    };
+    logAction('raid', 'Entrou numa luta de Raid contra '+spNome+' (Nv. '+raid.level+'), usando 1 Raid Pass.');
+    runBattleUntilPause();
+    mutate();
+  }).catch(function(err){ SESSION.error='Não consegui entrar na Raid ('+erroFirestoreMsg(err)+').'; render(); });
+}
+
+/* Fim de UMA tentativa de luta contra a Raid (chamado de dentro de
+   finishBattle, kind==='raid') -- registra a tentativa (arrayUnion,
+   nunca lê-modifica-escreve) e decrementa o HP compartilhado de
+   verdade (FieldValue.increment, atômico -- 2 tentativas terminando ao
+   mesmo tempo, de contas diferentes, NUNCA perdem o dano uma da
+   outra). Só depois de escrever é que relê pra saber se ESTA tentativa
+   foi a que zerou o HP -- se foi, tenta reivindicar a finalização
+   (ver comentário dentro). */
+function finalizarBatalhaRaid(b, result){
+  var bossKey = b.oppTeam[0].key;
+  var hpRestanteLocal = Math.max(0, b.hp[bossKey]||0);
+  var danoNestaTentativa = Math.max(0, (b.raidHpAtualNoInicio||0) - hpRestanteLocal);
+  var raidId = b.raidId;
+  var meuDocId = SESSION.currentDocId;
+  var tentativa = { docId: meuDocId, nome: STATE.trainerName, dano: danoNestaTentativa, ts: Date.now(),
+    resultado: (result==='vitoria' ? 'vitoria' : 'derrota'),
+    bolaEscolhida: (STATE.raidEntradas && STATE.raidEntradas[raidId] && STATE.raidEntradas[raidId].bola) || null };
+  b.log.push(result==='vitoria'
+    ? '🏆 Você derrotou a Raid nesta tentativa! (causou '+danoNestaTentativa+' de dano ao todo)'
+    : '☠️ Sua Equipe não aguentou desta vez (causou '+danoNestaTentativa+' de dano à Raid, que continua de pé).');
+  logAction('raid', 'Lutou contra a Raid (causou '+danoNestaTentativa+' de dano, '+tentativa.resultado+').');
+  if(raidsCol){
+    raidsCol.doc(raidId).update({
+      tentativas: firebase.firestore.FieldValue.arrayUnion(tentativa),
+      hpAtual: firebase.firestore.FieldValue.increment(-danoNestaTentativa)
+    }).then(function(){ return raidsCol.doc(raidId).get(); })
+      .then(function(doc){
+        if(!doc.exists) return;
+        var raid = Object.assign({id:doc.id}, doc.data());
+        if(raid.finished || raid.hpAtual>0) return;
+        /* HP chegou a 0 -- tenta reivindicar a finalização. Sem
+           transação de verdade neste stub/site estático, então isso é
+           "melhor esforço" (documentado, mesmo espírito de outras
+           limitações honestas já assumidas neste jogo): grava
+           finished+finishedBy e RELÊ -- só quem aparece como
+           finishedBy realmente distribui os prêmios. Na prática, 2
+           tentativas zerando o HP no MESMÍSSIMO instante é rearíssimo
+           num jogo pequeno; o pior caso residual é 1 distribuição em
+           dobro, nunca prêmio perdido. */
+        return raidsCol.doc(raidId).update({ finished:'derrotado', finishedAt:Date.now(), finishedBy:meuDocId })
+          .then(function(){ return raidsCol.doc(raidId).get(); })
+          .then(function(doc2){
+            var raid2 = Object.assign({id:doc2.id}, doc2.data());
+            if(raid2.finishedBy===meuDocId) return distribuirRecompensasRaid(raid2);
+          });
+      }).catch(function(){ /* melhor esforço -- o Raid Pass já foi cobrado antes de entrar, então nunca fica "de graça" mesmo se isto falhar */ });
+  }
+  mutate();
+}
+/* Distribui XP/Pokédólar/itens/tentativa de captura ("por
+   participação") pra TODO mundo que causou dano de verdade em
+   qualquer tentativa contra esta Raid -- mesmo offline ("mesmo que não
+   estejam online receberão o prêmio"), via caixa de entrada
+   (green_area_raid_recompensas), nunca escrevendo direto no `state` de
+   outra conta (arriscaria atropelar um save dela em andamento). */
+function distribuirRecompensasRaid(raid){
+  var porConta = {};
+  (raid.tentativas||[]).forEach(function(t){
+    if(!t.dano) return;
+    if(!porConta[t.docId]) porConta[t.docId] = { docId:t.docId, nome:t.nome, bolaEscolhida:t.bolaEscolhida||null };
+    else if(!porConta[t.docId].bolaEscolhida && t.bolaEscolhida) porConta[t.docId].bolaEscolhida = t.bolaEscolhida;
+  });
+  var promessas = Object.keys(porConta).map(function(docId){
+    var c = porConta[docId];
+    var rec = { raidId: raid.id, num: raid.num, level: raid.level,
+      xp: raid.xpParticipacao, pokedolares: raid.pokedolarParticipacao, itens: raid.itensParticipacao||{},
+      tentarCapturar: !!c.bolaEscolhida, bolaEscolhida: c.bolaEscolhida, captureMultUsado: raid.captureMultUsado, ts: Date.now() };
+    return raidRecompensasCol.doc(docId).set({ pendentes: firebase.firestore.FieldValue.arrayUnion(rec) }, {merge:true}).catch(function(){});
+  });
+  if(raidChatCol){
+    promessas.push(raidChatCol.doc(raid.id).set({ mensagens: firebase.firestore.FieldValue.arrayUnion({ autor:'Sistema', texto:'🏆 A Raid foi derrotada! Prêmio de participação distribuído pra todo mundo que lutou.', ts:Date.now() }) }, {merge:true}).catch(function(){}));
+  }
+  return Promise.all(promessas);
+}
+/* Aplica os prêmios pendentes NESTA conta -- chamado pelo listener de
+   green_area_raid_recompensas (ver attachSocialListeners), tanto no
+   login quanto ao vivo se a conta já estiver online quando a Raid cai.
+   Remove cada entrada da caixa de entrada (arrayRemove, valor exato)
+   depois de aplicar -- nunca reaplica a mesma 2x. */
+function processarRecompensasRaidPendentes(pendentes, docId){
+  if(!STATE || !pendentes || !pendentes.length) return;
+  pendentes.forEach(function(rec){
+    aplicarRecompensaRaid(rec);
+    if(raidRecompensasCol) raidRecompensasCol.doc(docId).update({ pendentes: firebase.firestore.FieldValue.arrayRemove(rec) }).catch(function(){});
+  });
+  mutate();
+}
+/* Cap. "chance bem menor de captura em relação a versão normal dele,
+   mas os modificadores que aumentei a chance de captura funcionam
+   normalmente, com base na chance do pokemon raid": `captureMultUsado`
+   (congelado na Raid, ver DT.gaAdminIniciarRaid) reduz a Taxa de
+   Captura ANTES do multiplicador da Pokébola -- catchChance(num,bola)
+   já devolve Taxa×multiplicador da bola; só falta multiplicar de novo
+   pelo fator da Raid. Simplificação documentada: recompensa de XP
+   aplicada FORA de uma luta de verdade (pode ser offline) nunca
+   dispara popup de evolução -- se cruzar Nível elegível, a evolução
+   fica pendente pro PRÓXIMO ganho de XP em luta de verdade
+   (eligibleEvolution roda de novo a cada level up, nada se perde, só
+   adia). */
+function aplicarRecompensaRaid(rec){
+  STATE.pokedolares = (STATE.pokedolares||0) + (rec.pokedolares||0);
+  STATE.itens = STATE.itens||{};
+  Object.keys(rec.itens||{}).forEach(function(k){ STATE.itens[k] = (STATE.itens[k]||0) + rec.itens[k]; });
+  var p = STATE.party[0];
+  if(p && rec.xp>0){
+    p.xpNivel = (p.xpNivel||0) + rec.xp;
+    while(p.xpNivel>=XP_PARA_LEVEL_UP && p.level<NIVEL_MAX){
+      p.xpNivel -= XP_PARA_LEVEL_UP;
+      p.level = clampInt(p.level+1, 1, NIVEL_MAX);
+      gainFelicidade(p, FELICIDADE_POR_LEVEL);
+    }
+    if(p.level>=NIVEL_MAX) p.xpNivel = 0;
+  }
+  var spNome = (speciesByNum(rec.num)||{}).name || ('#'+rec.num);
+  var mensagem = 'Recebeu recompensa de participação numa Raid ('+spNome+' Nv.'+rec.level+'): +'+(rec.pokedolares||0)+' Pokédólares'+(rec.xp?', +'+rec.xp+' XP':'')+'.';
+  if(rec.tentarCapturar && rec.bolaEscolhida){
+    var bola = POKEBALLS.filter(function(bl){ return bl.key===rec.bolaEscolhida; })[0];
+    if(bola && (STATE.pokebolas[rec.bolaEscolhida]||0)>0){
+      STATE.pokebolas[rec.bolaEscolhida]--;
+      var chance = catchChance(rec.num, rec.bolaEscolhida) * (rec.captureMultUsado!=null ? rec.captureMultUsado : 1);
+      chance = clampInt(Math.round(chance*100), 1, 95)/100;
+      if(Math.random()<chance){
+        markCaught(rec.num, true);
+        var novo = spawnPoke(rec.num, rec.level);
+        novo.deRaid = true;
+        if(STATE.party.length<6) STATE.party.push(novo); else STATE.box.push(novo);
+        mensagem += ' 🎯 Capturou o Pokémon da Raid!';
+      } else {
+        mensagem += ' 💨 Tentou capturar o Pokémon da Raid, mas escapou.';
+      }
+    } else if(bola){
+      mensagem += ' (queria tentar capturar, mas ficou sem '+bola.nome+' na Mochila.)';
+    }
+  }
+  logAction('raid', mensagem);
+  SESSION.notice = '🏆 '+mensagem;
+}
+
+/* Sala da Raid -- chat (mesmo padrão do Centro Pokémon, 1 doc por Raid
+   em vez de 1 global só) + ranking + log. */
+var RAID_CHAT_MAX = 200;
+var RAID_CHAT_MSG_MAX_LEN = 300;
+/* Ir pra tela "RAIDS ATIVAS" é o nav ITEM genérico de sempre
+   (DT.gaGoto('raids'), ver NAV_ITENS) -- a expiração preguiçosa já
+   roda de dentro do próprio gaGoto quando o destino é 'raids'. */
+DT.gaAbrirSalaRaid = function(raidId){
+  var raid = raidPorId(raidId);
+  if(raid) raidExpirarSeNecessario(raid);
+  SESSION.screen = 'raids'; SESSION.raidRoomId = raidId; SESSION.raidChat = [];
+  SESSION.error=''; SESSION.sidebarOpen=false;
+  render();
+  if(!raidChatCol) return;
+  if(unsubscribeRaidChat) unsubscribeRaidChat();
+  unsubscribeRaidChat = raidChatCol.doc(raidId).onSnapshot(function(doc){
+    SESSION.raidChat = (doc.exists && doc.data().mensagens) || [];
+    render();
+  }, function(err){ SESSION.error='Não consegui carregar o chat da Raid ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaSairSalaRaid = function(){
+  if(unsubscribeRaidChat){ unsubscribeRaidChat(); unsubscribeRaidChat=null; }
+  SESSION.raidRoomId = null; SESSION.raidChat = [];
+  render();
+};
+DT.gaEnviarMensagemRaidChat = function(raidId, inputEl){
+  if(!STATE || !raidChatCol) return;
+  var texto = ((inputEl && inputEl.value)||'').trim();
+  if(!texto) return;
+  if(texto.length>RAID_CHAT_MSG_MAX_LEN) texto = texto.slice(0,RAID_CHAT_MSG_MAX_LEN);
+  var msg = { autor: STATE.trainerName, texto: texto, ts: Date.now() };
+  raidChatCol.doc(raidId).set({ mensagens: firebase.firestore.FieldValue.arrayUnion(msg) }, {merge:true}).then(function(){
+    if(inputEl) inputEl.value='';
+    logAction('raid', 'Mandou uma mensagem na sala da Raid.');
+    mutate();
+    var atuais = SESSION.raidChat||[];
+    if(atuais.length>RAID_CHAT_MAX) raidChatCol.doc(raidId).update({ mensagens: atuais.slice(atuais.length-RAID_CHAT_MAX) }).catch(function(){});
+  }).catch(function(err){ SESSION.error='Não consegui mandar a mensagem ('+erroFirestoreMsg(err)+').'; render(); });
+};
+
+/* Console do Admin (Cap. "Quero que tenha um console onde eu possa,
+   como admin, mexer nas configurações da raid pra equilibrar. Tudo
+   mesmo, raid pass, os stats do pokemon etc. De quantos em quantos
+   dias ele aparece, quando expira o tempo dele e etc. A experiência,
+   pokedolar e lista de itens, por participaçao que vão ganhar"): sem
+   scheduler automático de verdade (mesmo site 100% estático, sem
+   backend, já documentado noutras partes do jogo) -- o Admin inicia
+   CADA Raid manualmente (escolhendo Espécie/Nível/duração), e
+   `duracaoDiasPadrao`/o resto da config só valem de referência/padrão
+   pra próxima que ele iniciar. */
+DT.gaAdminIniciarRaid = function(numEl, levelEl, duracaoEl){
+  if(!SESSION.isAdmin) return;
+  if(raidsAtivas().length>0){ SESSION.error='Já existe uma Raid ativa -- encerre ela antes de iniciar outra.'; render(); return; }
+  var num = Math.floor(Number(numEl && numEl.value));
+  var sp = speciesByNum(num);
+  if(!sp){ SESSION.error='Espécie inválida -- digite um Número real da Pokédex (1-1025).'; render(); return; }
+  var level = clampInt(Math.floor(Number(levelEl && levelEl.value))||50, 1, NIVEL_MAX);
+  var cfg = raidConfigAtual();
+  var duracaoDias = Math.floor(Number(duracaoEl && duracaoEl.value)) || cfg.duracaoDiasPadrao;
+  if(!duracaoDias || duracaoDias<1){ SESSION.error='Duração inválida -- pelo menos 1 Dia do jogo.'; render(); return; }
+  if(!raidsCol){ SESSION.error='Banco de dados ainda não conectou.'; render(); return; }
+  var raidId = uid();
+  var hpBase = officialStat(num, level, 'hp', null, null);
+  var hpMax = Math.max(1, Math.round(hpBase * cfg.hpMult));
+  raidsCol.doc(raidId).set({
+    num:num, level:level, startedAt:Date.now(), expiresAt: Date.now()+duracaoDias*MS_POR_PERIODO_JOGO,
+    hpMax:hpMax, hpAtual:hpMax,
+    statMultUsado: cfg.statMult, hpMultUsado: cfg.hpMult, captureMultUsado: cfg.captureMult,
+    xpParticipacao: cfg.xpParticipacao, pokedolarParticipacao: cfg.pokedolarParticipacao, itensParticipacao: cfg.itensParticipacao,
+    finished:null, finishedAt:null, finishedBy:null, tentativas:[], criadaPor: STATE.trainerName
+  }).then(function(){
+    logAction('admin', 'Iniciou uma Raid: '+sp.name+' (Nv. '+level+'), duração de '+duracaoDias+' Dia(s) do jogo, PV Máximo '+hpMax+'.');
+    mutate();
+  }).catch(function(err){ SESSION.error='Não consegui iniciar a Raid ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaAdminEncerrarRaid = function(raidId){
+  if(!SESSION.isAdmin || !raidsCol) return;
+  raidsCol.doc(raidId).update({ finished:'encerrado_admin', finishedAt:Date.now() }).then(function(){
+    logAction('admin', 'Encerrou uma Raid manualmente.');
+    mutate();
+  }).catch(function(err){ SESSION.error='Não consegui encerrar a Raid ('+erroFirestoreMsg(err)+').'; render(); });
+};
+/* "chave:qtd,chave:qtd" -- forma mais simples de editar uma lista de
+   itens num único campo de texto, sem precisar de uma UI de tabela só
+   pra isso (item precisa existir em GA_ITEMS pra valer, senão é
+   ignorado -- nunca guarda uma chave inventada). */
+function parseItensParticipacaoRaid(texto){
+  var out = {};
+  (texto||'').split(',').forEach(function(par){
+    var kv = par.split(':');
+    var k = (kv[0]||'').trim();
+    var v = Math.floor(Number(kv[1]));
+    if(k && v>0 && GA_ITEMS.some(function(it){ return it.key===k; })) out[k] = v;
+  });
+  return out;
+}
+function itensParticipacaoParaTexto(obj){
+  return Object.keys(obj||{}).map(function(k){ return k+':'+obj[k]; }).join(',');
+}
+DT.gaAdminAtualizarConfigRaid = function(statMultEl, hpMultEl, captureMultEl, passDropEl, passDiaEl, duracaoPadraoEl, xpEl, pokedolarEl, itensEl){
+  if(!SESSION.isAdmin || !configCol) return;
+  var novo = {
+    statMult: Number(statMultEl.value)>0 ? Number(statMultEl.value) : RAID_CONFIG_PADRAO.statMult,
+    hpMult: Number(hpMultEl.value)>0 ? Number(hpMultEl.value) : RAID_CONFIG_PADRAO.hpMult,
+    captureMult: Number(captureMultEl.value)>0 ? Number(captureMultEl.value) : RAID_CONFIG_PADRAO.captureMult,
+    passDropChance: Number(passDropEl.value)>=0 ? Number(passDropEl.value) : RAID_CONFIG_PADRAO.passDropChance,
+    passPorDia: Math.max(1, Math.floor(Number(passDiaEl.value))||RAID_CONFIG_PADRAO.passPorDia),
+    duracaoDiasPadrao: Math.max(1, Math.floor(Number(duracaoPadraoEl.value))||RAID_CONFIG_PADRAO.duracaoDiasPadrao),
+    xpParticipacao: Math.max(0, Math.floor(Number(xpEl.value))||0),
+    pokedolarParticipacao: Math.max(0, Math.floor(Number(pokedolarEl.value))||0),
+    itensParticipacao: parseItensParticipacaoRaid(itensEl && itensEl.value)
+  };
+  configCol.doc('raid').set(novo, {merge:true}).then(function(){
+    logAction('admin', 'Atualizou a configuração de Raid.');
+    mutate();
+  }).catch(function(err){ SESSION.error='Não consegui salvar a configuração da Raid ('+erroFirestoreMsg(err)+').'; render(); });
+};
+
+/* Tela "RAIDS ATIVAS" (Cap. "Nome da sala para os players RAIDS
+   ATIVAS... Lá dentro, cada Raid terá sua sala com rankings, chat e
+   etc... Ele não precisa aparecer sala 1, 2 etc. Nome da raid ativa, a
+   foto do pokémon, vida atual e o botão de entrar"): lista simples de
+   cards (normalmente 0 ou 1 nesta leva -- ver "Em aberto" no README
+   pra várias Raids ao mesmo tempo) quando `SESSION.raidRoomId` não
+   está setado; a SALA de uma Raid específica (ranking/chat/log/entrar)
+   quando está. */
+function raidsScreenHTML(){
+  if(SESSION.raidRoomId) return raidSalaHTML(SESSION.raidRoomId);
+  var ativas = raidsAtivas();
+  var out = '<div class="ga-card"><h2>🏴 Raids Ativas</h2>'+
+    '<p class="ga-hint">Pokémon muito mais forte que o normal -- enfrente com seu time (você SEMPRE ataca primeiro, a Regra de Ouro da Raid), some dano no PV compartilhado dele junto com outros Treinadores, e ganhe recompensa de participação (XP/Pokédólares/itens) + uma chance de capturar quando ele cair, mesmo se você estiver offline na hora. Precisa de 1 🎟️ Raid Pass pra cada tentativa -- você tem <strong>'+(STATE.itens.raidpass||0)+'</strong> agora.</p>';
+  if(!ativas.length){
+    out += '<p class="ga-hint">Nenhuma Raid ativa agora -- volte mais tarde.</p></div>';
+    return out;
+  }
+  out += '<div class="ga-poke-grid">'+ativas.map(function(r){
+    var sp = speciesByNum(r.num);
+    var hpAtual = Math.max(0, r.hpAtual);
+    return '<div class="ga-poke-card">'+
+      '<img src="'+spriteUrl(r.num)+'" loading="lazy" alt="">'+
+      '<div class="ga-poke-name">'+esc2(sp?sp.name:('#'+r.num))+'</div>'+
+      '<div class="ga-poke-meta">Nv. '+r.level+(sp?' · '+typeTagsHTML(sp):'')+'</div>'+
+      hpBarHTML(hpAtual, r.hpMax)+
+      '<div class="ga-hint">Expira: '+esc2(new Date(r.expiresAt).toLocaleString('pt-BR'))+'</div>'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirSalaRaid(\''+r.id+'\')">⚔️ Entrar</button>'+
+    '</div>';
+  }).join('')+'</div></div>';
+  return out;
+}
+function raidSalaHTML(raidId){
+  var raid = raidPorId(raidId);
+  if(!raid){
+    return '<div class="ga-card"><h2>🏴 Raids Ativas</h2><p class="ga-hint">Essa Raid não existe mais.</p><button class="ga-btn-sm" onclick="DT.gaSairSalaRaid()">← Voltar</button></div>';
+  }
+  var sp = speciesByNum(raid.num);
+  var spNome = sp ? sp.name : ('#'+raid.num);
+  var hpAtual = Math.max(0, raid.hpAtual);
+  var ativa = !raid.finished && Date.now()<raid.expiresAt;
+  var ranking = raidRankingDano(raid).slice(0,3);
+  var log = (raid.tentativas||[]).slice().reverse().slice(0,20);
+  var out = '<div class="ga-card ga-raid-sala"><button class="ga-btn-sm" onclick="DT.gaSairSalaRaid()">← Voltar pra RAIDS ATIVAS</button>'+
+    '<h2>🏴 '+esc2(spNome)+' (Raid)</h2>'+
+    '<div class="ga-battle-side"><img src="'+spriteUrl(raid.num)+'" alt=""><div>'+esc2(spNome)+' Nv.'+raid.level+'</div>'+hpBarHTML(hpAtual, raid.hpMax)+'</div>'+
+    (!ativa ? '<p class="ga-hint">'+(raid.finished==='derrotado' ? '🏆 Essa Raid já foi derrotada.' : raid.finished==='expirado' ? '⌛ Essa Raid já expirou.' : '🚫 Essa Raid foi encerrada.')+'</p>'
+      : ((STATE.itens.raidpass||0)<1
+        ? '<p class="ga-hint">Você não tem nenhum 🎟️ Raid Pass agora -- entre numa luta selvagem pra tentar encontrar um (só cai enquanto existir Raid ativa).</p>'
+        : '<div class="ga-btn-row"><select id="gaRaidLead-'+raid.id+'">'+STATE.party.map(function(p){ return '<option value="'+p.id+'">'+esc2(p.apelido||speciesByNum(p.num).name)+' (Nv. '+p.level+')</option>'; }).join('')+'</select>'+
+          '<button class="ga-btn ga-btn-primary" onclick="DT.gaEntrarRaid(\''+raid.id+'\',document.getElementById(\'gaRaidLead-'+raid.id+'\').value)">⚔️ Entrar na Raid (1 🎟️)</button></div>'))+
+    '<h3 class="ga-subhead">🏆 Top 3 em dano</h3>'+
+    (ranking.length ? '<div class="ga-admin-list">'+ranking.map(function(r,i){ return '<div class="ga-admin-row"><div class="ga-admin-info"><strong>'+(i+1)+'º '+esc2(r.nome)+'</strong><div class="ga-hint">'+r.dano+' de dano causado</div></div></div>'; }).join('')+'</div>' : '<p class="ga-hint">Ninguém lutou ainda -- seja o primeiro!</p>')+
+    '<h3 class="ga-subhead">📜 Últimos combates</h3>'+
+    (log.length ? '<div class="ga-admin-log">'+log.map(function(t){ return '<div class="ga-admin-log-row"><span class="ga-hint">'+esc2(new Date(t.ts).toLocaleString('pt-BR'))+'</span> <strong>'+esc2(t.nome)+'</strong> causou '+t.dano+' de dano ('+(t.resultado==='vitoria'?'🏆 venceu a tentativa':'☠️ perdeu a tentativa')+')</div>'; }).join('')+'</div>' : '<p class="ga-hint">Nenhum combate registrado ainda.</p>')+
+    '<h3 class="ga-subhead">💬 Chat da sala</h3>'+
+    '<div class="ga-chat-log" id="gaRaidChatLog">'+
+      (!SESSION.raidChat || !SESSION.raidChat.length
+        ? '<div class="ga-hint">Nenhuma mensagem ainda -- seja o primeiro a falar!</div>'
+        : SESSION.raidChat.map(function(m){ return '<div class="ga-chat-msg'+(m.autor===STATE.trainerName?' mine':'')+'"><strong>'+esc2(m.autor)+':</strong> '+esc2(m.texto)+'</div>'; }).join(''))+
+    '</div>'+
+    '<div class="ga-capqtd-row">'+
+      '<input type="text" maxlength="'+RAID_CHAT_MSG_MAX_LEN+'" id="gaRaidChatInput" placeholder="Escreva uma mensagem..." class="ga-chat-input" onkeydown="if(event.key===\'Enter\')DT.gaEnviarMensagemRaidChat(\''+raid.id+'\',document.getElementById(\'gaRaidChatInput\'))">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemRaidChat(\''+raid.id+'\',document.getElementById(\'gaRaidChatInput\'))">Enviar</button>'+
+    '</div>'+
+  '</div>';
+  return out;
+}
+/* Popup "1ª entrada nesta Raid" -- pergunta a Pokébola (ou "não tentar
+   capturar") ANTES de cobrar o passe/começar a luta. Reusa POKEBALLS de
+   sempre; catchChance aqui é só uma ESTIMATIVA pro jogador (leva em
+   conta o multiplicador da Raid, ver raidConfigAtual) -- o cálculo real
+   de verdade só acontece quando a Raid realmente cai (captureMultUsado
+   CONGELADO daquela Raid específica, ver aplicarRecompensaRaid). */
+function pendingRaidBolaPopupHTML(){
+  var pend = SESSION.pendingRaidBola; if(!pend) return '';
+  var raid = raidPorId(pend.raidId);
+  var cfg = raidConfigAtual();
+  var num = raid ? raid.num : null;
+  return '<div class="ga-overlay" onclick="DT.gaCancelarBolaRaid()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelarBolaRaid()">✕</button>'+
+    '<h2>🎯 Primeira entrada nesta Raid</h2>'+
+    '<p class="ga-hint">Escolha AGORA a Pokébola que vai tentar usar SE a Raid cair (não precisa ter estoque agora -- só na hora, quando ela realmente cair) -- ou decida não tentar capturar. Essa escolha vale pra QUALQUER tentativa sua contra esta Raid, não só a de hoje.</p>'+
+    '<div class="ga-btn-row">'+
+      POKEBALLS.map(function(bl){
+        var pct = num!=null ? Math.round(clampInt(Math.round(catchChance(num,bl.key)*cfg.captureMult*100),1,95)) : '?';
+        return '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderBolaRaid(\''+bl.key+'\')">'+itemIconHTML(bl)+' '+bl.nome+' (~'+pct+'%)</button>';
+      }).join('')+
+      '<button class="ga-btn-sm" onclick="DT.gaResponderBolaRaid(\'\')">Não tentar capturar</button>'+
+    '</div>'+
+  '</div></div>';
+}
+
 /* TMs (Cap. "TM será necessário comprar e o ganhar, e a troca é
    grátis, já que é do item"): preço fixo pra manter simples (não
    inventa raridade por Movimento) -- lista de TMs de verdade
@@ -5922,7 +6499,25 @@ function checaBagaDePV(battler, b){
    por dentro virou a oficial. `poke`/battler só precisa de .num,
    .level e .natureza (ver buildBattlerFromParty/Wild/Trainer, que
    agora sempre copiam Natureza de verdade pro battler). */
-function effStat(poke, stat){ return officialStat(poke.num, poke.level, stat, poke.natureza, poke.forma); }
+/* Cap. leva desta sessão (Raids -- "Ele terá inicialmente 300% a mais
+   em todos os atributos e 2000% a mais de vida"): 2 campos NOVOS e
+   OPCIONAIS no battler (`raidStatMult`/`raidHpMult`, ver
+   buildBattlerRaid) -- `undefined` em QUALQUER outro battler do jogo
+   (selvagem/Treinador/Mestre/jogador), então esta função continua
+   devolvendo exatamente o mesmo valor de sempre pra todo o resto --
+   só multiplica quando o battler É de Raid. PV usa `raidHpMult`
+   (2000% a mais = ×21), os outros 5 Atributos usam `raidStatMult`
+   (300% a mais = ×4) -- os 2 são congelados no início de CADA Raid
+   (nunca mudam no meio de uma já em andamento, mesmo que o Admin
+   ajuste a configuração -- ver DT.gaAdminIniciarRaid), garantindo que
+   o PV Máximo batido aqui SEMPRE bate com o `hpMax` guardado no
+   documento da Raid. */
+function effStat(poke, stat){
+  var v = officialStat(poke.num, poke.level, stat, poke.natureza, poke.forma);
+  if(stat==='hp'){ if(poke.raidHpMult) v = Math.round(v*poke.raidHpMult); }
+  else if(poke.raidStatMult){ v = Math.round(v*poke.raidStatMult); }
+  return v;
+}
 function gaHpMax(poke){ return effStat(poke, 'hp'); }
 /* Estágio (-6..+6, Cap. "Quero tudo dos combates mesmo"): a MESMA
    tabela de fração oficial usada pros 5 Atributos de batalha (Ataque
@@ -6196,6 +6791,30 @@ var duelosCol = null;
 var configCol = null;
 var unsubscribeConfig = null;
 var GA_DIA_OVERRIDE = null; // {dia:Number, blocoReferencia:Number, setAt, setBy} definido pelo Admin, ou null = automático (cicla 1-4, ver numeroDiaDoJogo)
+/* Cap. leva desta sessão (Raids): mesmo espírito do override de Dia
+   acima -- documentos/coleções GLOBAIS, escutados ao vivo desde o
+   BOOT. `green_area_config/raid` guarda o ajuste fino do Admin
+   (`GA_RAID_CONFIG`, ver raidConfigAtual() acima). `green_area_raids`
+   é a coleção com 1 documento por Raid (ativa ou já encerrada,
+   histórico nunca apagado) -- `GA_RAIDS_ATIVAS` é só um CACHE local
+   (nunca escrito de volta) das que ainda valem a pena mostrar na tela
+   "RAIDS ATIVAS" (ver raidsAindaValidas()). `green_area_raid_chat`
+   tem 1 documento POR RAID (mesmo padrão de green_area_chat_publico,
+   só que 1 sala por Raid em vez de 1 sala global só) -- id do
+   documento é o MESMO id da Raid. `green_area_raid_recompensas` é a
+   "caixa de entrada" de prêmio pendente por CONTA (mesmo padrão de
+   green_area_inbox) -- quem termina de derrotar uma Raid escreve ali
+   pra QUALQUER participante, mesmo offline (ver finalizarRaidVencida/
+   processarRecompensasRaidPendentes). */
+var raidsCol = null;
+var raidChatCol = null;
+var raidRecompensasCol = null;
+var unsubscribeRaidConfig = null;
+var unsubscribeRaidsAtivas = null;
+var unsubscribeRaidChat = null;
+var unsubscribeRaidRecompensas = null;
+var GA_RAID_CONFIG = null; // override do Admin (merge com RAID_CONFIG_PADRAO, ver raidConfigAtual())
+var GA_RAIDS_TODAS = []; // cache local de TODOS os docs de green_area_raids (ativas + históricas) -- nunca escrito de volta
 var unsubscribeDuelos = null;
 var unsubscribeChat = null;
 var unsubscribeInbox = null;
@@ -6234,7 +6853,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null };
 
 function freshState(trainerName){
   return {
@@ -6381,7 +7000,7 @@ function doSave(){
     if(saveQueuedAfter){ saveQueuedAfter = false; doSave(); }
   });
 }
-function mutate(){ if(STATE){ tickEnergy(); tickPoketickets(); } render(); queueSave(); }
+function mutate(){ if(STATE){ tickEnergy(); tickPoketickets(); tickRaidPass(); } render(); queueSave(); }
 
 /* Cap. leva desta sessão: "Desenvolva um log para o administrador
    conseguir saber o que cada jogador tá fazendo, todas as ações
@@ -6492,6 +7111,21 @@ function attachSocialListeners(docId){
     SESSION.error = 'Não consegui ver seus pedidos de amizade ('+erroFirestoreMsg(err)+').';
     render();
   });
+  /* Cap. leva desta sessão (Raids -- "mesmo que não estejam online
+     receberão o prêmio"): mesmo padrão do inbox de amizade acima --
+     `green_area_raid_recompensas/{docId}` é a "caixa de entrada" de
+     prêmio pendente desta conta, escrita por QUALQUER cliente que
+     termine de derrotar uma Raid (arrayUnion, nunca lê-modifica-
+     escreve -- 2 Raids terminando ao mesmo tempo nunca se atropelam).
+     Escutado ao vivo desde o LOGIN (não só quando abre uma tela de
+     Raid) -- se a conta estiver ONLINE no momento, o prêmio já
+     aplica sozinho na hora; se estiver offline, aplica na próxima
+     vez que essa conta logar (mesmo onSnapshot dispara de novo). */
+  if(unsubscribeRaidRecompensas) unsubscribeRaidRecompensas();
+  unsubscribeRaidRecompensas = raidRecompensasCol.doc(docId).onSnapshot(function(doc){
+    var pendentes = (doc.exists && doc.data().pendentes) || [];
+    if(pendentes.length) processarRecompensasRaidPendentes(pendentes, docId);
+  }, function(){ /* silencioso -- mesma coleção nova, ver "Habilitar o salvamento online" no README */ });
   if(unsubscribeAmizades) unsubscribeAmizades();
   unsubscribeAmizades = amizadesCol.onSnapshot(function(snap){
     var lista = [];
@@ -6604,6 +7238,9 @@ function bootApp(){
     trocasCol = db.collection('green_area_trocas');
     duelosCol = db.collection('green_area_duelos');
     configCol = db.collection('green_area_config');
+    raidsCol = db.collection('green_area_raids');
+    raidChatCol = db.collection('green_area_raid_chat');
+    raidRecompensasCol = db.collection('green_area_raid_recompensas');
   }catch(e){
     SESSION.error = 'Erro ao iniciar o Firebase.';
     render();
@@ -6622,6 +7259,24 @@ function bootApp(){
     GA_DIA_OVERRIDE = (doc.exists && doc.data().diaOverride) || null;
     render();
   }, function(){ /* silencioso de propósito -- cai pro Dia automático (cicla 1-4) */ });
+  /* Config + lista de Raids (Cap. leva desta sessão) -- mesmo espírito
+     acima, GLOBAL desde o boot. `green_area_raids` é escutada por
+     COLEÇÃO inteira (mesmo padrão já usado em green_area_amizades/
+     green_area_duelos) -- cada doc é 1 Raid, cache local nunca
+     reescrito, cabe poucas dezenas de Raids no histórico de um jogo
+     pequeno, sem paginação nenhuma de propósito (fora de escopo aqui). */
+  if(unsubscribeRaidConfig) unsubscribeRaidConfig();
+  unsubscribeRaidConfig = configCol.doc('raid').onSnapshot(function(doc){
+    GA_RAID_CONFIG = (doc.exists && doc.data()) || null;
+    render();
+  }, function(){ /* silencioso -- cai pros valores padrão (RAID_CONFIG_PADRAO) */ });
+  if(unsubscribeRaidsAtivas) unsubscribeRaidsAtivas();
+  unsubscribeRaidsAtivas = raidsCol.onSnapshot(function(snap){
+    var lista = [];
+    snap.forEach(function(d){ lista.push(Object.assign({id:d.id}, d.data())); });
+    GA_RAIDS_TODAS = lista;
+    render();
+  }, function(){ /* silencioso -- cai pra lista vazia (nenhuma Raid aparece) */ });
   var cached = readCachedSession();
   if(cached && cached.docId){
     savesCol.doc(cached.docId).get().then(function(doc){
@@ -6725,10 +7380,11 @@ function formatHHMMSS(totalSeg){
    formulários, PIN de login etc.) só pra manter um relógio andando. */
 function energyTickLoop(){
   if(!STATE) return;
-  var antesEnergia = STATE.energy, antesTickets = STATE.poketickets;
+  var antesEnergia = STATE.energy, antesTickets = STATE.poketickets, antesRaidPass = (STATE.itens||{}).raidpass;
   tickEnergy();
   tickPoketickets();
-  if(STATE.energy !== antesEnergia || STATE.poketickets !== antesTickets){ render(); queueSave(); return; }
+  tickRaidPass(); // Cap. leva desta sessão (Raids) -- mesmo padrão dos 2 acima: roda sozinho de fundo, não só quando o jogador mexe em algo
+  if(STATE.energy !== antesEnergia || STATE.poketickets !== antesTickets || (STATE.itens||{}).raidpass !== antesRaidPass){ render(); queueSave(); return; }
   var el = document.getElementById('ga-energy-countdown');
   if(el) el.textContent = formatMMSS(secondsToNextEnergyTick());
   var elT = document.getElementById('ga-ticket-countdown');
@@ -6761,7 +7417,7 @@ function dexEntry(num){ return STATE.dex[num] || {seen:false, caught:false}; }
    (ex. capturadoBadgeHTML na Arena: mesmo um Admin merece ver se JÁ
    capturou aquele selvagem específico de verdade, não um "sim" fixo
    que tornaria o badge inútil). */
-function dexEntryView(num){ return SESSION.isAdmin ? {seen:true, caught:true} : dexEntry(num); }
+function dexEntryView(num){ return SESSION.isAdmin ? {seen:true, caught:true, raidCaught: !!dexEntry(num).raidCaught} : dexEntry(num); }
 function dexCountsView(){ return SESSION.isAdmin ? {seen:SPECIES_DEX.length, caught:SPECIES_DEX.length, total:SPECIES_DEX.length} : dexCounts(); }
 /* Cap. leva desta sessão: "Acrescentar a informação de pokémon
    capturado uma pokebola pixelada ao lado do pokémon que você estiver
@@ -6778,9 +7434,19 @@ function capturadoBadgeHTML(num){
   return ' <img class="ga-catch-badge'+(capturado?' caught':'')+'" src="'+itemIconUrl('poke-ball')+'" alt="" title="'+(capturado?'Você já capturou esse Pokémon':'Você ainda não capturou esse Pokémon')+'">';
 }
 function markSeen(num){ if(!STATE.dex[num]) STATE.dex[num] = {seen:true, caught:false}; else STATE.dex[num].seen = true; }
-function markCaught(num){
+/* Cap. leva desta sessão (Raids -- "adicionar um R, pixelado... no
+   card dele e na pokedex de quem capturou"): `viaRaid` é opcional --
+   `undefined` em TODA captura normal (o resto do jogo nunca passa
+   esse 2º argumento, então nunca muda o comportamento de sempre).
+   `STATE.dex[num].raidCaught` NUNCA volta a `false` sozinho (uma vez
+   que o jogador provou ter capturado a versão Raid daquela Espécie
+   pelo menos 1 vez, o selo fica pra sempre na Pokédex dele, mesmo que
+   solte esse Pokémon específico depois -- é um troféu de conquista,
+   não um contador de estoque). */
+function markCaught(num, viaRaid){
   if(!STATE.dex[num]) STATE.dex[num] = {seen:true, caught:false};
   STATE.dex[num].seen = true; STATE.dex[num].caught = true; STATE.dex[num].caughtAt = Date.now();
+  if(viaRaid) STATE.dex[num].raidCaught = true;
 }
 function dexCounts(){
   var seen=0, caught=0;
@@ -6851,6 +7517,17 @@ function buildBattlerWild(num, level){
 }
 function buildBattlerTrainer(num, level, tag){
   return initBattlerExtras({ key:'t_'+tag+'_'+num, side:'trainer', num:num, level:level, moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num) });
+}
+/* Cap. leva desta sessão (Raids): battler do "boss" -- `raidStatMult`/
+   `raidHpMult` vêm CONGELADOS do próprio documento da Raid (nunca da
+   config live), ver comentário de effStat() acima pro motivo. Chave
+   única por Raid (não por Espécie/Nível como os outros builders) --
+   2 Raids diferentes do MESMO Pokémon nunca compartilham `b.hp[key]`
+   por engano. */
+function buildBattlerRaid(raid){
+  return initBattlerExtras({ key:'raid_'+raid.id, side:'raid', num:raid.num, level:raid.level,
+    moves: pickMovesForLevel(raid.num, raid.level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(raid.num),
+    raidStatMult: raid.statMultUsado, raidHpMult: raid.hpMultUsado });
 }
 
 function startBattle(kind, opts, skipDiscrepancia){
@@ -7103,7 +7780,15 @@ function resolveFaintAfterDamage(target, user, b, moveUsado){
   }
   b.oppDefeatedLevels.push(target.level);
   var xpUser = (user && user.side==='player') ? user : battlerObj(b,'player');
-  if(xpUser.side==='player' && xpUser.partyId){
+  /* Cap. leva desta sessão (Raids): NUNCA credita XP por Faixa aqui --
+     o "boss" de uma Raid é um HP COMPARTILHADO entre vários jogadores/
+     tentativas (ver finalizarBatalhaRaid), então "derrotar" ele numa
+     tentativa LOCAL não é um abate normal -- a recompensa de verdade
+     ("por participação", XP/Pokédólar/itens/captura) é distribuída
+     igual pra TODOS que participaram, só quando o HP compartilhado
+     chega em 0 de verdade (ver finishBattle -- kind 'raid' tem seu
+     próprio branch, nem chega a olhar pra oppDefeatedLevels). */
+  if(xpUser.side==='player' && xpUser.partyId && b.kind!=='raid'){
     /* Cap. leva desta sessão ("cada pokémon desmaiado pelo jogador ele
        ganha a XP correspondente. Se for treinador, correspondente a
        área, a formula que já usamos. Se for mestre ele usará um range
@@ -7217,6 +7902,17 @@ function runBattleUntilPause(){
     else atkFirst = atkPrio!==defPrio ? atkPrio>defPrio : (atkSpe===defSpe ? Math.random()<0.5 : atkSpe>defSpe);
     if(atkQuickClaw && !defQuickClaw) b.log.push('🐾 '+displayName(atkB)+' reagiu na hora com o Quick Claw e agiu primeiro!');
     else if(defQuickClaw && !atkQuickClaw) b.log.push('🐾 '+displayName(defB)+' reagiu na hora com o Quick Claw e agiu primeiro!');
+    /* Cap. leva desta sessão (Raids -- "regra de ouro da raid, os
+       jogadores sempre atacam primeiro. Então começou a batalha, o
+       jogador ataca, depois o boss e no próximo turno a mesma forma.
+       Mesmo que o boss use ataque prioridade o jogador SEMPRE
+       iniciará a rodada atacando"): substitui TUDO acima (Prioridade,
+       Velocidade, Garra Rápida) -- o jogador SEMPRE age primeiro numa
+       Raid, sem exceção nenhuma, de propósito. `atkB` já É o battler
+       do jogador (ver `battlerObj(b,'player')` no topo desta função),
+       então forçar `atkFirst=true` é exatamente "o jogador ataca
+       primeiro". */
+    if(b.kind==='raid') atkFirst = true;
     var order = atkFirst ? [atkB,defB] : [defB,atkB];
     var moveOrder = atkFirst ? [atkMove,defMove] : [defMove,atkMove];
     atkB.flinch = false; defB.flinch = false; // Hesitação só dura até a PRÓPRIA ação, dentro desta Rodada
@@ -7412,6 +8108,15 @@ function finishBattle(result){
     var pFinalizador = STATE.party.filter(function(x){ return x.id===b.playerActive.partyId; })[0];
     if(pFinalizador){ pFinalizador.vitorias = (pFinalizador.vitorias||0)+1; gainFelicidade(pFinalizador, FELICIDADE_POR_VITORIA); } // Cap. leva desta sessão -- sistema de felicidade
   }
+  /* Cap. leva desta sessão (Raids): recompensa/captura/XP de Raid NUNCA
+     seguem o caminho normal abaixo (Pokédólar por Nível, Pokéticket,
+     Insígnia) -- são "por participação" (config do Admin) e vão pra
+     TODOS que lutaram, não só pra quem finalizou esta tentativa local
+     (mesmo offline -- ver finalizarBatalhaRaid). */
+  if(b.kind==='raid'){
+    finalizarBatalhaRaid(b, result);
+    return;
+  }
   if(result==='vitoria'){
     b.log.push('🏆 Vitória!');
     if(b.kind==='trainer' && STATE.badges.indexOf(b.leaderId)===-1){
@@ -7435,6 +8140,21 @@ function finishBattle(result){
       }
     }
     if(b.kind==='wild') b.captureDone = false; // ainda não -- pergunta na tela de resultado
+    /* Cap. leva desta sessão (Raids -- "caso consigam dropar em uma
+       luta contra pokémon selvagem... O raid pass só pode ser dropado
+       quando tem pokémon de raid ativo, se não tiver ele para de
+       dropar automaticamente"): só rola em luta SELVAGEM vencida, e
+       só enquanto existir ao menos 1 Raid ativa agora -- sem Raid
+       ativa, essa chance nunca entra em jogo (para "automaticamente",
+       sem precisar de nenhum interruptor à parte). */
+    if(b.kind==='wild' && raidsAtivas().length>0){
+      var cfgPass = raidConfigAtual();
+      if(Math.random()<cfgPass.passDropChance){
+        STATE.itens.raidpass = (STATE.itens.raidpass||0)+1;
+        b.log.push('🎟️ Você encontrou um Raid Pass!');
+        logAction('raid', 'Encontrou 1 Raid Pass numa luta selvagem.');
+      }
+    }
     var premio = battleReward(b);
     STATE.pokedolares = (STATE.pokedolares||0) + premio;
     b.log.push('💰 Você ganhou '+premio+' Pokédólares!');
@@ -9416,10 +10136,12 @@ DT.gaSair = function(){
   if(unsubscribeDm){ unsubscribeDm(); unsubscribeDm=null; }
   if(unsubscribeTrocas){ unsubscribeTrocas(); unsubscribeTrocas=null; }
   if(unsubscribeDuelos){ unsubscribeDuelos(); unsubscribeDuelos=null; }
+  if(unsubscribeRaidChat){ unsubscribeRaidChat(); unsubscribeRaidChat=null; }
+  if(unsubscribeRaidRecompensas){ unsubscribeRaidRecompensas(); unsubscribeRaidRecompensas=null; }
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null };
   render();
 };
 
@@ -11478,6 +12200,14 @@ DT.gaGoto = function(screen){
     if(unsubscribeChat){ unsubscribeChat(); unsubscribeChat=null; }
     sairDaPresencaDoCentro();
   }
+  /* Cap. leva desta sessão (Raids): mesmo espírito acima -- o chat de
+     uma sala de Raid só fica ao vivo enquanto essa sala específica
+     está aberta (histórico continua salvo, só pausa a atualização). */
+  if(SESSION.raidRoomId && screen!=='raids'){
+    if(unsubscribeRaidChat){ unsubscribeRaidChat(); unsubscribeRaidChat=null; }
+    SESSION.raidRoomId = null; SESSION.raidChat = [];
+  }
+  if(screen==='raids') GA_RAIDS_TODAS.forEach(raidExpirarSeNecessario); // oportunista, mesmo espírito do trim de chat/presença
   SESSION.screen = screen; SESSION.error=''; SESSION.sidebarOpen=false; render();
 };
 DT.gaDismiss = function(){ SESSION.error=''; SESSION.notice=''; render(); };
@@ -12003,7 +12733,7 @@ var TOOLTIPS = {
    -- fechada por padrão, abre com o botão ☰ na barrinha de topo
    compacta que só aparece nessa largura (ver mobileTopbarHTML +
    SESSION.sidebarOpen/DT.gaToggleSidebar). */
-var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','moves:🗡️:Movimentos','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
+var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','moves:🗡️:Movimentos','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','raids:🏴:Raids Ativas','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
 function navListHTML(){
   /* Cap. leva desta sessão (Centro Pokémon): entrada própria (não
      genérica via NAV_ITENS/gaGoto -- precisa carregar o diretório e
@@ -12108,12 +12838,18 @@ function screenHTML(){
     var bgScreen = SESSION.screen==='ginasios' ? ginasiosScreenHTML() : capturaScreenHTML();
     return wrap(bgScreen) + (SESSION.pendingDiscrepancia ? pendingDiscrepanciaPopupHTML() : pendingEnergiaPopupHTML());
   }
+  /* Cap. leva desta sessão (Raids -- "Se for a primeira vez de entrada
+     na Raid, ele vai perguntar da pokebola também"): mesmo padrão dos
+     popups de prioridade acima -- mantém o fundo (a própria tela de
+     Raids), popup por cima. */
+  if(SESSION.pendingRaidBola) return wrap(raidsScreenHTML()) + pendingRaidBolaPopupHTML();
   switch(SESSION.screen){
     case 'equipe': return wrap(equipeScreenHTML());
     case 'dex': return wrap(dexScreenHTML());
     case 'moves': return wrap(movesScreenHTML());
     case 'captura': return wrap(capturaScreenHTML());
     case 'ginasios': return wrap(ginasiosScreenHTML());
+    case 'raids': return wrap(raidsScreenHTML());
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
@@ -12218,6 +12954,14 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
        apelido (que só pode ser editado pelo dono), não precisa ficar
        restrito a nenhum contexto. */
     '<div class="ga-vd-badge" title="Vitórias / Derrotas desse Pokémon">V:'+(poke.vitorias||0)+' D:'+(poke.derrotas||0)+'</div>'+
+    /* Cap. leva desta sessão (Raids -- "adicionar um R, pixelado...
+       no card dele"): selo NOVO, canto oposto ao V:/D: -- sem sprite
+       oficial (mecânica não existe nos jogos reais), desenhado em
+       CSS mesmo (quadrado, sem anti-serrilhado, mesmo espírito
+       "pixelado" dos ícones de sprite -- só que aqui não tem sprite
+       nenhum pra aplicar `image-rendering:pixelated`, então o
+       quadrado inteiro já nasce sem serrilhado por design). */
+    (poke.deRaid ? '<div class="ga-raid-badge" title="Capturado numa Raid">R</div>' : '')+
     '<img src="'+spriteUrl(poke.num)+'" loading="lazy" alt="">'+
     '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+lapis+'</div>'+
     '<div class="ga-poke-meta">Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
@@ -12630,7 +13374,8 @@ function dexScreenHTML(){
   var grid = lista.map(function(sp){
     var d = dexEntryView(sp.num);
     var cls = d.caught ? 'caught' : (d.seen ? 'seen' : 'unseen');
-    return '<div class="ga-dex-tile '+cls+'" onclick="DT.gaOpenDex('+sp.num+')" title="'+(d.caught?esc2(sp.name):(d.seen?'Visto':'?'))+'">'+
+    return '<div class="ga-dex-tile '+cls+'" onclick="DT.gaOpenDex('+sp.num+')" title="'+(d.caught?esc2(sp.name):(d.seen?'Visto':'?'))+(d.raidCaught?' -- capturado numa Raid':'')+'">'+
+      (d.raidCaught ? '<div class="ga-raid-badge ga-raid-badge-dex" title="Capturado numa Raid">R</div>' : '')+
       '<img src="'+spriteUrl(sp.num)+'" loading="lazy" alt="">'+
       '<span class="ga-dex-num">#'+String(sp.num).padStart(4,'0')+'</span>'+
     '</div>';
@@ -12829,6 +13574,7 @@ function dexPopupHTML(num){
   var tipoAtivo = formaAtiva || sp;
   var out = '<div class="ga-overlay" onclick="DT.gaCloseDex()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCloseDex()">✕</button>'+
+    (d.raidCaught ? '<div class="ga-raid-badge ga-raid-badge-dex" title="Capturado numa Raid">R</div>' : '')+
     '<img class="ga-dex-popup-img '+(caught?'':'silhouette')+'" src="'+spriteUrl(spriteNum)+'" alt="">'+
     '<h2>#'+String(num).padStart(4,'0')+' — '+(seen ? esc2(sp.name)+(formaAtiva?' ('+esc2(formaAtiva.nome)+')':'') : '???')+'</h2>';
   if(!seen){
@@ -13221,8 +13967,47 @@ function diaOverrideAdminCardHTML(){
       (overrideAtivo ? '<button class="ga-btn-sm" onclick="DT.gaAdminLimparDiaOverride()">↩️ Voltar ao automático</button>' : '')+
     '</div></div>';
 }
+/* Console de Raid do Admin (Cap. "Quero que tenha um console onde eu
+   possa, como admin, mexer nas configurações da raid pra equilibrar.
+   Tudo mesmo, raid pass, os stats do pokemon etc..."): 2 blocos --
+   iniciar/encerrar a Raid ATUAL, e os números da configuração (valem
+   pra PRÓXIMA Raid que for iniciada, ver DT.gaAdminIniciarRaid). */
+function raidAdminCardHTML(){
+  var cfg = raidConfigAtual();
+  var ativas = raidsAtivas();
+  var out = '<div class="ga-card"><h2>🏴 Console de Raid</h2>';
+  if(ativas.length){
+    out += ativas.map(function(r){
+      var sp = speciesByNum(r.num);
+      return '<p class="ga-hint">Raid ativa: <strong>'+esc2(sp?sp.name:('#'+r.num))+'</strong> (Nv. '+r.level+') -- PV '+Math.max(0,r.hpAtual)+'/'+r.hpMax+', expira em '+esc2(new Date(r.expiresAt).toLocaleString('pt-BR'))+'.</p>'+
+        '<button class="ga-btn-sm danger" onclick="DT.gaAdminEncerrarRaid(\''+r.id+'\')">🚫 Encerrar esta Raid</button>';
+    }).join('');
+  } else {
+    out += '<p class="ga-hint">Nenhuma Raid ativa agora. Escolha uma Espécie (Número da Pokédex), Nível e duração (em Dias do jogo -- padrão sugerido: '+cfg.duracaoDiasPadrao+') pra iniciar uma nova.</p>'+
+      '<div class="ga-btn-row">'+
+        '<input type="number" min="1" max="1025" step="1" id="gaRaidNum" placeholder="Nº Pokédex" class="ga-capqtd-input">'+
+        '<input type="number" min="1" max="'+NIVEL_MAX+'" step="1" id="gaRaidLevel" placeholder="Nível" class="ga-capqtd-input">'+
+        '<input type="number" min="1" step="1" id="gaRaidDuracao" placeholder="Dias do jogo" class="ga-capqtd-input">'+
+        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminIniciarRaid(document.getElementById(\'gaRaidNum\'),document.getElementById(\'gaRaidLevel\'),document.getElementById(\'gaRaidDuracao\'))">🏴 Iniciar Raid</button>'+
+      '</div>';
+  }
+  out += '<h3 class="ga-subhead">⚙️ Configuração (vale pra próxima Raid iniciada)</h3>'+
+    '<p class="ga-hint">Multiplicador de Atributos (ex. 4 = +300%): <input type="number" step="0.1" min="1" id="gaRaidCfgStat" value="'+cfg.statMult+'" class="ga-capqtd-input"></p>'+
+    '<p class="ga-hint">Multiplicador de PV Máximo (ex. 21 = +2000%): <input type="number" step="0.1" min="1" id="gaRaidCfgHp" value="'+cfg.hpMult+'" class="ga-capqtd-input"></p>'+
+    '<p class="ga-hint">Multiplicador de Taxa de Captura (ex. 0,15 = 15% da chance normal, antes da Pokébola): <input type="number" step="0.01" min="0.01" max="1" id="gaRaidCfgCapture" value="'+cfg.captureMult+'" class="ga-capqtd-input"></p>'+
+    '<p class="ga-hint">Chance de dropar Raid Pass numa luta selvagem (0 a 1, ex. 0,05 = 5%): <input type="number" step="0.01" min="0" max="1" id="gaRaidCfgPassDrop" value="'+cfg.passDropChance+'" class="ga-capqtd-input"></p>'+
+    '<p class="ga-hint">Raid Pass por Dia do jogo: <input type="number" step="1" min="1" id="gaRaidCfgPassDia" value="'+cfg.passPorDia+'" class="ga-capqtd-input"></p>'+
+    '<p class="ga-hint">Duração padrão sugerida (Dias do jogo): <input type="number" step="1" min="1" id="gaRaidCfgDuracao" value="'+cfg.duracaoDiasPadrao+'" class="ga-capqtd-input"></p>'+
+    '<p class="ga-hint">XP de participação (pro líder de cada participante): <input type="number" step="1" min="0" id="gaRaidCfgXp" value="'+cfg.xpParticipacao+'" class="ga-capqtd-input"></p>'+
+    '<p class="ga-hint">Pokédólares de participação: <input type="number" step="1" min="0" id="gaRaidCfgPokedolar" value="'+cfg.pokedolarParticipacao+'" class="ga-capqtd-input"></p>'+
+    '<p class="ga-hint">Itens de participação (formato "chave:qtd,chave:qtd", ex. "hiperpocao:2,pocao:1"): <input type="text" id="gaRaidCfgItens" value="'+esc2(itensParticipacaoParaTexto(cfg.itensParticipacao))+'" class="ga-chat-input"></p>'+
+    '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminAtualizarConfigRaid(document.getElementById(\'gaRaidCfgStat\'),document.getElementById(\'gaRaidCfgHp\'),document.getElementById(\'gaRaidCfgCapture\'),document.getElementById(\'gaRaidCfgPassDrop\'),document.getElementById(\'gaRaidCfgPassDia\'),document.getElementById(\'gaRaidCfgDuracao\'),document.getElementById(\'gaRaidCfgXp\'),document.getElementById(\'gaRaidCfgPokedolar\'),document.getElementById(\'gaRaidCfgItens\'))">💾 Salvar configuração</button>'+
+  '</div>';
+  return out;
+}
 function adminScreenHTML(){
   var out = diaOverrideAdminCardHTML();
+  out += raidAdminCardHTML();
   out += '<div class="ga-card"><h2>🛡️ Painel Admin</h2>'+
     '<p class="ga-hint">Acesso restrito — ver, banir/desbanir e excluir qualquer conta de Treinador. Trava só no cliente (mesmo modelo do resto do jogo), não é segurança de verdade.</p>';
   if(SESSION.adminLoading){ out += '<p>Carregando contas...</p></div>'; return out; }
