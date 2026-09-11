@@ -235,7 +235,17 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-wiki-secao code{ background:var(--bg2); padding:1px 5px; border-radius:4px; font-size:.82rem; }
 
 .ga-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
-.ga-overlay-card{ background:var(--panel); border:1px solid var(--accent-dim); border-radius:var(--radius); padding:20px; max-width:360px; width:100%; text-align:center; position:relative; }
+/* Cap. leva desta sessão ("A rolagem do card da dex ficou muito
+   grande no celular"): max-height+overflow-y JÁ existia só na
+   variante .wide (ver abaixo) -- o popup normal (usado pela Dex,
+   evolução, seletor de Habilidade etc.) nunca tinha essa trava, então
+   um card com bastante conteúdo (a Dex ficou mais cheia com as abas
+   de forma alternativa/golpe de assinatura desta sessão) podia passar
+   da tela no celular sem jeito nenhum de rolar até o fim. Sobe pra
+   TODO .ga-overlay-card (não só .wide) -- mesmos 85vh/auto de sempre,
+   agora universal, sem quebrar nenhum popup pequeno (só limita quando
+   o conteúdo realmente precisa). */
+.ga-overlay-card{ background:var(--panel); border:1px solid var(--accent-dim); border-radius:var(--radius); padding:20px; max-width:360px; width:100%; text-align:center; position:relative; max-height:85vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
 .ga-overlay-close{ position:absolute; top:8px; right:8px; background:transparent; border:none; color:var(--ink-dim); font-size:1rem; }
 .ga-dex-popup-img{ width:96px; height:96px; image-rendering:pixelated; }
 /* Cap. leva desta sessão (tela cheia de evolução por Troca, ver
