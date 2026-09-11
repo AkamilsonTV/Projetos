@@ -6077,7 +6077,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null };
 
 function freshState(trainerName){
   return {
@@ -9163,7 +9163,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null };
   render();
 };
 
@@ -11128,8 +11128,41 @@ DT.gaGoto = function(screen){
   SESSION.screen = screen; SESSION.error=''; SESSION.sidebarOpen=false; render();
 };
 DT.gaDismiss = function(){ SESSION.error=''; SESSION.notice=''; render(); };
-DT.gaOpenDex = function(num){ SESSION.dexOpenNum = num; render(); };
+DT.gaOpenDex = function(num){ SESSION.dexOpenNum = num; SESSION.dexFormaAtiva = null; render(); };
 DT.gaCloseDex = function(){ SESSION.dexOpenNum = null; render(); };
+/* Cap. leva desta sessão ("O kubfu evolui em qualquer nivel?... Seria
+   bom, na dex da evolução dele, ter as duas variações... como uma aba
+   dentro da dex do Urshifu"): troca de aba dentro do popup da Dex --
+   só existe SESSION.dexFormaAtiva (reseta pra null, a forma padrão, a
+   cada vez que a Dex abre de novo, ver DT.gaOpenDex acima), nunca
+   persiste no save (é só uma preferência de visualização, igual
+   SESSION.loginMode). */
+DT.gaSetDexForma = function(key){ SESSION.dexFormaAtiva = key; render(); };
+/* Kubfu (#891) -> Urshifu (#892): a PokeAPI tem 4 variedades da
+   Espécie "urshifu" (single-strike, rapid-strike + as 2 versões
+   Gigantamax) -- este protótipo só tem 1 entrada #892 na Pokédex
+   (a variedade PADRÃO, Single Strike, é a que já está em SPECIES_DEX),
+   então as 2 formas de batalha (Gigantamax fica de fora, fora de
+   escopo aqui) entram como ABA dentro do MESMO popup da Dex, nunca
+   como Espécie nova -- pedido explícito do jogador.
+
+   Dados confirmados por request direto (curl) na PokeAPI antes de
+   escrever isso, nunca inventados: os Atributos Base e a Habilidade
+   são IDÊNTICOS nas 2 formas (100/130/100/63/60/97, Unseen Fist) --
+   só o Tipo secundário muda (Sombrio na Single Strike vs. Água na
+   Rapid Strike) e o golpe de assinatura (Wicked Blow vs. Surging
+   Strikes, aqui só informativo -- este protótipo não modela "golpe
+   exclusivo de forma", os 2 continuam usando o learnset normal de
+   Urshifu). `spriteNum` é o ID que a própria PokeAPI usa pra essa
+   variedade dentro do endpoint /sprites/pokemon/ (confirmado por
+   curl que resolve, 10191.png pra Rapid Strike) -- reusa `spriteUrl`
+   de sempre, só troca o número. */
+var ALT_FORMS = {
+  892: [
+    { key:'single-strike', nome:'Single Strike Style', tipo1:'Lutador', tipo2:'Sombrio', spriteNum:892, golpeAssinatura:'Wicked Blow' },
+    { key:'rapid-strike', nome:'Rapid Strike Style', tipo1:'Lutador', tipo2:'Água', spriteNum:10191, golpeAssinatura:'Surging Strikes' }
+  ]
+};
 /* Cap. leva desta sessão: "Coloca a opção de apelido dos pokémon.
    Inicialmente só poderemos colocar uma vez, depois disso fica
    travado. Vamos desenvolver um item depois pra mudar nome, por
@@ -12112,10 +12145,20 @@ function dexPopupHTML(num){
   var sp = speciesByNum(num);
   var d = dexEntry(num);
   var seen = !!d.seen, caught = !!d.caught;
+  /* Cap. leva desta sessão -- ABA de formas alternativas (ver ALT_FORMS
+     acima): quando a Espécie tem formas cadastradas, a aba ATIVA decide
+     só a IMAGEM/Tipo mostrados aqui, nunca o que caught/seen/base
+     stats/Habilidade significam (isso continua sendo por `num`, a
+     MESMA entrada de sempre -- pedido explícito do jogador foi "não
+     como uma nova entrada"). */
+  var formas = ALT_FORMS[num] || null;
+  var formaAtiva = formas ? (formas.filter(function(f){ return f.key===SESSION.dexFormaAtiva; })[0] || formas[0]) : null;
+  var spriteNum = formaAtiva ? formaAtiva.spriteNum : num;
+  var tipoAtivo = formaAtiva || sp;
   var out = '<div class="ga-overlay" onclick="DT.gaCloseDex()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCloseDex()">✕</button>'+
-    '<img class="ga-dex-popup-img '+(caught?'':'silhouette')+'" src="'+spriteUrl(num)+'" alt="">'+
-    '<h2>#'+String(num).padStart(4,'0')+' — '+(seen ? esc2(sp.name) : '???')+'</h2>';
+    '<img class="ga-dex-popup-img '+(caught?'':'silhouette')+'" src="'+spriteUrl(spriteNum)+'" alt="">'+
+    '<h2>#'+String(num).padStart(4,'0')+' — '+(seen ? esc2(sp.name)+(formaAtiva?' ('+esc2(formaAtiva.nome)+')':'') : '???')+'</h2>';
   if(!seen){
     out += '<p class="ga-hint">📍 '+esc2(areaHintForSpecies(num))+'</p>'+
       '<p class="ga-hint">Ainda não visto em batalha -- Movimentos, Habilidades, Lore e Cry aparecem aqui depois do primeiro encontro.</p>';
@@ -12129,10 +12172,12 @@ function dexPopupHTML(num){
       var lore = LORE_CACHE[num];
       loreHTML = '<p class="ga-hint">📜 <strong>Lore:</strong> '+esc2(lore===null||lore===undefined ? 'Carregando...' : lore)+' <em>(tradução pt-BR chegando em breve -- por ora, texto original em inglês)</em></p>';
     }
-    out += '<div class="ga-dex-popup-types">'+typeTagsHTML(sp)+'</div>'+
+    out += (formas ? ('<div class="ga-tabs">'+formas.map(function(f){ return '<button class="'+(f.key===formaAtiva.key?'active':'')+'" onclick="DT.gaSetDexForma(\''+f.key+'\')">'+esc2(f.nome)+'</button>'; }).join('')+'</div>') : '')+
+      '<div class="ga-dex-popup-types">'+typeTagsHTML(tipoAtivo)+'</div>'+
       (caught
         ? ('<table class="ga-stat-table"><tbody>'+STAT_ORDER.map(function(s){ return '<tr><td>'+STAT_LABELS[s]+'</td><td class="num">'+sp.base[s]+'</td></tr>'; }).join('')+'</tbody></table>')
         : '<p class="ga-hint">Visto, mas ainda não capturado -- os Atributos Base só aparecem depois de capturar.</p>')+
+      (formas ? '<p class="ga-hint">🥋 <strong>Golpe de assinatura ('+esc2(formaAtiva.nome)+'):</strong> '+esc2(formaAtiva.golpeAssinatura)+' <em>(informativo -- os Atributos Base e a Habilidade são idênticos nas 2 formas; este protótipo não distingue golpe exclusivo de forma, o learnset é o mesmo pras 2 abas)</em></p>' : '')+
       '<p class="ga-hint">📍 <strong>Onde encontrar:</strong> '+esc2(areaHintForSpecies(num))+'</p>'+
       '<p class="ga-hint">🗡️ <strong>Movimentos possíveis:</strong> '+esc2(movimentosPossiveisLista(num).join(', ')||'—')+'</p>'+
       '<p class="ga-hint">✨ <strong>Habilidades possíveis:</strong> '+esc2((sp.hab||[]).map(function(h){ return h.n+(h.h?' (oculta)':''); }).join(', ')||'—')+'</p>'+
