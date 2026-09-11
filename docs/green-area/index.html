@@ -6215,6 +6215,46 @@ function proximoDaFila(b){
   }
   return null;
 }
+/* Cap. leva desta sessão (tarefa #144, "implementar Movimentos de
+   troca forçada"): U-turn/Volt Switch/Flip Turn (dano + troca) e Baton
+   Pass/Teleport/Parting Shot (Status + troca) -- só do lado do
+   JOGADOR (a IA do oponente nunca troca por vontade própria, só
+   quando desmaia, mesma régua de sempre do motor). Documentado desde
+   a leva anterior (topo do arquivo, "Se alguma habilidade que troque
+   pokemon... o pokémon que voltar pra final da fila"): quem sai
+   continua VIVO, então NÃO pode reusar `proximoDaFila` puro (que
+   sempre pega o primeiro vivo -- ele mesmo, se continuasse na
+   frente) -- primeiro vai pro FIM de `STATE.party`, só depois chama
+   `proximoDaFila` de verdade. Sem ninguém mais vivo pra entrar, a
+   troca falha (desfaz o reordenar) e quem usou o golpe continua em
+   campo -- mesmo assim já causou o dano normalmente, se for o caso.
+   `carregarEstagios` (Baton Pass) copia o Estágio (-6..+6) de quem
+   sai pro battler que entra -- os outros golpes desta leva sempre
+   resetam do zero, igual troca normal. */
+function tentarTrocaForcada(saindo, b, carregarEstagios){
+  if(!saindo.partyId) return null;
+  var idx = -1;
+  for(var i=0;i<STATE.party.length;i++){ if(STATE.party[i].id===saindo.partyId){ idx=i; break; } }
+  if(idx===-1) return null;
+  var saindoPoke = STATE.party.splice(idx,1)[0];
+  STATE.party.push(saindoPoke);
+  var proximo = proximoDaFila(b);
+  /* Sem ninguém mais vivo, `proximoDaFila` acha ELE MESMO de novo (o
+     próprio `saindo` continua VIVO no `b.hp`, então bate no critério
+     de "vivo" -- é exatamente o caso que o comentário no topo do
+     arquivo avisou, "não pode reusar proximoDaFila puro"): se o único
+     candidato achado é quem estava saindo, não tem pra quem trocar de
+     verdade -- desfaz o reordenar, a troca falha. */
+  if(!proximo || proximo.id===saindoPoke.id){
+    STATE.party.pop();
+    STATE.party.splice(idx,0,saindoPoke);
+    return null;
+  }
+  var novoBattler = buildBattlerFromParty(proximo);
+  if(carregarEstagios) novoBattler.estagios = { atk:saindo.estagios.atk, def:saindo.estagios.def, spa:saindo.estagios.spa, spd:saindo.estagios.spd, spe:saindo.estagios.spe, accuracy:saindo.estagios.accuracy, evasion:saindo.estagios.evasion };
+  if(b.usedPartyIds.indexOf(proximo.id)===-1) b.usedPartyIds.push(proximo.id);
+  return novoBattler;
+}
 /* Desmaio (por golpe OU por dano residual de Status -- Cap. leva desta
    sessão, ver applyEndOfTurnStatus): trata os 2 casos com a MESMA
    lógica (lado do jogador entra automaticamente com o PRÓXIMO da fila
@@ -6332,11 +6372,27 @@ function runBattleUntilPause(){
     atkB.flinch = false; defB.flinch = false; // Hesitação só dura até a PRÓPRIA ação, dentro desta Rodada
     atkB.lastHitTaken = null; defB.lastHitTaken = null; // Cap. Counter/Mirror Coat: só vale dentro da MESMA Rodada
 
+    var trocouForcado = false;
     for(var i=0;i<order.length;i++){
       var user = order[i], target = order[i]===atkB ? defB : atkB;
       if(b.hp[user.key]<=0 || b.hp[target.key]<=0) continue;
       if(user.flinch){ b.log.push('😨 '+displayName(user)+' hesitou e não conseguiu agir.'); user.flinch = false; continue; }
-      resolveGaTurn(user, target, moveOrder[i]);
+      var resultadoTurno = resolveGaTurn(user, target, moveOrder[i]);
+      if(resultadoTurno==='trocou'){
+        /* Cap. Movimentos de troca forçada: b.playerActive já foi
+           trocado dentro de resolveGaTurn -- sai desta Rodada na hora
+           (nunca processa o resto dela com o battler ANTIGO, que já
+           não é mais o ativo) e deixa a PRÓXIMA rodada, já com o novo
+           ativo, decidir tudo de novo do zero (Iniciativa incluída).
+           Simplificação documentada: se quem trocou tinha ido
+           DEPOIS do adversário nesta mesma Rodada (adversário já
+           tinha agido), o adversário ainda ganha mais 1 ação na
+           rodada seguinte contra o Pokémon recém-trocado -- fora de
+           escopo simular a "meia-rodada restante" com precisão total
+           aqui. */
+        trocouForcado = true;
+        break;
+      }
       if(b.hp[target.key]<=0){
         /* Cap. "a experiência ganha quando for contra treinador será a
            vitória de CADA pokémon... isso é no meio da luta, ou seja ele
@@ -6359,6 +6415,7 @@ function runBattleUntilPause(){
         }
       }
     }
+    if(trocouForcado) continue;
 
     /* Dano residual de FIM de Rodada (Cap. oficial -- Queimadura/Veneno/
        Veneno Grave), só se a Rodada terminou de verdade (nenhum dos 2
@@ -7139,6 +7196,20 @@ var FIXED_DAMAGE_MOVES = {
    tinha efeito nenhum na ordem). */
 var COUNTER_MOVES = { 'Counter':'Físico', 'Mirror Coat':'Especial' };
 
+/* Movimentos de troca forçada (Cap. tarefa #144, "implementar
+   Movimentos de troca forçada (U-turn/Volt Switch/Baton Pass etc.)"):
+   depois de agir, o USUÁRIO sai de campo e o PRÓXIMO da fila entra
+   sozinho (mesma ordem da Equipe de sempre, ver tentarTrocaForcada) --
+   só do lado do JOGADOR (a IA do oponente nunca troca por vontade
+   própria). U-turn/Volt Switch/Flip Turn são golpes de DANO normais
+   (a tabela genérica já cobre Poder/Precisão/Tipo -- só a troca no
+   final é código específico); Baton Pass carrega o Estágio (-6..+6)
+   pro que entra, Teleport/Parting Shot só trocam (Parting Shot já
+   reduz Ataque/Ataque Especial do alvo pela tabela genérica de
+   statChanges, ANTES de tentar trocar). */
+var SELF_SWITCH_DAMAGE_MOVES = { 'U-turn':1, 'Volt Switch':1, 'Flip Turn':1 };
+var SELF_SWITCH_STATUS_MOVES = { 'Baton Pass':'carrega', 'Teleport':'so_troca', 'Parting Shot':'so_troca' };
+
 /* Armadilha do campo aplicada em quem ACABOU de entrar em campo do
    lado `ladoAlvo` ("player" ou "opponent") -- chamada 1x por battler
    NOVO (marcado com `_hazardsApplied`, checado no topo de
@@ -7663,6 +7734,21 @@ function resolveGaTurn(user, target, preSelectedMove){
     if(of.healing<=0 && (!of.statChanges||!of.statChanges.length) && (!of.ailment||of.ailment==='none')){
       b.log.push('➡️ '+userName+' usou '+move.name+'.');
     }
+    // Cap. Movimentos de troca forçada (Baton Pass/Teleport/Parting
+    // Shot): depois de todo o efeito de Status normal acima já ter
+    // acontecido (Parting Shot já reduziu Ataque/Ataque Especial do
+    // alvo pela tabela genérica), tenta trocar -- `b.kind` só existe
+    // na luta normal (nunca no Duelo PvP, que usa outro formato de
+    // `battle`), e só o JOGADOR troca por vontade própria.
+    if(user.side==='player' && SELF_SWITCH_STATUS_MOVES[move.name] && b.kind){
+      var novoBattlerStatusSwitch = tentarTrocaForcada(user, b, SELF_SWITCH_STATUS_MOVES[move.name]==='carrega');
+      if(novoBattlerStatusSwitch){
+        b.playerActive = novoBattlerStatusSwitch;
+        b.log.push('🔄 '+userName+' volta! Vai, '+displayName(novoBattlerStatusSwitch)+'!');
+        return 'trocou';
+      }
+      b.log.push(userName+' não tem pra quem passar a vez -- continua em campo.');
+    }
     return;
   }
 
@@ -7726,6 +7812,19 @@ function resolveGaTurn(user, target, preSelectedMove){
       }
     }
     applyStatChanges((!atingiuSubstituto || of.moveTarget==='user') && of.statChance>0 && Math.random()*100<of.statChance ? of.statChanges : null, of.moveTarget, user, target, b, userName, targetName);
+  }
+
+  // Cap. Movimentos de troca forçada (U-turn/Volt Switch/Flip Turn):
+  // já causou o dano normalmente acima -- agora tenta trocar (só o
+  // JOGADOR, só na luta normal, nunca se o próprio golpe já derrubou
+  // quem usou por recuo/dreno negativo nesse meio-tempo).
+  if(user.side==='player' && SELF_SWITCH_DAMAGE_MOVES[move.name] && b.kind && b.hp[user.key]>0){
+    var novoBattlerDanoSwitch = tentarTrocaForcada(user, b, false);
+    if(novoBattlerDanoSwitch){
+      b.playerActive = novoBattlerDanoSwitch;
+      b.log.push('🔄 '+userName+' volta! Vai, '+displayName(novoBattlerDanoSwitch)+'!');
+      return 'trocou';
+    }
   }
 }
 
