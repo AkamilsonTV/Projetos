@@ -238,6 +238,12 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-overlay-card{ background:var(--panel); border:1px solid var(--accent-dim); border-radius:var(--radius); padding:20px; max-width:360px; width:100%; text-align:center; position:relative; }
 .ga-overlay-close{ position:absolute; top:8px; right:8px; background:transparent; border:none; color:var(--ink-dim); font-size:1rem; }
 .ga-dex-popup-img{ width:96px; height:96px; image-rendering:pixelated; }
+/* Cap. leva desta sessão (tela cheia de evolução por Troca, ver
+   tradeEvoScreenHTML): mesmo espírito centralizado do popup normal de
+   evolução (.ga-overlay-card), mas como tela cheia (.ga-card) em vez
+   de overlay -- centraliza texto e a fileira de sprites/setinha. */
+.ga-evo-troca{ text-align:center; max-width:480px; margin:0 auto; }
+.ga-evo-troca .ga-btn-row{ justify-content:center; align-items:center; }
 .ga-dex-popup-img.silhouette{ filter:grayscale(1) brightness(0); opacity:.7; }
 .ga-dex-popup-types{ margin:6px 0 10px; }
 .ga-stat-table{ width:100%; border-collapse:collapse; font-size:.8rem; }
@@ -10460,9 +10466,19 @@ function aplicarEvolucaoForaDeLuta(p, toNum, motivoLog){
    PRÓPRIA Equipe/Caixa -- documentado como a interpretação oficial
    certa (Bulbapedia: evolui se o Pokémon certo estiver EM QUALQUER
    LUGAR do time de quem recebe, não precisa ser o mesmo Pokémon
-   trocado). Evolui automaticamente (sem perguntar -- troca por troca
-   já é uma decisão consciente do jogador, igual jogo oficial não
-   pergunta "quer evoluir?" numa troca). */
+   trocado).
+
+   Cap. leva desta sessão ("Preciso que toda evolução, tenha popup e
+   confirmação. Mesmo quando for pro troca"): NÃO evolui mais sozinho
+   na hora -- só ENFILEIRA em `STATE.pendingTradeEvolutions` (o jogo
+   oficial evolui na hora sem perguntar, mas o pedido explícito aqui
+   foi o oposto: toda evolução precisa de popup+confirmação, sem
+   exceção). A pergunta de verdade aparece na tela seguinte que o
+   jogador abrir (ver tradeEvoScreenHTML/DT.gaResponderEvolucaoTroca),
+   persistida em STATE (não SESSION) porque uma troca pode se
+   completar enquanto o jogador está em QUALQUER lugar do site (ou
+   nem online) -- precisa sobreviver a F5/reabrir a aba, igual
+   STATE.captureSequence.finished já faz pro resumo da sequência. */
 function evolucaoTrocaSeElegivel(p){
   var opts = EVOLUTIONS_DEX[p.num] || [];
   var evo = opts.filter(function(e){
@@ -10474,8 +10490,29 @@ function evolucaoTrocaSeElegivel(p){
     return true;
   })[0];
   if(!evo) return;
-  aplicarEvolucaoForaDeLuta(p, evo.to, ' (chegou por troca)');
+  STATE.pendingTradeEvolutions = STATE.pendingTradeEvolutions || [];
+  STATE.pendingTradeEvolutions.push({ partyId: p.id, toNum: evo.to });
 }
+/* Responde a pergunta de evolução por Troca (ver evolucaoTrocaSeElegivel
+   acima) -- sempre resolve o PRIMEIRO da fila (FIFO, mesma ordem que
+   as trocas foram concluídas). Confere tudo de novo (o Pokémon pode,
+   em teoria, ter sumido nesse meio-tempo -- nunca deveria dar essa
+   luta, dado que tradeEvoScreenHTML trava a navegação até responder,
+   mas a checagem é barata e mantém a mesma disciplina do resto do
+   arquivo). */
+DT.gaResponderEvolucaoTroca = function(aceitar){
+  var pend = (STATE.pendingTradeEvolutions||[]).shift();
+  if(!pend){ render(); return; }
+  var p = STATE.party.filter(function(x){ return x.id===pend.partyId; })[0] || STATE.box.filter(function(x){ return x.id===pend.partyId; })[0];
+  if(p && aceitar){
+    aplicarEvolucaoForaDeLuta(p, pend.toNum, ' (chegou por troca)');
+  } else if(p){
+    var sp = speciesByNum(p.num);
+    logAction('evolucao', (p.apelido||sp.name)+' recusou evoluir (chegou por troca).');
+  }
+  mutate();
+  render();
+};
 DT.gaAskUsarPedra = function(pid){
   var p = STATE.party.filter(function(x){ return x.id===pid; })[0] || STATE.box.filter(function(x){ return x.id===pid; })[0];
   if(!p || !pedrasElegiveisPara(p).length) return;
@@ -10985,6 +11022,13 @@ function bannersHTML(){
 function screenHTML(){
   if(!STATE) return wrap(loginScreenHTML());
   if(STATE.battle) return wrap(battleScreenHTML());
+  /* Cap. leva desta sessão ("Preciso que toda evolução, tenha popup e
+     confirmação. Mesmo quando for pro troca"): igual STATE.battle
+     acima, trava a navegação inteira até responder -- persistido em
+     STATE (não SESSION) porque a troca que gerou isso pode ter se
+     completado enquanto o jogador nem estava online, ver
+     evolucaoTrocaSeElegivel. */
+  if((STATE.pendingTradeEvolutions||[]).length) return wrap(tradeEvoScreenHTML());
   /* Cap. leva desta sessão: sequência automática que terminou fica
      travada nessa tela de resumo (com a pergunta de evolução adiada)
      ATÉ o jogador fechar -- aparece por CIMA de qualquer tela, do
@@ -12538,6 +12582,38 @@ function evolucaoPopupHTML(pe){
       '<button class="ga-btn-sm" onclick="DT.gaResponderEvolucao(false)">Não, manter '+esc2(fromSp.name)+'</button>'+
     '</div>'+
   '</div></div>';
+}
+/* Tela de evolução por TROCA (Cap. leva desta sessão -- ver
+   evolucaoTrocaSeElegivel/DT.gaResponderEvolucaoTroca): trava a
+   navegação inteira até o jogador responder, igual STATE.battle e
+   STATE.captureSequence.finished já fazem (ver a prioridade deles em
+   screenHTML) -- resolve 1 por vez, FIFO, sobra na fila pro próximo
+   render se tiver mais de 1 pendente (várias trocas concluídas antes
+   do jogador voltar a abrir o site, por exemplo). */
+function tradeEvoScreenHTML(){
+  var pend = STATE.pendingTradeEvolutions[0];
+  var p = STATE.party.filter(function(x){ return x.id===pend.partyId; })[0] || STATE.box.filter(function(x){ return x.id===pend.partyId; })[0];
+  if(!p){
+    // Rede de segurança: o Pokémon nem deveria poder sumir com essa tela travando a navegação, mas nunca trava esperando por um id que não existe mais
+    STATE.pendingTradeEvolutions.shift();
+    return STATE.pendingTradeEvolutions.length ? tradeEvoScreenHTML() : hubScreenHTML();
+  }
+  var fromSp = speciesByNum(p.num), toSp = speciesByNum(pend.toNum);
+  var restantes = STATE.pendingTradeEvolutions.length - 1;
+  return '<div class="ga-card ga-evo-troca">'+
+    '<h2>✨ '+esc2(p.apelido||fromSp.name)+' pode evoluir!</h2>'+
+    '<p class="ga-hint">Chegou por Troca ao vivo e já é elegível pra virar '+esc2(toSp.name)+'.</p>'+
+    '<div class="ga-btn-row">'+
+      '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
+      '<span style="font-size:1.5em">➡️</span>'+
+      '<img class="ga-dex-popup-img" src="'+spriteUrl(pend.toNum)+'" alt="">'+
+    '</div>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderEvolucaoTroca(true)">✨ Evoluir</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaResponderEvolucaoTroca(false)">Não, manter '+esc2(fromSp.name)+'</button>'+
+    '</div>'+
+    (restantes>0 ? '<p class="ga-hint">e mais '+restantes+' evolução(ões) por Troca esperando resposta depois desta.</p>' : '')+
+  '</div>';
 }
 /* Popup "aprender Movimento novo" (bônus de evolução -- ver comentário
    de DT.gaResponderAprenderMovimento). Reusa movimentosElegiveis, mesma
