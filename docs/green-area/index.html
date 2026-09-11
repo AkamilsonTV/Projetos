@@ -38,6 +38,15 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-sidebar{ width:230px; flex:0 0 230px; background:linear-gradient(180deg,var(--panel),var(--panel2)); border-right:2px solid var(--accent-dim); display:flex; flex-direction:column; padding:16px 12px; gap:14px; position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto; z-index:30; }
 .ga-brand{ font-weight:800; letter-spacing:.03em; cursor:pointer; display:flex; flex-direction:column; align-items:flex-start; gap:4px; font-size:1.02rem; }
 .ga-build{ font-size:.62rem; font-weight:600; background:var(--warn); color:#3a2c00; padding:2px 6px; border-radius:999px; letter-spacing:.03em; text-transform:uppercase; }
+/* Cap. leva desta sessão ("preciso que isso fique no topo do site
+   indicando, de forma permanente, a hora do dia no jogo"): mora dentro
+   de `.ga-sidebar` (já `position:sticky`, ver acima) no PC -- fica na
+   tela mesmo rolando a página, sem reinventar posicionamento novo (e
+   sem repetir o bug real já documentado de `.ga-sidebar` perdendo o
+   sticky por causa de `overflow` num ancestral errado). No celular
+   entra dentro de `.ga-mobtop` (também sticky), ver `.ga-game-clock-mob`
+   mais abaixo. */
+.ga-game-clock{ font-size:.78rem; font-weight:700; color:var(--accent); background:var(--bg2); border:1px solid var(--accent-dim); border-radius:8px; padding:6px 10px; text-align:center; letter-spacing:.02em; }
 .ga-side-stats{ display:flex; flex-direction:column; gap:6px; font-size:.8rem; color:var(--ink-dim); background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
 .ga-nav{ display:flex; flex-direction:column; gap:3px; flex:1; }
 .ga-nav button{ background:transparent; border:1px solid transparent; color:var(--ink-dim); border-radius:8px; padding:9px 10px; font-size:.86rem; display:flex; align-items:center; gap:10px; text-align:left; width:100%; }
@@ -400,10 +409,16 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
   .ga-sidebar{ position:fixed; left:0; top:0; height:100vh; transform:translateX(-100%); transition:transform .2s ease; box-shadow:2px 0 18px rgba(0,0,0,.5); }
   .ga-sidebar.open{ transform:translateX(0); }
   .ga-sidebar-backdrop{ display:block; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:25; }
-  .ga-mobtop{ display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:20; background:linear-gradient(180deg,var(--panel),var(--panel2)); border-bottom:2px solid var(--accent-dim); padding:10px 12px; }
+  .ga-mobtop{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; position:sticky; top:0; z-index:20; background:linear-gradient(180deg,var(--panel),var(--panel2)); border-bottom:2px solid var(--accent-dim); padding:10px 12px; }
   .ga-hamburger{ background:transparent; border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:5px 10px; font-size:1.1rem; }
   .ga-mobtop .ga-brand{ font-size:.86rem; flex-direction:row; align-items:baseline; gap:6px; cursor:pointer; }
   .ga-mobtop-energia{ margin-left:auto; font-size:.8rem; color:var(--ink-dim); white-space:nowrap; }
+  /* Cap. leva desta sessão (relógio do jogo permanente): formato
+     completo "Dia N -- hh:mm -- Dia/Noite" não cabe na 1ª linha junto
+     com hambúrguer+marca+Energia -- `flex-basis:100%` (dentro do
+     `flex-wrap:wrap` do `.ga-mobtop` acima) empurra ele pra própria
+     linha, sempre visível, sem cortar nem sobrepor nada. */
+  .ga-game-clock-mob{ flex-basis:100%; font-size:.74rem; padding:4px 8px; }
   .ga-body{ max-width:100%; }
   .ga-grid3{ grid-template-columns:1fr; }
   .ga-quicknav{ flex-direction:column; }
@@ -5310,24 +5325,49 @@ var EVOLUTION_PARTY_SPECIES_REQUIRED = { 226: 223 };
    MOVES_DEX de novo. */
 var EVOLUTION_MIN_HAPPINESS_OVERRIDE = { 700: 204 };
 var EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED = { 700: 'Fada' }; // mesma grafia de MOVES_DEX[*].tipo (ex. Moonblast: tipo:'Fada')
-/* Dia/Noite (Cap. leva desta sessão -- 3º pedido: "Clima, dia e noite
-   eu queria ver algo sobre isso também pra gente colocar no
-   sistema"): ciclo de verdade baseado no RELÓGIO REAL do servidor,
-   em UTC -- de propósito NÃO no fuso horário de cada jogador, senão
-   2 jogadores em fusos diferentes veriam Dia/Noite diferentes ao
-   mesmo tempo, quebrando qualquer mecânica que dependa disso ser
-   IGUAL pros dois lados (ex.: uma Troca ao vivo completando bem na
-   virada). Dia = 06h-17h59 UTC, Noite = 18h-05h59 UTC -- corte simples
-   de 12h/12h, sem nascer/pôr do sol gradual (mesmo espírito de
-   simplificação do resto do arquivo). Usado em eligibleEvolution pra
-   checar `timeOfDay` de verdade (Eevee -> Espeon/Umbreon, Gligar ->
-   Gliscor etc., 17 arestas ao todo) em vez de cair só no
-   nivelTipico() aproximado como até esta leva -- e exibido no menu
-   lateral (ver sidebarHTML) pro jogador saber que horas são "no
-   jogo" agora. */
+/* Dia/Noite -- Cap. leva desta sessão ("Quero colocar o esquema de dia
+   e noite no jogo... 4 períodos durante 24h, 1 dia dura 6h: Dia 1: 00h-
+   5:59, Dia 2: 6h-11:59, Dia 3: 12h-17:59, Dia 4: 18h-23:59, e assim
+   sucessivamente. Metade do dia (3h) será dia, a outra metade será
+   noite"): SUBSTITUI o corte antigo de 12h/12h (1 troca de Dia/Noite
+   por dia real) por esse esquema novo, mais rápido -- ciclo continua
+   baseado no RELÓGIO REAL do servidor em UTC, de propósito NÃO no
+   fuso horário de cada jogador, pelo mesmo motivo de antes (2
+   jogadores em fusos diferentes precisam ver o MESMO Dia/Noite ao
+   mesmo tempo, pra mecânicas como Troca ao vivo nunca discordarem
+   sobre isso). Cada "Dia do jogo" dura 6h reais -- `numeroDiaDoJogo()`
+   é um contador que NUNCA reinicia, cresce pra sempre a cada 6h reais
+   que passam desde a época (1970-01-01 00:00 UTC, referência
+   arbitrária mas fixa só pra "Dia 1" bater exatamente com o exemplo do
+   pedido, 00h-5:59 UTC) -- é o que `tickPoketickets()` usa embaixo pra
+   saber quando resetar os Pokétickets pra 50 (ver mais abaixo). Dentro
+   de CADA bloco de 6h, a 1ª metade (3h) é "dia" e a 2ª metade (3h) é
+   "noite" -- 8 trocas de Dia/Noite por dia real agora, não mais 2.
+   Usado em eligibleEvolution pra checar `timeOfDay` de verdade (Eevee
+   -> Espeon/Umbreon, Gligar -> Gliscor, Lycanroc etc., ~18 arestas ao
+   todo) -- COM esse novo ciclo mais rápido automaticamente, sem
+   precisar mexer em nenhuma delas (todas leem só `horaAtualDoJogo()`).
+   Exibido de forma permanente no topo do site (sidebar no PC, barra
+   superior no celular -- ver sidebarHTML/mobileTopbarHTML) no formato
+   exato pedido: "Dia N -- hh:mm -- dia/noite". */
+var MS_POR_PERIODO_JOGO = 6*60*60*1000; // 6h reais = 1 "Dia do jogo"
+function periodoDoJogoIndex(){ return Math.floor(Date.now()/MS_POR_PERIODO_JOGO); } // 0-based, cresce pra sempre, nunca reinicia
+function numeroDiaDoJogo(){ return periodoDoJogoIndex()+1; } // exibido como "Dia N" (1-based, bate com o exemplo do pedido)
 function horaAtualDoJogo(){
   var h = new Date().getUTCHours();
-  return (h>=6 && h<18) ? 'day' : 'night';
+  return (h%6)<3 ? 'day' : 'night'; // 1ª metade (3h) de cada bloco de 6h = dia, 2ª metade = noite
+}
+/* Relógio do jogo formatado -- string única "Dia N -- hh:mm -- ☀️ Dia"/
+   "🌙 Noite", pronta pra exibir. `hh:mm` é o mesmo relógio UTC que já
+   decide tudo acima (Dia do jogo E dia/noite), de propósito -- nunca
+   mostra uma hora diferente da que realmente comanda a mecânica, senão
+   o relógio na tela mentiria sobre o que está valendo de verdade. */
+function relogioDoJogoTexto(){
+  var agora = new Date();
+  var hh = String(agora.getUTCHours()).padStart(2,'0');
+  var mm = String(agora.getUTCMinutes()).padStart(2,'0');
+  var tipo = horaAtualDoJogo();
+  return 'Dia '+numeroDiaDoJogo()+' -- '+hh+':'+mm+' -- '+(tipo==='day'?'☀️ Dia':'🌙 Noite');
 }
 /* Cap. leva desta sessão: "Nos itens use os icones originais,
    pixelados... Todos os icones do jogo usa pixelado pra ficar legal":
@@ -6124,7 +6164,7 @@ function freshState(trainerName){
     badges: [],
     pokebolas: { pokebola:10, greatball:0, ultraball:0 },
     poketickets: 100, // Cap. leva desta sessão: "Novos jogadores começam com 100 tickets"
-    poketicketsUpdatedAt: Date.now(),
+    poketicketsLastGameDay: periodoDoJogoIndex(), // Cap. leva desta sessão (esquema de Dia/Noite) -- substitui poketicketsUpdatedAt, ver tickPoketickets
     pokedolares: 200,
     tms: {},
     itens: { pocao:5, superpocao:2, hiperpocao:0 },
@@ -6150,12 +6190,19 @@ function migrateState(){
   if(!STATE) return;
   if(typeof STATE.pokedolares!=='number') STATE.pokedolares = 0;
   if(typeof STATE.poketickets!=='number') STATE.poketickets = 0;
-  /* Cap. leva desta sessão: "Pokétickets são ganhos 50 por dia... podem
-     acumular no máximo 1000... Acima disso os tickets não contabilizam ou
-     ficam guardados, para em 1000" -- conta sem esse campo ainda (criada
-     antes dessa leva) começa a contagem do grant diário AGORA, não tenta
-     "recuperar" dias que já passaram antes de existir o campo. */
-  if(typeof STATE.poketicketsUpdatedAt!=='number') STATE.poketicketsUpdatedAt = Date.now();
+  /* Cap. leva desta sessão ("Quero colocar o esquema de dia e noite...
+     Os tickets passam a resetar a cada dia DO JOGO"): campo novo
+     `poketicketsLastGameDay` substitui `poketicketsUpdatedAt` (o grant
+     antigo era aditivo a cada 24h reais; agora é um RESET de verdade
+     pra 50 a cada Dia do jogo, 6h reais -- ver tickPoketickets abaixo).
+     Conta sem o campo novo ainda (criada antes desta leva, OU antes da
+     leva anterior que usava `poketicketsUpdatedAt`) começa a contagem
+     AGORA, sem tentar "recuperar" Dias do jogo que já passaram antes
+     de existir o campo -- mesmo espírito de migração conservadora já
+     usado no resto do arquivo. `poketicketsUpdatedAt` (campo antigo)
+     não serve mais pra nada -- removido de vez pra não confundir. */
+  if(typeof STATE.poketicketsLastGameDay!=='number') STATE.poketicketsLastGameDay = periodoDoJogoIndex();
+  delete STATE.poketicketsUpdatedAt;
   STATE.poketickets = clampInt(STATE.poketickets, 0, POKETICKETS_MAX); // uma conta antiga pode já ter passado do teto novo (nunca dava antes) -- trava em 1000 na migração também
   if(!STATE.actionLog || !Array.isArray(STATE.actionLog)) STATE.actionLog = []; // conta sem log ainda (Cap. "log pra o Admin saber o que cada jogador tá fazendo") nasce com histórico vazio, nunca tenta reconstruir o passado
   if(!STATE.tms || typeof STATE.tms!=='object') STATE.tms = {};
@@ -6532,34 +6579,36 @@ function formatMMSS(totalSeg){
   return m+':'+(s<10?'0':'')+s;
 }
 
-/* Cap. leva desta sessão: "Pokétickets são ganhos 50 por dia. Os
-   jogadores podem acumular no máximo 1000 tickets. Acima disso os
-   tickets não contabilizam ou ficam guardados, para em 1000. GASTEM
-   SEUS TICKETS!": um grant diário de verdade, no MESMO padrão
-   "preguiçoso" (catch-up) já usado pra Energia -- em vez de um timer
-   vivo (que morre se a aba fechar), cada vez que o estado é tocado
-   confere quanto tempo real passou desde a última conta e credita os
-   blocos de 24h inteiros que já se passaram, sem nunca passar do teto.
-   O teto vale pra QUALQUER fonte de Pokéticket (grant diário, recompensa
-   de Mestre Especialista, drop de Treinador de Elite, ferramenta de
-   debug) -- ver POKETICKETS_MAX usado em cada um desses lugares. */
+/* Cap. leva desta sessão ("Os tickets passam a resetar a cada dia DO
+   JOGO, ou seja, 50 tickets quando o dia do jogo virar"): SUBSTITUI o
+   grant antigo (+50 ADITIVO a cada 24h reais, acumulando até o teto)
+   por um RESET de verdade -- toda vez que `numeroDiaDoJogo()`/
+   `periodoDoJogoIndex()` muda (a cada 6h reais, ver Dia/Noite acima),
+   os Pokétickets voltam pra exatamente 50, não importa quanto tinha
+   acumulado (de luta, ex.) nem quanto sobrava. Mesmo espírito
+   "preguiçoso" (catch-up) de sempre -- confere a cada vez que o estado
+   é tocado, sem depender de um timer vivo -- só que comparando o
+   ÍNDICE do Dia do jogo (um inteiro, nunca um bloco de tempo) em vez
+   de dividir milissegundos: ficar off-line por vários Dias do jogo
+   ainda cai em exatamente 50 (nunca 50×N) quando volta, porque é
+   reset, não soma. O teto (`POKETICKETS_MAX`) continua valendo pra
+   QUALQUER OUTRA fonte de Pokéticket ganha DENTRO de um Dia do jogo
+   (recompensa de Mestre Especialista, drop de Treinador de Elite,
+   ferramenta de debug) -- só que agora esses ganhos também somem no
+   próximo reset, junto com o resto. */
 var POKETICKETS_MAX = 1000;
 var POKETICKETS_POR_DIA = 50;
-var MS_POR_DIA = 24*60*60*1000;
 function tickPoketickets(){
-  var now = Date.now();
-  var elapsedMs = now - (STATE.poketicketsUpdatedAt||now);
-  var blocos = Math.floor(elapsedMs/MS_POR_DIA);
-  if(blocos>0){
-    STATE.poketickets = clampInt((STATE.poketickets||0) + blocos*POKETICKETS_POR_DIA, 0, POKETICKETS_MAX);
-    STATE.poketicketsUpdatedAt = STATE.poketicketsUpdatedAt + blocos*MS_POR_DIA;
+  var diaAtual = periodoDoJogoIndex();
+  if(typeof STATE.poketicketsLastGameDay!=='number'){ STATE.poketicketsLastGameDay = diaAtual; return; } // 1ª vez tocando o estado -- só começa a rastrear, nunca reseta à toa
+  if(diaAtual !== STATE.poketicketsLastGameDay){
+    STATE.poketickets = clampInt(POKETICKETS_POR_DIA, 0, POKETICKETS_MAX);
+    STATE.poketicketsLastGameDay = diaAtual;
   }
 }
 function secondsToNextPoketicketTick(){
-  if((STATE.poketickets||0) >= POKETICKETS_MAX) return 0;
-  var into = (Date.now() - (STATE.poketicketsUpdatedAt||Date.now())) % MS_POR_DIA;
-  if(into<0) into += MS_POR_DIA;
-  return Math.max(0, Math.ceil((MS_POR_DIA - into)/1000));
+  var into = Date.now() % MS_POR_PERIODO_JOGO;
+  return Math.max(0, Math.ceil((MS_POR_PERIODO_JOGO - into)/1000));
 }
 function formatHHMMSS(totalSeg){
   var h = Math.floor(totalSeg/3600), m = Math.floor((totalSeg%3600)/60), s = totalSeg%60;
@@ -6587,6 +6636,15 @@ function energyTickLoop(){
   if(el) el.textContent = formatMMSS(secondsToNextEnergyTick());
   var elT = document.getElementById('ga-ticket-countdown');
   if(elT) elT.textContent = formatHHMMSS(secondsToNextPoketicketTick());
+  /* Cap. leva desta sessão (relógio do jogo permanente): mesmo padrão
+     dos 2 contadores acima -- só troca o texto do relógio a cada
+     segundo, direto no DOM, sem re-renderizar a tela inteira (só re-
+     renderiza de verdade lá em cima quando Energia/Pokéticket mudam de
+     valor -- o relógio muda de MINUTO em minuto, não precisa disso). */
+  var elClockSide = document.getElementById('ga-game-clock-side');
+  if(elClockSide) elClockSide.textContent = relogioDoJogoTexto();
+  var elClockMob = document.getElementById('ga-game-clock-mob');
+  if(elClockMob) elClockMob.textContent = relogioDoJogoTexto();
 }
 setInterval(energyTickLoop, 1000);
 
@@ -11777,7 +11835,7 @@ function esc2(s){ return esc(s); }
 var TOOLTIPS = {
   energia: 'Energia (0 a 1000): o que você gasta pra entrar em qualquer luta (selvagem, Treinador aleatório ou Mestre Especialista) -- o custo é FIXO por Zona de captura (cresce Zona a Zona, nunca pelo Nível de quem aparece) ou 300 fixo pra qualquer Mestre Especialista.\nRecupera +10 sozinha a cada 10 minutos reais.\nOu troque 1 🎫 Pokéticket por +'+ENERGIA_POR_TICKET+' na hora, quando quiser.',
   pokedolares: 'Pokédólares: ganhos depois de VENCER uma luta -- selvagem paga pouco, Treinador aleatório de Zona paga mais, Mestre Especialista paga o melhor de todos (soma por CADA oponente derrotado).\nGaste na 🏪 Loja: Pokébolas, Poções e TMs.',
-  poketickets: 'Pokétickets: ganha +'+POKETICKETS_POR_DIA+' sozinho a cada 24 horas reais (mesmo parado, sem lutar).\nTambém dá pra ganhar lutando -- Mestre Especialista dá 5 garantidos, e um raro Treinador de Elite (a partir da Zona Elite) tem chance baixa de largar até 5.\nO total NUNCA passa de '+POKETICKETS_MAX+' -- acima disso, qualquer ganho novo (diário ou de luta) é descartado, trava no teto. Gaste antes de bater no teto!\nTroque por Energia (1 Pokéticket = +'+ENERGIA_POR_TICKET+') quando quiser, sem limite.',
+  poketickets: 'Pokétickets: RESETAM pra '+POKETICKETS_POR_DIA+' toda vez que o Dia do jogo muda (a cada 6 horas reais -- ver o relógio no topo) -- não é um bônus que soma, é um valor fixo que substitui o que você tinha, pra cima OU pra baixo.\nTambém dá pra ganhar lutando ENQUANTO o Dia do jogo não vira -- Mestre Especialista dá 5 garantidos, e um raro Treinador de Elite (a partir da Zona Elite) tem chance baixa de largar até 5.\nO total NUNCA passa de '+POKETICKETS_MAX+' -- acima disso, qualquer ganho novo é descartado, trava no teto. Mas cuidado: tudo que passar de '+POKETICKETS_POR_DIA+' some no próximo reset -- gaste antes de virar o Dia!\nTroque por Energia (1 Pokéticket = +'+ENERGIA_POR_TICKET+') quando quiser, sem limite.',
   insignias: 'Insígnias: conquistadas vencendo os 8 Mestres Especialistas, em ordem -- não dá pra pular nenhum.\nVeja a aba 🎖️ Mestres.',
   pokedex: 'Pokédex: quantas das 1025 Espécies você já CAPTUROU, do total.\nClique num Pokémon na aba 📕 Pokédex pra ver Área/Movimentos/Habilidades/Lore/Cry dele, mesmo sem ter capturado ainda.',
   papelCombate: 'Papel de Combate: o sistema de luta automática usa mais os Movimentos desse papel -- ⚔️ Ataque (elimina o oponente), 🛡️ Defesa (cura o próprio PV / aumenta a própria defesa), 🌿 Suporte (cura/fortalece a SI MESMO e aliados) ou 🌀 Controle (deixa o oponente com status ruim).\n60% de chance de usar um Movimento do papel setado, os outros 3 dividem os 40% restantes -- nunca 100% de um só tipo (só entre Movimentos com PP sobrando).\nUm Movimento pode valer pra mais de um papel ao mesmo tempo, quando o efeito dele se encaixa em mais de uma definição.\nO papel só ESCOLHE qual Movimento usar -- a execução é sempre o efeito OFICIAL de verdade do golpe.'
@@ -11822,17 +11880,22 @@ function sidebarHTML(){
   var counts = dexCounts();
   return '<aside class="ga-sidebar'+(SESSION.sidebarOpen?' open':'')+'">'+
     '<div class="ga-brand" onclick="DT.gaGoto(\'hub\')">🟢 GREEN ÁREA<span class="ga-build">build de testes</span></div>'+
+    /* Cap. leva desta sessão ("Quero colocar o esquema de dia e noite
+       no jogo... preciso que isso fique no topo do site indicando, de
+       forma permanente, a hora do dia no jogo e o período que estamos.
+       Ficando assim: Dia 1 - hh:mm - dia/noite"): relógio dedicado,
+       formato exato pedido, sempre visível (a barra lateral já é
+       `position:sticky` de verdade -- fica na tela mesmo rolando a
+       página) -- `id` pra `energyTickLoop` atualizar o texto a cada
+       segundo sem precisar re-renderizar a tela inteira (mesmo padrão
+       já usado pro contador de Energia/Pokéticket). */
+    '<div class="ga-game-clock" id="ga-game-clock-side" title="Relógio do jogo (horário real do servidor, UTC) -- algumas evoluções só acontecem de Dia ou de Noite, e os Pokétickets resetam a cada Dia do jogo novo">'+esc2(relogioDoJogoTexto())+'</div>'+
     '<div class="ga-side-stats">'+
       '<span title="'+esc2(TOOLTIPS.energia)+'">🔋 '+STATE.energy+'/1000</span>'+
       '<span title="'+esc2(TOOLTIPS.pokedolares)+'">💰 '+(STATE.pokedolares||0)+'</span>'+
       '<span title="'+esc2(TOOLTIPS.poketickets)+'">🎫 '+(STATE.poketickets||0)+'</span>'+
       '<span title="'+esc2(TOOLTIPS.insignias)+'">🎖️ '+STATE.badges.length+'/'+GYM_LEADERS.length+'</span>'+
       '<span title="'+esc2(TOOLTIPS.pokedex)+'">📕 '+counts.caught+'/'+counts.total+'</span>'+
-      /* Cap. leva desta sessão ("clima, dia e noite... pra gente
-         colocar no sistema"): ciclo de verdade (ver horaAtualDoJogo
-         acima), só informativo aqui -- quem realmente USA isso é
-         eligibleEvolution (Eevee -> Espeon/Umbreon etc.). */
-      '<span title="Dia/Noite de verdade (horário real do servidor, UTC) -- algumas evoluções só acontecem num dos dois">'+(horaAtualDoJogo()==='day'?'☀️ Dia':'🌙 Noite')+'</span>'+
     '</div>'+
     '<nav class="ga-nav">'+navListHTML()+'</nav>'+
     '<button class="ga-nav-sair" title="Sair da conta" onclick="DT.gaSair()">🚪 Sair</button>'+
@@ -11841,13 +11904,18 @@ function sidebarHTML(){
 }
 /* Barra compacta só visível no celular (CSS esconde no desktop) -- o
    ☰ abre/fecha a gaveta lateral; marca e stat mais importante (Energia)
-   ficam sempre visíveis mesmo com a gaveta fechada. */
+   ficam sempre visíveis mesmo com a gaveta fechada. Relógio do jogo
+   (Cap. leva desta sessão, ver comentário grande em sidebarHTML) quebra
+   pra linha de baixo (`flex-basis:100%` no CSS) -- sem espaço sobrando
+   na 1ª linha pro formato completo "Dia N -- hh:mm -- Dia/Noite" no
+   celular. */
 function mobileTopbarHTML(){
   if(!STATE || !STATE.trainerName) return '';
   return '<div class="ga-mobtop">'+
     '<button class="ga-hamburger" onclick="DT.gaToggleSidebar()" aria-label="Abrir menu">☰</button>'+
     '<div class="ga-brand" onclick="DT.gaGoto(\'hub\')">🟢 GREEN ÁREA</div>'+
     '<span class="ga-mobtop-energia" title="'+esc2(TOOLTIPS.energia)+'">🔋 '+STATE.energy+'</span>'+
+    '<div class="ga-game-clock ga-game-clock-mob" id="ga-game-clock-mob" title="Relógio do jogo (UTC) -- algumas evoluções só acontecem de Dia ou de Noite, Pokétickets resetam a cada Dia do jogo novo">'+esc2(relogioDoJogoTexto())+'</div>'+
   '</div>';
 }
 DT.gaToggleSidebar = function(){ SESSION.sidebarOpen = !SESSION.sidebarOpen; render(); };
@@ -12037,7 +12105,7 @@ function hubScreenHTML(){
          Insígnias, com o número grande (o "contador") e um botão
          independente só dele. */
       '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.poketickets)+'"><div class="ga-stat-label">🎫 Pokétickets</div><div class="ga-stat-val">'+(STATE.poketickets||0)+'/'+POKETICKETS_MAX+'</div>'+
-        '<div class="ga-hint">'+((STATE.poketickets||0)>=POKETICKETS_MAX ? 'Teto atingido -- gaste!' : '+'+POKETICKETS_POR_DIA+' em <span id="ga-ticket-countdown">'+formatHHMMSS(secondsToNextPoketicketTick())+'</span>')+'</div>'+
+        '<div class="ga-hint">Vira '+POKETICKETS_POR_DIA+' em <span id="ga-ticket-countdown">'+formatHHMMSS(secondsToNextPoketicketTick())+'</span> (próximo Dia do jogo)</div>'+
         ticketParaEnergiaWidgetHTML('hub')+'</div>'+
       '<div class="ga-card ga-stat-card" title="Itens que a luta automática usa -- Pokébolas pra capturar (depois de vencer um selvagem) e Poções pro gatilho de cura em PV baixo. Compre mais na 🏪 Loja."><div class="ga-stat-label">🎒 Mochila</div>'+
         '<div class="ga-hint ga-item-row">'+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+(STATE.pokebolas[bl.key]||0); }).join('')+'</div>'+
