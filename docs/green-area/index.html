@@ -5351,23 +5351,39 @@ var EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED = { 700: 'Fada' }; // mesma grafia de MOV
    superior no celular -- ver sidebarHTML/mobileTopbarHTML) no formato
    exato pedido: "Dia N -- hh:mm -- dia/noite". */
 var MS_POR_PERIODO_JOGO = 6*60*60*1000; // 6h reais = 1 "Dia do jogo"
-function periodoDoJogoIndex(){ return Math.floor(Date.now()/MS_POR_PERIODO_JOGO); } // 0-based, cresce pra sempre, nunca reinicia
-function numeroDiaDoJogo(){ return periodoDoJogoIndex()+1; } // exibido como "Dia N" (1-based, bate com o exemplo do pedido)
+function periodoDoJogoIndex(){ return Math.floor(Date.now()/MS_POR_PERIODO_JOGO); } // 0-based, cresce pra sempre, nunca reinicia -- uso INTERNO (diff de Dia pro grant de Pokéticket), nunca exibido cru
+/* Cap. leva desta sessão ("Isso aqui tá muito estranho. Porque tá com
+   esses dias e essa hora bugada?" -- "Dia 82832" apareceu na tela):
+   `periodoDoJogoIndex()` cru é contado desde 1970 de propósito (só
+   precisa ser monotônico pro grant de Pokéticket saber quantos Dias se
+   passaram, não importa o valor absoluto) -- mas EXIBIR esse número
+   cru pro jogador é um valor gigante sem sentido nenhum, parece bug.
+   `numeroDiaDoJogo()` (o que aparece na tela) volta a ser exatamente o
+   exemplo do pedido original -- Dia 1, 2, 3, 4 e recomeça, ciclando de
+   6 em 6 (1-based) -- só um recorte de exibição, nunca muda a conta
+   INTERNA (`periodoDoJogoIndex()`, que continua crescendo pra sempre
+   por baixo, sem nenhuma mudança de comportamento no grant de
+   Pokéticket nem nas evoluções). */
+function numeroDiaDoJogo(){ return (periodoDoJogoIndex()%4)+1; }
 function horaAtualDoJogo(){
   var h = new Date().getUTCHours();
   return (h%6)<3 ? 'day' : 'night'; // 1ª metade (3h) de cada bloco de 6h = dia, 2ª metade = noite
 }
-/* Relógio do jogo formatado -- string única "Dia N -- hh:mm -- ☀️ Dia"/
-   "🌙 Noite", pronta pra exibir. `hh:mm` é o mesmo relógio UTC que já
-   decide tudo acima (Dia do jogo E dia/noite), de propósito -- nunca
-   mostra uma hora diferente da que realmente comanda a mecânica, senão
-   o relógio na tela mentiria sobre o que está valendo de verdade. */
+/* Relógio do jogo formatado -- string única "Dia N -- hh:mm:ss -- ☀️
+   Dia"/"🌙 Noite", pronta pra exibir. Cap. leva desta sessão ("quero
+   que corram os segundos, é possível??"): ganhou `:ss` (antes só
+   hh:mm) -- já era atualizado a cada segundo de verdade no DOM (ver
+   energyTickLoop), só o TEXTO não mudava dentro do mesmo minuto,
+   parecendo travado. `hh:mm:ss` é o mesmo relógio UTC que já decide
+   tudo acima (Dia do jogo E dia/noite), de propósito -- nunca mostra
+   uma hora diferente da que realmente comanda a mecânica. */
 function relogioDoJogoTexto(){
   var agora = new Date();
   var hh = String(agora.getUTCHours()).padStart(2,'0');
   var mm = String(agora.getUTCMinutes()).padStart(2,'0');
+  var ss = String(agora.getUTCSeconds()).padStart(2,'0');
   var tipo = horaAtualDoJogo();
-  return 'Dia '+numeroDiaDoJogo()+' -- '+hh+':'+mm+' -- '+(tipo==='day'?'☀️ Dia':'🌙 Noite');
+  return 'Dia '+numeroDiaDoJogo()+' -- '+hh+':'+mm+':'+ss+' -- '+(tipo==='day'?'☀️ Dia':'🌙 Noite');
 }
 /* Cap. leva desta sessão: "Nos itens use os icones originais,
    pixelados... Todos os icones do jogo usa pixelado pra ficar legal":
