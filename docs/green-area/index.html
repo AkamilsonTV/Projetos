@@ -5418,6 +5418,119 @@ function aplicarHabilidadeDeEntrada(entrando, oponente, b){
   }
 }
 
+/* ============================================================
+   Itens Segurados em batalha (Cap. leva desta sessão -- tarefa #195,
+   "Pode iniciar tudo isso, mas tudo que for mecanica quero do jogo
+   original"): catálogo curado de itens com efeito mecânico REAL em
+   combate (mesmo espírito do ABILITY_MECH_SET acima -- não é o
+   catálogo INTEIRO do Bulbapedia, um recorte representativo
+   documentado de propósito, ~19 itens). Comprados na Loja (mesmo
+   fluxo genérico de sempre, caem em STATE.itens por chave -- ver
+   DT.gaComprarItem) e EQUIPADOS num Pokémon da Equipe (persistente,
+   igual Habilidade/Natureza -- NUNCA reseta entre lutas sozinho, ao
+   contrário de Estágio/Status/PP que vivem só no battler), nunca
+   confundir com os itens de cura/Pokébola/MT (que continuam só fora
+   de luta). Só o time do JOGADOR pode segurar item aqui --
+   selvagem/Treinador de Zona/Mestre não têm itens curados,
+   simplificação documentada (mesmo "roster genérico" de sempre).
+   `icon` usa o mesmo slug oficial de sprite da PokeAPI que todo o
+   resto do catálogo de item já usa (ver itemIconUrl). */
+var HELD_ITEMS = [
+  { key:'restos', nome:'Restos', icon:'leftovers', preco:200, desc:'Cura 1/16 do PV Máximo no fim de cada Rodada.' },
+  { key:'lama-negra', nome:'Lama Negra', icon:'black-sludge', preco:200, desc:'Cura 1/16 do PV Máximo por Rodada em Pokémon do Tipo Venenoso -- qualquer outro Tipo PERDE 1/8 do PV Máximo por Rodada.' },
+  { key:'pedra-vida', nome:'Pedra Vida', icon:'life-orb', preco:250, desc:'Aumenta o dano causado em 30%, mas causa recuo de 1/10 do PRÓPRIO PV Máximo a cada golpe que causa dano.' },
+  { key:'faixa-escolha', nome:'Faixa Escolha', icon:'choice-band', preco:250, desc:'Aumenta o Ataque em 50%, mas trava no PRIMEIRO Movimento usado até trocar de campo.' },
+  { key:'oculos-escolha', nome:'Óculos Escolha', icon:'choice-specs', preco:250, desc:'Aumenta o Ataque Especial em 50%, mesma trava da Faixa Escolha.' },
+  { key:'lenco-escolha', nome:'Lenço Escolha', icon:'choice-scarf', preco:250, desc:'Aumenta a Velocidade em 50%, mesma trava da Faixa Escolha.' },
+  { key:'cinto-foco', nome:'Cinto Foco', icon:'focus-sash', preco:200, desc:'Sobrevive com 1 PV de um golpe que desmaiaria, saindo de PV cheio (inclusive Nocaute em 1 Golpe) -- some depois de usar (1 uso só).' },
+  { key:'baga-oran', nome:'Baga Oran', icon:'oran-berry', preco:60, desc:'Cura 10 PV sozinha quando o PV cai pra 50% ou menos -- some depois de usar.' },
+  { key:'baga-sitrus', nome:'Baga Sitrus', icon:'sitrus-berry', preco:120, desc:'Cura 25% do PV Máximo sozinha quando o PV cai pra 50% ou menos -- some depois de usar.' },
+  { key:'baga-lum', nome:'Baga Lum', icon:'lum-berry', preco:150, desc:'Cura QUALQUER Condição (inclusive Confusão) assim que é infligida -- some depois de usar.' },
+  { key:'capacete-rochoso', nome:'Capacete Rochoso', icon:'rocky-helmet', preco:200, desc:'Golpe de CONTATO recebido causa 1/6 do PRÓPRIO PV Máximo de recuo em quem atacou.' },
+  { key:'evolite', nome:'Evolite', icon:'eviolite', preco:300, desc:'Aumenta Defesa E Defesa Especial em 50% -- só funciona em Pokémon que ainda PODE evoluir.' },
+  { key:'cinto-especialista', nome:'Cinto Especialista', icon:'expert-belt', preco:200, desc:'Aumenta em 20% o dano de golpe Super Efetivo.' },
+  { key:'faixa-poder', nome:'Faixa de Poder', icon:'muscle-band', preco:150, desc:'Aumenta em 10% o dano de golpe Físico.' },
+  { key:'oculos-sabios', nome:'Óculos Sábios', icon:'wise-glasses', preco:150, desc:'Aumenta em 10% o dano de golpe Especial.' },
+  { key:'garra-rapida', nome:'Garra Rápida', icon:'quick-claw', preco:200, desc:'20% de chance de agir PRIMEIRO na Rodada, ignorando Prioridade e Velocidade.' },
+  { key:'politica-fraqueza', nome:'Política de Fraqueza', icon:'weakness-policy', preco:200, desc:'Sobe +2 Ataque E +2 Ataque Especial ao ser atingido por um golpe Super Efetivo -- some depois de usar.' },
+  { key:'sino-concha', nome:'Sino Concha', icon:'shell-bell', preco:200, desc:'Cura 1/8 do dano CAUSADO de volta pro próprio PV.' },
+  { key:'balao-de-ar', nome:'Balão de Ar', icon:'air-balloon', preco:150, desc:'Imune a golpes de Tipo Terra -- estoura (e some) na primeira vez que toma QUALQUER dano.' }
+];
+function heldItemByKey(key){ return HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
+function temItemSegurado(battler, key){ return !!battler && battler.item===key; }
+var CHOICE_ITEMS = { 'faixa-escolha':'atk', 'oculos-escolha':'spa', 'lenco-escolha':'spe' };
+/* Ainda PODE evoluir (qualquer gatilho -- Nível/pedra/troca/felicidade
+   etc, não importa qual): usa o MESMO EVOLUTIONS_DEX que toda evolução
+   do jogo já consulta -- Evolite só funciona em quem tem pelo menos 1
+   aresta de saída ali. */
+function aindaPodeEvoluir(num){ return (EVOLUTIONS_DEX[num]||[]).length>0; }
+/* Item consumido de vez (bagas/Cinto Foco/Política de Fraqueza/Balão
+   de Ar) -- some do battler NA HORA e, se for do time do JOGADOR
+   (battler.partyId existe), some PRA SEMPRE do Pokémon de verdade
+   também (igual o jogo oficial: um item comido precisa ser comprado
+   e equipado de novo depois da luta -- NUNCA volta sozinho, ao
+   contrário de Estágio/Status/PP que resetam a cada luta nova). */
+function consomeItemSegurado(battler, b, motivo){
+  var def = heldItemByKey(battler.item);
+  battler.item = null;
+  if(battler.partyId){
+    var p = STATE.party.filter(function(x){ return x.id===battler.partyId; })[0];
+    if(p) p.itemSegurado = null;
+  }
+  if(b && b.log && def) b.log.push('🎒 '+displayName(battler)+' usou '+def.nome+'! ('+motivo+')');
+}
+/* Multiplicador de Atributo por Item (Cap. Faixa/Óculos/Lenço Escolha
+   ×1,5 no Atributo certo; Evolite ×1,5 em Defesa E Defesa Especial se
+   ainda pode evoluir) -- mesmo ponto de entrada usado por
+   abilityStatMult, ligado tanto em effStatWithStage quanto no
+   atkEff/defEff de officialDamage, pro Atributo Efetivo bater igual
+   nos 2 lugares. */
+function itemStatMult(battler, stat){
+  if(!battler || !battler.item) return 1;
+  if(stat!=='atk' && stat!=='def' && stat!=='spa' && stat!=='spd' && stat!=='spe') return 1;
+  if(CHOICE_ITEMS[battler.item]===stat) return 1.5;
+  if(battler.item==='evolite' && (stat==='def'||stat==='spd') && aindaPodeEvoluir(battler.num)) return 1.5;
+  return 1;
+}
+/* Balão de Ar (Cap. Itens Segurados): imune a golpes de Tipo Terra
+   enquanto intacto -- checado ANTES da imunidade de Tipo normal, não
+   depende da tabela de Tipo (funciona mesmo em quem não é Voador).
+   Estourar/consumir só acontece DEPOIS de tomar dano de verdade de
+   OUTRO golpe (ver o fim do laço de hits em resolveGaTurn) -- o
+   próprio golpe de Terra bloqueado aqui NÃO estoura o Balão, regra
+   oficial. */
+function checaImunidadeDeTipoPorItem(move, user, target, b, userName, targetName){
+  if(move.tipo==='Terra' && temItemSegurado(target,'balao-de-ar')){
+    b.log.push('🎈 '+userName+' usou '+move.name+' -- '+targetName+' é imune (Balão de Ar).');
+    return true;
+  }
+  return false;
+}
+/* Bagas que reagem a PV baixo (Oran/Sitrus) -- checada em TODO lugar
+   onde o PV de um battler cai de verdade (mesmos pontos que já checam
+   Magic Guard: golpe de dano, residual de Status, chip de Clima,
+   Semente Maligna, Pedras Pontiagudas de entrada, Capacete
+   Rochoso/Lama Negra), pra reagir na hora certa como no jogo oficial,
+   não só no fim de Rodada. Simplificação documentada: dano de
+   Counter/Mirror Coat, golpes de dano fixo, Nocaute em 1 Golpe, recuo
+   do PRÓPRIO Struggle e Aftermath NÃO disparam essas bagas nesta leva
+   (fora dos pontos mais comuns de dano de uma luta normal). */
+function checaBagaDePV(battler, b){
+  if(!battler || !battler.item || !b) return;
+  var hp = b.hp[battler.key];
+  if(hp===undefined || hp<=0) return;
+  var max = gaHpMax(battler);
+  if(hp>max*0.5) return;
+  if(battler.item==='baga-oran'){
+    b.hp[battler.key] = Math.min(max, hp+10);
+    consomeItemSegurado(battler, b, 'curou 10 PV com PV baixo');
+  } else if(battler.item==='baga-sitrus'){
+    var cura = Math.max(1, Math.round(max*0.25));
+    b.hp[battler.key] = Math.min(max, hp+cura);
+    consomeItemSegurado(battler, b, 'curou 25% do PV Máximo com PV baixo');
+  }
+}
+
 /* effStat/gaHpMax continuam com o MESMO nome/assinatura de sempre
    (chamados em dezenas de lugares do motor de batalha) -- só a conta
    por dentro virou a oficial. `poke`/battler só precisa de .num,
@@ -5440,7 +5553,7 @@ function stageMultiplier(stage){
 function effStatWithStage(b, stat){
   var base = effStat(b, stat);
   var stage = (b.estagios && b.estagios[stat]) || 0;
-  return Math.max(1, Math.floor(base * stageMultiplier(stage) * abilityStatMult(b, stat)));
+  return Math.max(1, Math.floor(base * stageMultiplier(stage) * abilityStatMult(b, stat) * itemStatMult(b, stat)));
 }
 function bumpStage(b, stat, delta){
   if(!b.estagios) b.estagios = {atk:0,def:0,spa:0,spd:0,spe:0,accuracy:0,evasion:0};
@@ -6239,10 +6352,19 @@ function initBattlerExtras(b){
   b.chargingMove = null;
   b.lastHitTaken = null;
   b._hazardsApplied = false;
+  // Cap. Itens Segurados (leva desta sessão): `item` já vem só do
+  // JOGADOR (ver buildBattlerFromParty -- selvagem/Treinador/Mestre
+  // nunca têm item curado, simplificação documentada), mas fica com
+  // um default explícito aqui pra qualquer battler nunca quebrar as
+  // checagens de `temItemSegurado`. `choiceLockedMove` (trava de
+  // Faixa/Óculos/Lenço Escolha) sempre reseta com o battler novo --
+  // igual Estágio, nunca sobrevive a uma troca/entrada nova.
+  if(b.item===undefined) b.item = null;
+  b.choiceLockedMove = null;
   return b;
 }
 function buildBattlerFromParty(poke){
-  return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade });
+  return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade, item: poke.itemSegurado||null });
 }
 function buildBattlerWild(num, level){
   return initBattlerExtras({ key:'w_'+num, side:'wild', num:num, level:level, moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num) });
@@ -6585,7 +6707,21 @@ function runBattleUntilPause(){
     var defPrio = officialMoveData(defMove).priority||0;
     var atkSpe = effStatWithStage(atkB,'spe') * (atkB.status==='paralisia'?0.5:1);
     var defSpe = effStatWithStage(defB,'spe') * (defB.status==='paralisia'?0.5:1);
-    var atkFirst = atkPrio!==defPrio ? atkPrio>defPrio : (atkSpe===defSpe ? Math.random()<0.5 : atkSpe>defSpe);
+    // Cap. Garra Rápida (Itens Segurados): 20% de chance de agir
+    // PRIMEIRO na Rodada, ignorando Prioridade E Velocidade por
+    // completo -- simplificação documentada (a regra oficial só
+    // desempata dentro da MESMA faixa de Prioridade; aqui vale como
+    // "vai primeiro, ponto", mais simples de aplicar no motor). Se os
+    // 2 lados ativarem no mesmo turno, cai pra regra normal (ninguém
+    // "ganha" o empate).
+    var atkQuickClaw = temItemSegurado(atkB,'garra-rapida') && Math.random()<0.2;
+    var defQuickClaw = temItemSegurado(defB,'garra-rapida') && Math.random()<0.2;
+    var atkFirst;
+    if(atkQuickClaw && !defQuickClaw) atkFirst = true;
+    else if(defQuickClaw && !atkQuickClaw) atkFirst = false;
+    else atkFirst = atkPrio!==defPrio ? atkPrio>defPrio : (atkSpe===defSpe ? Math.random()<0.5 : atkSpe>defSpe);
+    if(atkQuickClaw && !defQuickClaw) b.log.push('🐾 '+displayName(atkB)+' reagiu na hora com a Garra Rápida e agiu primeiro!');
+    else if(defQuickClaw && !atkQuickClaw) b.log.push('🐾 '+displayName(defB)+' reagiu na hora com a Garra Rápida e agiu primeiro!');
     var order = atkFirst ? [atkB,defB] : [defB,atkB];
     var moveOrder = atkFirst ? [atkMove,defMove] : [defMove,atkMove];
     atkB.flinch = false; defB.flinch = false; // Hesitação só dura até a PRÓPRIA ação, dentro desta Rodada
@@ -6674,6 +6810,15 @@ function runBattleUntilPause(){
        PV depois. */
     applyAbilityEndOfTurn(atkB, b);
     applyAbilityEndOfTurn(defB, b);
+
+    /* Cap. Itens Segurados passivos de FIM de Rodada (Restos/Lama
+       Negra) -- ao contrário da Habilidade acima, PODEM causar desmaio
+       de verdade (Lama Negra em quem não é Venenoso), então confere PV
+       depois de cada um, mesmo padrão dos residuais de dano acima. */
+    applyHeldItemEndOfTurn(atkB, b);
+    if(b.hp[atkB.key]<=0 && resolveFaintAfterDamage(atkB, null, b)) return;
+    applyHeldItemEndOfTurn(defB, b);
+    if(b.hp[defB.key]<=0 && resolveFaintAfterDamage(defB, null, b)) return;
   }
   // guard estourou (não deveria em uso normal) -- força um resultado justo, sem travar o jogo
   if(!b.finished){
@@ -7233,6 +7378,7 @@ function applyWeatherResidual(atkB, defB, b){
     var maxHp = gaHpMax(battler), dano = Math.max(1, Math.floor(maxHp/16));
     b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
     b.log.push((w==='areia'?'🏜️':'🌨️')+' '+displayName(battler)+' sofreu '+dano+' de dano do '+WEATHER_LABELS[w]+'.');
+    checaBagaDePV(battler, b);
   });
   tickWeatherDuration(b);
 }
@@ -7249,6 +7395,33 @@ function applyAbilityEndOfTurn(battler, b){
     } else if(temHab(battler,'Hydration') && weatherTipo()==='chuva'){
       b.log.push('✨ '+displayName(battler)+' curou a própria '+STATUS_LABELS_PT[battler.status]+' (Hydration)!');
       battler.status = null; battler.statusTurns = 0;
+    }
+  }
+}
+/* Itens Segurados passivos de FIM de Rodada: Restos (cura 1/16 do PV
+   Máximo) e Lama Negra (cura 1/16 em Tipo Venenoso, mas TIRA 1/8 de
+   qualquer outro Tipo). Mesmo padrão de applyAbilityEndOfTurn, chamado
+   logo depois dela nos 2 motores (luta normal e Duelo PvP) -- ao
+   contrário da Habilidade, PODE causar desmaio (Lama Negra em quem
+   não é Venenoso), então quem chama confere PV depois, igual todo
+   residual de dano de verdade (não dispara Baga Oran/Sitrus aqui --
+   só existe UM slot de item por Pokémon, então quem segura Lama Negra
+   nunca segura baga ao mesmo tempo). */
+function applyHeldItemEndOfTurn(battler, b){
+  if(!battler || !battler.item || b.hp[battler.key]===undefined || b.hp[battler.key]<=0) return;
+  var max = gaHpMax(battler), antes = b.hp[battler.key];
+  if(battler.item==='restos'){
+    b.hp[battler.key] = Math.min(max, antes+Math.max(1, Math.floor(max/16)));
+    if(b.hp[battler.key]>antes) b.log.push('🍂 '+displayName(battler)+' recuperou '+(b.hp[battler.key]-antes)+' PV (Restos).');
+  } else if(battler.item==='lama-negra'){
+    var sp = speciesByNum(battler.num);
+    if(sp.tipo1==='Venenoso' || sp.tipo2==='Venenoso'){
+      b.hp[battler.key] = Math.min(max, antes+Math.max(1, Math.floor(max/16)));
+      if(b.hp[battler.key]>antes) b.log.push('⚫ '+displayName(battler)+' recuperou '+(b.hp[battler.key]-antes)+' PV (Lama Negra).');
+    } else if(!temHab(battler,'Magic Guard')){
+      var dano = Math.max(1, Math.floor(max/8));
+      b.hp[battler.key] = Math.max(0, antes-dano);
+      b.log.push('⚫ '+displayName(battler)+' sofreu '+dano+' de dano (Lama Negra).');
     }
   }
 }
@@ -7473,6 +7646,7 @@ function aplicarArmadilhasDeEntrada(battler, ladoAlvo, b){
     var dano = Math.max(1, Math.floor(gaHpMax(battler) * mult / 8));
     b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
     b.log.push('🪨 Pedras Pontiagudas cravaram em '+nome+' ao entrar -- '+dano+' de dano.');
+    checaBagaDePV(battler, b);
   }
   if(haz.toxicSpikes>0 && b.hp[battler.key]>0){
     var tipos = [sp.tipo1, sp.tipo2];
@@ -7502,6 +7676,7 @@ function applyLeechSeedResidual(atkB, defB, b){
     var dreno = Math.min(b.hp[semeado.key], Math.max(1, Math.floor(maxSemeado/8)));
     b.hp[semeado.key] = Math.max(0, b.hp[semeado.key]-dreno);
     b.log.push('🌱 Semente Maligna drenou '+dreno+' PV de '+displayName(semeado)+'.');
+    checaBagaDePV(semeado, b);
     if(oposto && b.hp[oposto.key]!==undefined && b.hp[oposto.key]>0){
       var maxOposto = gaHpMax(oposto);
       var antes = b.hp[oposto.key];
@@ -7520,8 +7695,23 @@ function applyLeechSeedResidual(atkB, defB, b){
    ela reusar em vez de sortear sozinha. */
 function decidirMovimentoDoTurno(user){
   if(user.chargingMove) return user.chargingMove;
+  // Cap. Itens de Escolha (Faixa/Óculos/Lenço Escolha -- Itens
+  // Segurados): trava no PRIMEIRO Movimento usado com o item
+  // equipado, até trocar de campo -- decide aqui (é a ÚNICA escolha do
+  // turno, reaproveitada por resolveGaTurn via preSelectedMove, e é
+  // aqui que a Prioridade real entra na ordem da Rodada) pra travar
+  // valer de verdade. A trava vive só no battler (reseta sozinha a
+  // cada troca/entrada nova, igual Estágio -- battler novo sempre
+  // nasce com choiceLockedMove null).
+  if(CHOICE_ITEMS[user.item] && user.choiceLockedMove){
+    var travado = (user.moves||[]).filter(function(m){ return m.name===user.choiceLockedMove; })[0];
+    if(travado && (user.pp[travado.name]||0)>0) return travado;
+    return FALLBACK_MOVE; // sem PP sobrando no Movimento travado -- cai pro Struggle, igual jogo oficial
+  }
   var pool = (user.moves && user.moves.length) ? user.moves : [];
-  return pickMoveByRole(pool, user.papelCombate, user.pp) || FALLBACK_MOVE;
+  var escolhido = pickMoveByRole(pool, user.papelCombate, user.pp) || FALLBACK_MOVE;
+  if(CHOICE_ITEMS[user.item] && escolhido && escolhido.name!=='Struggle') user.choiceLockedMove = escolhido.name;
+  return escolhido;
 }
 
 /* Precisão/Evasão (Cap. "quero tudo dos combates mesmo"): rolagem por
@@ -7596,8 +7786,8 @@ function officialDamage(user, target, move, crit, ofPreCalculado){
   var defStageRaw = temHab(user,'Unaware') ? 0 : ((target.estagios&&target.estagios[defStatKey])||0);
   var atkStage = crit ? critClampStage(atkStageRaw, true) : atkStageRaw;
   var defStage = crit ? critClampStage(defStageRaw, false) : defStageRaw;
-  var atkEff = Math.max(1, Math.floor(effStat(user, atkStatKey) * stageMultiplier(atkStage) * abilityStatMult(user, atkStatKey)));
-  var defEff = Math.max(1, Math.floor(effStat(target, defStatKey) * stageMultiplier(defStage) * abilityStatMult(target, defStatKey)));
+  var atkEff = Math.max(1, Math.floor(effStat(user, atkStatKey) * stageMultiplier(atkStage) * abilityStatMult(user, atkStatKey) * itemStatMult(user, atkStatKey)));
+  var defEff = Math.max(1, Math.floor(effStat(target, defStatKey) * stageMultiplier(defStage) * abilityStatMult(target, defStatKey) * itemStatMult(target, defStatKey)));
   // Cap. Habilidades que multiplicam o ATRIBUTO ofensivo (só valem no
   // golpe Físico -- as 3 mexem oficialmente no Ataque, nunca no Ataque
   // Especial): Huge Power/Pure Power sempre ×2; senão Guts (só com
@@ -7656,8 +7846,18 @@ function officialDamage(user, target, move, crit, ofPreCalculado){
   }
   // Cap. Habilidade Tinted Lens: dobra dano de golpe Pouco Efetivo (<1x)
   var tintedMult = (typeEff>0 && typeEff<1 && temHab(user,'Tinted Lens')) ? 2 : 1;
+  // Cap. Itens Segurados que multiplicam DANO (nunca o Atributo -- ver
+  // itemStatMult acima pros que multiplicam Atributo): Pedra Vida ×1,3
+  // sempre; Cinto Especialista ×1,2 só em golpe Super Efetivo; Faixa
+  // de Poder ×1,1 só Físico; Óculos Sábios ×1,1 só Especial (só 1 dos
+  // 4 costuma estar equipado por vez -- 1 item só por Pokémon).
+  var itemDanoMult = 1;
+  if(temItemSegurado(user,'pedra-vida')) itemDanoMult *= 1.3;
+  if(typeEff>1 && temItemSegurado(user,'cinto-especialista')) itemDanoMult *= 1.2;
+  if(fisico && temItemSegurado(user,'faixa-poder')) itemDanoMult *= 1.1;
+  if(!fisico && temItemSegurado(user,'oculos-sabios')) itemDanoMult *= 1.1;
   var aleatorio = (85 + Math.floor(Math.random()*16))/100; // 0,85 a 1,00
-  var dano = Math.floor(base * stab * typeEff * critMult * burnHalving * climaMult * terrenoMult * defesaHabMult * tintedMult * aleatorio);
+  var dano = Math.floor(base * stab * typeEff * critMult * burnHalving * climaMult * terrenoMult * defesaHabMult * tintedMult * itemDanoMult * aleatorio);
   return { dano: Math.max(typeEff>0 ? 1 : 0, dano), typeEff: typeEff };
 }
 
@@ -7698,6 +7898,14 @@ function abilityBlocksAilment(battler, statusPt, atacante){
 }
 function applyAilment(battler, ailmentEn, moveName, b, logPrefix, atacante){
   if(ailmentEn==='none') return;
+  // Cap. Baga Lum (Itens Segurados): cura QUALQUER Condição (inclusive
+  // Confusão) assim que ela seria infligida -- ativa antes de qualquer
+  // outra checagem, "instantânea" igual o jogo oficial (a Condição
+  // nunca chega a aparecer de verdade).
+  if(temItemSegurado(battler,'baga-lum')){
+    consomeItemSegurado(battler, b, 'preveniu a Condição na hora');
+    return;
+  }
   if(ailmentEn==='confusion'){
     if(battler.confusao>0) return; // já confuso -- não empilha
     if(temHab(battler,'Own Tempo') && !ignoraHabilidadeDefensiva(atacante)){
@@ -7789,6 +7997,7 @@ function applyEndOfTurnStatus(battler, b){
   if(dano>0){
     b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
     b.log.push((battler.status==='queimadura'?'🔥':'☠️')+' '+nome+' sofreu '+dano+' de dano por '+STATUS_LABELS_PT[battler.status]+'.');
+    checaBagaDePV(battler, b);
   }
 }
 /* Golpes de vários hits (Cap. oficial, ex.: Bullet Seed 2-5 vezes):
@@ -7993,6 +8202,14 @@ function resolveGaTurn(user, target, preSelectedMove){
       b.log.push('🛡️ '+userName+' usou '+move.name+', mas '+targetName+' é imune a Nocaute em 1 Golpe (Sturdy).');
       return;
     }
+    // Cap. Cinto Foco (Itens Segurados): também imune de verdade a
+    // Nocaute em 1 Golpe (regra oficial) -- só com PV cheio, consumido no uso.
+    if(temItemSegurado(target,'cinto-foco') && b.hp[target.key]===gaHpMax(target)){
+      consomeItemSegurado(target, b, 'sobreviveu ao Nocaute em 1 Golpe');
+      b.log.push('🛡️ '+userName+' usou '+move.name+', mas '+targetName+' resistiu com 1 PV (Cinto Foco já foi usado).');
+      b.hp[target.key] = 1;
+      return;
+    }
     b.hp[target.key] = 0;
     b.log.push('💀 '+userName+' usou '+move.name+' -- Nocaute em 1 Golpe! '+targetName+' desmaiou na hora!');
     return;
@@ -8184,6 +8401,7 @@ function resolveGaTurn(user, target, preSelectedMove){
     typeEff = 1;
   }
   if(checaImunidadeDeTipoPorHabilidade(move, user, target, b, userName, targetName)) return;
+  if(checaImunidadeDeTipoPorItem(move, user, target, b, userName, targetName)) return;
   if(typeEff===0){
     b.log.push('🛡️ '+userName+' usou '+move.name+' -- não afeta '+targetName+' (imune).');
     return;
@@ -8203,7 +8421,7 @@ function resolveGaTurn(user, target, preSelectedMove){
     return;
   }
   var hits = officialHitCount(of.minHits, of.maxHits);
-  var totalDano = 0, ultimoResult = null, atingiuSubstituto = false, salvoPeloSturdy = false;
+  var totalDano = 0, ultimoResult = null, atingiuSubstituto = false, salvoPeloSturdy = false, salvoPeloFocusSash = false;
   for(var h=0; h<hits; h++){
     if(b.hp[target.key]<=0 && target.subHp<=0) break; // desmaiou (ou o Substituto quebrou) no meio de um golpe de vários hits -- para aqui
     var result = officialDamage(user, target, move, crit, of);
@@ -8219,12 +8437,16 @@ function resolveGaTurn(user, target, preSelectedMove){
       // Cap. Habilidade Sturdy: com PV cheio, NUNCA desmaia num golpe
       // só -- sobra sempre com 1 PV (furada por Mold Breaker e
       // companhia). Só faz sentido testar ENQUANTO o PV ainda tá
-      // cheio (num golpe de vários hits, só o 1º hit pode salvar).
+      // cheio (num golpe de vários hits, só o 1º hit pode salvar). Cap.
+      // Cinto Foco (Itens Segurados): mesmo efeito, mas só entra se a
+      // Habilidade Sturdy já não salvou (nunca os 2 juntos) -- consumido no uso.
       var maxTarget = gaHpMax(target), hpAntesHit = b.hp[target.key];
       var vaiSturdy = hpAntesHit===maxTarget && result.dano>=hpAntesHit && temHab(target,'Sturdy') && !ignoraHabilidadeDefensiva(user);
-      b.hp[target.key] = vaiSturdy ? 1 : Math.max(0, b.hp[target.key]-result.dano);
-      totalDano += vaiSturdy ? (hpAntesHit-1) : result.dano;
+      var vaiFocusSash = !vaiSturdy && hpAntesHit===maxTarget && result.dano>=hpAntesHit && temItemSegurado(target,'cinto-foco');
+      b.hp[target.key] = (vaiSturdy||vaiFocusSash) ? 1 : Math.max(0, b.hp[target.key]-result.dano);
+      totalDano += (vaiSturdy||vaiFocusSash) ? (hpAntesHit-1) : result.dano;
       if(vaiSturdy){ salvoPeloSturdy = true; break; } // encerra os hits restantes -- já não tem mais o que derrubar
+      if(vaiFocusSash){ salvoPeloFocusSash = true; consomeItemSegurado(target, b, 'sobreviveu com 1 PV'); break; }
     }
   }
   var extra = (ultimoResult.typeEff>=2?' Super efetivo!':(ultimoResult.typeEff>0&&ultimoResult.typeEff<1?' Pouco efetivo.':'')) + (crit?' Crítico!':'');
@@ -8233,7 +8455,23 @@ function resolveGaTurn(user, target, preSelectedMove){
     b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- atingiu o Substituto ('+totalDano+' de dano absorvido).'+extra+(target.subHp<=0?' O Substituto quebrou!':''));
   } else {
     target.lastHitTaken = { dano: totalDano, categoria: move.categoria }; // Cap. Counter/Mirror Coat: só dano REAL conta
-    b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- '+totalDano+' de dano.'+extra+(salvoPeloSturdy?' '+targetName+' aguentou com 1 PV (Sturdy)!':''));
+    b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- '+totalDano+' de dano.'+extra+(salvoPeloSturdy?' '+targetName+' aguentou com 1 PV (Sturdy)!':'')+(salvoPeloFocusSash?' '+targetName+' aguentou com 1 PV (Cinto Foco)!':''));
+    // Cap. Itens Segurados: Baga Oran/Sitrus (reagem a PV baixo) e
+    // Balão de Ar (estoura com QUALQUER dano real recebido, exceto o
+    // golpe de Terra que ele já bloqueia inteiro mais acima) -- só
+    // valem se o dano foi de verdade (nunca contra o Substituto) e o
+    // alvo continua vivo.
+    if(totalDano>0 && b.hp[target.key]>0){
+      checaBagaDePV(target, b);
+      if(temItemSegurado(target,'balao-de-ar')) consomeItemSegurado(target, b, 'estourou com o dano recebido');
+    }
+    // Cap. Política de Fraqueza (Itens Segurados): reage a levar um
+    // golpe SUPER EFETIVO com +2 Ataque E +2 Ataque Especial.
+    if(totalDano>0 && b.hp[target.key]>0 && ultimoResult.typeEff>1 && temItemSegurado(target,'politica-fraqueza')){
+      bumpStage(target,'atk',2); bumpStage(target,'spa',2);
+      b.log.push('📈 '+targetName+': Ataque e Ataque Especial foram pra Estágio +2 (Política de Fraqueza).');
+      consomeItemSegurado(target, b, 'reagiu ao golpe Super Efetivo');
+    }
   }
 
   // recuo/dreno (Cap. oficial -- % do dano causado, positivo dreno/negativo recuo -- vale mesmo contra Substituto, regra oficial). Cap. Habilidade Magic Guard: bloqueia o RECUO (dano indireto) no PRÓPRIO usuário -- nunca o dreno, que é cura, não dano.
@@ -8247,7 +8485,25 @@ function resolveGaTurn(user, target, preSelectedMove){
     } else if(!temHab(user,'Magic Guard')){
       b.hp[user.key] = Math.max(0, b.hp[user.key]-drainQtd);
       b.log.push('💥 '+userName+' sofreu '+drainQtd+' de recuo.');
+      checaBagaDePV(user, b);
     }
+  }
+  // Cap. Itens Segurados que reagem a CAUSAR dano: Pedra Vida (recuo
+  // de 1/10 do PRÓPRIO PV Máximo depois de causar dano -- bloqueado
+  // por Magic Guard, como todo dano indireto) e Sino Concha (cura 1/8
+  // do dano CAUSADO de volta pro próprio PV) -- os 2 valem mesmo
+  // contra o Substituto (totalDano já conta o absorvido, regra oficial
+  // de recuo/dreno de sempre).
+  if(totalDano>0 && temItemSegurado(user,'pedra-vida') && !temHab(user,'Magic Guard')){
+    var recuoOrb = Math.max(1, Math.floor(gaHpMax(user)/10));
+    b.hp[user.key] = Math.max(0, b.hp[user.key]-recuoOrb);
+    b.log.push('🔮 '+userName+' sofreu '+recuoOrb+' de recuo (Pedra Vida).');
+    checaBagaDePV(user, b);
+  }
+  if(totalDano>0 && temItemSegurado(user,'sino-concha') && b.hp[user.key]>0){
+    var maxSino = gaHpMax(user), antesSino = b.hp[user.key];
+    b.hp[user.key] = Math.min(maxSino, antesSino+Math.max(1, Math.floor(totalDano/8)));
+    if(b.hp[user.key]>antesSino) b.log.push('🔔 '+userName+' recuperou '+(b.hp[user.key]-antesSino)+' PV (Sino Concha).');
   }
 
   if(b.hp[target.key]>0){
@@ -8276,6 +8532,15 @@ function resolveGaTurn(user, target, preSelectedMove){
     // realmente fez contato e ninguém já desmaiou nesse meio-tempo.
     if(!atingiuSubstituto && golpeFazContato(move)){
       if(b.hp[user.key]>0) aplicarHabilidadeDeContatoDoAlvo(target, user, b, targetName, userName);
+      // Cap. Capacete Rochoso (Itens Segurados): 1/6 do PRÓPRIO PV
+      // Máximo de quem ATACOU, mesmo padrão de Rough Skin/Iron Barbs
+      // acima -- respeita Magic Guard de quem atacou.
+      if(b.hp[user.key]>0 && b.hp[target.key]>0 && temItemSegurado(target,'capacete-rochoso') && !temHab(user,'Magic Guard')){
+        var danoCapacete = Math.max(1, Math.floor(gaHpMax(user)/6));
+        b.hp[user.key] = Math.max(0, b.hp[user.key]-danoCapacete);
+        b.log.push('⛑️ '+userName+' sofreu '+danoCapacete+' de dano ao tocar '+targetName+' (Capacete Rochoso).');
+        checaBagaDePV(user, b);
+      }
       if(temHab(user,'Poison Touch') && b.hp[target.key]>0 && Math.random()<0.3) applyAilment(target, 'poison', move.name, b, targetName, user);
     }
     // Cap. Habilidades Justified (golpe Sombrio, +1 Ataque) e Rattled
@@ -9237,7 +9502,15 @@ function resolverRodadaDuelo(d){
   var bPrio = officialMoveData(bMove).priority||0;
   var aSpe = effStatWithStage(aB,'spe') * (aB.status==='paralisia'?0.5:1);
   var bSpe = effStatWithStage(bB,'spe') * (bB.status==='paralisia'?0.5:1);
-  var aFirst = aPrio!==bPrio ? aPrio>bPrio : (aSpe===bSpe ? Math.random()<0.5 : aSpe>bSpe);
+  // Cap. Garra Rápida (Itens Segurados): mesma régua da luta normal, ver runBattleUntilPause.
+  var aQuickClaw = temItemSegurado(aB,'garra-rapida') && Math.random()<0.2;
+  var bQuickClaw = temItemSegurado(bB,'garra-rapida') && Math.random()<0.2;
+  var aFirst;
+  if(aQuickClaw && !bQuickClaw) aFirst = true;
+  else if(bQuickClaw && !aQuickClaw) aFirst = false;
+  else aFirst = aPrio!==bPrio ? aPrio>bPrio : (aSpe===bSpe ? Math.random()<0.5 : aSpe>bSpe);
+  if(aQuickClaw && !bQuickClaw) b.log.push('🐾 '+displayName(aB)+' reagiu na hora com a Garra Rápida e agiu primeiro!');
+  else if(bQuickClaw && !aQuickClaw) b.log.push('🐾 '+displayName(bB)+' reagiu na hora com a Garra Rápida e agiu primeiro!');
   var order = aFirst ? [aB,bB] : [bB,aB];
   var moveOrder = aFirst ? [aMove,bMove] : [bMove,aMove];
   aB.flinch=false; bB.flinch=false;
@@ -9288,6 +9561,18 @@ function resolverRodadaDuelo(d){
       if(!pausou){
         applyAbilityEndOfTurn(aB, b);
         applyAbilityEndOfTurn(bB, b);
+      }
+      // Cap. Itens Segurados passivos de FIM de Rodada (Restos/Lama
+      // Negra) -- valem no Duelo também, e ESSES podem causar desmaio
+      // de verdade (Lama Negra em quem não é Venenoso).
+      if(!pausou){
+        applyHeldItemEndOfTurn(aB, b);
+        if(b.hp[aB.key]<=0 && duelResolveFaint(d,'a')) pausou=true;
+        else if(b.hp[bB.key]<=0 && duelResolveFaint(d,'b')) pausou=true;
+      }
+      if(!pausou){
+        applyHeldItemEndOfTurn(bB, b);
+        if(b.hp[bB.key]<=0 && duelResolveFaint(d,'b')) pausou=true;
       }
     }
   } finally { STATE.battle = backupBattle; }
@@ -10471,6 +10756,67 @@ function editApelidoPopupHTML(pid){
     '</div>'+
   '</div></div>';
 }
+/* Itens Segurados (Cap. leva desta sessão -- tarefa #195): equipar/
+   desequipar num Pokémon da Equipe. EQUIPAR troca 1 unidade do
+   catálogo (STATE.itens, comprado na Loja) pro slot único do Pokémon
+   -- se já tinha OUTRO item equipado, o antigo volta pra Mochila (o
+   jogo oficial só tem 1 slot de item por Pokémon, nunca 2 ao mesmo
+   tempo). DESEQUIPAR devolve o item atual pra Mochila e limpa o slot.
+   `itemSegurado` é permanente (persiste no Pokémon salvo, igual
+   Habilidade/Natureza) -- nunca reseta sozinho entre lutas; só reseta
+   se CONSUMIDO em batalha (ver consomeItemSegurado). */
+DT.gaAskItemSegurado = function(pid){
+  var p = STATE.party.filter(function(x){return x.id===pid;})[0];
+  if(!p) return;
+  SESSION.editItemFor = pid; render();
+};
+DT.gaCancelItemSegurado = function(){ SESSION.editItemFor = null; render(); };
+DT.gaEquiparItem = function(pid, key){
+  var p = STATE.party.filter(function(x){return x.id===pid;})[0];
+  if(!p) return;
+  var def = heldItemByKey(key);
+  if(!def || (STATE.itens[key]||0)<=0){ SESSION.error='Você não tem esse item na Mochila.'; render(); return; }
+  if(p.itemSegurado===key){ SESSION.editItemFor = null; render(); return; } // já é esse mesmo -- nada a fazer
+  STATE.itens[key]--;
+  if(p.itemSegurado) STATE.itens[p.itemSegurado] = (STATE.itens[p.itemSegurado]||0)+1; // devolve o antigo pra Mochila
+  p.itemSegurado = key;
+  SESSION.editItemFor = null;
+  logAction('equipe', 'Equipou '+def.nome+' em '+(p.apelido||speciesByNum(p.num).name)+'.');
+  mutate();
+};
+DT.gaDesequiparItem = function(pid){
+  var p = STATE.party.filter(function(x){return x.id===pid;})[0];
+  if(!p || !p.itemSegurado) return;
+  var def = heldItemByKey(p.itemSegurado);
+  STATE.itens[p.itemSegurado] = (STATE.itens[p.itemSegurado]||0)+1;
+  p.itemSegurado = null;
+  SESSION.editItemFor = null;
+  logAction('equipe', 'Desequipou '+(def?def.nome:'um item')+' de '+(p.apelido||speciesByNum(p.num).name)+'.');
+  mutate();
+};
+function itemSeguradoPopupHTML(pid){
+  var p = STATE.party.filter(function(x){ return x.id===pid; })[0];
+  if(!p) return '';
+  var sp = speciesByNum(p.num);
+  var disponiveis = HELD_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0 || p.itemSegurado===it.key; });
+  return '<div class="ga-overlay" onclick="DT.gaCancelItemSegurado()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelItemSegurado()">✕</button>'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
+    '<h2>🎒 Item Segurado -- '+esc2(sp.name)+'</h2>'+
+    '<p class="ga-hint">Equipado agora: '+(p.itemSegurado ? itemIconHTML(heldItemByKey(p.itemSegurado))+' '+esc2(heldItemByKey(p.itemSegurado).nome) : 'Nenhum')+'</p>'+
+    (p.itemSegurado ? '<button class="ga-btn-sm" onclick="DT.gaDesequiparItem(\''+pid+'\')">Desequipar (volta pra Mochila)</button>' : '')+
+    (disponiveis.length ? '<div class="ga-loja-grid">'+disponiveis.map(function(it){
+      var qtd = STATE.itens[it.key]||0;
+      return '<div class="ga-loja-card">'+
+        '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
+        '<div class="ga-hint">'+esc2(it.desc)+'</div>'+
+        '<div class="ga-hint">Você tem: '+qtd+'</div>'+
+        '<button class="ga-btn-sm '+(p.itemSegurado===it.key?'active':'ga-btn-primary')+'" '+(qtd<=0&&p.itemSegurado!==it.key?'disabled':'')+' onclick="DT.gaEquiparItem(\''+pid+'\',\''+it.key+'\')">'+(p.itemSegurado===it.key?'Equipado':'Equipar')+'</button>'+
+      '</div>';
+    }).join('')+'</div>' : '<p class="ga-hint">Você ainda não tem nenhum Item Segurado na Mochila -- compre na 🏪 Loja.</p>')+
+    '<button class="ga-btn-sm" onclick="DT.gaCancelItemSegurado()">Fechar</button>'+
+  '</div></div>';
+}
 DT.gaLiberar = function(pid){
   if(STATE.party.length<=1 && STATE.box.length===0){ SESSION.error='Você precisa de pelo menos 1 Pokémon na Equipe.'; render(); return; }
   var alvo = STATE.party.filter(function(p){return p.id===pid;})[0] || STATE.box.filter(function(p){return p.id===pid;})[0];
@@ -10648,6 +10994,7 @@ function screenHTML(){
   if(STATE.captureSequence && STATE.captureSequence.finished) return wrap(sequenciaFimScreenHTML());
   if(SESSION.confirmRelease) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + confirmarLiberarPopupHTML(SESSION.confirmRelease);
   if(SESSION.editApelidoFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + editApelidoPopupHTML(SESSION.editApelidoFor);
+  if(SESSION.editItemFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + itemSeguradoPopupHTML(SESSION.editItemFor);
   if(SESSION.usarPedraFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + usarPedraPopupHTML(SESSION.usarPedraFor);
   if(SESSION.dexOpenNum) return wrap(hubScreenHTML() /* mantém o fundo, popup por cima */) + dexPopupHTML(SESSION.dexOpenNum);
   if(SESSION.movesOpenFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + movesPopupHTML(SESSION.movesOpenFor);
@@ -10962,6 +11309,10 @@ function equipeScreenHTML(){
            pedra de verdade evoluiria esse Pokémon -- pedrasElegiveisPara
            já confere a Espécie contra EVOLUTIONS_DEX. */
         (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Pedra</button>' : '')+
+        /* Cap. leva desta sessão (tarefa #195): item segurado só entra
+           em luta a partir da EQUIPE (a Caixa não entra em luta, mesma
+           régua do Papel de Combate acima -- nunca aparece lá). */
+        '<button class="ga-btn-sm" onclick="DT.gaAskItemSegurado(\''+p.id+'\')">🎒 Item'+(p.itemSegurado?': '+esc2(heldItemByKey(p.itemSegurado).nome):'')+'</button>'+
       '</div>';
       /* Arrastar de verdade (Cap. "Coloca a opção de arrastar a ordem
          do pokémon"): HTML5 `draggable` nativo -- carrega o PRÓPRIO id
@@ -11553,7 +11904,8 @@ DT.gaComprarItem = function(key, qtdEl){
   var bola = POKEBALLS.filter(function(b){ return b.key===key; })[0];
   var item = GA_ITEMS.filter(function(i){ return i.key===key; })[0];
   var pedra = stoneByKey(key); // Cap. leva desta sessão (tarefa #183) -- mesmo catálogo genérico, cai no "else" (STATE.itens) igual GA_ITEMS
-  var def = bola || item || pedra;
+  var itemSeg = heldItemByKey(key); // Cap. leva desta sessão (tarefa #195) -- mesmo catálogo genérico também, cai no "else" (STATE.itens)
+  var def = bola || item || pedra || itemSeg;
   if(!def) return;
   var qtdPedida = qtdEl ? clampInt(parseInt(qtdEl.value,10)||1, 1, 999) : 1;
   var maxComDinheiro = Math.floor((STATE.pokedolares||0)/def.preco);
@@ -11622,6 +11974,30 @@ function lojaScreenHTML(){
         '<div class="ga-loja-qtd-row">'+
           '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
           '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+st.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
+        '</div>'+
+      '</div>';
+    }).join('')+
+    '</div></div>'+
+    /* Cap. leva desta sessão (tarefa #195 -- "itens segurados em
+       batalha"): compra aqui, EQUIPA num Pokémon da Equipe (botão
+       "🎒 Item" no card, ver equipeScreenHTML) -- mesmo fluxo genérico
+       de compra de sempre, só cai em STATE.itens por chave igual GA_
+       ITEMS/EVOLUTION_STONES. */
+    '<div class="ga-card"><h2>🎒 Itens Segurados</h2>'+
+    '<p class="ga-hint">Compre aqui, depois EQUIPE num Pokémon da Equipe (botão "🎒 Item" no card dele) -- item segurado é permanente (igual Habilidade/Natureza), nunca reseta sozinho entre lutas, mas alguns se CONSOMEM no uso (bagas, Cinto Foco, Política de Fraqueza, Balão de Ar) e precisam ser comprados/equipados de novo depois.</p>'+
+    '<div class="ga-loja-grid">'+
+    HELD_ITEMS.map(function(it){
+      var qtdAtual = STATE.itens[it.key]||0;
+      var podeComprar = (STATE.pokedolares||0) >= it.preco;
+      var inputId = 'gaLojaQtd_'+it.key;
+      return '<div class="ga-loja-card">'+
+        '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
+        '<div class="ga-hint">'+esc2(it.desc)+'</div>'+
+        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
+        '<div class="ga-loja-preco">💰 '+it.preco+' cada</div>'+
+        '<div class="ga-loja-qtd-row">'+
+          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
+          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
         '</div>'+
       '</div>';
     }).join('')+
