@@ -6580,29 +6580,31 @@ function formatMMSS(totalSeg){
 }
 
 /* Cap. leva desta sessão ("Os tickets passam a resetar a cada dia DO
-   JOGO, ou seja, 50 tickets quando o dia do jogo virar"): SUBSTITUI o
-   grant antigo (+50 ADITIVO a cada 24h reais, acumulando até o teto)
-   por um RESET de verdade -- toda vez que `numeroDiaDoJogo()`/
-   `periodoDoJogoIndex()` muda (a cada 6h reais, ver Dia/Noite acima),
-   os Pokétickets voltam pra exatamente 50, não importa quanto tinha
-   acumulado (de luta, ex.) nem quanto sobrava. Mesmo espírito
-   "preguiçoso" (catch-up) de sempre -- confere a cada vez que o estado
-   é tocado, sem depender de um timer vivo -- só que comparando o
-   ÍNDICE do Dia do jogo (um inteiro, nunca um bloco de tempo) em vez
-   de dividir milissegundos: ficar off-line por vários Dias do jogo
-   ainda cai em exatamente 50 (nunca 50×N) quando volta, porque é
-   reset, não soma. O teto (`POKETICKETS_MAX`) continua valendo pra
-   QUALQUER OUTRA fonte de Pokéticket ganha DENTRO de um Dia do jogo
-   (recompensa de Mestre Especialista, drop de Treinador de Elite,
-   ferramenta de debug) -- só que agora esses ganhos também somem no
-   próximo reset, junto com o resto. */
+   JOGO, ou seja, 50 tickets quando o dia do jogo virar" -- CORRIGIDO
+   logo em seguida: "Talvez eu tenha me expressado errado. Ele vai
+   somar 50 aos tickets que os jogadores tem mesmo. Sempre respeitando
+   o teto de 1000"): continua sendo o MESMO grant ADITIVO de sempre
+   (+50, nunca um reset que jogaria fora o que já tinha) -- só o
+   GATILHO que mudou, de "a cada 24h reais" pra "a cada Dia do jogo"
+   (6h reais, ver Dia/Noite acima). Mesmo espírito "preguiçoso"
+   (catch-up) de sempre -- confere a cada vez que o estado é tocado,
+   sem depender de um timer vivo -- só que comparando o ÍNDICE do Dia
+   do jogo (`periodoDoJogoIndex()`, um inteiro) em vez de dividir
+   milissegundos: ficar off-line por vários Dias do jogo credita
+   +50 POR DIA que passou (nunca um valor fixo só), sempre travado no
+   teto -- mesmo comportamento de sempre, só que 4x mais rápido (a
+   cada 6h reais, não mais 24h). O teto (`POKETICKETS_MAX`) continua
+   valendo pra QUALQUER fonte de Pokéticket (grant por Dia do jogo,
+   recompensa de Mestre Especialista, drop de Treinador de Elite,
+   ferramenta de debug). */
 var POKETICKETS_MAX = 1000;
 var POKETICKETS_POR_DIA = 50;
 function tickPoketickets(){
   var diaAtual = periodoDoJogoIndex();
-  if(typeof STATE.poketicketsLastGameDay!=='number'){ STATE.poketicketsLastGameDay = diaAtual; return; } // 1ª vez tocando o estado -- só começa a rastrear, nunca reseta à toa
-  if(diaAtual !== STATE.poketicketsLastGameDay){
-    STATE.poketickets = clampInt(POKETICKETS_POR_DIA, 0, POKETICKETS_MAX);
+  if(typeof STATE.poketicketsLastGameDay!=='number'){ STATE.poketicketsLastGameDay = diaAtual; return; } // 1ª vez tocando o estado -- só começa a rastrear, nunca credita à toa
+  var diasPassados = diaAtual - STATE.poketicketsLastGameDay;
+  if(diasPassados>0){
+    STATE.poketickets = clampInt((STATE.poketickets||0) + diasPassados*POKETICKETS_POR_DIA, 0, POKETICKETS_MAX);
     STATE.poketicketsLastGameDay = diaAtual;
   }
 }
@@ -11835,7 +11837,7 @@ function esc2(s){ return esc(s); }
 var TOOLTIPS = {
   energia: 'Energia (0 a 1000): o que você gasta pra entrar em qualquer luta (selvagem, Treinador aleatório ou Mestre Especialista) -- o custo é FIXO por Zona de captura (cresce Zona a Zona, nunca pelo Nível de quem aparece) ou 300 fixo pra qualquer Mestre Especialista.\nRecupera +10 sozinha a cada 10 minutos reais.\nOu troque 1 🎫 Pokéticket por +'+ENERGIA_POR_TICKET+' na hora, quando quiser.',
   pokedolares: 'Pokédólares: ganhos depois de VENCER uma luta -- selvagem paga pouco, Treinador aleatório de Zona paga mais, Mestre Especialista paga o melhor de todos (soma por CADA oponente derrotado).\nGaste na 🏪 Loja: Pokébolas, Poções e TMs.',
-  poketickets: 'Pokétickets: RESETAM pra '+POKETICKETS_POR_DIA+' toda vez que o Dia do jogo muda (a cada 6 horas reais -- ver o relógio no topo) -- não é um bônus que soma, é um valor fixo que substitui o que você tinha, pra cima OU pra baixo.\nTambém dá pra ganhar lutando ENQUANTO o Dia do jogo não vira -- Mestre Especialista dá 5 garantidos, e um raro Treinador de Elite (a partir da Zona Elite) tem chance baixa de largar até 5.\nO total NUNCA passa de '+POKETICKETS_MAX+' -- acima disso, qualquer ganho novo é descartado, trava no teto. Mas cuidado: tudo que passar de '+POKETICKETS_POR_DIA+' some no próximo reset -- gaste antes de virar o Dia!\nTroque por Energia (1 Pokéticket = +'+ENERGIA_POR_TICKET+') quando quiser, sem limite.',
+  poketickets: 'Pokétickets: ganha +'+POKETICKETS_POR_DIA+' sozinho toda vez que o Dia do jogo muda (a cada 6 horas reais -- ver o relógio no topo, mesmo parado sem lutar).\nTambém dá pra ganhar lutando -- Mestre Especialista dá 5 garantidos, e um raro Treinador de Elite (a partir da Zona Elite) tem chance baixa de largar até 5.\nO total NUNCA passa de '+POKETICKETS_MAX+' -- acima disso, qualquer ganho novo (do Dia do jogo ou de luta) é descartado, trava no teto. Gaste antes de bater no teto!\nTroque por Energia (1 Pokéticket = +'+ENERGIA_POR_TICKET+') quando quiser, sem limite.',
   insignias: 'Insígnias: conquistadas vencendo os 8 Mestres Especialistas, em ordem -- não dá pra pular nenhum.\nVeja a aba 🎖️ Mestres.',
   pokedex: 'Pokédex: quantas das 1025 Espécies você já CAPTUROU, do total.\nClique num Pokémon na aba 📕 Pokédex pra ver Área/Movimentos/Habilidades/Lore/Cry dele, mesmo sem ter capturado ainda.',
   papelCombate: 'Papel de Combate: o sistema de luta automática usa mais os Movimentos desse papel -- ⚔️ Ataque (elimina o oponente), 🛡️ Defesa (cura o próprio PV / aumenta a própria defesa), 🌿 Suporte (cura/fortalece a SI MESMO e aliados) ou 🌀 Controle (deixa o oponente com status ruim).\n60% de chance de usar um Movimento do papel setado, os outros 3 dividem os 40% restantes -- nunca 100% de um só tipo (só entre Movimentos com PP sobrando).\nUm Movimento pode valer pra mais de um papel ao mesmo tempo, quando o efeito dele se encaixa em mais de uma definição.\nO papel só ESCOLHE qual Movimento usar -- a execução é sempre o efeito OFICIAL de verdade do golpe.'
@@ -12105,7 +12107,7 @@ function hubScreenHTML(){
          Insígnias, com o número grande (o "contador") e um botão
          independente só dele. */
       '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.poketickets)+'"><div class="ga-stat-label">🎫 Pokétickets</div><div class="ga-stat-val">'+(STATE.poketickets||0)+'/'+POKETICKETS_MAX+'</div>'+
-        '<div class="ga-hint">Vira '+POKETICKETS_POR_DIA+' em <span id="ga-ticket-countdown">'+formatHHMMSS(secondsToNextPoketicketTick())+'</span> (próximo Dia do jogo)</div>'+
+        '<div class="ga-hint">+'+POKETICKETS_POR_DIA+' em <span id="ga-ticket-countdown">'+formatHHMMSS(secondsToNextPoketicketTick())+'</span> (próximo Dia do jogo)</div>'+
         ticketParaEnergiaWidgetHTML('hub')+'</div>'+
       '<div class="ga-card ga-stat-card" title="Itens que a luta automática usa -- Pokébolas pra capturar (depois de vencer um selvagem) e Poções pro gatilho de cura em PV baixo. Compre mais na 🏪 Loja."><div class="ga-stat-label">🎒 Mochila</div>'+
         '<div class="ga-hint ga-item-row">'+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+(STATE.pokebolas[bl.key]||0); }).join('')+'</div>'+
