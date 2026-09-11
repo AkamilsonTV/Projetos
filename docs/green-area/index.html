@@ -334,6 +334,11 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-leader-emoji{ width:36px; height:36px; image-rendering:pixelated; vertical-align:middle; }
 
 .ga-item-icon{ width:22px; height:22px; image-rendering:pixelated; vertical-align:middle; }
+/* Cap. leva desta sessão (EVOLUTION_EXCLUSIVE_ITEMS/itemIconHTML): os
+   ~10 itens de evolução sem sprite oficial disponível caem pro emoji
+   do próprio item -- mesmo tamanho/alinhamento do ícone de imagem,
+   só troca <img> por <span> com font-size no lugar de width/height. */
+.ga-item-icon-emoji{ display:inline-block; width:22px; height:22px; line-height:22px; text-align:center; font-size:16px; vertical-align:middle; }
 .ga-item-row{ display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; }
 .ga-item-row .ga-item-icon{ margin-left:6px; }
 .ga-item-row .ga-item-icon:first-child{ margin-left:0; }
@@ -5080,18 +5085,51 @@ var EVOLUTION_STONES = [
   { key:'pedra-crepusculo', item:'dusk-stone', icon:'dusk-stone', nome:'Dusk Stone', preco:400 },
   { key:'pedra-alvorada', item:'dawn-stone', icon:'dawn-stone', nome:'Dawn Stone', preco:400 }
 ];
-function stoneByKey(key){ return EVOLUTION_STONES.filter(function(s){ return s.key===key; })[0] || null; }
-/* Toda pedra que EXISTE E evoluiria esse Pokémon AGORA (regardless de
-   quantidade em estoque -- mostrada mesmo em 0, pra avisar "compre
-   isso na Loja" -- ver usarPedraPopupHTML) -- casa `EVOLUTIONS_DEX`
-   (trigger 'use-item') com o catálogo pelo mesmo slug `item`. */
+/* Cap. leva desta sessão ("Segue com seu próximo palpite" -- 3º grupo
+   do checklist, "📦 item exclusivo (10)"): os ~10 itens de evolução
+   Gen 8/9 exclusivos de 1 espécie cada, até esta leva de propósito
+   fora do catálogo (documentado como "fugiria do catálogo bem
+   enxuto"). Reusam o MESMO fluxo de EVOLUTION_STONES (comprar na
+   Loja, usar fora de luta, evolui na hora -- ver pedrasElegiveisPara/
+   DT.gaUsarPedra/stoneByKey logo abaixo, nenhum precisou mudar de
+   nome só porque agora também cobre item não-literalmente-pedra).
+
+   `icon:null` de propósito nos 10 -- confirmado por request direto
+   (curl) que NENHUM tem sprite oficial na PokeAPI/sprites (item
+   recente demais, repo nunca sincronizado com eles) -- diferente do
+   resto do catálogo inteiro do arquivo, que sempre usa ícone oficial
+   de verdade. Em vez de arriscar um ícone ERRADO (de outro item) ou
+   uma URL que sempre dá 404, `itemIconHTML` (ver abaixo) cai pro
+   `emoji` como fallback honesto só quando `icon` for null. */
+var EVOLUTION_EXCLUSIVE_ITEMS = [
+  { key:'augurita-negra', item:'black-augurite', icon:null, emoji:'🪨', nome:'Black Augurite', preco:300, desc:'Sem sprite oficial na PokeAPI (item recente demais) -- sem efeito em combate, use fora de luta pra evoluir Scyther em Kleavor.' },
+  { key:'bloco-de-turfa', item:'peat-block', icon:null, emoji:'🟫', nome:'Peat Block', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta DE NOITE (aproximação de "lua cheia" -- este protótipo não simula fases da lua) pra evoluir Ursaring em Ursaluna.' },
+  { key:'maca-azeda', item:'tart-apple', icon:null, emoji:'🍏', nome:'Tart Apple', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Applin em Flapple.' },
+  { key:'maca-doce', item:'sweet-apple', icon:null, emoji:'🍎', nome:'Sweet Apple', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Applin em Appletun.' },
+  { key:'maca-melada', item:'syrupy-apple', icon:null, emoji:'🍯', nome:'Syrupy Apple', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Applin em Dipplin.' },
+  { key:'pote-rachado', item:'cracked-pot', icon:null, emoji:'🫖', nome:'Cracked Pot', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Sinistea em Polteageist (jogo oficial só deixa a forma "Antiga" evoluir; este protótipo não distingue formas Falsa/Antiga, aproximação documentada).' },
+  { key:'liga-metalica', item:'metal-alloy', icon:null, emoji:'🔩', nome:'Metal Alloy', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Duraludon em Archaludon.' },
+  { key:'armadura-auspiciosa', item:'auspicious-armor', icon:null, emoji:'🛡️', nome:'Auspicious Armor', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Charcadet em Armarouge.' },
+  { key:'armadura-maligna', item:'malicious-armor', icon:null, emoji:'🖤', nome:'Malicious Armor', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Charcadet em Ceruledge.' },
+  { key:'xicara-comum', item:'unremarkable-teacup', icon:null, emoji:'🍵', nome:'Unremarkable Teacup', preco:300, desc:'Sem sprite oficial na PokeAPI -- sem efeito em combate, use fora de luta pra evoluir Poltchageist em Sinistcha.' }
+];
+function stoneByKey(key){ return EVOLUTION_STONES.filter(function(s){ return s.key===key; })[0] || EVOLUTION_EXCLUSIVE_ITEMS.filter(function(s){ return s.key===key; })[0] || null; }
+/* Toda pedra/item exclusivo que EXISTE E evoluiria esse Pokémon AGORA
+   (regardless de quantidade em estoque -- mostrada mesmo em 0, pra
+   avisar "compre isso na Loja" -- ver usarPedraPopupHTML) -- casa
+   `EVOLUTIONS_DEX` (trigger 'use-item') com os 2 catálogos pelo mesmo
+   slug `item`. `timeOfDay==='full-moon'` (só Ursaring->Ursaluna) cai
+   na mesma aproximação de "qualquer noite" documentada no catálogo
+   acima -- reusa horaAtualDoJogo() de propósito. */
 function pedrasElegiveisPara(p){
   var opts = EVOLUTIONS_DEX[p.num] || [];
   var out = [];
   opts.forEach(function(e){
     if(e.trigger!=='use-item' || !e.item) return;
-    var pedra = EVOLUTION_STONES.filter(function(s){ return s.item===e.item; })[0];
-    if(pedra) out.push({ pedra: pedra, to: e.to });
+    var pedra = EVOLUTION_STONES.filter(function(s){ return s.item===e.item; })[0] || EVOLUTION_EXCLUSIVE_ITEMS.filter(function(s){ return s.item===e.item; })[0];
+    if(!pedra) return;
+    if(e.timeOfDay==='full-moon' && horaAtualDoJogo()!=='night') return;
+    out.push({ pedra: pedra, to: e.to });
   });
   return out;
 }
@@ -5198,7 +5236,14 @@ function horaAtualDoJogo(){
    Ball como substituto visual mais próximo (mesma "família" de bola
    premium, documentado aqui pra não parecer engano). */
 function itemIconUrl(icon){ return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/'+icon+'.png'; }
-function itemIconHTML(def, cls){ return '<img class="ga-item-icon'+(cls?' '+cls:'')+'" src="'+itemIconUrl(def.icon)+'" alt="'+esc2(def.nome)+'" loading="lazy">'; }
+/* Cap. leva desta sessão (EVOLUTION_EXCLUSIVE_ITEMS acima): `icon:null`
+   cai pro `emoji` do próprio item -- só os 10 itens de evolução Gen
+   8/9 exclusivos usam isso hoje (sem sprite oficial nenhum), todo o
+   resto do catálogo continua com ícone oficial de verdade. */
+function itemIconHTML(def, cls){
+  if(!def.icon) return '<span class="ga-item-icon ga-item-icon-emoji'+(cls?' '+cls:'')+'" title="'+esc2(def.nome)+'">'+(def.emoji||'❔')+'</span>';
+  return '<img class="ga-item-icon'+(cls?' '+cls:'')+'" src="'+itemIconUrl(def.icon)+'" alt="'+esc2(def.nome)+'" loading="lazy">';
+}
 
 /* Pokébolas (Cap. "aproveita e adiciona as outras pokébolas
    compráveis no jogo: great, super e ultra... e nelas as descrição
@@ -10746,14 +10791,14 @@ function usarPedraPopupHTML(pid){
   return '<div class="ga-overlay" onclick="DT.gaCancelUsarPedra()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCancelUsarPedra()">✕</button>'+
     '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
-    '<h2>🪨 Usar pedra em '+esc2(p.apelido||sp.name)+'</h2>'+
+    '<h2>🪨 Usar item em '+esc2(p.apelido||sp.name)+'</h2>'+
     '<p class="ga-hint">Evolui na hora -- sem precisar de Nível nenhum.</p>'+
     opcoes.map(function(o){
       var qtd = STATE.itens[o.pedra.key]||0;
       var toSp = speciesByNum(o.to);
       return '<div class="ga-btn-row"><button class="ga-btn-sm ga-btn-primary" '+(qtd<=0?'disabled':'')+' onclick="DT.gaUsarPedra(\''+pid+'\',\''+o.pedra.key+'\')">'+itemIconHTML(o.pedra)+' Usar '+esc2(o.pedra.nome)+' → '+esc2(toSp.name)+'</button><span class="ga-hint">você tem: '+qtd+'</span></div>';
     }).join('')+
-    (opcoes.some(function(o){ return (STATE.itens[o.pedra.key]||0)<=0; }) ? '<p class="ga-hint">Pedras que faltam dão pra comprar na 🏪 Loja.</p>' : '')+
+    (opcoes.some(function(o){ return (STATE.itens[o.pedra.key]||0)<=0; }) ? '<p class="ga-hint">Itens que faltam dão pra comprar na 🏪 Loja.</p>' : '')+
     '<button class="ga-btn-sm" onclick="DT.gaCancelUsarPedra()">Cancelar</button>'+
   '</div></div>';
 }
@@ -11564,7 +11609,7 @@ function equipeScreenHTML(){
         /* Cap. leva desta sessão (tarefa #183): só aparece quando ALGUMA
            pedra de verdade evoluiria esse Pokémon -- pedrasElegiveisPara
            já confere a Espécie contra EVOLUTIONS_DEX. */
-        (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Pedra</button>' : '')+
+        (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Item</button>' : '')+
         /* Cap. leva desta sessão (tarefa #195): item segurado só entra
            em luta a partir da EQUIPE (a Caixa não entra em luta, mesma
            régua do Papel de Combate acima -- nunca aparece lá). */
@@ -11595,7 +11640,7 @@ function equipeScreenHTML(){
         var actions = '<div class="ga-poke-actions">'+
           '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
           '<button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button>'+
-          (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Pedra</button>' : '')+
+          (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Item</button>' : '')+
           '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>'+
         '</div>';
         return pokeCardMini(p, actions, '', '', true);
@@ -12214,17 +12259,23 @@ function lojaScreenHTML(){
     '</div></div>'+
     /* Cap. leva desta sessão (tarefa #183 -- "evoluções não-por-Nível
        de verdade"): as 10 pedras "clássicas" (ver EVOLUTION_STONES) --
-       usadas na Equipe/Caixa (botão "🪨 Usar Pedra", só aparece quando
-       o Pokémon realmente é elegível pra ALGUMA delas), nunca em luta. */
-    '<div class="ga-card"><h2>🪨 Pedras de Evolução</h2>'+
-    '<p class="ga-hint">Usam-se direto num Pokémon (Equipe ou Caixa) que já esteja pronto pra evoluir com aquela pedra -- fora de luta.</p>'+
+       usadas na Equipe/Caixa (botão "🪨 Usar Item", só aparece quando
+       o Pokémon realmente é elegível pra ALGUMA delas), nunca em luta.
+       Cap. leva SEGUINTE ("Segue com seu próximo palpite"): os ~10
+       itens exclusivos Gen 8/9 (ver EVOLUTION_EXCLUSIVE_ITEMS) entram
+       na MESMA seção/grid -- mesmo fluxo, mesmo botão "🪨 Usar Item",
+       só sem sprite oficial disponível (emoji no lugar, ver
+       itemIconHTML). */
+    '<div class="ga-card"><h2>🪨 Pedras e Itens de Evolução</h2>'+
+    '<p class="ga-hint">Usam-se direto num Pokémon (Equipe ou Caixa) que já esteja pronto pra evoluir com aquele item -- fora de luta.</p>'+
     '<div class="ga-loja-grid">'+
-    EVOLUTION_STONES.map(function(st){
+    EVOLUTION_STONES.concat(EVOLUTION_EXCLUSIVE_ITEMS).map(function(st){
       var qtdAtual = STATE.itens[st.key]||0;
       var podeComprar = (STATE.pokedolares||0) >= st.preco;
       var inputId = 'gaLojaQtd_'+st.key;
       return '<div class="ga-loja-card">'+
         '<div class="ga-loja-nome">'+itemIconHTML(st)+' '+esc2(st.nome)+'</div>'+
+        (st.desc ? '<div class="ga-hint">'+esc2(st.desc)+'</div>' : '')+
         '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
         '<div class="ga-loja-preco">💰 '+st.preco+' cada</div>'+
         '<div class="ga-loja-qtd-row">'+
