@@ -5707,7 +5707,20 @@ var HELD_ITEMS = [
   { key:'garra-rapida', nome:'Quick Claw', icon:'quick-claw', preco:200, desc:'20% de chance de agir PRIMEIRO na Rodada, ignorando Prioridade e Velocidade.' },
   { key:'politica-fraqueza', nome:'Weakness Policy', icon:'weakness-policy', preco:200, desc:'Sobe +2 Ataque E +2 Ataque Especial ao ser atingido por um golpe Super Efetivo -- some depois de usar.' },
   { key:'sino-concha', nome:'Shell Bell', icon:'shell-bell', preco:200, desc:'Cura 1/8 do dano CAUSADO de volta pro próprio PV.' },
-  { key:'balao-de-ar', nome:'Air Balloon', icon:'air-balloon', preco:150, desc:'Imune a golpes de Tipo Terra -- estoura (e some) na primeira vez que toma QUALQUER dano.' }
+  { key:'balao-de-ar', nome:'Air Balloon', icon:'air-balloon', preco:150, desc:'Imune a golpes de Tipo Terra -- estoura (e some) na primeira vez que toma QUALQUER dano.' },
+  /* Cap. leva desta sessão (Grupo 1 de formas alternativas -- Ogerpon):
+     as 3 Máscaras são item SEGURADO de verdade no jogo oficial (nunca
+     consumidas) -- por isso entram aqui, no MESMO catálogo/slot único
+     de todo item segurado, e não em EVOLUTION_EXCLUSIVE_ITEMS (não
+     evoluem nada). `icon:null` confirmado por curl -- sem sprite
+     oficial na PokeAPI/sprites (item recente demais, Gen 9). Efeito de
+     verdade: equipar/desequipar muda a forma (`ALT_FORMS[1017]`) na
+     hora -- ver `formaEfetivaAtual`/OGERPON_MASK_BY_ITEM mais abaixo,
+     nunca precisou de código novo em DT.gaEquiparItem/DT.gaDesequiparItem
+     (o slot genérico já bastou). */
+  { key:'mascara-poco', nome:'Wellspring Mask', icon:null, emoji:'💧', preco:300, desc:'Sem sprite oficial na PokeAPI (item recente demais) -- só tem efeito em Ogerpon: muda o Tipo secundário pra Água enquanto estiver equipada (desequipar volta a Grama puro).' },
+  { key:'mascara-lareira', nome:'Hearthflame Mask', icon:null, emoji:'🔥', preco:300, desc:'Sem sprite oficial na PokeAPI (item recente demais) -- só tem efeito em Ogerpon: muda o Tipo secundário pra Fogo enquanto estiver equipada.' },
+  { key:'mascara-alicerce', nome:'Cornerstone Mask', icon:null, emoji:'🪨', preco:300, desc:'Sem sprite oficial na PokeAPI (item recente demais) -- só tem efeito em Ogerpon: muda o Tipo secundário pra Pedra enquanto estiver equipada.' }
 ];
 function heldItemByKey(key){ return HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || EVOLUTION_HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
 function temItemSegurado(battler, key){ return !!battler && battler.item===key; }
@@ -6663,7 +6676,7 @@ function initBattlerExtras(b){
   return b;
 }
 function buildBattlerFromParty(poke){
-  return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade, item: poke.itemSegurado||null, forma: poke.forma||null });
+  return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade, item: poke.itemSegurado||null, forma: formaEfetivaAtual(poke) });
 }
 function buildBattlerWild(num, level){
   return initBattlerExtras({ key:'w_'+num, side:'wild', num:num, level:level, moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num) });
@@ -8177,6 +8190,26 @@ function officialDamage(user, target, move, crit, ofPreCalculado){
   // só recalcula aqui se chamado direto (ex.: Struggle/testes).
   var of = ofPreCalculado || officialMoveData(move);
   var userSp = tiposEfetivos(user), targetSp = tiposEfetivos(target);
+  /* Cap. leva desta sessão (Grupo 1 de formas alternativas -- Ogerpon/
+     Oricorio): Ivy Cudgel e Revelation Dance são, na Bulbapedia oficial,
+     os 2 únicos Movimentos cujo PRÓPRIO Tipo muda pra bater com quem
+     usa (o texto de MOVES_DEX já dizia isso -- "O Tipo desse golpe muda
+     de acordo com a máscara usada"/"Esse golpe vira do mesmo Tipo do
+     usuário" -- mas até esta leva o motor sempre usava o Tipo FIXO
+     gravado em `move.tipo` no momento de aprender, Grama/Normal só pra
+     ter algum valor). Corrigido: dentro de todo o cálculo de dano
+     abaixo (STAB, efetividade, Clima/Terreno, Habilidade defensiva/
+     ofensiva por Tipo), os 2 usam o Tipo EFETIVO do usuário agora
+     (`tiposEfetivos`, já generalizado por forma) -- Ivy Cudgel usa o
+     Tipo SECUNDÁRIO (a máscara equipada, ou Grama se nenhuma estiver --
+     ver `p.itemSegurado`/formaEfetivaOgerpon abaixo); Revelation Dance
+     usa o Tipo PRIMÁRIO (sempre Fogo/Elétrico/Psíquico/Fantasma nos 4
+     estilos de Oricorio, nunca Voador -- confirmado batendo com a ordem
+     real da PokeAPI, types[0]). Resto do golpe (Poder/Precisão/PP/
+     categoria) continua igual, só o Tipo pro cálculo muda. */
+  var moveTipo = move.tipo;
+  if(move.name==='Ivy Cudgel') moveTipo = userSp.tipo2 || userSp.tipo1;
+  else if(move.name==='Revelation Dance') moveTipo = userSp.tipo1;
   var fisico = move.categoria==='Físico';
   var atkStatKey = fisico ? 'atk' : 'spa';
   var defStatKey = fisico ? 'def' : 'spd';
@@ -8213,37 +8246,37 @@ function officialDamage(user, target, move, crit, ofPreCalculado){
   if(PUNCHING_MOVES[move.name] && temHab(user,'Iron Fist')) poderMult *= 1.2;
   if(BITING_MOVES[move.name] && temHab(user,'Strong Jaw')) poderMult *= 1.5;
   if(userHpPct<=1/3){
-    if(move.tipo==='Grama' && temHab(user,'Overgrow')) poderMult *= 1.5;
-    if(move.tipo==='Fogo' && temHab(user,'Blaze')) poderMult *= 1.5;
-    if(move.tipo==='Água' && temHab(user,'Torrent')) poderMult *= 1.5;
-    if(move.tipo==='Inseto' && temHab(user,'Swarm')) poderMult *= 1.5;
+    if(moveTipo==='Grama' && temHab(user,'Overgrow')) poderMult *= 1.5;
+    if(moveTipo==='Fogo' && temHab(user,'Blaze')) poderMult *= 1.5;
+    if(moveTipo==='Água' && temHab(user,'Torrent')) poderMult *= 1.5;
+    if(moveTipo==='Inseto' && temHab(user,'Swarm')) poderMult *= 1.5;
   }
   // Cap. Habilidade Flash Fire: depois de absorver 1 golpe de Fogo (ver
   // checaImunidadeDeTipoPorHabilidade), o PRÓPRIO Fogo fica ×1,5 mais
   // forte pro resto da luta (flag persiste no battler).
-  if(move.tipo==='Fogo' && user.flashFireBoost) poderMult *= 1.5;
+  if(moveTipo==='Fogo' && user.flashFireBoost) poderMult *= 1.5;
   var poder = Math.max(1, Math.round((of.power||1)*poderMult));
   var base = Math.floor((2*user.level/5 + 2) * poder * atkEff/defEff / 50) + 2;
   // Cap. Habilidade Adaptability: STAB ×2 em vez de ×1,5
-  var stab = (move.tipo && (move.tipo===userSp.tipo1 || move.tipo===userSp.tipo2)) ? (temHab(user,'Adaptability')?2:1.5) : 1;
-  var typeEff = typeEffMultiplier(move.tipo, targetSp.tipo1, targetSp.tipo2);
+  var stab = (moveTipo && (moveTipo===userSp.tipo1 || moveTipo===userSp.tipo2)) ? (temHab(user,'Adaptability')?2:1.5) : 1;
+  var typeEff = typeEffMultiplier(moveTipo, targetSp.tipo1, targetSp.tipo2);
   // Cap. Habilidade Sniper: Crítico ×2,25 em vez de ×1,5
   var critMult = crit ? (temHab(user,'Sniper')?2.25:1.5) : 1;
   // Cap. Habilidade Guts: ignora a redução de golpe Físico por Queimadura
   var burnHalving = (fisico && user.status==='queimadura' && !temHab(user,'Guts')) ? 0.5 : 1;
-  var climaMult = weatherDamageMultiplier(move.tipo);
-  var terrenoMult = terrainDamageMultiplier(move.tipo, target);
+  var climaMult = weatherDamageMultiplier(moveTipo);
+  var terrenoMult = terrainDamageMultiplier(moveTipo, target);
   // Cap. Habilidades defensivas de REDUÇÃO de dano (Thick Fat: Fogo/
   // Gelo ×0,5; Heatproof: Fogo ×0,5; Fluffy: contato ×0,5 E Fogo ×2,
   // os 2 empilham se o golpe for Físico de contato E Tipo Fogo ao
   // mesmo tempo) -- furadas por Mold Breaker/Teravolt/Turboblaze.
   var defesaHabMult = 1;
   if(!ignoraDefHab){
-    if((move.tipo==='Fogo'||move.tipo==='Gelo') && temHab(target,'Thick Fat')) defesaHabMult *= 0.5;
-    if(move.tipo==='Fogo' && temHab(target,'Heatproof')) defesaHabMult *= 0.5;
+    if((moveTipo==='Fogo'||moveTipo==='Gelo') && temHab(target,'Thick Fat')) defesaHabMult *= 0.5;
+    if(moveTipo==='Fogo' && temHab(target,'Heatproof')) defesaHabMult *= 0.5;
     if(temHab(target,'Fluffy')){
       if(golpeFazContato(move)) defesaHabMult *= 0.5;
-      if(move.tipo==='Fogo') defesaHabMult *= 2;
+      if(moveTipo==='Fogo') defesaHabMult *= 2;
     }
   }
   // Cap. Habilidade Tinted Lens: dobra dano de golpe Pouco Efetivo (<1x)
@@ -11203,7 +11236,66 @@ var ALT_FORMS = {
   892: [
     { key:'single-strike', nome:'Single Strike Style', tipo1:'Lutador', tipo2:'Sombrio', spriteNum:892, golpeAssinatura:'Wicked Blow' },
     { key:'rapid-strike', nome:'Rapid Strike Style', tipo1:'Lutador', tipo2:'Água', spriteNum:10191, golpeAssinatura:'Surging Strikes' }
+  ],
+  /* Cap. leva desta sessão ("Grupo 1" do levantamento de 98 espécies/
+     136 formas -- Oricorio #741): dados confirmados por curl direto na
+     PokeAPI antes de escrever isso (nunca inventados) -- as 4
+     variedades reais (`oricorio-baile/-pom-pom/-pau/-sensu`) têm
+     ATRIBUTOS BASE IDÊNTICOS (75/70/70/98/70/93, Habilidade Dancer),
+     só o Tipo secundário... não, o Tipo PRIMÁRIO muda (Tipo2 é sempre
+     Voador nas 4) -- Baile é Fogo, Pom-Pom é Elétrico, Pa'u é Psíquico,
+     Sensu é Fantasma (`types[0]` de cada variedade, confirmado por
+     curl). `spriteNum` é o ID que a própria PokeAPI usa pra cada
+     variedade (10123/10124/10125 pras 3 não-padrão, confirmado
+     resolvendo de verdade em /sprites/pokemon/). Baile já é a variedade
+     PADRÃO (bate com SPECIES_DEX[741] tal e qual, Fogo/Voador) -- por
+     isso entra aqui TAMBÉM (não só as 3 alternativas), pra aba da Dex
+     ter uma 1ª opção coerente com o resto do arquivo (mesmo padrão do
+     Urshifu acima). Mecânica real oficial: Oricorio troca de Estilo
+     comendo um Néctar (item CONSUMÍVEL, não segurado -- a forma fica
+     valendo até comer outro) -- ver ORICORIO_FORM_BY_ITEM/
+     DT.gaUsarNectar mais abaixo. golpeAssinatura é sempre "Revelation
+     Dance" (mesmo Movimento nas 4 formas -- só o TIPO dele que
+     acompanha o Estilo atual em combate de verdade, ver `moveTipo`
+     dentro de officialDamage). */
+  741: [
+    { key:'baile', nome:'Baile Style', tipo1:'Fogo', tipo2:'Voador', spriteNum:741, golpeAssinatura:'Revelation Dance' },
+    { key:'pom-pom', nome:'Pom-Pom Style', tipo1:'Elétrico', tipo2:'Voador', spriteNum:10123, golpeAssinatura:'Revelation Dance' },
+    { key:'pau', nome:"Pa'u Style", tipo1:'Psíquico', tipo2:'Voador', spriteNum:10124, golpeAssinatura:'Revelation Dance' },
+    { key:'sensu', nome:'Sensu Style', tipo1:'Fantasma', tipo2:'Voador', spriteNum:10125, golpeAssinatura:'Revelation Dance' }
+  ],
+  /* Cap. leva desta sessão (Ogerpon #1017): dados confirmados por curl
+     -- os Atributos Base e a Habilidade (Defiant) são IDÊNTICOS nas 4
+     formas (80/120/84/60/96/110), só o Tipo SECUNDÁRIO muda com a
+     máscara (Água/Fogo/Pedra) -- sem máscara nenhuma (Teal, a forma
+     PADRÃO já cadastrada em SPECIES_DEX[1017], Grama puro) entra aqui
+     também, mesmo motivo do Baile acima. `spriteNum` confirmado por
+     curl (10273/10274/10275). Mecânica real oficial: a Máscara é item
+     SEGURADO de verdade (nunca consumida, sempre equipada ou não) --
+     por isso Ogerpon NUNCA usa `p.forma` (o campo fica sempre vazio pra
+     essa Espécie) -- a forma é sempre DERIVADA do item segurado atual
+     na hora (ver `formaEfetivaAtual`/OGERPON_MASK_BY_ITEM mais abaixo),
+     igual equipar/desequipar qualquer item comum. golpeAssinatura é
+     sempre "Ivy Cudgel" -- mesmo Movimento nas 4 formas, só o TIPO dele
+     que acompanha a máscara atual em combate de verdade (mesmo mecanismo
+     de `moveTipo` do Revelation Dance acima). */
+  1017: [
+    { key:'teal', nome:'Teal Mask (padrão, sem máscara)', tipo1:'Grama', tipo2:'', spriteNum:1017, golpeAssinatura:'Ivy Cudgel' },
+    { key:'wellspring', nome:'Wellspring Mask', tipo1:'Grama', tipo2:'Água', spriteNum:10273, golpeAssinatura:'Ivy Cudgel' },
+    { key:'hearthflame', nome:'Hearthflame Mask', tipo1:'Grama', tipo2:'Fogo', spriteNum:10274, golpeAssinatura:'Ivy Cudgel' },
+    { key:'cornerstone', nome:'Cornerstone Mask', tipo1:'Grama', tipo2:'Pedra', spriteNum:10275, golpeAssinatura:'Ivy Cudgel' }
   ]
+};
+/* Texto explicativo por Espécie mostrado no popup da Dex, junto do
+   golpe de assinatura -- cada uma tem uma mecânica real diferente pra
+   trocar de forma (evolução por item/item consumível/item segurado),
+   então o texto genérico de antes ("idênticos nas 2 formas -- só o
+   Tipo secundário e o kit de Movimentos mudam") só valia pro Urshifu.
+   Indexado por `num`, nunca lido fora do popup da Dex (decoração). */
+var ALT_FORMS_NOTE = {
+  892: 'os Atributos Base e a Habilidade são idênticos nas 2 formas -- o Tipo secundário E o kit de Movimentos mudam de verdade; forma fixada pra sempre na evolução, conforme o Pergaminho usado',
+  741: "os Atributos Base e a Habilidade (Dancer) são idênticos nas 4 formas -- só o Tipo PRIMÁRIO muda (Tipo2 é sempre Voador); o Movimento Revelation Dance troca de Tipo sozinho pra bater com o Estilo atual; troque de Estilo a qualquer momento comendo um Néctar (ver Mochila/'Trocar Estilo')",
+  1017: 'os Atributos Base e a Habilidade (Defiant) são idênticos nas 4 formas -- só o Tipo secundário muda; o Movimento Ivy Cudgel troca de Tipo sozinho pra bater com a máscara atual; a forma segue a Máscara EQUIPADA no momento (item segurado normal -- desequipar volta pra Teal na hora)'
 };
 /* Cap. leva desta sessão ("Cada urshifu tem que ter seus moveset
    específico. Isso tem que estar incluso no rpg também"): até esta
@@ -11293,6 +11385,82 @@ function tiposEfetivos(x){
   var formas = ALT_FORMS[x.num];
   var formaObj = (formas && x.forma) ? formas.filter(function(f){ return f.key===x.forma; })[0] : null;
   return formaObj ? { tipo1: formaObj.tipo1, tipo2: formaObj.tipo2 } : { tipo1: sp.tipo1, tipo2: sp.tipo2 };
+}
+/* Cap. leva desta sessão ("Começa pelo Grupo 1" -- Oricorio/Ogerpon):
+   até aqui só Urshifu tinha `p.forma`, sempre fixado na EVOLUÇÃO
+   (Kubfu->Urshifu, ver aplicarEvolucaoForaDeLuta). Oricorio e Ogerpon
+   não evoluem pra virar nenhuma forma -- cada um usa a PRÓPRIA
+   mecânica oficial real:
+   - Oricorio: come um Néctar (item CONSUMÍVEL) fora de luta, a
+     qualquer momento -- a forma fica valendo até comer outro Néctar.
+     Continua usando `p.forma` (mesmo campo do Urshifu), só que trocado
+     por DT.gaUsarNectar em vez de na evolução.
+   - Ogerpon: a Máscara é item SEGURADO comum (mesmo slot único de
+     sempre, `p.itemSegurado`) -- NUNCA usa `p.forma` (fica sempre
+     vazio pra essa Espécie); a forma é sempre DERIVADA do item
+     equipado agora, na hora, sem precisar de nenhuma ação nova (já
+     funciona equipando/desequipando pela tela de Item Segurado normal).
+
+   `formaEfetivaAtual(p)` centraliza essa diferença -- é o que
+   `buildBattlerFromParty` chama agora pra preencher `forma` no
+   battler (nunca mais lê `poke.forma` direto), então o resto do motor
+   de combate (tiposEfetivos, moveTipo em officialDamage) nem precisa
+   saber QUAL mecânica gerou a forma. */
+var OGERPON_MASK_BY_ITEM = { 'mascara-poco':'wellspring', 'mascara-lareira':'hearthflame', 'mascara-alicerce':'cornerstone' };
+function formaEfetivaAtual(p){
+  if(p.num===1017) return (p.itemSegurado && OGERPON_MASK_BY_ITEM[p.itemSegurado]) || 'teal';
+  return p.forma || null;
+}
+/* Néctares de Oricorio -- catálogo à parte de HELD_ITEMS (não são item
+   segurado, são CONSUMIDOS igual pedra de evolução, só que sem
+   evoluir nada -- por isso também não entram em EVOLUTION_EXCLUSIVE_
+   ITEMS). `icon` confirmado por curl -- os 4 TÊM sprite oficial na
+   PokeAPI/sprites (diferente das Máscaras de Ogerpon acima). */
+var ORICORIO_NECTAR_ITEMS = [
+  { key:'nectar-vermelho', item:'red-nectar', icon:'red-nectar', nome:'Red Nectar', preco:200, desc:'Sem efeito em combate -- use fora de luta em Oricorio pra trocar pro Estilo Baile (Fogo/Voador).' },
+  { key:'nectar-amarelo', item:'yellow-nectar', icon:'yellow-nectar', nome:'Yellow Nectar', preco:200, desc:'Sem efeito em combate -- use fora de luta em Oricorio pra trocar pro Estilo Pom-Pom (Elétrico/Voador).' },
+  { key:'nectar-rosa', item:'pink-nectar', icon:'pink-nectar', nome:'Pink Nectar', preco:200, desc:"Sem efeito em combate -- use fora de luta em Oricorio pra trocar pro Estilo Pa'u (Psíquico/Voador)." },
+  { key:'nectar-roxo', item:'purple-nectar', icon:'purple-nectar', nome:'Purple Nectar', preco:200, desc:'Sem efeito em combate -- use fora de luta em Oricorio pra trocar pro Estilo Sensu (Fantasma/Voador).' }
+];
+function nectarByKey(key){ return ORICORIO_NECTAR_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
+var ORICORIO_FORM_BY_ITEM = { 'nectar-vermelho':'baile', 'nectar-amarelo':'pom-pom', 'nectar-rosa':'pau', 'nectar-roxo':'sensu' };
+DT.gaAskUsarNectar = function(pid){
+  var p = STATE.party.filter(function(x){ return x.id===pid; })[0] || STATE.box.filter(function(x){ return x.id===pid; })[0];
+  if(!p || p.num!==741) return;
+  SESSION.usarNectarFor = pid; render();
+};
+DT.gaCancelUsarNectar = function(){ SESSION.usarNectarFor = null; render(); };
+DT.gaUsarNectar = function(pid, nectarKey){
+  var p = STATE.party.filter(function(x){ return x.id===pid; })[0] || STATE.box.filter(function(x){ return x.id===pid; })[0];
+  var nectar = nectarByKey(nectarKey);
+  var novaForma = ORICORIO_FORM_BY_ITEM[nectarKey];
+  if(!p || p.num!==741 || !nectar || !novaForma || (STATE.itens[nectarKey]||0)<=0) return;
+  if(p.forma===novaForma){ SESSION.usarNectarFor = null; render(); return; } // já é esse Estilo -- não desperdiça o Néctar
+  STATE.itens[nectarKey] = STATE.itens[nectarKey]-1;
+  p.forma = novaForma;
+  SESSION.usarNectarFor = null;
+  var formaDef = ALT_FORMS[741].filter(function(f){ return f.key===novaForma; })[0];
+  logAction('equipe', (p.apelido||'Oricorio')+' trocou pro Estilo '+formaDef.nome+' (usou '+nectar.nome+').');
+  mutate();
+};
+function usarNectarPopupHTML(pid){
+  var p = STATE.party.filter(function(x){ return x.id===pid; })[0] || STATE.box.filter(function(x){ return x.id===pid; })[0];
+  if(!p || p.num!==741) return '';
+  var formaAtual = ALT_FORMS[741].filter(function(f){ return f.key===(p.forma||'baile'); })[0];
+  return '<div class="ga-overlay" onclick="DT.gaCancelUsarNectar()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelUsarNectar()">✕</button>'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(formaAtual.spriteNum)+'" alt="">'+
+    '<h2>🌺 Trocar Estilo -- '+esc2(p.apelido||'Oricorio')+'</h2>'+
+    '<p class="ga-hint">Estilo atual: '+esc2(formaAtual.nome)+' ('+esc2(formaAtual.tipo1)+'/'+esc2(formaAtual.tipo2)+'). Come um Néctar e troca na hora -- não evolui, não gasta nada além do Néctar.</p>'+
+    ORICORIO_NECTAR_ITEMS.map(function(n){
+      var qtd = STATE.itens[n.key]||0;
+      var formaDoNectar = ALT_FORMS[741].filter(function(f){ return f.key===ORICORIO_FORM_BY_ITEM[n.key]; })[0];
+      var jaEEsse = (p.forma||'baile')===formaDoNectar.key;
+      return '<div class="ga-btn-row"><button class="ga-btn-sm '+(jaEEsse?'active':'ga-btn-primary')+'" '+(qtd<=0&&!jaEEsse?'disabled':'')+' onclick="DT.gaUsarNectar(\''+pid+'\',\''+n.key+'\')">'+itemIconHTML(n)+' '+(jaEEsse?'Estilo atual':'Usar '+esc2(n.nome))+' → '+esc2(formaDoNectar.nome)+'</button><span class="ga-hint">você tem: '+qtd+'</span></div>';
+    }).join('')+
+    (ORICORIO_NECTAR_ITEMS.some(function(n){ return (STATE.itens[n.key]||0)<=0; }) ? '<p class="ga-hint">Néctares que faltam dão pra comprar na 🏪 Loja.</p>' : '')+
+    '<button class="ga-btn-sm" onclick="DT.gaCancelUsarNectar()">Cancelar</button>'+
+  '</div></div>';
 }
 /* Cap. leva desta sessão: "Coloca a opção de apelido dos pokémon.
    Inicialmente só poderemos colocar uma vez, depois disso fica
@@ -11591,6 +11759,7 @@ function screenHTML(){
   if(SESSION.editApelidoFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + editApelidoPopupHTML(SESSION.editApelidoFor);
   if(SESSION.editItemFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + itemSeguradoPopupHTML(SESSION.editItemFor);
   if(SESSION.usarPedraFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + usarPedraPopupHTML(SESSION.usarPedraFor);
+  if(SESSION.usarNectarFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + usarNectarPopupHTML(SESSION.usarNectarFor);
   if(SESSION.dexOpenNum) return wrap(hubScreenHTML() /* mantém o fundo, popup por cima */) + dexPopupHTML(SESSION.dexOpenNum);
   if(SESSION.movesOpenFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + movesPopupHTML(SESSION.movesOpenFor);
   if(SESSION.leaderTeamOpenFor) return wrap(ginasiosScreenHTML() /* mantém o fundo, popup por cima */) + leaderTeamPopupHTML(SESSION.leaderTeamOpenFor);
@@ -11909,6 +12078,9 @@ function equipeScreenHTML(){
            pedra de verdade evoluiria esse Pokémon -- pedrasElegiveisPara
            já confere a Espécie contra EVOLUTIONS_DEX. */
         (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Item</button>' : '')+
+        /* Cap. leva desta sessão (Grupo 1 de formas alternativas): só
+           aparece pra Oricorio (#741) de verdade -- ver DT.gaAskUsarNectar. */
+        (p.num===741 ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarNectar(\''+p.id+'\')">🌺 Trocar Estilo</button>' : '')+
         /* Cap. leva desta sessão (tarefa #195): item segurado só entra
            em luta a partir da EQUIPE (a Caixa não entra em luta, mesma
            régua do Papel de Combate acima -- nunca aparece lá). */
@@ -11940,6 +12112,7 @@ function equipeScreenHTML(){
           '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
           '<button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button>'+
           (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Item</button>' : '')+
+          (p.num===741 ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarNectar(\''+p.id+'\')">🌺 Trocar Estilo</button>' : '')+
           '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>'+
         '</div>';
         return pokeCardMini(p, actions, '', '', true);
@@ -12336,7 +12509,7 @@ function dexPopupHTML(num){
       (caught
         ? ('<table class="ga-stat-table"><tbody>'+STAT_ORDER.map(function(s){ return '<tr><td>'+STAT_LABELS[s]+'</td><td class="num">'+sp.base[s]+'</td></tr>'; }).join('')+'</tbody></table>')
         : '<p class="ga-hint">Visto, mas ainda não capturado -- os Atributos Base só aparecem depois de capturar.</p>')+
-      (formas ? '<p class="ga-hint">🥋 <strong>Golpe de assinatura ('+esc2(formaAtiva.nome)+'):</strong> '+esc2(formaAtiva.golpeAssinatura)+' <em>(os Atributos Base e a Habilidade são idênticos nas 2 formas -- só o Tipo secundário e o kit de Movimentos abaixo mudam de verdade, ver "Movimentos possíveis")</em></p>' : '')+
+      (formas ? '<p class="ga-hint">🥋 <strong>Golpe de assinatura ('+esc2(formaAtiva.nome)+'):</strong> '+esc2(formaAtiva.golpeAssinatura)+' <em>('+esc2(ALT_FORMS_NOTE[num]||'os Atributos Base e a Habilidade são idênticos em todas as formas.')+')</em></p>' : '')+
       '<p class="ga-hint">📍 <strong>Onde encontrar:</strong> '+esc2(areaHintForSpecies(num))+'</p>'+
       '<p class="ga-hint">🗡️ <strong>Movimentos possíveis:</strong> '+esc2(movimentosPossiveisLista(num, formaAtiva?formaAtiva.key:undefined).join(', ')||'—')+'</p>'+
       '<p class="ga-hint">✨ <strong>Habilidades possíveis:</strong> '+esc2((sp.hab||[]).map(function(h){ return h.n+(h.h?' (oculta)':''); }).join(', ')||'—')+'</p>'+
@@ -12545,7 +12718,8 @@ DT.gaComprarItem = function(key, qtdEl){
   var item = GA_ITEMS.filter(function(i){ return i.key===key; })[0];
   var pedra = stoneByKey(key); // Cap. leva desta sessão (tarefa #183) -- mesmo catálogo genérico, cai no "else" (STATE.itens) igual GA_ITEMS
   var itemSeg = heldItemByKey(key); // Cap. leva desta sessão (tarefa #195) -- mesmo catálogo genérico também, cai no "else" (STATE.itens); já cobre EVOLUTION_HELD_ITEMS também (ver heldItemByKey)
-  var def = bola || item || pedra || itemSeg;
+  var nectar = nectarByKey(key); // Cap. leva desta sessão (Grupo 1 de formas alternativas -- Oricorio) -- mesmo catálogo genérico, cai no "else" (STATE.itens)
+  var def = bola || item || pedra || itemSeg || nectar;
   if(!def) return;
   var qtdPedida = qtdEl ? clampInt(parseInt(qtdEl.value,10)||1, 1, 999) : 1;
   var maxComDinheiro = Math.floor((STATE.pokedolares||0)/def.preco);
@@ -12667,6 +12841,33 @@ function lojaScreenHTML(){
         '<div class="ga-loja-qtd-row">'+
           '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
           '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+it.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
+        '</div>'+
+      '</div>';
+    }).join('')+
+    '</div></div>'+
+    /* Cap. leva desta sessão ("Grupo 1" de formas alternativas --
+       Oricorio): seção nova, mesmo padrão genérico de sempre -- compra
+       aqui, USA fora de luta (botão "🌺 Trocar Estilo" no card do
+       Pokémon, só aparece pra Oricorio de verdade -- ver
+       DT.gaAskUsarNectar/usarNectarPopupHTML). Nunca evolui nada
+       (diferente da seção "Pedras e Itens de Evolução" acima) -- só
+       troca o Tipo/aparência do PRÓPRIO Oricorio, a qualquer momento,
+       quantas vezes quiser. */
+    '<div class="ga-card"><h2>🌺 Néctares de Oricorio</h2>'+
+    '<p class="ga-hint">Usam-se direto num Oricorio (Equipe ou Caixa) fora de luta pra trocar de Estilo na hora -- não evolui nada, só muda o Tipo (ver popup da Dex de Oricorio pros 4 Estilos).</p>'+
+    '<div class="ga-loja-grid">'+
+    ORICORIO_NECTAR_ITEMS.map(function(n){
+      var qtdAtual = STATE.itens[n.key]||0;
+      var podeComprar = (STATE.pokedolares||0) >= n.preco;
+      var inputId = 'gaLojaQtd_'+n.key;
+      return '<div class="ga-loja-card">'+
+        '<div class="ga-loja-nome">'+itemIconHTML(n)+' '+esc2(n.nome)+'</div>'+
+        '<div class="ga-hint">'+esc2(n.desc)+'</div>'+
+        '<div class="ga-hint">Você tem: '+qtdAtual+'</div>'+
+        '<div class="ga-loja-preco">💰 '+n.preco+' cada</div>'+
+        '<div class="ga-loja-qtd-row">'+
+          '<input type="number" min="1" max="999" step="1" id="'+inputId+'" value="1" class="ga-loja-qtd-input" title="Quantidade">'+
+          '<button class="ga-btn-sm ga-btn-primary" '+(podeComprar?'':'disabled')+' onclick="DT.gaComprarItem(\''+n.key+'\',document.getElementById(\''+inputId+'\'))">Comprar</button>'+
         '</div>'+
       '</div>';
     }).join('')+
