@@ -12909,9 +12909,16 @@ function lojaSecaoTmHTML(){
       '<button class="ga-btn-sm ga-btn-primary" '+((STATE.pokedolares||0)>=PRECO_TM?'':'disabled')+' onclick="DT.gaComprarTM(document.getElementById(\'gaTmSelect\').value)">Comprar por 💰 '+PRECO_TM+'</button>'+
     '</div></div>';
 }
+/* Cap. leva desta sessão ("Na pesquisa da loja tem como deixar só o
+   icone? Em vez da escrita? Tá estranho"): cada categoria agora é
+   [key, emoji, rótulo por extenso] -- o BOTÃO mostra só o emoji (pedido
+   explícito), o rótulo por extenso vira `title` (aparece no hover/
+   toque segurado) pra não perder a informação de vez, só escondê-la
+   da vista. "Todas" ganhou um emoji próprio (🗂️) só pra isso -- as
+   outras 7 já usavam emoji antes, agora reaproveitados sozinhos. */
 var LOJA_CATEGORIAS = [
-  ['', 'Todas'], ['pokebolas','⚾ Pokébolas'], ['itens','🧪 Itens Gerais'], ['pedras','🪨 Pedras/Evolução'],
-  ['segurados','🎒 Segurados'], ['evolucao-troca','🔄 Evolução por Troca'], ['nectares','🌺 Néctares'], ['tms','💿 TMs']
+  ['', '🗂️', 'Todas'], ['pokebolas','⚾', 'Pokébolas'], ['itens','🧪', 'Itens Gerais'], ['pedras','🪨', 'Pedras/Evolução'],
+  ['segurados','🎒', 'Segurados'], ['evolucao-troca','🔄', 'Evolução por Troca'], ['nectares','🌺', 'Néctares'], ['tms','💿', 'TMs']
 ];
 function lojaFiltrosHTML(){
   var catAtual = SESSION.lojaCategoria || '';
@@ -12920,7 +12927,7 @@ function lojaFiltrosHTML(){
       '<button class="ga-btn-sm" onclick="DT.gaSetLojaSearch(document.getElementById(\'gaLojaSearch\'))">🔍 Buscar</button>'+
       (SESSION.lojaSearch ? '<button class="ga-btn-sm" onclick="DT.gaSetLojaSearch({value:\'\'})">✕ Limpar busca</button>' : '')+
       '<span class="ga-tabs">'+LOJA_CATEGORIAS.map(function(c){
-        return '<button class="'+(catAtual===c[0]?'active':'')+'" onclick="DT.gaSetLojaCategoria(\''+c[0]+'\')">'+c[1]+'</button>';
+        return '<button class="'+(catAtual===c[0]?'active':'')+'" title="'+esc2(c[2])+'" aria-label="'+esc2(c[2])+'" onclick="DT.gaSetLojaCategoria(\''+c[0]+'\')">'+c[1]+'</button>';
       }).join('')+'</span>'+
     '</div>';
 }
