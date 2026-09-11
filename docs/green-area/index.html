@@ -5383,8 +5383,30 @@ function periodoDoJogoIndex(){ return Math.floor(Date.now()/MS_POR_PERIODO_JOGO)
    6 em 6 (1-based) -- só um recorte de exibição, nunca muda a conta
    INTERNA (`periodoDoJogoIndex()`, que continua crescendo pra sempre
    por baixo, sem nenhuma mudança de comportamento no grant de
-   Pokéticket nem nas evoluções). */
-function numeroDiaDoJogo(){ return (periodoDoJogoIndex()%4)+1; }
+   Pokéticket nem nas evoluções).
+
+   Cap. leva desta sessão ("Cria uma função no admin que me permita
+   mudar o dia e que ele seja sempre continuo a partir do dia que eu
+   setar... E se eu trocar o dia manual a hora segue como tava e troca
+   o dia no próximo gatilho de troca"): quando o Admin define um Dia
+   manual (`GA_DIA_OVERRIDE`, ver bootApp/DT.gaAdminSetDia), o ciclo
+   automático 1-4 PARA de valer -- o Dia exibido vira o valor definido
+   MAIS quantos blocos de 6h (`periodoDoJogoIndex()`) já passaram desde
+   o momento em que foi definido, crescendo pra sempre sem nunca voltar
+   pra 1 sozinho ("sempre contínuo a partir do dia que eu setar"). A
+   hora acelerada (ver horaDoJogoAcelerada/msDentroDoDiaJogoAcelerado
+   logo abaixo) nunca lê esse override -- continua exatamente como
+   estava, só o NÚMERO do Dia muda ("a hora segue como tava"); e o
+   PRÓXIMO incremento automático (Dia+1) só acontece de verdade no
+   próximo bloco de 6h que virar ("no próximo gatilho de troca"), nunca
+   antes. Sem override nenhum (`GA_DIA_OVERRIDE===null`, o padrão),
+   comportamento 100% igual a antes -- cicla 1-4. */
+function numeroDiaDoJogo(){
+  if(GA_DIA_OVERRIDE && typeof GA_DIA_OVERRIDE.dia==='number' && typeof GA_DIA_OVERRIDE.blocoReferencia==='number'){
+    return GA_DIA_OVERRIDE.dia + (periodoDoJogoIndex() - GA_DIA_OVERRIDE.blocoReferencia);
+  }
+  return (periodoDoJogoIndex()%4)+1;
+}
 /* Quanto tempo (em ms de jogo ACELERADO, 0..MS_POR_DIA_JOGO_ACELERADO)
    já passou dentro do "Dia do jogo" atual -- zera de verdade toda vez
    que um novo bloco de 6h reais começa, escalando proporcionalmente
@@ -6160,6 +6182,20 @@ var trocasCol = null;
    mais abaixo pra o desenho completo (quem escreve o quê, quem resolve
    as Rodadas, como cada lado credita o PRÓPRIO V/D no final). */
 var duelosCol = null;
+/* Cap. leva desta sessão ("Cria uma função no admin que me permita
+   mudar o dia e que ele seja sempre continuo a partir do dia que eu
+   setar"): 1 documento SÓ (`green_area_config/relogio`, mesmo espírito
+   de `green_area_chat_publico/global` -- 1 doc compartilhado por TODO
+   o jogo, não por conta) guarda o override manual do Admin pro "Dia do
+   jogo" exibido (ver numeroDiaDoJogo() mais abaixo). Escutado ao vivo
+   desde o BOOT do app (não só depois do login -- é global, TODO
+   jogador precisa ver o MESMO Dia, mesmo antes de entrar na conta,
+   já que o relógio aparece antes até da tela de login existir de
+   verdade pro jogador ver a mecânica funcionando igual pra todo
+   mundo). */
+var configCol = null;
+var unsubscribeConfig = null;
+var GA_DIA_OVERRIDE = null; // {dia:Number, blocoReferencia:Number, setAt, setBy} definido pelo Admin, ou null = automático (cicla 1-4, ver numeroDiaDoJogo)
 var unsubscribeDuelos = null;
 var unsubscribeChat = null;
 var unsubscribeInbox = null;
@@ -6567,11 +6603,25 @@ function bootApp(){
     dmCol = db.collection('green_area_dm');
     trocasCol = db.collection('green_area_trocas');
     duelosCol = db.collection('green_area_duelos');
+    configCol = db.collection('green_area_config');
   }catch(e){
     SESSION.error = 'Erro ao iniciar o Firebase.';
     render();
     return;
   }
+  /* Override manual do Admin pro Dia do jogo (Cap. leva desta sessão)
+     -- escuta desde o BOOT, ANTES até do login, porque é uma config
+     GLOBAL do jogo inteiro, não de uma conta -- todo jogador (e a
+     tela de login, que já mostra o relógio) precisa ver o MESMO valor
+     na hora. Falha (regra do Firestore ainda não liberou a coleção
+     nova, mesmo aviso já documentado em "Habilitar o salvamento
+     online" no README) cai pro automático em silêncio -- não é
+     crítico o bastante pra travar o boot do app inteiro com um erro. */
+  if(unsubscribeConfig) unsubscribeConfig();
+  unsubscribeConfig = configCol.doc('relogio').onSnapshot(function(doc){
+    GA_DIA_OVERRIDE = (doc.exists && doc.data().diaOverride) || null;
+    render();
+  }, function(){ /* silencioso de propósito -- cai pro Dia automático (cicla 1-4) */ });
   var cached = readCachedSession();
   if(cached && cached.docId){
     savesCol.doc(cached.docId).get().then(function(doc){
@@ -10308,6 +10358,38 @@ DT.gaAdminExcluir = function(docId){
   }).catch(function(){ SESSION.error='Não consegui excluir essa conta.'; render(); });
 };
 DT.gaAdminCancelarExcluir = function(){ SESSION.adminConfirmExcluir = null; render(); };
+
+/* Controle manual do Dia do jogo (Cap. leva desta sessão -- "Cria uma
+   função no admin que me permita mudar o dia e que ele seja sempre
+   continuo a partir do dia que eu setar. Entendeu? Que aí eu consigo
+   manter os dias rodando e tenho liberdade sem te perturbar aqui. E se
+   eu trocar o dia manual a hora segue como tava e troca o dia no
+   próximo gatilho de troca"): escreve em `green_area_config/relogio`
+   (documento GLOBAL, ver GA_DIA_OVERRIDE/bootApp acima) -- afeta TODO
+   mundo na hora (mesmo listener ao vivo desde o boot), não só o
+   Admin. `blocoReferencia` trava o bloco de 6h ATUAL como ponto de
+   partida -- o Dia definido AGORA soma +1 sozinho a cada bloco de 6h
+   que passar dali pra frente, pra sempre (ver numeroDiaDoJogo()). */
+DT.gaAdminSetDia = function(inputEl){
+  if(!SESSION.isAdmin) return;
+  var novoDia = Math.floor(Number(inputEl && inputEl.value));
+  if(!novoDia || novoDia<1){ SESSION.error='Digite um número de Dia válido (1 ou mais).'; render(); return; }
+  var override = { dia: novoDia, blocoReferencia: periodoDoJogoIndex(), setAt: Date.now(), setBy: (STATE&&STATE.trainerName)||'' };
+  configCol.doc('relogio').set({ diaOverride: override }, { merge:true }).then(function(){
+    logAction('admin', 'Definiu manualmente o Dia do jogo pra '+novoDia+' -- continua contando sozinho a partir daí, sem afetar a hora.');
+    mutate();
+  }).catch(function(err){ SESSION.error='Não consegui definir o Dia do jogo ('+erroFirestoreMsg(err)+').'; render(); });
+};
+/* "sem te perturbar aqui" também cobre voltar atrás -- desfaz o
+   override e volta pro ciclo automático 1-4 de sempre (nunca precisa
+   pedir isso aqui, o próprio Admin resolve sozinho pelo painel). */
+DT.gaAdminLimparDiaOverride = function(){
+  if(!SESSION.isAdmin) return;
+  configCol.doc('relogio').set({ diaOverride: null }, { merge:true }).then(function(){
+    logAction('admin', 'Voltou o Dia do jogo pro automático (cicla 1-4 sozinho de novo).');
+    mutate();
+  }).catch(function(err){ SESSION.error='Não consegui limpar o Dia manual ('+erroFirestoreMsg(err)+').'; render(); });
+};
 /* Cap. leva desta sessão: "Quero que o Admin possa ver a ficha dos
    jogadores, pokémons, batalhas e etc... um log para o administrador
    conseguir saber o que cada jogador tá fazendo": DT.gaAdminAbrirPainel
@@ -13117,8 +13199,31 @@ function lojaScreenHTML(){
     secoes.join('');
 }
 
+/* Cap. leva desta sessão ("Cria uma função no admin que me permita
+   mudar o dia e que ele seja sempre continuo a partir do dia que eu
+   setar... Que aí eu consigo manter os dias rodando e tenho liberdade
+   sem te perturbar aqui"): card PRÓPRIO no topo do Painel Admin, antes
+   da lista de contas -- define/lê `GA_DIA_OVERRIDE` (documento GLOBAL,
+   ver bootApp), afeta TODO jogador na hora, não só quem está no
+   painel. */
+function diaOverrideAdminCardHTML(){
+  var diaAtual = numeroDiaDoJogo();
+  var overrideAtivo = !!(GA_DIA_OVERRIDE && typeof GA_DIA_OVERRIDE.dia==='number');
+  return '<div class="ga-card"><h2>📅 Dia do jogo (controle manual)</h2>'+
+    '<p class="ga-hint">Dia do jogo atual: <strong>Dia '+diaAtual+'</strong> -- '+
+      (overrideAtivo
+        ? 'definido manualmente'+(GA_DIA_OVERRIDE.setBy?' por '+esc2(GA_DIA_OVERRIDE.setBy):'')+', continua contando sozinho a partir daí (não cicla mais 1-4 sozinho).'
+        : 'automático (cicla 1, 2, 3, 4 a cada 6h reais, sem intervenção nenhuma).')+
+      ' Definir um Dia novo NUNCA mexe na hora do relógio (só o número do Dia muda na hora) -- o próximo incremento automático (+1) acontece sozinho no próximo bloco de 6h reais que virar, sem precisar mexer de novo.</p>'+
+    '<div class="ga-btn-row">'+
+      '<input type="number" min="1" step="1" id="gaAdminDiaInput" placeholder="Novo Dia (ex: 12)" class="ga-capqtd-input">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminSetDia(document.getElementById(\'gaAdminDiaInput\'))">📅 Definir Dia</button>'+
+      (overrideAtivo ? '<button class="ga-btn-sm" onclick="DT.gaAdminLimparDiaOverride()">↩️ Voltar ao automático</button>' : '')+
+    '</div></div>';
+}
 function adminScreenHTML(){
-  var out = '<div class="ga-card"><h2>🛡️ Painel Admin</h2>'+
+  var out = diaOverrideAdminCardHTML();
+  out += '<div class="ga-card"><h2>🛡️ Painel Admin</h2>'+
     '<p class="ga-hint">Acesso restrito — ver, banir/desbanir e excluir qualquer conta de Treinador. Trava só no cliente (mesmo modelo do resto do jogo), não é segurança de verdade.</p>';
   if(SESSION.adminLoading){ out += '<p>Carregando contas...</p></div>'; return out; }
   var contas = SESSION.adminContas || [];
