@@ -5936,12 +5936,17 @@ DT.gaEnviarMensagemRaidChat = function(raidId, inputEl){
    (incluindo as `raid:true` como Own Tempo do Rockruff -- é exatamente
    assim que elas ficam alcançáveis, ver comentário de ALT_FORMS[745]),
    senão erro e a Raid nem inicia (nunca guarda um nome inventado). */
-DT.gaAdminIniciarRaid = function(numEl, levelEl, duracaoEl, habEl){
+/* Cap. leva desta sessão ("não peça o pokemon pelo número, me deixa
+   buscar ele pelo nome com lista de sugestão, é melhor"): `nomeEl` é
+   o campo de texto com o NOME do Pokémon (com sugestão via
+   <datalist>, ver raidAdminCardHTML) -- trocou o antigo campo "Nº
+   Pokédex" por completo, nunca mais pede o número. */
+DT.gaAdminIniciarRaid = function(nomeEl, levelEl, duracaoEl, habEl){
   if(!SESSION.isAdmin) return;
   if(raidsAtivas().length>0){ SESSION.error='Já existe uma Raid ativa -- encerre ela antes de iniciar outra.'; render(); return; }
-  var num = Math.floor(Number(numEl && numEl.value));
-  var sp = speciesByNum(num);
-  if(!sp){ SESSION.error='Espécie inválida -- digite um Número real da Pokédex (1-1025).'; render(); return; }
+  var sp = speciesByName(nomeEl && nomeEl.value);
+  if(!sp){ SESSION.error='Espécie inválida -- digite o NOME exato de um Pokémon real (use a lista de sugestão que aparece ao digitar).'; render(); return; }
+  var num = sp.num;
   var level = clampInt(Math.floor(Number(levelEl && levelEl.value))||50, 1, NIVEL_MAX);
   var cfg = raidConfigAtual();
   var duracaoDias = Math.floor(Number(duracaoEl && duracaoEl.value)) || cfg.duracaoDiasPadrao;
@@ -5975,24 +5980,34 @@ DT.gaAdminEncerrarRaid = function(raidId){
     mutate();
   }).catch(function(err){ SESSION.error='Não consegui encerrar a Raid ('+erroFirestoreMsg(err)+').'; render(); });
 };
-/* "chave:qtd,chave:qtd" -- forma mais simples de editar uma lista de
-   itens num único campo de texto, sem precisar de uma UI de tabela só
-   pra isso (item precisa existir em GA_ITEMS pra valer, senão é
-   ignorado -- nunca guarda uma chave inventada). */
-function parseItensParticipacaoRaid(texto){
-  var out = {};
-  (texto||'').split(',').forEach(function(par){
-    var kv = par.split(':');
-    var k = (kv[0]||'').trim();
-    var v = Math.floor(Number(kv[1]));
-    if(k && v>0 && GA_ITEMS.some(function(it){ return it.key===k; })) out[k] = v;
-  });
-  return out;
-}
-function itensParticipacaoParaTexto(obj){
-  return Object.keys(obj||{}).map(function(k){ return k+':'+obj[k]; }).join(',');
-}
-DT.gaAdminAtualizarConfigRaid = function(statMultEl, hpMultEl, captureMultEl, passDropEl, passDiaEl, duracaoPadraoEl, xpEl, pokedolarEl, itensEl){
+/* Cap. leva desta sessão ("Não é melhor eu selecionar o item de uma
+   lista, colocar a quantidade e ir adicionando a listagem do Pokémon
+   que eu decidi?"): substitui o antigo campo de texto livre "chave:
+   qtd,chave:qtd" por uma lista de verdade -- Admin escolhe o item
+   (dropdown, só itens reais de GA_ITEMS), digita a quantidade e clica
+   "Adicionar", cada clique é um `render()` de verdade (não por tecla
+   digitada, então nunca perde foco de campo nenhum -- mesma lógica
+   seletor+lista já usada noutras telas do jogo). O RASCUNHO fica em
+   `SESSION.raidItensDraft` (nunca grava no Firestore sozinho) --
+   inicializado com o que já está salvo (`raidConfigAtual().itensPar-
+   ticipacao`) na 1ª vez que a tela é aberta, só é gravado de verdade
+   quando o Admin clica "💾 Salvar configuração". */
+DT.gaRaidItemAdd = function(itemEl, qtdEl){
+  if(!SESSION.isAdmin) return;
+  var key = itemEl && itemEl.value;
+  var qtd = Math.floor(Number(qtdEl && qtdEl.value));
+  if(!key || !GA_ITEMS.some(function(it){ return it.key===key; })) return;
+  if(!qtd || qtd<1) return;
+  if(!SESSION.raidItensDraft) SESSION.raidItensDraft = Object.assign({}, raidConfigAtual().itensParticipacao||{});
+  SESSION.raidItensDraft[key] = qtd;
+  render();
+};
+DT.gaRaidItemRemove = function(key){
+  if(!SESSION.isAdmin || !SESSION.raidItensDraft) return;
+  delete SESSION.raidItensDraft[key];
+  render();
+};
+DT.gaAdminAtualizarConfigRaid = function(statMultEl, hpMultEl, captureMultEl, passDropEl, passDiaEl, duracaoPadraoEl, xpEl, pokedolarEl){
   if(!SESSION.isAdmin || !configCol) return;
   var novo = {
     statMult: Number(statMultEl.value)>0 ? Number(statMultEl.value) : RAID_CONFIG_PADRAO.statMult,
@@ -6003,7 +6018,7 @@ DT.gaAdminAtualizarConfigRaid = function(statMultEl, hpMultEl, captureMultEl, pa
     duracaoDiasPadrao: Math.max(1, Math.floor(Number(duracaoPadraoEl.value))||RAID_CONFIG_PADRAO.duracaoDiasPadrao),
     xpParticipacao: Math.max(0, Math.floor(Number(xpEl.value))||0),
     pokedolarParticipacao: Math.max(0, Math.floor(Number(pokedolarEl.value))||0),
-    itensParticipacao: parseItensParticipacaoRaid(itensEl && itensEl.value)
+    itensParticipacao: Object.assign({}, SESSION.raidItensDraft||{})
   };
   configCol.doc('raid').set(novo, {merge:true}).then(function(){
     logAction('admin', 'Atualizou a configuração de Raid.');
@@ -6621,6 +6636,22 @@ function speciesByNum(num){
     SPECIES_DEX.forEach(function(sp){ speciesByNum._idx[sp.num] = sp; });
   }
   return speciesByNum._idx[num] || null;
+}
+/* Cap. leva desta sessão ("não peça o pokemon pelo número, me deixa
+   buscar ele pelo nome com lista de sugestão, é melhor"): busca por
+   NOME exato (case-insensitive), usada pelo Console de Raid no lugar
+   do campo "Nº Pokédex" -- combinada com um <datalist> nativo do HTML
+   (ver raidAdminCardHTML) pra dar a "lista de sugestão" sem precisar
+   de nenhum JS reativo por tecla digitada (o app inteiro faz
+   render()=innerHTML completo, então um re-render por tecla perderia
+   o foco do campo -- <datalist> resolve isso de graça, o navegador
+   filtra as sugestões sozinho). */
+function speciesByName(nome){
+  if(!speciesByName._idx){
+    speciesByName._idx = {};
+    SPECIES_DEX.forEach(function(sp){ speciesByName._idx[sp.name.toLowerCase()] = sp; });
+  }
+  return speciesByName._idx[(nome||'').trim().toLowerCase()] || null;
 }
 function findMoveByName(name){
   if(!findMoveByName._idx){
@@ -14203,6 +14234,10 @@ function diaOverrideAdminCardHTML(){
 function raidAdminCardHTML(){
   var cfg = raidConfigAtual();
   var ativas = raidsAtivas();
+  // Cap. leva desta sessão -- rascunho da lista de itens de participação
+  // (ver DT.gaRaidItemAdd/gaRaidItemRemove), inicializado só na 1ª vez
+  // que esta tela é montada (nunca sobrescreve uma edição em andamento).
+  if(!SESSION.raidItensDraft) SESSION.raidItensDraft = Object.assign({}, cfg.itensParticipacao||{});
   var out = '<div class="ga-card"><h2>🏴 Console de Raid</h2>';
   if(ativas.length){
     out += ativas.map(function(r){
@@ -14211,13 +14246,20 @@ function raidAdminCardHTML(){
         '<button class="ga-btn-sm danger" onclick="DT.gaAdminEncerrarRaid(\''+r.id+'\')">🚫 Encerrar esta Raid</button>';
     }).join('');
   } else {
-    out += '<p class="ga-hint">Nenhuma Raid ativa agora. Escolha uma Espécie (Número da Pokédex), Nível e duração (em Dias do jogo -- padrão sugerido: '+cfg.duracaoDiasPadrao+') pra iniciar uma nova.</p>'+
+    /* Cap. leva desta sessão ("não peça o pokemon pelo número, me
+       deixa buscar ele pelo nome com lista de sugestão, é melhor"):
+       campo de texto com <datalist> nativo do HTML -- o navegador
+       filtra as 1025 sugestões sozinho conforme o Admin digita, sem
+       precisar de nenhum render() por tecla (que perderia o foco do
+       campo, já que este app inteiro re-renderiza via innerHTML). */
+    out += '<p class="ga-hint">Nenhuma Raid ativa agora. Escolha uma Espécie (pelo NOME -- digite e escolha da lista de sugestão), Nível e duração (em Dias do jogo -- padrão sugerido: '+cfg.duracaoDiasPadrao+') pra iniciar uma nova.</p>'+
       '<div class="ga-btn-row">'+
-        '<input type="number" min="1" max="1025" step="1" id="gaRaidNum" placeholder="Nº Pokédex" class="ga-capqtd-input">'+
+        '<input type="text" id="gaRaidNomeBusca" list="gaRaidSpeciesDatalist" placeholder="Nome do Pokémon (ex: Charizard)" class="ga-capqtd-input" autocomplete="off">'+
+        '<datalist id="gaRaidSpeciesDatalist">'+SPECIES_DEX.map(function(sp){ return '<option value="'+esc2(sp.name)+'">'; }).join('')+'</datalist>'+
         '<input type="number" min="1" max="'+NIVEL_MAX+'" step="1" id="gaRaidLevel" placeholder="Nível" class="ga-capqtd-input">'+
         '<input type="number" min="1" step="1" id="gaRaidDuracao" placeholder="Dias do jogo" class="ga-capqtd-input">'+
         '<input type="text" id="gaRaidHab" placeholder="Habilidade (opcional -- vazio = aleatória)" class="ga-chat-input" title="Deixe vazio pra sortear entre as Habilidades normais da Espécie (padrão). Preenchido, precisa ser EXATAMENTE uma Habilidade real dela (confere \'Habilidades possíveis\' na Pokédex) -- ex: \'Own Tempo\' só existe assim pro Rockruff, exatamente por isso essa Habilidade especial só sai daqui.">'+
-        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminIniciarRaid(document.getElementById(\'gaRaidNum\'),document.getElementById(\'gaRaidLevel\'),document.getElementById(\'gaRaidDuracao\'),document.getElementById(\'gaRaidHab\'))">🏴 Iniciar Raid</button>'+
+        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminIniciarRaid(document.getElementById(\'gaRaidNomeBusca\'),document.getElementById(\'gaRaidLevel\'),document.getElementById(\'gaRaidDuracao\'),document.getElementById(\'gaRaidHab\'))">🏴 Iniciar Raid</button>'+
       '</div>';
   }
   out += '<h3 class="ga-subhead">⚙️ Configuração (vale pra próxima Raid iniciada)</h3>'+
@@ -14229,8 +14271,23 @@ function raidAdminCardHTML(){
     '<p class="ga-hint">Duração padrão sugerida (Dias do jogo): <input type="number" step="1" min="1" id="gaRaidCfgDuracao" value="'+cfg.duracaoDiasPadrao+'" class="ga-capqtd-input"></p>'+
     '<p class="ga-hint">XP de participação (pro líder de cada participante): <input type="number" step="1" min="0" id="gaRaidCfgXp" value="'+cfg.xpParticipacao+'" class="ga-capqtd-input"></p>'+
     '<p class="ga-hint">Pokédólares de participação: <input type="number" step="1" min="0" id="gaRaidCfgPokedolar" value="'+cfg.pokedolarParticipacao+'" class="ga-capqtd-input"></p>'+
-    '<p class="ga-hint">Itens de participação (formato "chave:qtd,chave:qtd", ex. "hiperpocao:2,pocao:1"): <input type="text" id="gaRaidCfgItens" value="'+esc2(itensParticipacaoParaTexto(cfg.itensParticipacao))+'" class="ga-chat-input"></p>'+
-    '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminAtualizarConfigRaid(document.getElementById(\'gaRaidCfgStat\'),document.getElementById(\'gaRaidCfgHp\'),document.getElementById(\'gaRaidCfgCapture\'),document.getElementById(\'gaRaidCfgPassDrop\'),document.getElementById(\'gaRaidCfgPassDia\'),document.getElementById(\'gaRaidCfgDuracao\'),document.getElementById(\'gaRaidCfgXp\'),document.getElementById(\'gaRaidCfgPokedolar\'),document.getElementById(\'gaRaidCfgItens\'))">💾 Salvar configuração</button>'+
+    /* Cap. leva desta sessão ("Não é melhor eu selecionar o item de
+       uma lista, colocar a quantidade e ir adicionando a listagem"):
+       dropdown (só itens reais de GA_ITEMS) + quantidade + "Adicionar"
+       -- lista embaixo com cada item já adicionado e um "✕" pra tirar. */
+    '<p class="ga-hint">Itens de participação (todo participante ganha ao vencer a Raid):</p>'+
+    '<div class="ga-btn-row">'+
+      '<select id="gaRaidItemSelect" class="ga-capqtd-input">'+GA_ITEMS.map(function(it){ return '<option value="'+it.key+'">'+esc2(it.nome)+'</option>'; }).join('')+'</select>'+
+      '<input type="number" min="1" step="1" id="gaRaidItemQtd" placeholder="Qtd" value="1" class="ga-capqtd-input">'+
+      '<button class="ga-btn-sm" onclick="DT.gaRaidItemAdd(document.getElementById(\'gaRaidItemSelect\'),document.getElementById(\'gaRaidItemQtd\'))">+ Adicionar</button>'+
+    '</div>'+
+    (Object.keys(SESSION.raidItensDraft).length
+      ? '<ul class="ga-raid-item-draft-list">'+Object.keys(SESSION.raidItensDraft).map(function(k){
+          var it = itemByKey(k);
+          return '<li>'+(it?itemIconHTML(it)+' '+esc2(it.nome):esc2(k))+' ×'+SESSION.raidItensDraft[k]+' <button class="ga-btn-sm danger" onclick="DT.gaRaidItemRemove(\''+k+'\')">✕</button></li>';
+        }).join('')+'</ul>'
+      : '<p class="ga-hint">Nenhum item de participação ainda.</p>')+
+    '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminAtualizarConfigRaid(document.getElementById(\'gaRaidCfgStat\'),document.getElementById(\'gaRaidCfgHp\'),document.getElementById(\'gaRaidCfgCapture\'),document.getElementById(\'gaRaidCfgPassDrop\'),document.getElementById(\'gaRaidCfgPassDia\'),document.getElementById(\'gaRaidCfgDuracao\'),document.getElementById(\'gaRaidCfgXp\'),document.getElementById(\'gaRaidCfgPokedolar\'))">💾 Salvar configuração</button>'+
   '</div>';
   return out;
 }
