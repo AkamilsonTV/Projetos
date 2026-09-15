@@ -267,6 +267,12 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-apelido-lapis{ cursor:pointer; opacity:.85; font-size:.85em; }
 .ga-apelido-lapis:hover{ opacity:1; }
 .ga-apelido-lapis.travado{ cursor:default; opacity:.35; filter:grayscale(1); }
+/* Cap. leva desta sessão (Pokémon favoritos): ⭐/☆ já resolvem a cor
+   sozinhos (emoji), só precisa do cursor/hover -- mesmo padrão do
+   lápis de apelido logo acima. */
+.ga-favorito-estrela{ cursor:pointer; opacity:.85; font-size:.85em; }
+.ga-favorito-estrela:hover{ opacity:1; }
+.ga-favorito-estrela.on{ opacity:1; }
 /* Cap. leva desta sessão ("deixar ele destacado dos demais"): o
    Pokémon ativo (primeiro da Equipe, ver equipeScreenHTML) ganha uma
    borda e sombra na cor de destaque pra ficar óbvio de longe qual é,
@@ -12107,16 +12113,23 @@ DT.gaIniciarLutasComTodaEnergia = function(leadId, zonaId){
    automática nem estiver ligada, ver pendingSequenciaConfirmPopupHTML),
    mas guardado como campo PRÓPRIO da sequência (não um sub-estado de
    autoCapturar) pra ficar simples de ler em resolverLutaAutomaticamente. */
-DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl, ignorarJaCapturadosEl){
+DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl, ignorarJaCapturadosEl, favoritarCapturaEl){
   var psc = SESSION.pendingSequenciaConfirm; if(!psc) return;
   SESSION.pendingSequenciaConfirm = null;
   var autoCapturar = !!(autoCapEl && autoCapEl.checked);
   var autoCurar = !!(autoCurEl && autoCurEl.checked);
   var ignorarPossuidos = autoCapturar && !!(ignorarPossuidosEl && ignorarPossuidosEl.checked);
   var ignorarJaCapturados = autoCapturar && !!(ignorarJaCapturadosEl && ignorarJaCapturadosEl.checked);
+  /* Cap. leva desta sessão ("Caso seja um pokémon que esteja nos meus
+     favoritos, pode capturar... vai ignorar as funções de ignorar
+     capturar pokémons apenas para os pokemon favoritos"): só faz
+     sentido junto de `autoCapturar` (mesmo espírito de ignorarPossuidos/
+     ignorarJaCapturados acima) -- ver o override em
+     resolverLutaAutomaticamente. */
+  var favoritarCaptura = autoCapturar && !!(favoritarCapturaEl && favoritarCapturaEl.checked);
   var zona = zonaByStatus(psc.zonaId);
-  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, ignorarJaCapturados: ignorarJaCapturados, finished:false, pararSemEnergia:false, relatorio:[], lastTickAt: Date.now() };
-  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+(ignorarPossuidos?', ignorando quem já tem':'')+(ignorarJaCapturados?', ignorando quem já capturei alguma vez':'')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
+  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, ignorarJaCapturados: ignorarJaCapturados, favoritarCaptura: favoritarCaptura, finished:false, pararSemEnergia:false, relatorio:[], lastTickAt: Date.now() };
+  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+(ignorarPossuidos?', ignorando quem já tem':'')+(ignorarJaCapturados?', ignorando quem já capturei alguma vez':'')+(favoritarCaptura?', mas SEMPRE tentando favoritos':'')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
   mutate();
   /* Cap. leva desta sessão ("mantenha ele como padrão... vamos abolir o
      modo lento de antes"): o modo "luta por luta" (esperar o relógio
@@ -12264,8 +12277,16 @@ function resolverLutaAutomaticamente(cs){
          mesmo soltando/trocando o Pokémon depois). `motivo` guardado
          no relatório só pra escolher a frase certa depois. */
       var motivoIgnorarCaptura = null;
-      if(cs.ignorarPossuidos && especieJaPossuida(numAlvo)) motivoIgnorarCaptura = 'possui';
-      else if(cs.ignorarJaCapturados && dexEntry(numAlvo).caught) motivoIgnorarCaptura = 'jaCapturado';
+      /* Cap. leva desta sessão ("Caso seja um pokémon que esteja nos
+         meus favoritos, pode capturar... vai ignorar as funções de
+         ignorar capturar pokémons apenas para os pokemon favoritos"):
+         com o toggle ligado, um selvagem de espécie favorita PULA os 2
+         motivos de ignorar acima -- continua tentando capturar mesmo
+         com "já possuo"/"já capturei alguma vez" marcados. */
+      if(!(cs.favoritarCaptura && especieEhFavorita(numAlvo))){
+        if(cs.ignorarPossuidos && especieJaPossuida(numAlvo)) motivoIgnorarCaptura = 'possui';
+        else if(cs.ignorarJaCapturados && dexEntry(numAlvo).caught) motivoIgnorarCaptura = 'jaCapturado';
+      }
       if(motivoIgnorarCaptura){
         b2.captureDone = true;
         b2.capturaIgnoradaPossuida = { especie: speciesByNum(numAlvo).name, motivo: motivoIgnorarCaptura };
@@ -13348,6 +13369,28 @@ DT.gaAskApelido = function(pid){
   SESSION.editApelidoFor = pid; render();
 };
 DT.gaCancelApelido = function(){ SESSION.editApelidoFor = null; render(); };
+/* Cap. leva desta sessão ("uma estrelinha no card de pokémon... para
+   ser pokémons favoritos"): liga/desliga livremente (ao contrário do
+   apelido, nunca trava) -- procura em Equipe E Caixa (mesmo padrão de
+   gaSetApelido acima). */
+DT.gaToggleFavorito = function(pid){
+  var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
+  if(!p) return;
+  p.favorito = !p.favorito;
+  logAction('equipe', (p.favorito?'Marcou ':'Desmarcou ')+(p.apelido||speciesByNum(p.num).name)+' como favorito.');
+  mutate();
+};
+/* Cap. leva desta sessão ("essa opção vai ignorar as funções de
+   ignorar capturar pokémons apenas para os pokemon favoritos que
+   aparecerem" -- Lutar Várias Vezes): olha se ALGUM Pokémon (Equipe OU
+   Caixa) da MESMA espécie já está marcado como favorito -- favorito é
+   por indivíduo, mas o selvagem encontrado é só uma espécie, então a
+   pergunta que faz sentido é "eu já tenho algum favorito dessa
+   espécie?", não "esse indivíduo específico é favorito" (impossível,
+   ele ainda nem foi capturado). */
+function especieEhFavorita(num){
+  return STATE.party.some(function(p){ return p.num===num && p.favorito; }) || STATE.box.some(function(p){ return p.num===num && p.favorito; });
+}
 function editApelidoPopupHTML(pid){
   var p = STATE.party.filter(function(x){ return x.id===pid; })[0] || STATE.box.filter(function(x){ return x.id===pid; })[0];
   if(!p || p.apelido) return ''; // se já travou por outra aba/F5 nesse meio tempo, não mostra popup nenhum
@@ -13743,6 +13786,14 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
   var lapis = !apelidoEditavel ? '' : (poke.apelido
     ? ' <span class="ga-apelido-lapis travado" title="Apelido já definido -- travado por enquanto">✏️</span>'
     : ' <span class="ga-apelido-lapis" title="Definir apelido (só uma vez)" onclick="event.stopPropagation();DT.gaAskApelido(\''+poke.id+'\')">✏️</span>');
+  /* Cap. leva desta sessão ("pode ser uma estrelinha no card de
+     pokémon... que fica amarela quando marcamos, para ser pokémons
+     favoritos"): mesmo espírito do lápis de apelido acima -- ícone
+     inline, só clicável no contexto "dono do card" (`apelidoEditavel`,
+     ver comentário grande dele), nunca aparece vendo Equipe de OUTRO
+     jogador/escolhendo pra trocar/etc. ⭐ (já nasce amarela, emoji) vs
+     ☆ (contorno) faz a cor sozinho, sem precisar de CSS a mais. */
+  var estrela = !apelidoEditavel ? '' : ' <span class="ga-favorito-estrela'+(poke.favorito?' on':'')+'" title="'+(poke.favorito?'Favorito -- clique pra tirar':'Marcar como favorito')+'" onclick="event.stopPropagation();DT.gaToggleFavorito(\''+poke.id+'\')">'+(poke.favorito?'⭐':'☆')+'</span>';
   return '<div class="ga-poke-card'+(extraClass?' '+extraClass:'')+'"'+(extraAttrs?' '+extraAttrs:'')+'>'+
     /* Cap. leva desta sessão: "V:" e "D:" no canto superior direito do
        card -- histórico INDIVIDUAL desse Pokémon (ver finishBattle),
@@ -13761,7 +13812,7 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
        quadrado inteiro já nasce sem serrilhado por design). */
     (poke.deRaid ? '<div class="ga-raid-badge" title="Capturado numa Raid">R</div>' : '')+
     '<img src="'+spriteUrl(poke.num)+'" loading="lazy" alt="">'+
-    '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+lapis+'</div>'+
+    '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+lapis+estrela+'</div>'+
     '<div class="ga-poke-meta">Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
     '<div class="ga-hint">'+esc2(poke.natureza||'—')+' · '+esc2(poke.habilidade||'—')+'</div>'+
     '<div class="ga-hint">'+progresso+'</div>'+
@@ -13895,6 +13946,10 @@ DT.gaSetCaixaFiltroPapel = function(v){ SESSION.caixaFiltroPapel = v; render(); 
    cai sempre no fim de "mais recentes primeiro" e no início de "mais
    antigos primeiro", sem quebrar nem sumir da lista. */
 DT.gaSetCaixaOrdenar = function(v){ SESSION.caixaOrdenar = v; render(); };
+/* Cap. leva desta sessão ("Criar um filtro na box para chamar os
+   pokémons favoritos para exibição para facilitar"): mesmo padrão dos
+   outros filtros da Caixa -- liga/desliga, sem tela nova. */
+DT.gaSetCaixaFiltroFavoritos = function(){ SESSION.caixaFiltroFavoritos = !SESSION.caixaFiltroFavoritos; render(); };
 function caixaFilteredList(){
   var q = (SESSION.caixaSearch||'').trim().toLowerCase();
   var t1 = SESSION.caixaFiltroTipo1 || '';
@@ -13902,6 +13957,7 @@ function caixaFilteredList(){
   var papel = SESSION.caixaFiltroPapel || '';
   var lista = (STATE.box||[]).filter(function(p){
     var sp = speciesByNum(p.num);
+    if(SESSION.caixaFiltroFavoritos && !p.favorito) return false;
     if(t1 && sp.tipo1!==t1) return false;
     if(t2 && sp.tipo2!==t2) return false;
     if(papel && (p.papelCombate||'ataque')!==papel) return false;
@@ -13924,6 +13980,7 @@ function caixaFiltrosHTML(){
       '<input type="text" id="gaCaixaSearch" placeholder="Apelido, nome ou número..." value="'+esc2(SESSION.caixaSearch||'')+'" onkeydown="if(event.key===\'Enter\')DT.gaSetCaixaSearch(document.getElementById(\'gaCaixaSearch\'))">'+
       '<button class="ga-btn-sm" onclick="DT.gaSetCaixaSearch(document.getElementById(\'gaCaixaSearch\'))">🔍 Buscar</button>'+
       (SESSION.caixaSearch ? '<button class="ga-btn-sm" onclick="DT.gaSetCaixaSearch({value:\'\'})">✕ Limpar busca</button>' : '')+
+      '<button class="ga-btn-sm'+(SESSION.caixaFiltroFavoritos?' active':'')+'" onclick="DT.gaSetCaixaFiltroFavoritos()">⭐ Só favoritos</button>'+
       '<select onchange="DT.gaSetCaixaFiltroTipo1(this)"><option value="">Tipo 1: qualquer</option>'+
         tipos.map(function(t){ return '<option value="'+esc2(t)+'" '+(SESSION.caixaFiltroTipo1===t?'selected':'')+'>'+esc2(t)+'</option>'; }).join('')+
       '</select>'+
@@ -14650,6 +14707,14 @@ function pendingSequenciaConfirmPopupHTML(){
        Os 2 são independentes e combináveis (ex: ignora quem já tem
        AGORA e também quem já teve uma vez, mesmo já tendo solto). */
     '<label class="ga-check-row" style="margin-left:22px"><input type="checkbox" id="gaSeqIgnorarJaCapturados"> 📕 Não tentar capturar quem eu já capturei alguma vez (mesmo fora da Equipe/Caixa hoje)</label>'+
+    /* Cap. leva desta sessão ("Caso seja um pokémon que esteja nos meus
+       favoritos, pode capturar... vai ignorar as funções de ignorar
+       capturar pokémons apenas para os pokemon favoritos que
+       aparecerem"): mesmo grupo visual dos 2 "Não tentar capturar"
+       acima (indentado, só faz sentido junto da captura automática),
+       mas funciona como EXCEÇÃO aos dois -- ver o override em
+       resolverLutaAutomaticamente. */
+    '<label class="ga-check-row" style="margin-left:22px"><input type="checkbox" id="gaSeqFavoritarCaptura"> ⭐ Se for um Pokémon dos meus favoritos, pode capturar mesmo assim (ignora as 2 opções acima só pra favoritos)</label>'+
     '<label class="ga-check-row"><input type="checkbox" id="gaSeqAutoCur"> 💊 Curar automaticamente (usa o item de cura mais recomendado pra situação)</label>'+
     '<p class="ga-hint">Se deixar as duas primeiras desmarcadas, a sequência roda do mesmo jeito, só que sem gastar nenhum item nem Pokébola.</p>'+
     /* Cap. leva desta sessão ("mantenha ele como padrão... vamos abolir
@@ -14660,7 +14725,7 @@ function pendingSequenciaConfirmPopupHTML(){
        captureSequenceTick() em loop synchronous até terminar. */
     '<p class="ga-hint">⚡ A sequência inteira roda de uma vez e a tela já pula direto pro relatório final.</p>'+
     '<div class="ga-btn-row">'+
-      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarSequencia(document.getElementById(\'gaSeqAutoCap\'),document.getElementById(\'gaSeqAutoCur\'),document.getElementById(\'gaSeqIgnorarPossuidos\'),document.getElementById(\'gaSeqIgnorarJaCapturados\'))">▶️ Começar sequência</button>'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarSequencia(document.getElementById(\'gaSeqAutoCap\'),document.getElementById(\'gaSeqAutoCur\'),document.getElementById(\'gaSeqIgnorarPossuidos\'),document.getElementById(\'gaSeqIgnorarJaCapturados\'),document.getElementById(\'gaSeqFavoritarCaptura\'))">▶️ Começar sequência</button>'+
       '<button class="ga-btn-sm" onclick="DT.gaCancelarSequencia()">Cancelar</button>'+
     '</div>'+
   '</div></div>';
