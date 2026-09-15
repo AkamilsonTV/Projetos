@@ -7428,6 +7428,27 @@ function sanitizeForFirestore(state){
 var saveTimer = null;
 var saveInFlight = false;
 var saveQueuedAfter = false;
+/* Cap. leva desta sessão ("deixar o banco de dados mais responsivo...
+   o combate fica indo e voltando diversas vezes pra conseguir avançar,
+   principalmente combates contínuos"): a causa raiz nunca foi o
+   Firestore ser lento -- era o listener de `attachSaveListener` (ver
+   `STATE = data.state` abaixo) aplicando de volta um SNAPSHOT ATRASADO
+   da PRÓPRIA escrita deste cliente por cima de um `STATE` local que já
+   tinha avançado MAIS ainda enquanto esse eco voltava (ex.: a sequência
+   automática de captura já rodou +1 ou +2 lutas locais, a cada 1,5s,
+   antes do eco da escrita anterior chegar) -- isso literalmente fazia o
+   combate "andar pra trás" (perdendo o progresso das lutas mais
+   recentes) até a PRÓXIMA escrita alcançar de novo, se repetindo a cada
+   ciclo -- daí o "indo e voltando diversas vezes". `localStateVersion`
+   guarda o `updatedAt` da ÚLTIMA escrita que ESTE cliente iniciou
+   (marcado no MOMENTO de chamar `.update()`, não só quando o eco volta)
+   -- o listener só aceita um snapshot vindo de fora se for de verdade
+   MAIS NOVO que isso, ou seja: só quando a mudança veio de OUTRO lugar
+   (outro aparelho/aba na mesma conta, ou o Painel Admin editando por
+   fora) -- um eco da própria escrita (mesmo `updatedAt` ou mais velho)
+   nunca mais sobrescreve um STATE local que já está pelo menos tão
+   atualizado quanto ele. */
+var localStateVersion = 0;
 function queueSave(){
   if(!currentSaveRef) return;
   clearTimeout(saveTimer);
@@ -7437,7 +7458,9 @@ function doSave(){
   if(!currentSaveRef || !STATE) return;
   if(saveInFlight){ saveQueuedAfter = true; return; }
   saveInFlight = true;
-  currentSaveRef.update({ state: sanitizeForFirestore(STATE), updatedAt: Date.now() }).catch(function(e){
+  var ts = Date.now();
+  localStateVersion = ts;
+  currentSaveRef.update({ state: sanitizeForFirestore(STATE), updatedAt: ts }).catch(function(e){
     SESSION.error = 'Não consegui salvar no banco de dados (verifique sua internet). Sua alteração pode não ter sido salva -- tente de novo.';
     render();
   }).then(function(){
@@ -7523,10 +7546,17 @@ function attachSaveListener(docId){
   currentSaveRef = savesCol.doc(docId);
   SESSION.currentDocId = docId;
   SESSION.isAdmin = ADMIN_DOC_IDS.indexOf(docId) !== -1;
+  localStateVersion = 0; // conta nova (login/criar/migrar) -- zera pra SEMPRE aceitar o 1º snapshot, mesmo se a aba já tinha usado outra conta antes
   unsubscribeSnapshot = currentSaveRef.onSnapshot(function(doc){
     if(!doc.exists){ SESSION.error='Sua conta sumiu do banco de dados -- tente entrar de novo.'; DT.gaSair(); return; }
     var data = doc.data();
     if(data.banido){ SESSION.error='Esta conta foi banida.'; DT.gaSair(); return; }
+    // Cap. leva desta sessão ("banco de dados mais responsivo" -- ver
+    // comentário grande perto de `localStateVersion`): ignora eco da
+    // PRÓPRIA escrita (ou mais velho) -- só aceita snapshot vindo de
+    // fora de verdade mais novo que a última escrita própria conhecida.
+    if(STATE && data.updatedAt && data.updatedAt<=localStateVersion) return;
+    if(data.updatedAt) localStateVersion = data.updatedAt;
     STATE = data.state;
     migrateState();
     /* Cap. leva desta sessão (log do Admin): esse é o ÚNICO ponto por
