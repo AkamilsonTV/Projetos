@@ -7869,13 +7869,42 @@ function formatHHMMSS(totalSeg){
    DOM, sem tocar no resto da tela -- assim não reseta o foco/cursor
    de nenhum campo de texto aberto em outro lugar (busca da Pokédex,
    formulários, PIN de login etc.) só pra manter um relógio andando. */
+/* Cap. leva desta sessão ("uns rollback estranho, pokemon que chegou a
+   100 voltando níveis, ataques que foram aplicados, não sendo"): causa
+   raiz DIFERENTE do bug já corrigido antes (#224, eco da PRÓPRIA
+   escrita voltando por cima da MESMA aba) -- esta é sobre o tique de
+   Energia/Pokéticket/Passe de Raid ACIMA, que roda sozinho a cada 1s em
+   QUALQUER aba/aparelho aberto na mesma conta (o jogo suporta de
+   propósito abrir Arena/PVP/Ficha em abas separadas), mesmo numa aba
+   ociosa que ainda não recebeu (via onSnapshot) o progresso mais
+   recente feito em OUTRA aba/aparelho. Antes, esse tique salvava com
+   queueSave()/doSave() -- que escreve o `state` INTEIRO daquela aba,
+   incluindo Equipe/Caixa/Nível ainda DESATUALIZADOS ali -- apagando de
+   vez qualquer progresso mais novo que ainda não tinha chegado até essa
+   aba ociosa (exatamente "Pokémon que chegou a Nível 100 voltando" ou
+   "ataque aplicado, não sendo" quando a aba ociosa salva por cima
+   segundos depois, só porque a Energia dela tocou um bloco de 10min).
+   Correção: o tique de fundo agora escreve só os PRÓPRIOS campos que
+   ele muda (`state.energy`/`state.energyUpdatedAt`/`state.poketickets`/
+   `state.poketicketsLastGameDay`/`state.itens.raidpass`), por caminho
+   pontilhado do Firestore, em vez de reescrever o `state` inteiro --
+   nunca mais toca em Equipe/Caixa/batalha de propósito, então uma aba
+   ociosa não consegue mais apagar progresso feito em outro lugar,
+   não importa a ordem de chegada das escritas. */
+function saveTickFieldsSomente(){
+  if(!currentSaveRef || !STATE) return;
+  var patch = { 'state.energy': STATE.energy, 'state.energyUpdatedAt': STATE.energyUpdatedAt, 'state.poketickets': STATE.poketickets, 'state.poketicketsLastGameDay': STATE.poketicketsLastGameDay, updatedAt: Date.now() };
+  if((STATE.itens||{}).raidpass !== undefined) patch['state.itens.raidpass'] = STATE.itens.raidpass;
+  localStateVersion = patch.updatedAt; // mesmo espírito do doSave() -- nunca deixa o eco desta escrita se confundir com uma versão de fora
+  currentSaveRef.update(patch).catch(function(){ /* silencioso -- o próximo tique (1s depois) tenta de novo sozinho */ });
+}
 function energyTickLoop(){
   if(!STATE) return;
   var antesEnergia = STATE.energy, antesTickets = STATE.poketickets, antesRaidPass = (STATE.itens||{}).raidpass;
   tickEnergy();
   tickPoketickets();
   tickRaidPass(); // Cap. leva desta sessão (Raids) -- mesmo padrão dos 2 acima: roda sozinho de fundo, não só quando o jogador mexe em algo
-  if(STATE.energy !== antesEnergia || STATE.poketickets !== antesTickets || (STATE.itens||{}).raidpass !== antesRaidPass){ render(); queueSave(); return; }
+  if(STATE.energy !== antesEnergia || STATE.poketickets !== antesTickets || (STATE.itens||{}).raidpass !== antesRaidPass){ render(); saveTickFieldsSomente(); return; }
   var el = document.getElementById('ga-energy-countdown');
   if(el) el.textContent = formatMMSS(secondsToNextEnergyTick());
   var elT = document.getElementById('ga-ticket-countdown');
