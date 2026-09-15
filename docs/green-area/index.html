@@ -5853,6 +5853,34 @@ function finalizarBatalhaRaid(b, result){
   b.log.push(result==='vitoria'
     ? '🏆 Você derrotou a Raid nesta tentativa! (causou '+danoNestaTentativa+' de dano ao todo)'
     : '☠️ Sua Equipe não aguentou desta vez (causou '+danoNestaTentativa+' de dano à Raid, que continua de pé).');
+  /* Cap. leva desta sessão ("uma sugestão de xp por raid já que todo
+     pokémon que participar de um combate de raid vai ganhar xp mesmo
+     se desmaiar"): ANTES, Raid só dava XP quando o HP COMPARTILHADO do
+     boss (entre todo mundo) finalmente chegava a 0 (ver
+     distribuirRecompensasRaid mais abaixo) -- se a SUA tentativa
+     terminasse em desmaio sem derrubar o boss de vez, você não ganhava
+     nada por ela. Agora, TODA tentativa credita XP na hora, pro(s)
+     Pokémon que realmente entraram NESTA tentativa (`b.usedPartyIds`,
+     não só o líder) -- ganhe ou perca. Usa `xpParaVitoria` de sempre
+     (nível de cada Pokémon vs o nível BASE do boss -- `raidStatMult`/
+     `raidHpMult` nunca tocam `level`, só as stats, ver buildBattlerRaid)
+     × XP_MULT_RAID (×8). `grantXpSemPausarEvolucao` -- nunca pausa
+     esperando resposta de evolução aqui: com 2+ Pokémon ganhando XP na
+     MESMA tentativa, os 2 disputariam o único `b.pendingEvolution` da
+     luta; uma evolução elegível só pergunta na PRÓXIMA luta de
+     verdade (mesmo espírito já usado no bônus de participação). Isso
+     é XP LOCAL desta tentativa -- não depende do Firestore, nunca se
+     perde mesmo se a escrita abaixo falhar. */
+  var bossLevel = b.oppTeam[0].level;
+  (b.usedPartyIds||[]).forEach(function(pid){
+    var pRaid = STATE.party.filter(function(x){ return x.id===pid; })[0];
+    if(!pRaid) return;
+    var xpGanhoRaid = xpParaVitoria(pRaid.level, bossLevel) * XP_MULT_RAID;
+    if(xpGanhoRaid>0){
+      grantXpSemPausarEvolucao(pRaid, xpGanhoRaid);
+      b.log.push('✨ '+(pRaid.apelido||speciesByNum(pRaid.num).name)+' ganhou '+xpGanhoRaid+' XP por participar da Raid.');
+    }
+  });
   logAction('raid', 'Lutou contra a Raid (causou '+danoNestaTentativa+' de dano, '+tentativa.resultado+').', b.log);
   if(raidsCol){
     raidsCol.doc(raidId).update({
@@ -5947,15 +5975,7 @@ function aplicarRecompensaRaid(rec){
     else STATE.itens[k] = (STATE.itens[k]||0) + rec.itens[k];
   });
   var p = STATE.party[0];
-  if(p && rec.xp>0){
-    p.xpNivel = (p.xpNivel||0) + rec.xp;
-    while(p.xpNivel>=XP_PARA_LEVEL_UP && p.level<NIVEL_MAX){
-      p.xpNivel -= XP_PARA_LEVEL_UP;
-      p.level = clampInt(p.level+1, 1, NIVEL_MAX);
-      gainFelicidade(p, FELICIDADE_POR_LEVEL);
-    }
-    if(p.level>=NIVEL_MAX) p.xpNivel = 0;
-  }
+  if(p && rec.xp>0) grantXpSemPausarEvolucao(p, rec.xp); // ver grantXpSemPausarEvolucao -- mesma curva de Nível de sempre, só sem popup de evolução (recompensa aplicada fora de luta)
   var spNome = (speciesByNum(rec.num)||{}).name || ('#'+rec.num);
   var mensagem = 'Recebeu recompensa de participação numa Raid ('+spNome+' Nv.'+rec.level+'): +'+(rec.pokedolares||0)+' Pokédólares'+(rec.xp?', +'+rec.xp+' XP':'')+'.';
   if(rec.tentarCapturar && rec.bolaEscolhida){
@@ -7334,7 +7354,7 @@ function freshState(trainerName){
    com um valor neutro/sorteado. Cap. leva desta sessão: pokebolas
    virou um objeto com 4 chaves (era só um número), e vitoriasNivel
    virou xpNivel (sistema de Nível totalmente novo, por Faixa de
-   Nível -- ver XP_PARA_LEVEL_UP/xpParaVitoria) -- contas antigas
+   Nível -- ver xpParaProximoNivel/xpParaVitoria) -- contas antigas
    começam do zero nesse contador específico, documentado de
    propósito (não dava pra converter 1:1 entre os dois sistemas). */
 function migrateState(){
@@ -8399,14 +8419,16 @@ function resolveFaintAfterDamage(target, user, b, moveUsado){
        da XP padrão"): Treinador (kind 'wild'/'rival'/'elite') usa a
        MESMA fórmula de Faixa de sempre (xpParaVitoria), sem bônus --
        já é "correspondente a área". Mestre (kind 'trainer', o único
-       kind que dá Insígnia) usa a MESMA fórmula de Faixa por baixo
-       ("um range parecido com as áreas" = a régua já existente, não
-       uma nova), só que SEMPRE soma +3 fixo em cima, por Pokémon
-       desmaiado -- mesmo quando xpParaVitoria() sozinha devolveria 0
-       (2+ Faixas abaixo do jogador), o bônus do Mestre ainda entra,
-       porque o pedido foi "premiar SEMPRE com um bônus de +3". */
+       kind que dá Insígnia) usa a MESMA fórmula de Faixa por baixo.
+       Cap. leva desta sessão ("uma sugestão de bônus por treinador e
+       outra melhor para cada mestre"): o bônus deixou de ser um FIXO
+       (+3, insignificante nas Faixas altas) e virou um MULTIPLICADOR
+       em cima de xpParaVitoria() -- ver xpMultiplicadorPorTipoDeLuta
+       (Treinador/Elite ×2, Mestre ×5). Se xpParaVitoria() já devolver
+       0 (2+ Faixas abaixo), o multiplicador não inventa XP do nada --
+       0×qualquer coisa continua 0, mesma trava anti-farm de sempre. */
     var xpBase = xpParaVitoria(xpUser.level, target.level);
-    var xpGanho = xpBase + (b.kind==='trainer' ? XP_BONUS_MESTRE : 0);
+    var xpGanho = xpBase * xpMultiplicadorPorTipoDeLuta(b.kind);
     var pausouEvolucao = grantXpAndMaybeEvolve(b, xpUser.partyId, xpGanho);
     if(pausouEvolucao) return true;
   }
@@ -8869,13 +8891,37 @@ function finishBattle(result){
    de cada vez, verificando evolução em CADA Nível que passa (não só
    no final).
    ============================================================ */
-var XP_PARA_LEVEL_UP = 10;
 function rangeIndexForLevel(level){ return clampInt(Math.floor((level-1)/10), 0, 9); }
-/* Cap. leva desta sessão (substitui a régua antiga de cima --
-   "1 abaixo/mesma/1 acima = sempre 1 XP, só escala 2+ acima"): "Pokémon
-   dentro da sua range de nível ganhará 2xp por combate vencido, 1
-   categoria abaixo ganhará 1 e a cada categoria acima irá ser somado 1
-   de xp aos 2 de base. Categorias abaixo de 1 da base não dão XP." --
+/* Cap. leva desta sessão ("Tem alguma ideia de experiência para que
+   passem de nível?... do 1 ao 100 ser de forma progressiva... a cada
+   dezena ele subir [X] de xp por nivel"): o custo de XP pra passar de
+   Nível deixa de ser fixo (`XP_PARA_LEVEL_UP=10` pra QUALQUER Nível) e
+   passa a crescer a cada Faixa de 10 Níveis -- reusa a MESMA `Faixa`
+   (`rangeIndexForLevel`) que já organiza o prêmio de XP logo abaixo,
+   então as duas coisas falam a mesma língua. Fórmula fechada com o
+   jogador: `custo = 2 + 3×Faixa` (Faixa do Nível que está sendo
+   alcançado, 0 a 9) -- exatamente o padrão 2/5/8/... que ele começou a
+   descrever, esticado pras 10 décadas inteiras:
+     Nível 1-10   (Faixa 0) -> 2 XP por Nível
+     Nível 11-20  (Faixa 1) -> 5 XP por Nível
+     Nível 21-30  (Faixa 2) -> 8 XP por Nível
+     Nível 31-40  (Faixa 3) -> 11 XP por Nível
+     Nível 41-50  (Faixa 4) -> 14 XP por Nível
+     Nível 51-60  (Faixa 5) -> 17 XP por Nível
+     Nível 61-70  (Faixa 6) -> 20 XP por Nível
+     Nível 71-80  (Faixa 7) -> 23 XP por Nível
+     Nível 81-90  (Faixa 8) -> 26 XP por Nível
+     Nível 91-100 (Faixa 9) -> 29 XP por Nível
+   Total pra ir de Nível 1 a 100: 1.548 XP. */
+function xpParaProximoNivel(nivelAtual){
+  return 2 + 3*rangeIndexForLevel(nivelAtual+1);
+}
+/* "1 abaixo/mesma/1 acima = sempre 1 XP, só escala 2+ acima" (régua
+   ANTERIOR a esta, mantida sem mudança nesta leva -- o jogador pediu
+   pra deixar "como está, por lutas ele vai upando"): "Pokémon dentro
+   da sua range de nível ganhará 2xp por combate vencido, 1 categoria
+   abaixo ganhará 1 e a cada categoria acima irá ser somado 1 de xp aos
+   2 de base. Categorias abaixo de 1 da base não dão XP." --
      mesma Faixa (diff 0)      -> 2 XP (base)
      1 Faixa ABAIXO (diff -1)  -> 1 XP
      2+ Faixas ABAIXO (diff<=-2) -> 0 XP (evita farm infinito de selvagem fraco)
@@ -8887,12 +8933,24 @@ function xpParaVitoria(nivelProprio, nivelOponente){
   if(diff===0) return 2;
   return 2+diff; // 1+ Faixas acima
 }
-/* Cap. leva desta sessão ("Se for mestre ele usará um range parecido
-   com as áreas e premiar sempre com um bônus de +3, além da XP
-   padrão"): bônus FIXO por Pokémon desmaiado, só em luta de Mestre
-   (b.kind==='trainer'), somado em cima de xpParaVitoria() de sempre --
-   ver resolveFaintAfterDamage. */
-var XP_BONUS_MESTRE = 3;
+/* Cap. leva desta sessão ("uma sugestão de bônus por treinador e outra
+   melhor para cada mestre... e uma sugestão de xp por raid"):
+   substitui o antigo bônus FIXO de Mestre (+3, que ficava insignificante
+   nas Faixas altas depois da curva progressiva acima) por MULTIPLICADORES
+   em cima de xpParaVitoria() de sempre -- nunca mudam a fórmula base, só
+   o quanto ela vale dependendo de QUEM foi derrotado:
+     Selvagem (kind 'wild')            -> ×1 (valor puro de sempre)
+     Treinador/Elite de Zona ('rival'/'elite') -> ×2 (NOVO -- antes não tinham bônus nenhum)
+     Mestre Especialista ('trainer', dá Insígnia) -> ×5
+     Raid, por TENTATIVA (ver finalizarBatalhaRaid) -> ×8 */
+var XP_MULT_TREINADOR = 2;
+var XP_MULT_MESTRE = 5;
+var XP_MULT_RAID = 8;
+function xpMultiplicadorPorTipoDeLuta(kind){
+  if(kind==='trainer') return XP_MULT_MESTRE;
+  if(kind==='rival' || kind==='elite') return XP_MULT_TREINADOR;
+  return 1; // selvagem ('wild') -- Raid usa XP_MULT_RAID à parte, ver finalizarBatalhaRaid
+}
 
 /* Evolução (Cap. "Na hora de evoluir, peço que pergunte ao treinador
    se ele quer impedir a evolução ou manter. Se ele impedir, todo
@@ -9072,8 +9130,8 @@ function grantXpAndMaybeEvolve(b, partyId, xpGain){
   if(!p || xpGain<=0) return false;
   var key = 'p_'+p.id;
   p.xpNivel = (p.xpNivel||0) + xpGain;
-  while(p.xpNivel>=XP_PARA_LEVEL_UP && p.level<NIVEL_MAX){
-    p.xpNivel -= XP_PARA_LEVEL_UP;
+  while(p.xpNivel>=xpParaProximoNivel(p.level) && p.level<NIVEL_MAX){
+    p.xpNivel -= xpParaProximoNivel(p.level);
     var oldMax = gaHpMax(p);
     p.level = clampInt(p.level+1, 1, NIVEL_MAX);
     gainFelicidade(p, FELICIDADE_POR_LEVEL); // Cap. leva desta sessão (tarefa #183/#felicidade) -- mesma aproximação documentada em eligibleEvolution, agora passando pelo Chá de Amizade também
@@ -9091,6 +9149,27 @@ function grantXpAndMaybeEvolve(b, partyId, xpGain){
   }
   if(p.level>=NIVEL_MAX) p.xpNivel = 0;
   return false;
+}
+/* Cap. leva desta sessão (Recompensa de XP de Raid -- participação
+   quando o boss cai E a NOVA por tentativa, ver finalizarBatalhaRaid):
+   MESMA curva de Nível de cima (xpParaProximoNivel), só sem pausar
+   esperando resposta de evolução -- reusa o mesmo raciocínio já
+   documentado em aplicarRecompensaRaid ("XP aplicada fora de uma luta
+   de verdade nunca dispara popup de evolução -- se cruzar Nível
+   elegível, a evolução fica pendente pro PRÓXIMO ganho de XP EM luta
+   de verdade"). Sem essa separação, 2+ Pokémon ganhando XP na MESMA
+   tentativa de Raid (ver b.usedPartyIds) poderiam disputar o ÚNICO
+   `b.pendingEvolution` da luta e perder a pergunta de evolução um do
+   outro. */
+function grantXpSemPausarEvolucao(p, xpGain){
+  if(!p || xpGain<=0) return;
+  p.xpNivel = (p.xpNivel||0) + xpGain;
+  while(p.xpNivel>=xpParaProximoNivel(p.level) && p.level<NIVEL_MAX){
+    p.xpNivel -= xpParaProximoNivel(p.level);
+    p.level = clampInt(p.level+1, 1, NIVEL_MAX);
+    gainFelicidade(p, FELICIDADE_POR_LEVEL);
+  }
+  if(p.level>=NIVEL_MAX) p.xpNivel = 0;
 }
 /* Responde o popup de evolução (Cap. "pergunte ao treinador se ele
    quer impedir a evolução ou manter"): aceitar troca a Espécie (num),
@@ -13840,7 +13919,7 @@ function loginScreenHTML(){
    leva que escondia o botão de vez). */
 function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel){
   var sp = speciesByNum(poke.num);
-  var progresso = poke.level>=NIVEL_MAX ? 'Nível máximo' : ((poke.xpNivel||0)+'/'+XP_PARA_LEVEL_UP+' XP pro próximo Nível');
+  var progresso = poke.level>=NIVEL_MAX ? 'Nível máximo' : ((poke.xpNivel||0)+'/'+xpParaProximoNivel(poke.level)+' XP pro próximo Nível');
   var lapis = !apelidoEditavel ? '' : (poke.apelido
     ? ' <span class="ga-apelido-lapis travado" title="Apelido já definido -- travado por enquanto">✏️</span>'
     : ' <span class="ga-apelido-lapis" title="Definir apelido (só uma vez)" onclick="event.stopPropagation();DT.gaAskApelido(\''+poke.id+'\')">✏️</span>');
