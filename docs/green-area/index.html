@@ -173,6 +173,25 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-poke-grid-equipe .ga-poke-card img{ width:88px; height:88px; }
 .ga-poke-grid-equipe .ga-poke-name{ font-size:1rem; }
 .ga-poke-grid-equipe .ga-poke-meta{ font-size:.76rem; }
+/* Cap. leva desta sessão ("O card da Raid e do histórico de raid pode
+   ficar maior, de forma que ele fique melhor distribuído em largura
+   no site. Pode ser do tamanho do card da equipe e centralizado"):
+   MESMO tamanho de card do `.ga-poke-grid-equipe` acima (padding/
+   sprite/fontes idênticos, pedido explícito "do tamanho do card da
+   equipe") -- mas NUNCA `1fr` aqui, porque a grade da Equipe sempre
+   tem até 6 cards enchendo a linha (esticar faz sentido), enquanto
+   Raids Ativas normalmente mostra só 1 e o Histórico no máximo 3 --
+   com `1fr` um único card esticaria até a largura inteira da tela,
+   gigante e distorcido. `minmax(170px,220px)` trava um teto de
+   verdade no tamanho de cada card, e `justify-content:center` centra
+   o conjunto de colunas dentro do espaço sobrando (em vez de esticar
+   cada card até a borda) -- exatamente "melhor distribuído em
+   largura... e centralizado". */
+.ga-poke-grid-raid{ grid-template-columns:repeat(auto-fit,minmax(170px,220px)); gap:14px; justify-content:center; }
+.ga-poke-grid-raid .ga-poke-card{ padding:16px; }
+.ga-poke-grid-raid .ga-poke-card img{ width:88px; height:88px; }
+.ga-poke-grid-raid .ga-poke-name{ font-size:1rem; }
+.ga-poke-grid-raid .ga-poke-meta{ font-size:.76rem; }
 /* Cap. leva desta sessão (Centro Pokémon): card de Treinador/pedido de
    amizade -- reaproveita o MESMO grid `.ga-poke-grid` de sempre, só
    com um card mais simples (sem sprite, só nome + ação). */
@@ -6083,7 +6102,7 @@ function raidsScreenHTML(){
     '<p class="ga-hint">Pokémon muito mais forte que o normal -- enfrente com seu time (você SEMPRE ataca primeiro, a Regra de Ouro da Raid), some dano no PV compartilhado dele junto com outros Treinadores, e ganhe recompensa de participação (XP/Pokédólares/itens) + uma chance de capturar quando ele cair, mesmo se você estiver offline na hora. Precisa de 1 🎟️ Raid Pass pra cada tentativa -- você tem <strong>'+(STATE.itens.raidpass||0)+'</strong> agora.</p>';
   out += !ativas.length
     ? '<p class="ga-hint">Nenhuma Raid ativa agora -- volte mais tarde.</p>'
-    : '<div class="ga-poke-grid">'+ativas.map(function(r){
+    : '<div class="ga-poke-grid ga-poke-grid-raid">'+ativas.map(function(r){
         var sp = speciesByNum(r.num);
         var hpAtual = Math.max(0, r.hpAtual);
         return '<div class="ga-poke-card">'+
@@ -6098,7 +6117,7 @@ function raidsScreenHTML(){
   out += '</div>';
   out += '<div class="ga-card"><h2>📜 Últimas Raids (histórico)</h2>'+
     (historico.length
-      ? '<div class="ga-poke-grid">'+historico.map(raidHistoricoCardHTML).join('')+'</div>'
+      ? '<div class="ga-poke-grid ga-poke-grid-raid">'+historico.map(raidHistoricoCardHTML).join('')+'</div>'
       : '<p class="ga-hint">Nenhuma Raid terminou ainda.</p>')+
   '</div>';
   return out;
