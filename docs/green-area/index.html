@@ -5338,41 +5338,61 @@ var EVOLUTION_MIN_HAPPINESS_OVERRIDE = { 700: 204 };
 var EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED = { 700: 'Fada' }; // mesma grafia de MOVES_DEX[*].tipo (ex. Moonblast: tipo:'Fada')
 /* Dia/Noite -- Cap. leva desta sessão ("Quero colocar o esquema de dia
    e noite no jogo... 4 períodos durante 24h, 1 dia dura 6h..."), COM a
-   correção da leva seguinte ("A hora ainda não tá legal. Não é pra
+   correção de uma leva seguinte ("A hora ainda não tá legal. Não é pra
    basear ela no real e sim no tempo do jogo. Exemplo: se o dia começa
    18h, tem que ser 00h no jogo. Aí entra o comparativo com a hora
    real. 3h no mundo real (horário de Brasília) tem que passar 12h de
    jogo. Aí seria o primeiro período 00h até 5:59h noite, 6h até
    17:59h dia e depois 18h em diante, noite, até o dia rodar de novo e
-   reiniciar o ciclo"): o relógio NÃO é mais o relógio real (UTC) cru
-   -- é um relógio ACELERADO, próprio do jogo, que NUNCA sincroniza
-   com a hora de parede de ninguém (nem UTC nem Brasília -- "se o dia
-   começa 18h [de verdade], tem que ser 00h no jogo": o relógio do
-   jogo sempre ZERA pro 00:00 no início de um novo "Dia do jogo",
-   não importa que horas são de verdade nesse instante). Razão fixa:
-   4h de jogo pra cada 1h real ("3h no mundo real tem que passar 12h
-   de jogo" = 3×4=12) -- cada "Dia do jogo" dura 6h reais (igual já
-   era, MS_POR_PERIODO_JOGO) e cabe DENTRO dele um dia inteiro de 24h
-   aceleradas (6h reais × 4 = 24h de jogo), sempre recomeçando do
-   00:00 exatamente quando o "Dia do jogo" vira. Continua sem depender
-   do fuso de cada jogador (2 jogadores em fusos diferentes têm que
-   ver o MESMO relógio de jogo ao mesmo tempo, pra mecânicas como
-   Troca ao vivo nunca discordarem) -- só que agora nem UTC nem
-   Brasília importam pro CÁLCULO em si (é só uma razão de tempo
-   decorrido, não uma hora de parede), a menção a Brasília no pedido
-   foi só a forma do jogador pensar a proporção.
+   reiniciar o ciclo"): o relógio NÃO é o relógio real (UTC) cru -- é
+   um relógio ACELERADO, próprio do jogo. Razão fixa: 4h de jogo pra
+   cada 1h real ("3h no mundo real tem que passar 12h de jogo" =
+   3×4=12) -- cada "Dia do jogo" dura 6h reais (MS_POR_PERIODO_JOGO) e
+   cabe DENTRO dele um dia inteiro de 24h aceleradas (6h reais × 4 =
+   24h de jogo).
+
+   Cap. CORREÇÃO desta sessão ("A hora não tá condizendo com o real.
+   Tá muito rápido... Era pra virar o dia 00h da vida real pra começar
+   um novo dia. Lembra que o contador do jogo em 6h corridas de
+   horário de brasília, ele tem que correr 24h do jogo. A partir da
+   range que te passei"): a leva anterior fatiava `Date.now()` (época
+   Unix, UTC) em blocos crus de 6h -- SEM alinhar esses blocos à hora
+   de parede de Brasília, então o "Dia do jogo" virava (e o relógio
+   acelerado zerava pro 00:00) em horários reais aleatórios feito
+   21h/03h/09h/15h de Brasília, nunca exatamente 00h/06h/12h/18h. Na
+   prática isso fazia o relógio acelerado parecer errado/rápido demais
+   -- o jogador via o relógio de jogo já adiantado (ou atrasado) bem
+   na hora que o relógio REAL de Brasília batia meia-noite, quando o
+   esperado era ele bater 00:00 EXATAMENTE nesse instante ("virar o
+   dia 00h da vida real pra começar um novo dia"). Corrigido ancorando
+   os blocos de 6h ao horário de BRASÍLIA de verdade (UTC-3 fixo --
+   Brasil aboliu o horário de verão em 2019, então esse deslocamento
+   NUNCA muda, sem precisar de tabela de DST): `BRASILIA_OFFSET_MS`
+   desloca `Date.now()` antes de qualquer conta de bloco/fração, de
+   forma que um novo "Dia do jogo" (e o relógio acelerado zerando pro
+   00:00) sempre bate EXATAMENTE nas 00h/06h/12h/18h de Brasília, nunca
+   mais num horário desalinhado -- a proporção em si (6h reais = 24h de
+   jogo, "a range que te passei": 00h-5:59 noite, 6h-17:59 dia,
+   18h-23:59 noite) continua idêntica, só a ÂNCORA no tempo real virou
+   a de verdade. Continua sem depender do fuso do DISPOSITIVO de cada
+   jogador (2 jogadores em fusos diferentes têm que ver o MESMO
+   relógio de jogo ao mesmo tempo, pra mecânicas como Troca ao vivo
+   nunca discordarem) -- o deslocamento é sempre o mesmo (Brasília,
+   fixo), nunca o fuso local do navegador de quem está jogando.
 
    `numeroDiaDoJogo()` continua sendo o contador de QUAL "Dia do jogo"
-   (bloco de 6h reais) estamos, ciclando 1-4 (ver correção "Dia 82832"
-   de uma leva anterior) -- isso não mudou nesta leva, só o hh:mm:ss
-   DENTRO de cada Dia. Dia/Noite pela hora ACELERADA agora: 00h-5:59
-   noite, 6h-17:59 dia, 18h-23:59 noite (pedido explícito, mesmo corte
-   madrugada/dia longo/noite dos jogos oficiais) -- 2 trocas de
-   Dia/Noite por "Dia do jogo" (a mesma contagem de 8 por dia real de
-   antes, só que a duração real de cada trecho não é mais simétrica:
-   os 12h de jogo "dia" cabem em 3h reais contínuas no meio do bloco,
-   e os 12h de jogo "noite" ficam divididos em 2 pontas de 1h30 reais
-   cada, no início e no fim do bloco).
+   (bloco de 6h reais, agora alinhado à Brasília) estamos, ciclando 1-4
+   (ver correção "Dia 82832" de uma leva anterior) -- isso não mudou
+   nesta leva, só a ÂNCORA de quando um bloco novo começa. Dia/Noite
+   pela hora ACELERADA: 00h-5:59 noite, 6h-17:59 dia, 18h-23:59 noite
+   (pedido explícito, mesmo corte madrugada/dia longo/noite dos jogos
+   oficiais) -- 2 trocas de Dia/Noite por "Dia do jogo" (a mesma
+   contagem de 8 por dia real de antes, só que a duração real de cada
+   trecho não é simétrica: os 12h de jogo "dia" cabem em 3h reais
+   contínuas no meio do bloco, e os 12h de jogo "noite" ficam divididos
+   em 2 pontas de 1h30 reais cada, no início e no fim do bloco -- e
+   agora o bloco em si começa exatamente às 00h/06h/12h/18h de
+   Brasília).
    Usado em eligibleEvolution pra checar `timeOfDay` de verdade (Eevee
    -> Espeon/Umbreon, Gligar -> Gliscor, Lycanroc etc., ~18 arestas ao
    todo) -- automaticamente, sem precisar mexer em nenhuma delas
@@ -5382,7 +5402,18 @@ var EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED = { 700: 'Fada' }; // mesma grafia de MOV
    exato pedido: "Dia N -- hh:mm -- dia/noite". */
 var MS_POR_PERIODO_JOGO = 6*60*60*1000; // 6h reais = 1 "Dia do jogo"
 var MS_POR_DIA_JOGO_ACELERADO = 24*60*60*1000; // 1 dia de jogo inteiro (24h aceleradas) cabe dentro de 1 "Dia do jogo" (6h reais) -- razão fixa de 4h de jogo por 1h real
-function periodoDoJogoIndex(){ return Math.floor(Date.now()/MS_POR_PERIODO_JOGO); } // 0-based, cresce pra sempre, nunca reinicia -- uso INTERNO (diff de Dia pro grant de Pokéticket), nunca exibido cru
+/* Cap. CORREÇÃO desta sessão: Brasília (America/Sao_Paulo) é UTC-3 FIXO
+   desde que o país aboliu o horário de verão em 2019 -- nunca varia ao
+   longo do ano, então um deslocamento simples (sem `Intl`/tabela de
+   fuso) já alinha os cálculos de bloco à hora de parede real de
+   Brasília pra sempre, com precisão total. Meia-noite em Brasília
+   (00h) é 03h em UTC -- subtrair esse deslocamento de `Date.now()`
+   ANTES de qualquer `%`/`/` por `MS_POR_PERIODO_JOGO` faz o "grid" de
+   6h (que naturalmente bate em 00h/06h/12h/18h UTC, já que a época
+   Unix começa exatamente à meia-noite UTC) passar a bater em
+   00h/06h/12h/18h de BRASÍLIA em vez de UTC. */
+var BRASILIA_OFFSET_MS = 3*60*60*1000;
+function periodoDoJogoIndex(){ return Math.floor((Date.now()-BRASILIA_OFFSET_MS)/MS_POR_PERIODO_JOGO); } // 0-based, cresce pra sempre, nunca reinicia -- uso INTERNO (diff de Dia pro grant de Pokéticket), nunca exibido cru
 /* Cap. leva desta sessão ("Isso aqui tá muito estranho. Porque tá com
    esses dias e essa hora bugada?" -- "Dia 82832" apareceu na tela):
    `periodoDoJogoIndex()` cru é contado desde 1970 de propósito (só
@@ -5423,7 +5454,7 @@ function numeroDiaDoJogo(){
    que um novo bloco de 6h reais começa, escalando proporcionalmente
    (razão fixa de 4x) o tempo real decorrido dentro do bloco atual. */
 function msDentroDoDiaJogoAcelerado(){
-  var msDentroDoBloco = Date.now() % MS_POR_PERIODO_JOGO; // 0..6h reais
+  var msDentroDoBloco = (Date.now()-BRASILIA_OFFSET_MS) % MS_POR_PERIODO_JOGO; // 0..6h reais, alinhado à meia-noite de Brasília
   var fracaoDoBloco = msDentroDoBloco / MS_POR_PERIODO_JOGO; // 0..1
   return Math.floor(fracaoDoBloco * MS_POR_DIA_JOGO_ACELERADO); // 0..24h aceleradas
 }
@@ -7359,7 +7390,7 @@ function tickPoketickets(){
   }
 }
 function secondsToNextPoketicketTick(){
-  var into = Date.now() % MS_POR_PERIODO_JOGO;
+  var into = (Date.now()-BRASILIA_OFFSET_MS) % MS_POR_PERIODO_JOGO; // mesma âncora de Brasília do resto do relógio
   return Math.max(0, Math.ceil((MS_POR_PERIODO_JOGO - into)/1000));
 }
 function formatHHMMSS(totalSeg){
