@@ -12078,35 +12078,29 @@ DT.gaIniciarLutasComTodaEnergia = function(leadId, zonaId){
    automática nem estiver ligada, ver pendingSequenciaConfirmPopupHTML),
    mas guardado como campo PRÓPRIO da sequência (não um sub-estado de
    autoCapturar) pra ficar simples de ler em resolverLutaAutomaticamente. */
-DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl, ignorarJaCapturadosEl, instantaneoEl){
+DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl, ignorarJaCapturadosEl){
   var psc = SESSION.pendingSequenciaConfirm; if(!psc) return;
   SESSION.pendingSequenciaConfirm = null;
   var autoCapturar = !!(autoCapEl && autoCapEl.checked);
   var autoCurar = !!(autoCurEl && autoCurEl.checked);
   var ignorarPossuidos = autoCapturar && !!(ignorarPossuidosEl && ignorarPossuidosEl.checked);
   var ignorarJaCapturados = autoCapturar && !!(ignorarJaCapturadosEl && ignorarJaCapturadosEl.checked);
-  var instantaneo = !!(instantaneoEl && instantaneoEl.checked);
   var zona = zonaByStatus(psc.zonaId);
-  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, ignorarJaCapturados: ignorarJaCapturados, instantaneo: instantaneo, finished:false, pararSemEnergia:false, relatorio:[], lastTickAt: Date.now() };
-  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+(ignorarPossuidos?', ignorando quem já tem':'')+(ignorarJaCapturados?', ignorando quem já capturei alguma vez':'')+', cura automática '+(autoCurar?'LIGADA':'desligada')+(instantaneo?', modo INSTANTÂNEO (pulou direto pro relatório final)':'')+').');
+  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, ignorarJaCapturados: ignorarJaCapturados, finished:false, pararSemEnergia:false, relatorio:[], lastTickAt: Date.now() };
+  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+(ignorarPossuidos?', ignorando quem já tem':'')+(ignorarJaCapturados?', ignorando quem já capturei alguma vez':'')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
   mutate();
-  /* Cap. leva desta sessão ("em vez de gerar luta por luta, só me dar o
-     resultado final com o relatório de como foi?"): com o toggle
-     ligado, roda captureSequenceTick() em loop synchronous até a
-     sequência terminar (MESMO padrão já usado em catchUpCaptureSequence
-     pro catch-up retroativo de F5/aba escondida) em vez de esperar o
-     relógio de fundo (1,5s por luta) -- a tela já pula direto pro
-     relatório final sozinha, porque sequenciaFimScreenHTML dispara
-     assim que STATE.captureSequence.finished vira true (ver render()),
-     não importa se isso levou 1 tick ou 50. */
-  if(instantaneo){
-    var guardInstantaneo = 0;
-    while(STATE.captureSequence && !STATE.captureSequence.finished && guardInstantaneo<CATCHUP_MAX_TICKS){
-      captureSequenceTick();
-      guardInstantaneo++;
-    }
-  } else {
-    captureSequenceTick(); // dispara a 1ª luta na hora, sem esperar o próximo tick do relógio de fundo
+  /* Cap. leva desta sessão ("mantenha ele como padrão... vamos abolir o
+     modo lento de antes"): o modo "luta por luta" (esperar o relógio
+     de fundo resolver 1 luta a cada 1,5s) saiu de vez -- toda
+     sequência agora roda captureSequenceTick() em loop synchronous até
+     terminar (MESMO padrão já usado em catchUpCaptureSequence pro
+     catch-up retroativo de F5/aba escondida) e a tela já pula direto
+     pro relatório final sozinha, porque sequenciaFimScreenHTML dispara
+     assim que STATE.captureSequence.finished vira true (ver render()). */
+  var guardInstantaneo = 0;
+  while(STATE.captureSequence && !STATE.captureSequence.finished && guardInstantaneo<CATCHUP_MAX_TICKS){
+    captureSequenceTick();
+    guardInstantaneo++;
   }
 };
 DT.gaCancelarSequencia = function(){ SESSION.pendingSequenciaConfirm = null; render(); };
@@ -14629,18 +14623,15 @@ function pendingSequenciaConfirmPopupHTML(){
     '<label class="ga-check-row" style="margin-left:22px"><input type="checkbox" id="gaSeqIgnorarJaCapturados"> 📕 Não tentar capturar quem eu já capturei alguma vez (mesmo fora da Equipe/Caixa hoje)</label>'+
     '<label class="ga-check-row"><input type="checkbox" id="gaSeqAutoCur"> 💊 Curar automaticamente (usa o item de cura mais recomendado pra situação)</label>'+
     '<p class="ga-hint">Se deixar as duas primeiras desmarcadas, a sequência roda do mesmo jeito, só que sem gastar nenhum item nem Pokébola.</p>'+
-    /* Cap. leva desta sessão ("em vez de gerar luta por luta, só me dar
-       o resultado final com o relatório de como foi?"): 5º toggle,
-       INDEPENDENTE dos outros 4 -- só muda o RITMO (resolve tudo numa
-       tacada só, sem esperar o relógio de fundo de 1,5s por luta),
-       nunca a mecânica em si (mesmo captureSequenceTick de sempre, só
-       chamado em loop synchronous em vez de aguardar o tick). Com isso
-       ligado, a tela pula direto pro relatório final (sequenciaFimScreenHTML
-       já dispara sozinha assim que STATE.captureSequence.finished vira
-       true, não importa como chegou lá -- ver render()). */
-    '<label class="ga-check-row"><input type="checkbox" id="gaSeqInstantaneo"> ⚡ Resolver tudo de uma vez (pula direto pro relatório final, sem mostrar luta por luta)</label>'+
+    /* Cap. leva desta sessão ("mantenha ele como padrão... vamos abolir
+       o modo lento de antes"): o que era o 5º toggle opcional
+       ("⚡ Resolver tudo de uma vez") virou o ÚNICO comportamento --
+       sem checkbox, sem mais o modo "luta por luta" no relógio de
+       fundo (1,5s cada). gaConfirmarSequencia agora sempre roda
+       captureSequenceTick() em loop synchronous até terminar. */
+    '<p class="ga-hint">⚡ A sequência inteira roda de uma vez e a tela já pula direto pro relatório final.</p>'+
     '<div class="ga-btn-row">'+
-      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarSequencia(document.getElementById(\'gaSeqAutoCap\'),document.getElementById(\'gaSeqAutoCur\'),document.getElementById(\'gaSeqIgnorarPossuidos\'),document.getElementById(\'gaSeqIgnorarJaCapturados\'),document.getElementById(\'gaSeqInstantaneo\'))">▶️ Começar sequência</button>'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarSequencia(document.getElementById(\'gaSeqAutoCap\'),document.getElementById(\'gaSeqAutoCur\'),document.getElementById(\'gaSeqIgnorarPossuidos\'),document.getElementById(\'gaSeqIgnorarJaCapturados\'))">▶️ Começar sequência</button>'+
       '<button class="ga-btn-sm" onclick="DT.gaCancelarSequencia()">Cancelar</button>'+
     '</div>'+
   '</div></div>';
