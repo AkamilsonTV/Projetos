@@ -192,6 +192,17 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-poke-grid-raid .ga-poke-card img{ width:88px; height:88px; }
 .ga-poke-grid-raid .ga-poke-name{ font-size:1rem; }
 .ga-poke-grid-raid .ga-poke-meta{ font-size:.76rem; }
+/* Cap. leva desta sessão ("Coloca um preview de como vai ficar a raid
+   aqui... Pode ser a direita, no espaço vazio"): o form de "Iniciar
+   nova Raid" (campos) e o painel de preview ficam lado a lado num
+   flex -- o preview ocupa o espaço vazio à DIREITA em telas largas
+   (pedido explícito), e cai pra BAIXO em telas estreitas (mobile,
+   sem espaço sobrando nenhum pra ficar "à direita" de verdade). */
+.ga-raid-form-flex{ display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+.ga-raid-form-flex .ga-raid-form-fields{ flex:2 1 320px; }
+.ga-raid-preview{ flex:1 1 220px; background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
+.ga-raid-preview img{ width:72px; height:72px; display:block; margin:0 auto 6px; image-rendering:pixelated; }
+.ga-raid-preview ul{ list-style:none; padding:0; margin:6px 0; text-align:left; display:inline-block; }
 /* Cap. leva desta sessão (Centro Pokémon): card de Treinador/pedido de
    amizade -- reaproveita o MESMO grid `.ga-poke-grid` de sempre, só
    com um card mais simples (sem sprite, só nome + ação). */
@@ -311,10 +322,20 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-movdex-efeito{ min-width:260px; color:var(--ink-dim); }
 
 .ga-subhead{ margin:16px 0 4px; font-size:.95rem; color:var(--accent); }
-.ga-zona-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:8px; }
-.ga-zona-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:12px; text-align:center; display:flex; flex-direction:column; }
+/* Cap. leva desta sessão ("Os cards de locais de captura divida em
+   grupos de no máximo 4, centraliza e aumenta o card, pra ficar
+   melhor distribuído"): `minmax(200px,240px)` trava um card maior que
+   antes (era 180px+1fr, esticava fino em telas largas), e o
+   `max-width` do próprio grid é calculado pra caber EXATAMENTE 4
+   colunas de 240px + os gaps entre elas -- nunca mais de 4 por linha,
+   não importa quão larga a tela fique. `margin:0 auto` + `justify-
+   content:center` centralizam tanto o bloco quanto a última linha
+   incompleta (Zonas sobrando <4). Continua responsivo pra baixo
+   (auto-fit reduz colunas sozinho em telas estreitas/celular). */
+.ga-zona-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,240px)); gap:14px; margin:8px auto 0; justify-content:center; max-width:calc(4*240px + 3*14px); }
+.ga-zona-card{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:18px; text-align:center; display:flex; flex-direction:column; }
 .ga-zona-card.locked{ opacity:.5; }
-.ga-zona-nome{ font-weight:700; font-size:.92rem; margin-bottom:2px; }
+.ga-zona-nome{ font-weight:700; font-size:1.05rem; margin-bottom:2px; }
 .ga-zona-actions{ margin-top:auto; padding-top:8px; display:flex; flex-direction:column; gap:6px; align-items:center; }
 /* Cap. leva desta sessão ("lutar várias vezes"): input de quantidade +
    botão de repetição lado a lado, sem estourar a largura do card. */
@@ -5114,6 +5135,29 @@ var GA_ITEMS = [
   { key:'hiperpocao', nome:'Hyper Potion', emoji:'🧪', icon:'hyper-potion', curaPct:1.00, preco:60, desc:'Restaura 100% do PV Máximo do Pokémon (cura total).' }
 ];
 function itemByKey(key){ return GA_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
+/* Cap. leva desta sessão ("Na lista de recompensas da raid, deixe
+   qualquer item que tenhamos no jogo disponível, assim posso escolher
+   o que quiser pra dar como prêmio, desde poções, dinheiro, pokébolas
+   e etc. E a cada item que adicionarmos novo no jogo, que ele seja
+   disponibilizado lá"): concatena os MESMOS catálogos que a Loja usa
+   (ver lojaScreenHTML) -- referenciando os arrays de verdade (nunca
+   copiando valores), então qualquer item novo empurrado num desses
+   catálogos aparece aqui sozinho, sem precisar tocar nesta função de
+   novo. "Dinheiro" já é um campo numérico à parte (Pokédólares de
+   participação, ver raidConfigAtual), não entra como "item" desta
+   lista. TMs ficam de fora de propósito -- guardadas por NOME do
+   Movimento em STATE.tms, não por `key` em STATE.itens/STATE.pokebolas
+   como todo o resto (mesma separação que a própria Loja já mantém
+   numa seção à parte, "💿 TMs"). Definida como FUNÇÃO (não array
+   fixo) só por clareza de leitura -- os arrays concatenados (POKEBALLS,
+   EVOLUTION_STONES etc.) já existem prontos no momento em que o
+   Console de Raid é desenhado (bem depois da carga inicial do
+   script), então não precisa nem podia ser cacheada antes disso. */
+function raidRecompensaCatalogoCompleto(){
+  return POKEBALLS.concat(GA_ITEMS, EVOLUTION_STONES, EVOLUTION_EXCLUSIVE_ITEMS, HELD_ITEMS, EVOLUTION_HELD_ITEMS, ORICORIO_NECTAR_ITEMS);
+}
+function itemByKeyQualquer(key){ return raidRecompensaCatalogoCompleto().filter(function(i){ return i.key===key; })[0] || null; }
+function raidItemEhPokebola(key){ return POKEBALLS.some(function(b){ return b.key===key; }); }
 /* Cap. leva desta sessão (tarefa #183 -- "evoluções não-por-Nível de
    verdade"): as 10 pedras de evolução "clássicas" (cada uma usada por
    2 ou mais Espécies, ver fetch_evolution_details.js) -- as outras
@@ -5649,9 +5693,15 @@ function raidRankingDano(raid){
    dentro de mutate() E do timer de fundo (energyTickLoop), então roda
    sozinho, não importa a tela. `STATE.raidPassTrack` guarda QUAL Raid
    está sendo acompanhada agora -- trocar de Raid (a antiga acabou, uma
-   nova começou) NUNCA carrega passe sobrando: zera puro. Fase 1 (ver
-   README/changelog): só 1 Raid ativa por vez, então "a Raid ativa" é
-   sempre a primeira (e única) de raidsAtivas(). */
+   nova começou) NUNCA carrega passe sobrando: zera puro. Cap. leva
+   desta sessão ("gerenciar várias Raids"): o Admin agora pode ter
+   VÁRIAS Raids ativas ao mesmo tempo (ver raidAdminCardHTML) -- a
+   economia de Raid Pass continua simplificada, seguindo só a PRIMEIRA
+   de raidsAtivas() (a mais antiga ainda ativa) por vez; ela some da
+   lista quando expira/é encerrada e a 2ª assume o lugar (concede uma
+   parcela nova, mesmo comportamento de "1ª vez vendo esta Raid" já
+   documentado abaixo) -- simplificação aceitável porque o Raid Pass é
+   um recurso ÚNICO (não por Raid) gasto na entrada de QUALQUER Raid. */
 function tickRaidPass(){
   if(!STATE) return;
   STATE.itens = STATE.itens||{};
@@ -5857,7 +5907,15 @@ function processarRecompensasRaidPendentes(pendentes, docId){
 function aplicarRecompensaRaid(rec){
   STATE.pokedolares = (STATE.pokedolares||0) + (rec.pokedolares||0);
   STATE.itens = STATE.itens||{};
-  Object.keys(rec.itens||{}).forEach(function(k){ STATE.itens[k] = (STATE.itens[k]||0) + rec.itens[k]; });
+  STATE.pokebolas = STATE.pokebolas||{};
+  /* Cap. leva desta sessão -- a lista de itens de recompensa agora
+     pode incluir Pokébolas também (ver raidRecompensaCatalogoCompleto),
+     que NUNCA moram em STATE.itens (mesma separação usada em todo o
+     resto do jogo, ver DT.gaComprarItem) -- rotea pro balde certo. */
+  Object.keys(rec.itens||{}).forEach(function(k){
+    if(raidItemEhPokebola(k)) STATE.pokebolas[k] = (STATE.pokebolas[k]||0) + rec.itens[k];
+    else STATE.itens[k] = (STATE.itens[k]||0) + rec.itens[k];
+  });
   var p = STATE.party[0];
   if(p && rec.xp>0){
     p.xpNivel = (p.xpNivel||0) + rec.xp;
@@ -5962,7 +6020,6 @@ DT.gaEnviarMensagemRaidChat = function(raidId, inputEl){
    Pokédex" por completo, nunca mais pede o número. */
 DT.gaAdminIniciarRaid = function(nomeEl, levelEl, duracaoEl, habEl){
   if(!SESSION.isAdmin) return;
-  if(raidsAtivas().length>0){ SESSION.error='Já existe uma Raid ativa -- encerre ela antes de iniciar outra.'; render(); return; }
   var sp = speciesByName(nomeEl && nomeEl.value);
   if(!sp){ SESSION.error='Espécie inválida -- digite o NOME exato de um Pokémon real (use a lista de sugestão que aparece ao digitar).'; render(); return; }
   var num = sp.num;
@@ -5994,11 +6051,95 @@ DT.gaAdminIniciarRaid = function(nomeEl, levelEl, duracaoEl, habEl){
 };
 DT.gaAdminEncerrarRaid = function(raidId){
   if(!SESSION.isAdmin || !raidsCol) return;
+  SESSION.confirmRaidEnd = null;
   raidsCol.doc(raidId).update({ finished:'encerrado_admin', finishedAt:Date.now() }).then(function(){
     logAction('admin', 'Encerrou uma Raid manualmente.');
     mutate();
   }).catch(function(err){ SESSION.error='Não consegui encerrar a Raid ('+erroFirestoreMsg(err)+').'; render(); });
 };
+/* Cap. leva desta sessão ("Sempre que eu criar raid, o menu de raid
+   deve ficar ali ativo. Crie um menu que eu possa escolher qual raid
+   está ativa pra gerenciar ela, no caso pra encerrar... Coloque um
+   aviso perguntando se eu tenho certeza"): o Admin agora pode ter
+   VÁRIAS Raids ativas ao mesmo tempo (ver remoção da trava antiga em
+   DT.gaAdminIniciarRaid) -- `SESSION.raidAdminGerenciarId` guarda QUAL
+   delas está selecionada no dropdown "gerenciar" (ver raidAdminCardHTML),
+   e Encerrar sempre passa por um popup de confirmação de tela cheia
+   (mesmo padrão `.ga-overlay` de DT.gaAskLiberar/confirmarLiberarPopupHTML). */
+DT.gaRaidAdminSelecionar = function(raidId){
+  if(!SESSION.isAdmin) return;
+  SESSION.raidAdminGerenciarId = raidId;
+  render();
+};
+DT.gaAskEncerrarRaid = function(raidId){
+  if(!SESSION.isAdmin) return;
+  SESSION.confirmRaidEnd = raidId;
+  render();
+};
+DT.gaCancelEncerrarRaid = function(){ SESSION.confirmRaidEnd = null; render(); };
+function confirmarEncerrarRaidPopupHTML(raidId){
+  var raid = raidPorId(raidId);
+  if(!raid) return '';
+  var sp = speciesByNum(raid.num);
+  return '<div class="ga-overlay" onclick="DT.gaCancelEncerrarRaid()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelEncerrarRaid()">✕</button>'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(raid.num)+'" alt="">'+
+    '<h2>🚫 Encerrar a Raid de '+esc2(sp?sp.name:('#'+raid.num))+'?</h2>'+
+    '<p class="ga-hint">Tem certeza que quer encerrar esta Raid ('+esc2(sp?sp.name:('#'+raid.num))+', Nv. '+raid.level+', PV '+Math.max(0,raid.hpAtual)+'/'+raid.hpMax+') agora? Essa ação não pode ser desfeita -- ninguém mais vai conseguir lutar contra ela, e nenhuma recompensa de vitória é distribuída (só conta como encerrada pelo Admin).</p>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm danger" onclick="DT.gaAdminEncerrarRaid(\''+raidId+'\')">🚫 Encerrar pra sempre</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaCancelEncerrarRaid()">Cancelar</button>'+
+    '</div>'+
+  '</div></div>';
+}
+/* Cap. leva desta sessão ("Coloca um preview de como vai ficar a raid
+   aqui, de acordo com as configurações que eu definir, pra facilitar
+   na hora de criar"): botão "👁️ Pré-visualizar" lê os MESMOS campos
+   de nome/Nível/Habilidade do form (sem gastar nada nem gravar no
+   Firestore) e guarda um instantâneo em `SESSION.raidPreview` -- os
+   próprios inputs voltam a mostrar esse valor depois do render() (ver
+   raidAdminCardHTML), então nunca "some" o que o Admin já tinha
+   digitado. */
+DT.gaRaidPreview = function(nomeEl, levelEl, habEl){
+  if(!SESSION.isAdmin) return;
+  SESSION.raidPreview = {
+    nome: ((nomeEl && nomeEl.value)||'').trim(),
+    level: clampInt(Math.floor(Number(levelEl && levelEl.value))||50, 1, NIVEL_MAX),
+    hab: ((habEl && habEl.value)||'').trim()
+  };
+  render();
+};
+function raidPreviewPanelHTML(cfg){
+  var pv = SESSION.raidPreview;
+  if(!pv) return '';
+  var sp = speciesByName(pv.nome);
+  if(!sp) return '<div class="ga-raid-preview"><h3 class="ga-subhead">👁️ Preview</h3><p class="ga-hint">⚠️ Espécie "'+esc2(pv.nome)+'" não encontrada -- confira o nome (use a lista de sugestão).</p></div>';
+  var level = pv.level;
+  var hpBase = officialStat(sp.num, level, 'hp', null, null);
+  var hpMax = Math.max(1, Math.round(hpBase * cfg.hpMult));
+  var statsOrdem = [['atk','Ataque'],['def','Defesa'],['spa','Atq. Especial'],['spd','Def. Especial'],['spe','Velocidade']];
+  var statsHTML = statsOrdem.map(function(s){
+    var base = officialStat(sp.num, level, s[0], null, null);
+    return '<li>'+s[1]+': <strong>'+Math.round(base*cfg.statMult)+'</strong></li>';
+  }).join('');
+  var habilidadeTxt;
+  if(pv.hab){
+    var habValida = (sp.hab||[]).some(function(h){ return h.n===pv.hab; });
+    habilidadeTxt = habValida ? ('🔒 '+esc2(pv.hab)+' (travada)') : ('⚠️ "'+esc2(pv.hab)+'" não é uma Habilidade real de '+esc2(sp.name)+' -- a Raid não vai iniciar assim.');
+  } else {
+    habilidadeTxt = 'Aleatória entre: '+((sp.hab||[]).filter(function(h){ return !h.raid; }).map(function(h){ return h.n; }).join(', ')||'—');
+  }
+  var chanceBase = (CAPTURE_RATE[sp.num]!==undefined) ? CAPTURE_RATE[sp.num] : 45;
+  var chanceEstim = clampInt(Math.round((chanceBase/255) * cfg.captureMult * 100), 1, 95);
+  return '<div class="ga-raid-preview"><h3 class="ga-subhead">👁️ Preview</h3>'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(sp.num)+'" alt="">'+
+    '<p><strong>'+esc2(sp.name)+'</strong> (Nv. '+level+')</p>'+
+    '<p class="ga-hint">PV Máximo: <strong>'+hpMax+'</strong></p>'+
+    '<ul class="ga-hint">'+statsHTML+'</ul>'+
+    '<p class="ga-hint">Habilidade: '+habilidadeTxt+'</p>'+
+    '<p class="ga-hint">Chance de captura estimada com Pokébola comum: ~'+chanceEstim+'%</p>'+
+  '</div>';
+}
 /* Cap. leva desta sessão ("Não é melhor eu selecionar o item de uma
    lista, colocar a quantidade e ir adicionando a listagem do Pokémon
    que eu decidi?"): substitui o antigo campo de texto livre "chave:
@@ -6015,7 +6156,7 @@ DT.gaRaidItemAdd = function(itemEl, qtdEl){
   if(!SESSION.isAdmin) return;
   var key = itemEl && itemEl.value;
   var qtd = Math.floor(Number(qtdEl && qtdEl.value));
-  if(!key || !GA_ITEMS.some(function(it){ return it.key===key; })) return;
+  if(!key || !itemByKeyQualquer(key)) return;
   if(!qtd || qtd<1) return;
   if(!SESSION.raidItensDraft) SESSION.raidItensDraft = Object.assign({}, raidConfigAtual().itensParticipacao||{});
   SESSION.raidItensDraft[key] = qtd;
@@ -7014,7 +7155,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null };
 
 function freshState(trainerName){
   return {
@@ -10435,7 +10576,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null };
   render();
 };
 
@@ -13212,6 +13353,7 @@ function screenHTML(){
      popups de prioridade acima -- mantém o fundo (a própria tela de
      Raids), popup por cima. */
   if(SESSION.pendingRaidBola) return wrap(raidsScreenHTML()) + pendingRaidBolaPopupHTML();
+  if(SESSION.confirmRaidEnd) return wrap(adminScreenHTML()) + confirmarEncerrarRaidPopupHTML(SESSION.confirmRaidEnd);
   switch(SESSION.screen){
     case 'equipe': return wrap(equipeScreenHTML());
     case 'dex': return wrap(dexScreenHTML());
@@ -14012,7 +14154,13 @@ function capturaScreenHTML(){
       : '')+
     ticketParaEnergiaWidgetHTML('captura')+
     (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é quem entra primeiro na luta (e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita) -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
-    '<div class="ga-poke-grid">'+STATE.party.map(function(p, i){
+    /* Cap. leva desta sessão ("Os cards da equipe [na Área de Captura],
+       preencha ali em cima igual fez no quadro de equipe, pra ele
+       ficar por igual e ocupando todo o espaço"): mesma grade
+       `.ga-poke-grid-equipe` (cards maiores, esticando `1fr` pra
+       preencher a linha) já usada na tela 🎒 Equipe -- antes essa
+       grade aqui usava a `.ga-poke-grid` genérica (cards pequenos). */
+    '<div class="ga-poke-grid ga-poke-grid-equipe">'+STATE.party.map(function(p, i){
       var actions = '<div class="ga-poke-actions">'+
         (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
         (STATE.party.length>1 ? '<div class="ga-btn-row">'+
@@ -14357,29 +14505,61 @@ function raidAdminCardHTML(){
   // que esta tela é montada (nunca sobrescreve uma edição em andamento).
   if(!SESSION.raidItensDraft) SESSION.raidItensDraft = Object.assign({}, cfg.itensParticipacao||{});
   var out = '<div class="ga-card"><h2>🏴 Console de Raid</h2>';
+  /* Cap. leva desta sessão ("Sempre que eu criar raid, o menu de raid
+     deve ficar ali ativo. Crie um menu que eu possa escolher qual raid
+     está ativa pra gerenciar ela"): o Admin pode ter VÁRIAS Raids
+     ativas ao mesmo tempo agora (a trava antiga de "só 1 por vez" foi
+     removida de DT.gaAdminIniciarRaid) -- com 2+ ativas, um <select>
+     escolhe QUAL delas os detalhes/botão Encerrar abaixo se referem
+     (`SESSION.raidAdminGerenciarId`, sempre cai numa ativa de verdade,
+     nunca trava numa Raid que já encerrou/expirou nem em branco). */
   if(ativas.length){
-    out += ativas.map(function(r){
-      var sp = speciesByNum(r.num);
-      return '<p class="ga-hint">Raid ativa: <strong>'+esc2(sp?sp.name:('#'+r.num))+'</strong> (Nv. '+r.level+') -- PV '+Math.max(0,r.hpAtual)+'/'+r.hpMax+', expira em '+esc2(new Date(r.expiresAt).toLocaleString('pt-BR'))+'.</p>'+
-        '<button class="ga-btn-sm danger" onclick="DT.gaAdminEncerrarRaid(\''+r.id+'\')">🚫 Encerrar esta Raid</button>';
-    }).join('');
+    if(!SESSION.raidAdminGerenciarId || !ativas.some(function(r){ return r.id===SESSION.raidAdminGerenciarId; })){
+      SESSION.raidAdminGerenciarId = ativas[0].id;
+    }
+    var gerenciando = ativas.filter(function(r){ return r.id===SESSION.raidAdminGerenciarId; })[0] || ativas[0];
+    var spG = speciesByNum(gerenciando.num);
+    out += '<p class="ga-hint">'+ativas.length+' Raid(s) ativa(s) agora'+(ativas.length>1?' -- escolha qual gerenciar:':'.')+'</p>';
+    if(ativas.length>1){
+      out += '<div class="ga-btn-row"><select id="gaRaidGerenciarSelect" class="ga-capqtd-input" onchange="DT.gaRaidAdminSelecionar(this.value)">'+
+        ativas.map(function(r){
+          var sp = speciesByNum(r.num);
+          return '<option value="'+r.id+'" '+(r.id===gerenciando.id?'selected':'')+'>'+esc2(sp?sp.name:('#'+r.num))+' (Nv. '+r.level+') -- expira '+esc2(new Date(r.expiresAt).toLocaleDateString('pt-BR'))+'</option>';
+        }).join('')+'</select></div>';
+    }
+    out += '<p class="ga-hint">Gerenciando: <strong>'+esc2(spG?spG.name:('#'+gerenciando.num))+'</strong> (Nv. '+gerenciando.level+') -- PV '+Math.max(0,gerenciando.hpAtual)+'/'+gerenciando.hpMax+', expira em '+esc2(new Date(gerenciando.expiresAt).toLocaleString('pt-BR'))+'.</p>'+
+      '<button class="ga-btn-sm danger" onclick="DT.gaAskEncerrarRaid(\''+gerenciando.id+'\')">🚫 Encerrar esta Raid</button>';
   } else {
-    /* Cap. leva desta sessão ("não peça o pokemon pelo número, me
-       deixa buscar ele pelo nome com lista de sugestão, é melhor"):
-       campo de texto com <datalist> nativo do HTML -- o navegador
-       filtra as 1025 sugestões sozinho conforme o Admin digita, sem
-       precisar de nenhum render() por tecla (que perderia o foco do
-       campo, já que este app inteiro re-renderiza via innerHTML). */
-    out += '<p class="ga-hint">Nenhuma Raid ativa agora. Escolha uma Espécie (pelo NOME -- digite e escolha da lista de sugestão), Nível e duração (em Dias do jogo -- padrão sugerido: '+cfg.duracaoDiasPadrao+') pra iniciar uma nova.</p>'+
-      '<div class="ga-btn-row">'+
-        '<input type="text" id="gaRaidNomeBusca" list="gaRaidSpeciesDatalist" placeholder="Nome do Pokémon (ex: Charizard)" class="ga-capqtd-input" autocomplete="off">'+
-        '<datalist id="gaRaidSpeciesDatalist">'+SPECIES_DEX.map(function(sp){ return '<option value="'+esc2(sp.name)+'">'; }).join('')+'</datalist>'+
-        '<input type="number" min="1" max="'+NIVEL_MAX+'" step="1" id="gaRaidLevel" placeholder="Nível" class="ga-capqtd-input">'+
-        '<input type="number" min="1" step="1" id="gaRaidDuracao" placeholder="Dias do jogo" class="ga-capqtd-input">'+
-        '<input type="text" id="gaRaidHab" placeholder="Habilidade (opcional -- vazio = aleatória)" class="ga-chat-input" title="Deixe vazio pra sortear entre as Habilidades normais da Espécie (padrão). Preenchido, precisa ser EXATAMENTE uma Habilidade real dela (confere \'Habilidades possíveis\' na Pokédex) -- ex: \'Own Tempo\' só existe assim pro Rockruff, exatamente por isso essa Habilidade especial só sai daqui.">'+
-        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminIniciarRaid(document.getElementById(\'gaRaidNomeBusca\'),document.getElementById(\'gaRaidLevel\'),document.getElementById(\'gaRaidDuracao\'),document.getElementById(\'gaRaidHab\'))">🏴 Iniciar Raid</button>'+
-      '</div>';
+    out += '<p class="ga-hint">Nenhuma Raid ativa agora.</p>';
   }
+  /* Cap. leva desta sessão ("não peça o pokemon pelo número, me deixa
+     buscar ele pelo nome com lista de sugestão, é melhor"): campo de
+     texto com <datalist> nativo do HTML -- o navegador filtra as 1025
+     sugestões sozinho conforme o Admin digita, sem precisar de nenhum
+     render() por tecla (que perderia o foco do campo, já que este app
+     inteiro re-renderiza via innerHTML). Formulário SEMPRE visível
+     agora (antes só aparecia com 0 Raids ativas) -- o Admin pode
+     iniciar uma 2ª/3ª Raid a qualquer momento, já que várias podem
+     rodar juntas. Os 3 campos (nome/Nível/Habilidade) mantêm o último
+     valor pré-visualizado (ver DT.gaRaidPreview) pra não sumir depois
+     de clicar "👁️ Pré-visualizar". */
+  var pvDraft = SESSION.raidPreview;
+  out += '<h3 class="ga-subhead">🏴 Iniciar nova Raid</h3>'+
+    '<p class="ga-hint">Escolha uma Espécie (pelo NOME -- digite e escolha da lista de sugestão), Nível e duração (em Dias do jogo -- padrão sugerido: '+cfg.duracaoDiasPadrao+').</p>'+
+    '<div class="ga-raid-form-flex">'+
+      '<div class="ga-btn-row ga-raid-form-fields">'+
+        '<input type="text" id="gaRaidNomeBusca" list="gaRaidSpeciesDatalist" placeholder="Nome do Pokémon (ex: Charizard)" class="ga-capqtd-input" autocomplete="off" value="'+(pvDraft?esc2(pvDraft.nome):'')+'">'+
+        '<datalist id="gaRaidSpeciesDatalist">'+SPECIES_DEX.map(function(sp){ return '<option value="'+esc2(sp.name)+'">'; }).join('')+'</datalist>'+
+        '<input type="number" min="1" max="'+NIVEL_MAX+'" step="1" id="gaRaidLevel" placeholder="Nível" class="ga-capqtd-input" value="'+(pvDraft?pvDraft.level:'')+'">'+
+        '<input type="number" min="1" step="1" id="gaRaidDuracao" placeholder="Dias do jogo" class="ga-capqtd-input">'+
+        '<input type="text" id="gaRaidHab" placeholder="Habilidade (opcional -- vazio = aleatória)" class="ga-chat-input" title="Deixe vazio pra sortear entre as Habilidades normais da Espécie (padrão). Preenchido, precisa ser EXATAMENTE uma Habilidade real dela (confere \'Habilidades possíveis\' na Pokédex) -- ex: \'Own Tempo\' só existe assim pro Rockruff, exatamente por isso essa Habilidade especial só sai daqui." value="'+(pvDraft?esc2(pvDraft.hab):'')+'">'+
+        '<div class="ga-btn-row">'+
+          '<button class="ga-btn-sm" onclick="DT.gaRaidPreview(document.getElementById(\'gaRaidNomeBusca\'),document.getElementById(\'gaRaidLevel\'),document.getElementById(\'gaRaidHab\'))">👁️ Pré-visualizar</button>'+
+          '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminIniciarRaid(document.getElementById(\'gaRaidNomeBusca\'),document.getElementById(\'gaRaidLevel\'),document.getElementById(\'gaRaidDuracao\'),document.getElementById(\'gaRaidHab\'))">🏴 Iniciar Raid</button>'+
+        '</div>'+
+      '</div>'+
+      raidPreviewPanelHTML(cfg)+
+    '</div>';
   out += '<h3 class="ga-subhead">⚙️ Configuração (vale pra próxima Raid iniciada)</h3>'+
     '<p class="ga-hint">Multiplicador de Atributos (ex. 4 = +300%): <input type="number" step="0.1" min="1" id="gaRaidCfgStat" value="'+cfg.statMult+'" class="ga-capqtd-input"></p>'+
     '<p class="ga-hint">Multiplicador de PV Máximo (ex. 21 = +2000%): <input type="number" step="0.1" min="1" id="gaRaidCfgHp" value="'+cfg.hpMult+'" class="ga-capqtd-input"></p>'+
@@ -14390,18 +14570,30 @@ function raidAdminCardHTML(){
     '<p class="ga-hint">XP de participação (pro líder de cada participante): <input type="number" step="1" min="0" id="gaRaidCfgXp" value="'+cfg.xpParticipacao+'" class="ga-capqtd-input"></p>'+
     '<p class="ga-hint">Pokédólares de participação: <input type="number" step="1" min="0" id="gaRaidCfgPokedolar" value="'+cfg.pokedolarParticipacao+'" class="ga-capqtd-input"></p>'+
     /* Cap. leva desta sessão ("Não é melhor eu selecionar o item de
-       uma lista, colocar a quantidade e ir adicionando a listagem"):
-       dropdown (só itens reais de GA_ITEMS) + quantidade + "Adicionar"
-       -- lista embaixo com cada item já adicionado e um "✕" pra tirar. */
-    '<p class="ga-hint">Itens de participação (todo participante ganha ao vencer a Raid):</p>'+
+       uma lista, colocar a quantidade e ir adicionando a listagem" +
+       leva SEGUINTE "deixe qualquer item que tenhamos no jogo
+       disponível"): dropdown com TODOS os itens do jogo (ver
+       raidRecompensaCatalogoCompleto -- Pokébolas, poções, pedras de
+       evolução, itens segurados, néctares de Oricorio etc., agrupados
+       por categoria via <optgroup> só pra facilitar achar), + quantidade
+       + "Adicionar" -- lista embaixo com cada item já adicionado e um
+       "✕" pra tirar. */
+    '<p class="ga-hint">Itens de participação (todo participante ganha ao vencer a Raid -- qualquer item do jogo, inclusive Pokébolas):</p>'+
     '<div class="ga-btn-row">'+
-      '<select id="gaRaidItemSelect" class="ga-capqtd-input">'+GA_ITEMS.map(function(it){ return '<option value="'+it.key+'">'+esc2(it.nome)+'</option>'; }).join('')+'</select>'+
+      '<select id="gaRaidItemSelect" class="ga-capqtd-input">'+
+        '<optgroup label="⚾ Pokébolas">'+POKEBALLS.map(function(it){ return '<option value="'+it.key+'">'+esc2(it.nome)+'</option>'; }).join('')+'</optgroup>'+
+        '<optgroup label="🧪 Itens Gerais">'+GA_ITEMS.map(function(it){ return '<option value="'+it.key+'">'+esc2(it.nome)+'</option>'; }).join('')+'</optgroup>'+
+        '<optgroup label="🪨 Pedras/Evolução">'+EVOLUTION_STONES.concat(EVOLUTION_EXCLUSIVE_ITEMS).map(function(it){ return '<option value="'+it.key+'">'+esc2(it.nome)+'</option>'; }).join('')+'</optgroup>'+
+        '<optgroup label="🎒 Segurados">'+HELD_ITEMS.map(function(it){ return '<option value="'+it.key+'">'+esc2(it.nome)+'</option>'; }).join('')+'</optgroup>'+
+        '<optgroup label="🔄 Evolução por Troca">'+EVOLUTION_HELD_ITEMS.map(function(it){ return '<option value="'+it.key+'">'+esc2(it.nome)+'</option>'; }).join('')+'</optgroup>'+
+        '<optgroup label="🌺 Néctares">'+ORICORIO_NECTAR_ITEMS.map(function(it){ return '<option value="'+it.key+'">'+esc2(it.nome)+'</option>'; }).join('')+'</optgroup>'+
+      '</select>'+
       '<input type="number" min="1" step="1" id="gaRaidItemQtd" placeholder="Qtd" value="1" class="ga-capqtd-input">'+
       '<button class="ga-btn-sm" onclick="DT.gaRaidItemAdd(document.getElementById(\'gaRaidItemSelect\'),document.getElementById(\'gaRaidItemQtd\'))">+ Adicionar</button>'+
     '</div>'+
     (Object.keys(SESSION.raidItensDraft).length
       ? '<ul class="ga-raid-item-draft-list">'+Object.keys(SESSION.raidItensDraft).map(function(k){
-          var it = itemByKey(k);
+          var it = itemByKeyQualquer(k);
           return '<li>'+(it?itemIconHTML(it)+' '+esc2(it.nome):esc2(k))+' ×'+SESSION.raidItensDraft[k]+' <button class="ga-btn-sm danger" onclick="DT.gaRaidItemRemove(\''+k+'\')">✕</button></li>';
         }).join('')+'</ul>'
       : '<p class="ga-hint">Nenhum item de participação ainda.</p>')+
