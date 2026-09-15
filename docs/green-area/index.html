@@ -1299,7 +1299,7 @@ var SPECIES_DEX = [
   {num:741,name:'Oricorio',tipo1:'Fogo',tipo2:'Voador',gen:7,base:{hp:75,atk:70,def:70,spa:98,spd:70,spe:93},hab:[{n:'Dancer',h:false}]},
   {num:742,name:'Cutiefly',tipo1:'Inseto',tipo2:'Fada',gen:7,base:{hp:40,atk:45,def:40,spa:55,spd:40,spe:84},hab:[{n:'Honey Gather',h:false},{n:'Shield Dust',h:false},{n:'Sweet Veil',h:true}]},
   {num:743,name:'Ribombee',tipo1:'Inseto',tipo2:'Fada',gen:7,base:{hp:60,atk:55,def:60,spa:95,spd:70,spe:124},hab:[{n:'Honey Gather',h:false},{n:'Shield Dust',h:false},{n:'Sweet Veil',h:true}]},
-  {num:744,name:'Rockruff',tipo1:'Pedra',tipo2:'',gen:7,base:{hp:45,atk:65,def:40,spa:30,spd:40,spe:60},hab:[{n:'Keen Eye',h:false},{n:'Vital Spirit',h:false},{n:'Steadfast',h:true}]},
+  {num:744,name:'Rockruff',tipo1:'Pedra',tipo2:'',gen:7,base:{hp:45,atk:65,def:40,spa:30,spd:40,spe:60},hab:[{n:'Keen Eye',h:false},{n:'Vital Spirit',h:false},{n:'Steadfast',h:true},{n:'Own Tempo',h:false,raid:true}]},
   {num:745,name:'Lycanroc',tipo1:'Pedra',tipo2:'',gen:7,base:{hp:75,atk:115,def:65,spa:55,spd:65,spe:112},hab:[{n:'Keen Eye',h:false},{n:'Sand Rush',h:false},{n:'Steadfast',h:true}]},
   {num:746,name:'Wishiwashi',tipo1:'Água',tipo2:'',gen:7,base:{hp:45,atk:20,def:20,spa:25,spd:25,spe:40},hab:[{n:'Schooling',h:false}]},
   {num:747,name:'Mareanie',tipo1:'Venenoso',tipo2:'Água',gen:7,base:{hp:50,atk:53,def:62,spa:43,spd:52,spe:45},hab:[{n:'Merciless',h:false},{n:'Limber',h:false},{n:'Regenerator',h:true}]},
@@ -5800,7 +5800,9 @@ function distribuirRecompensasRaid(raid){
     var c = porConta[docId];
     var rec = { raidId: raid.id, num: raid.num, level: raid.level,
       xp: raid.xpParticipacao, pokedolares: raid.pokedolarParticipacao, itens: raid.itensParticipacao||{},
-      tentarCapturar: !!c.bolaEscolhida, bolaEscolhida: c.bolaEscolhida, captureMultUsado: raid.captureMultUsado, ts: Date.now() };
+      tentarCapturar: !!c.bolaEscolhida, bolaEscolhida: c.bolaEscolhida, captureMultUsado: raid.captureMultUsado,
+      habilidadeForcada: raid.habilidadeForcada||null, // Cap. leva desta sessão -- se o boss tinha Habilidade travada (ex: Own Tempo), o Pokémon CAPTURADO da Raid sai com a MESMA Habilidade, ver aplicarRecompensaRaid
+      ts: Date.now() };
     return raidRecompensasCol.doc(docId).set({ pendentes: firebase.firestore.FieldValue.arrayUnion(rec) }, {merge:true}).catch(function(){});
   });
   if(raidChatCol){
@@ -5859,8 +5861,9 @@ function aplicarRecompensaRaid(rec){
         markCaught(rec.num, true);
         var novo = spawnPoke(rec.num, rec.level);
         novo.deRaid = true;
+        if(rec.habilidadeForcada) novo.habilidade = rec.habilidadeForcada; // Cap. leva desta sessão -- ex: Rockruff Own Tempo (o boss tinha a Habilidade travada, o capturado sai com a MESMA)
         if(STATE.party.length<6) STATE.party.push(novo); else STATE.box.push(novo);
-        mensagem += ' 🎯 Capturou o Pokémon da Raid!';
+        mensagem += ' 🎯 Capturou o Pokémon da Raid!'+(rec.habilidadeForcada?' (Habilidade: '+rec.habilidadeForcada+')':'');
       } else {
         mensagem += ' 💨 Tentou capturar o Pokémon da Raid, mas escapou.';
       }
@@ -5922,7 +5925,18 @@ DT.gaEnviarMensagemRaidChat = function(raidId, inputEl){
    CADA Raid manualmente (escolhendo Espécie/Nível/duração), e
    `duracaoDiasPadrao`/o resto da config só valem de referência/padrão
    pra próxima que ele iniciar. */
-DT.gaAdminIniciarRaid = function(numEl, levelEl, duracaoEl){
+/* Cap. leva desta sessão ("Na aba de raid, me permita colocar a
+   habilidade do Pokémon. Caso eu não coloque, ela será aleatória
+   entre as que a espécie possui. Lembrando que, se eu colocar um
+   Pokémon ali, ele tem que puxar as habilidades que ele possui, pra
+   não ter erro"): `habEl` é opcional (texto livre, mesmo padrão dos
+   outros campos do Console de Raid) -- vazio cai no sorteio de sempre
+   (rollAbilityForSpecies, ver buildBattlerRaid/aplicarRecompensaRaid).
+   Preenchido, PRECISA bater com uma Habilidade REAL de `sp.hab`
+   (incluindo as `raid:true` como Own Tempo do Rockruff -- é exatamente
+   assim que elas ficam alcançáveis, ver comentário de ALT_FORMS[745]),
+   senão erro e a Raid nem inicia (nunca guarda um nome inventado). */
+DT.gaAdminIniciarRaid = function(numEl, levelEl, duracaoEl, habEl){
   if(!SESSION.isAdmin) return;
   if(raidsAtivas().length>0){ SESSION.error='Já existe uma Raid ativa -- encerre ela antes de iniciar outra.'; render(); return; }
   var num = Math.floor(Number(numEl && numEl.value));
@@ -5932,18 +5946,25 @@ DT.gaAdminIniciarRaid = function(numEl, levelEl, duracaoEl){
   var cfg = raidConfigAtual();
   var duracaoDias = Math.floor(Number(duracaoEl && duracaoEl.value)) || cfg.duracaoDiasPadrao;
   if(!duracaoDias || duracaoDias<1){ SESSION.error='Duração inválida -- pelo menos 1 Dia do jogo.'; render(); return; }
+  var habTexto = ((habEl && habEl.value) || '').trim();
+  var habilidadeForcada = null;
+  if(habTexto){
+    var habValida = (sp.hab||[]).some(function(h){ return h.n===habTexto; });
+    if(!habValida){ SESSION.error='Habilidade inválida pra '+sp.name+' -- só dá pra escolher uma das que a Espécie realmente possui: '+((sp.hab||[]).map(function(h){ return h.n; }).join(', ')||'nenhuma cadastrada')+'.'; render(); return; }
+    habilidadeForcada = habTexto;
+  }
   if(!raidsCol){ SESSION.error='Banco de dados ainda não conectou.'; render(); return; }
   var raidId = uid();
   var hpBase = officialStat(num, level, 'hp', null, null);
   var hpMax = Math.max(1, Math.round(hpBase * cfg.hpMult));
   raidsCol.doc(raidId).set({
     num:num, level:level, startedAt:Date.now(), expiresAt: Date.now()+duracaoDias*MS_POR_PERIODO_JOGO,
-    hpMax:hpMax, hpAtual:hpMax,
+    hpMax:hpMax, hpAtual:hpMax, habilidadeForcada: habilidadeForcada,
     statMultUsado: cfg.statMult, hpMultUsado: cfg.hpMult, captureMultUsado: cfg.captureMult,
     xpParticipacao: cfg.xpParticipacao, pokedolarParticipacao: cfg.pokedolarParticipacao, itensParticipacao: cfg.itensParticipacao,
     finished:null, finishedAt:null, finishedBy:null, tentativas:[], criadaPor: STATE.trainerName
   }).then(function(){
-    logAction('admin', 'Iniciou uma Raid: '+sp.name+' (Nv. '+level+'), duração de '+duracaoDias+' Dia(s) do jogo, PV Máximo '+hpMax+'.');
+    logAction('admin', 'Iniciou uma Raid: '+sp.name+' (Nv. '+level+'), duração de '+duracaoDias+' Dia(s) do jogo, PV Máximo '+hpMax+(habilidadeForcada?', Habilidade travada em '+habilidadeForcada:'')+'.');
     mutate();
   }).catch(function(err){ SESSION.error='Não consegui iniciar a Raid ('+erroFirestoreMsg(err)+').'; render(); });
 };
@@ -6204,10 +6225,23 @@ function findAbilityByName(nome){
 function rollNatureForSpecies(){
   return NATURES_DEX[Math.floor(Math.random()*NATURES_DEX.length)].nome;
 }
+/* Cap. leva desta sessão ("Vamos habilitar o Rockruff com Own Tempo,
+   mas será por raid"): até esta leva, `hab` de toda Espécie só tinha
+   Habilidades normais/ocultas de verdade, então rolar um índice
+   aleatório sempre valia. Rockruff agora tem uma 4ª entrada (`raid:
+   true` -- Own Tempo, só existe via evento/Rockruff especial nos
+   jogos reais, nunca uma Habilidade normal/oculta de encontro comum)
+   que essa rolagem PADRÃO precisa pular -- só o Admin escolhendo ela
+   explicitamente no Console de Raid (ver DT.gaAdminIniciarRaid mais
+   abaixo) consegue conceder Own Tempo. `pool` cai pro array cru se
+   por algum motivo só sobrarem entradas `raid:true` (nunca trava
+   numa lista vazia). */
 function rollAbilityForSpecies(num){
   var sp = speciesByNum(num);
   if(!sp || !sp.hab || !sp.hab.length) return '';
-  return sp.hab[Math.floor(Math.random()*sp.hab.length)].n;
+  var pool = sp.hab.filter(function(h){ return !h.raid; });
+  if(!pool.length) pool = sp.hab;
+  return pool[Math.floor(Math.random()*pool.length)].n;
 }
 
 /* ============================================================
@@ -6240,7 +6274,7 @@ var ABILITY_MECH_SET = {
   'Sheer Force':1,'Run Away':1,'Beast Boost':1,'Protosynthesis':1,'Quark Drive':1,'Healer':1,'Justified':1,
   'Fluffy':1,'Adaptability':1,'Download':1,'Super Luck':1,'Sweet Veil':1,'Strong Jaw':1,'Wonder Skin':1,
   'Huge Power':1,'Pure Power':1,'Magic Guard':1,'No Guard':1,'Defeatist':1,'Heatproof':1,'Pressure':1,
-  'Corrosion':1
+  'Corrosion':1,'Tough Claws':1
 };
 /* Habilidades que ignoram a Habilidade DEFENSIVA do alvo (Cap. oficial
    "Mold Breaker") -- usadas em vários pontos abaixo (imunidade de
@@ -7557,7 +7591,8 @@ function buildBattlerTrainer(num, level, tag){
    por engano. */
 function buildBattlerRaid(raid){
   return initBattlerExtras({ key:'raid_'+raid.id, side:'raid', num:raid.num, level:raid.level,
-    moves: pickMovesForLevel(raid.num, raid.level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(raid.num),
+    moves: pickMovesForLevel(raid.num, raid.level), natureza: rollNatureForSpecies(),
+    habilidade: raid.habilidadeForcada || rollAbilityForSpecies(raid.num), // Cap. leva desta sessão (Console de Raid) -- Admin pode travar a Habilidade do boss (ex: Own Tempo no Rockruff), senão sorteia normal
     raidStatMult: raid.statMultUsado, raidHpMult: raid.hpMultUsado });
 }
 
@@ -8554,10 +8589,12 @@ DT.gaResponderEvolucao = function(aceitar){
     var oldSp = speciesByNum(p.num);
     var newSp = speciesByNum(pe.toNum);
     var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
+    var habAntesDeEvoluir = p.habilidade; // Cap. leva desta sessão (Lycanroc Dusk) -- lida ANTES de p.num mudar, só pra checar Own Tempo abaixo
     p.num = pe.toNum;
-    var formaAutoBatalha = formaAutomaticaPorEvolucao(p.num); // Cap. leva desta sessão (Lycanroc) -- mesma forma automática por Dia/Noite
+    var formaAutoBatalha = formaAutomaticaPorEvolucao(p.num, habAntesDeEvoluir); // Cap. leva desta sessão (Lycanroc) -- mesma forma automática por Dia/Noite (ou Dusk, se Own Tempo)
     if(formaAutoBatalha) p.forma = formaAutoBatalha;
-    if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
+    if(formaAutoBatalha==='dusk') p.habilidade = 'Tough Claws'; // Dusk é a única forma travada numa Habilidade real (ver ALT_FORMS[745])
+    else if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
     else p.habilidade = rollAbilityForSpecies(p.num);
     /* `gaHpMax`/o resto do cálculo de Atributo em luta lê `b.playerActive`
        (o battler JÁ em campo), nunca `p` de novo -- por isso `.forma`
@@ -9268,6 +9305,11 @@ function officialDamage(user, target, move, crit, ofPreCalculado){
   if(of.power && of.power<=60 && temHab(user,'Technician')) poderMult *= 1.5;
   if(PUNCHING_MOVES[move.name] && temHab(user,'Iron Fist')) poderMult *= 1.2;
   if(BITING_MOVES[move.name] && temHab(user,'Strong Jaw')) poderMult *= 1.5;
+  // Cap. leva desta sessão (Lycanroc Dusk -- Habilidade travada
+  // "Tough Claws", ver formaAutomaticaPorEvolucao mais abaixo): ×1,3
+  // de Poder em QUALQUER golpe de contato (mesmo `golpeFazContato`
+  // já usado pelas Habilidades de contato do alvo acima).
+  if(golpeFazContato(move) && temHab(user,'Tough Claws')) poderMult *= 1.3;
   if(userHpPct<=1/3){
     if(moveTipo==='Grama' && temHab(user,'Overgrow')) poderMult *= 1.5;
     if(moveTipo==='Fogo' && temHab(user,'Blaze')) poderMult *= 1.5;
@@ -12027,9 +12069,10 @@ function aplicarEvolucaoForaDeLuta(p, toNum, motivoLog, forma){
      confere se essa evolução tem forma AUTOMÁTICA por Dia/Noite
      (EVOLUTION_TIME_FORM) -- mesmo campo `p.forma`, só que decidido
      pelo relógio do jogo em vez de qual item foi usado. */
-  var formaFinal = forma || formaAutomaticaPorEvolucao(toNum);
+  var formaFinal = forma || formaAutomaticaPorEvolucao(toNum, p.habilidade);
   if(formaFinal) p.forma = formaFinal;
-  if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
+  if(formaFinal==='dusk') p.habilidade = 'Tough Claws'; // Cap. leva desta sessão (Lycanroc Dusk) -- única forma travada numa Habilidade real (ver ALT_FORMS[745])
+  else if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
   else p.habilidade = rollAbilityForSpecies(p.num);
   markSeen(p.num); markCaught(p.num);
   logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+motivoLog+'.');
@@ -12172,10 +12215,12 @@ DT.gaEvoluirPosSequencia = function(partyId, aceitar){
     var oldSp = speciesByNum(p.num);
     var newSp = speciesByNum(evo.to);
     var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
+    var habAntesDeEvoluirSeq = p.habilidade; // Cap. leva desta sessão (Lycanroc Dusk) -- lida ANTES de p.num mudar, só pra checar Own Tempo abaixo
     p.num = evo.to;
-    var formaAutoSeq = formaAutomaticaPorEvolucao(p.num); // Cap. leva desta sessão (Lycanroc) -- mesma forma automática por Dia/Noite
+    var formaAutoSeq = formaAutomaticaPorEvolucao(p.num, habAntesDeEvoluirSeq); // Cap. leva desta sessão (Lycanroc) -- mesma forma automática por Dia/Noite (ou Dusk, se Own Tempo)
     if(formaAutoSeq) p.forma = formaAutoSeq;
-    if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
+    if(formaAutoSeq==='dusk') p.habilidade = 'Tough Claws'; // Dusk é a única forma travada numa Habilidade real (ver ALT_FORMS[745])
+    else if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
     else p.habilidade = rollAbilityForSpecies(p.num);
     markSeen(p.num); markCaught(p.num);
     logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+' (decisão adiada pro fim da sequência automática).');
@@ -12459,35 +12504,63 @@ var ALT_FORMS = {
      idêntica à Midday na Dusk, só +2 Ataque/-2 Velocidade). Gatilho
      real oficial: Dia vira Midday, Noite vira Midnight (mesmo
      `timeOfDay` já usado noutras ~10 evoluções deste jogo -- 2ª aresta
-     nova em `EVOLUTIONS_DEX[744]`, ver `EVOLUTION_TIME_FORM` abaixo);
-     Dusk exigiria um Rockruff "Own Tempo" especial (só obtido via
-     evento/Photo Club nos jogos reais) -- sem forma de conseguir esse
-     Rockruff específico neste protótipo, então Dusk fica documentada
-     aqui (pro popup da Dex mostrar as 3 formas de verdade) mas NUNCA
-     alcançável pelo jogador -- mesmo tratamento honesto já dado a
-     Deoxys/Ursaluna Bloodmoon. Habilidade também muda por forma nos
-     jogos reais (Midday: Keen Eye/Sand Rush/Steadfast; Midnight: Keen
-     Eye/Vital Spirit/No Guard; Dusk: só Tough Claws) -- fora de escopo
-     aqui, mesma simplificação já documentada pra Urshifu/Ogerpon/
-     Oricorio (Habilidade sempre rolada da lista de SPECIES_DEX[745],
-     que é a lista da Midday). golpeAssinatura não muda nada por forma
-     em Lycanroc (não é como Ivy Cudgel/Revelation Dance) -- Accelerock
-     é só o Movimento mais associado à linha, mostrado igual nas 3. */
+     nova em `EVOLUTIONS_DEX[744]`, ver `EVOLUTION_TIME_FORM` abaixo).
+
+     Cap. leva desta sessão ("Vamos habilitar o Rockruff com Own Tempo,
+     mas será por raid... Assim vamos habilitar a evolução do lycanroc
+     duskform"): Dusk oficialmente exige um Rockruff "Own Tempo"
+     especial (só obtido via evento/Photo Club nos jogos reais) --
+     até esta leva não existia NENHUMA forma de conseguir esse Rockruff
+     específico neste protótipo, então Dusk ficava documentada aqui só
+     de decoração, sem nunca ser alcançável. Agora dá, mas só de um
+     jeito (pedido explícito do jogador): o Admin escolhe a Habilidade
+     "Own Tempo" na hora de iniciar uma Raid de Rockruff (ver
+     `raidAdminCardHTML`/`DT.gaAdminIniciarRaid` mais abaixo -- nunca
+     um encontro selvagem/Treinador comum, `rollAbilityForSpecies` pula
+     essa entrada de propósito, ver o `raid:true` em SPECIES_DEX[744]).
+     Evoluir ESSE Rockruff específico no Nível 25 (de Dia OU de Noite,
+     tanto faz -- oficialmente Own Tempo ignora o relógio) vira Dusk em
+     vez de Midday/Midnight (ver `formaAutomaticaPorEvolucao` logo
+     abaixo). Habilidade também muda por forma nos jogos reais (Midday:
+     Keen Eye/Sand Rush/Steadfast; Midnight: Keen Eye/Vital Spirit/No
+     Guard; Dusk: só Tough Claws) -- continua fora de escopo pras
+     formas Midday/Midnight (mesma simplificação já documentada pra
+     Urshifu/Ogerpon/Oricorio, Habilidade sempre rolada da lista de
+     SPECIES_DEX[745]), mas a Dusk É travada em Tough Claws de verdade
+     na hora da evolução (única Habilidade real dela -- ver os 3 call
+     sites de `formaAutomaticaPorEvolucao`), com mecânica real de
+     combate implementada (×1,3 de Poder em golpe de contato, mesma
+     régua de Iron Fist/Strong Jaw acima). golpeAssinatura não muda
+     nada por forma em Lycanroc (não é como Ivy Cudgel/Revelation
+     Dance) -- Accelerock é só o Movimento mais associado à linha,
+     mostrado igual nas 3. */
+  744: [
+    { key:'padrao', nome:'Rockruff (padrão)', tipo1:'Pedra', tipo2:'', spriteNum:744, golpeAssinatura:'Accelerock' },
+    { key:'own-tempo', nome:'Rockruff Own Tempo (só via Raid)', tipo1:'Pedra', tipo2:'', spriteNum:744, golpeAssinatura:'Accelerock', habilidadeFixa:'Own Tempo' }
+  ],
   745: [
     { key:'midday', nome:'Lycanroc Midday', tipo1:'Pedra', tipo2:'', spriteNum:745, golpeAssinatura:'Accelerock', base:{hp:75,atk:115,def:65,spa:55,spd:65,spe:112} },
     { key:'midnight', nome:'Lycanroc Midnight', tipo1:'Pedra', tipo2:'', spriteNum:10126, golpeAssinatura:'Accelerock', base:{hp:85,atk:115,def:75,spa:55,spd:75,spe:82} },
-    { key:'dusk', nome:'Lycanroc Dusk (inalcançável -- ver nota abaixo)', tipo1:'Pedra', tipo2:'', spriteNum:10152, golpeAssinatura:'Accelerock', base:{hp:75,atk:117,def:65,spa:55,spd:65,spe:110} }
+    { key:'dusk', nome:'Lycanroc Dusk', tipo1:'Pedra', tipo2:'', spriteNum:10152, golpeAssinatura:'Accelerock', base:{hp:75,atk:117,def:65,spa:55,spd:65,spe:110} }
   ]
 };
-/* Qual forma um Rockruff (#744) vira ao evoluir, conforme Dia/Noite --
-   consultado nos 3 pontos que aplicam evolução por Nível (Cap. leva
-   desta sessão): DT.gaResponderEvolucao (em luta), DT.gaEvoluirPosSequencia
-   (adiada) e aplicarEvolucaoForaDeLuta (pedra/troca, sem uso aqui mas
-   mesma função genérica). Dusk de propósito FORA deste mapa (sem
-   gatilho alcançável neste protótipo, ver comentário grande acima) --
-   `formaAutomaticaPorEvolucao` nunca devolve 'dusk'. */
+/* Qual forma um Rockruff (#744) vira ao evoluir, conforme Dia/Noite (ou
+   Own Tempo, ver comentário grande acima) -- consultado nos 3 pontos
+   que aplicam evolução por Nível (Cap. leva desta sessão):
+   DT.gaResponderEvolucao (em luta), DT.gaEvoluirPosSequencia (adiada)
+   e aplicarEvolucaoForaDeLuta (pedra/troca, sem uso aqui mas mesma
+   função genérica) -- os 3 agora passam a Habilidade ATUAL do
+   Pokémon (antes de qualquer remapeamento pela evolução) como 2º
+   argumento. */
 var EVOLUTION_TIME_FORM = { 745: { day:'midday', night:'midnight' } };
-function formaAutomaticaPorEvolucao(toNum){
+/* `habilidadeAtual` opcional -- só usado pro caso especial Lycanroc
+   Dusk (Rockruff Own Tempo, ver comentário grande de ALT_FORMS[745]
+   acima): confere ANTES de olhar Dia/Noite, porque nos jogos reais
+   Own Tempo ignora o relógio por completo (evolui em Dusk de Dia OU
+   de Noite, tanto faz). Pra qualquer outra Espécie/Habilidade, cai no
+   mapa de Dia/Noite de sempre, comportamento idêntico ao de antes. */
+function formaAutomaticaPorEvolucao(toNum, habilidadeAtual){
+  if(toNum===745 && habilidadeAtual==='Own Tempo') return 'dusk';
   var mapa = EVOLUTION_TIME_FORM[toNum];
   return mapa ? mapa[horaAtualDoJogo()] : undefined;
 }
@@ -12501,7 +12574,8 @@ var ALT_FORMS_NOTE = {
   892: 'os Atributos Base e a Habilidade são idênticos nas 2 formas -- o Tipo secundário E o kit de Movimentos mudam de verdade; forma fixada pra sempre na evolução, conforme o Pergaminho usado',
   741: "os Atributos Base e a Habilidade (Dancer) são idênticos nas 4 formas -- só o Tipo PRIMÁRIO muda (Tipo2 é sempre Voador); o Movimento Revelation Dance troca de Tipo sozinho pra bater com o Estilo atual; troque de Estilo a qualquer momento comendo um Néctar (ver Mochila/'Trocar Estilo')",
   1017: 'os Atributos Base e a Habilidade (Defiant) são idênticos nas 4 formas -- só o Tipo secundário muda; o Movimento Ivy Cudgel troca de Tipo sozinho pra bater com a máscara atual; a forma segue a Máscara EQUIPADA no momento (item segurado normal -- desequipar volta pra Teal na hora)',
-  745: 'o Tipo é IDÊNTICO nas 3 formas (Pedra puro) -- os Atributos Base é que mudam de verdade (a Habilidade também mudaria nos jogos reais, fora de escopo aqui); Rockruff vira Midday evoluindo de DIA ou Midnight evoluindo de NOITE (Nível 25 nos 2 casos); a forma Dusk existe só pra mostrar aqui, mas NUNCA é alcançável neste protótipo -- exigiria um Rockruff especial (Own Tempo) que só vem de evento nos jogos reais'
+  745: 'o Tipo é IDÊNTICO nas 3 formas (Pedra puro) -- os Atributos Base é que mudam de verdade; Rockruff comum vira Midday evoluindo de DIA ou Midnight evoluindo de NOITE (Nível 25 nos 2 casos); um Rockruff Own Tempo (só via recompensa de Raid, ver aba "Rockruff Own Tempo" na Pokédex dele) vira Dusk em vez disso, de Dia OU de Noite -- a única forma travada com Habilidade real (Tough Claws, ×1,3 de Poder em golpe de contato)',
+  744: 'o Tipo e os Atributos Base são IDÊNTICOS nas 2 "formas" -- isso aqui não é uma forma oficial de verdade, é só pra destacar a variante rara: um Rockruff Own Tempo NUNCA aparece em encontro selvagem/Treinador comum, só como recompensa de uma Raid que o Admin configurou com essa Habilidade (ver Console de Raid); evoluir ele no Nível 25 (Dia ou Noite) vira Lycanroc Dusk em vez de Midday/Midnight'
 };
 /* Cap. leva desta sessão ("Cada urshifu tem que ter seus moveset
    específico. Isso tem que estar incluso no rpg também"): até esta
@@ -13744,7 +13818,15 @@ function dexPopupHTML(num){
       (formas ? '<p class="ga-hint">🥋 <strong>Golpe de assinatura ('+esc2(formaAtiva.nome)+'):</strong> '+esc2(formaAtiva.golpeAssinatura)+' <em>('+esc2(ALT_FORMS_NOTE[num]||'os Atributos Base e a Habilidade são idênticos em todas as formas.')+')</em></p>' : '')+
       '<p class="ga-hint">📍 <strong>Onde encontrar:</strong> '+esc2(areaHintForSpecies(num))+'</p>'+
       '<p class="ga-hint">🗡️ <strong>Movimentos possíveis:</strong> '+esc2(movimentosPossiveisLista(num, formaAtiva?formaAtiva.key:undefined).join(', ')||'—')+'</p>'+
-      '<p class="ga-hint">✨ <strong>Habilidades possíveis:</strong> '+esc2((sp.hab||[]).map(function(h){ return h.n+(h.h?' (oculta)':''); }).join(', ')||'—')+'</p>'+
+      '<p class="ga-hint">✨ <strong>Habilidades possíveis:</strong> '+esc2(
+        (formaAtiva && formaAtiva.habilidadeFixa)
+          /* Cap. leva desta sessão (Rockruff Own Tempo -- aba nova na
+             Pokédex): essa "forma" trava numa Habilidade ÚNICA em vez
+             de sortear entre as normais/ocultas da Espécie, mesma
+             ideia do Lycanroc Dusk (ver ALT_FORMS acima). */
+          ? formaAtiva.habilidadeFixa+' (Habilidade travada -- só via Raid, nunca em encontro comum)'
+          : (sp.hab||[]).filter(function(h){ return !h.raid; }).map(function(h){ return h.n+(h.h?' (oculta)':''); }).join(', ')
+      || '—')+'</p>'+
       loreHTML+
       '<audio controls preload="none" src="https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/'+num+'.ogg">Seu navegador não suporta áudio.</audio>';
   }
@@ -14134,7 +14216,8 @@ function raidAdminCardHTML(){
         '<input type="number" min="1" max="1025" step="1" id="gaRaidNum" placeholder="Nº Pokédex" class="ga-capqtd-input">'+
         '<input type="number" min="1" max="'+NIVEL_MAX+'" step="1" id="gaRaidLevel" placeholder="Nível" class="ga-capqtd-input">'+
         '<input type="number" min="1" step="1" id="gaRaidDuracao" placeholder="Dias do jogo" class="ga-capqtd-input">'+
-        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminIniciarRaid(document.getElementById(\'gaRaidNum\'),document.getElementById(\'gaRaidLevel\'),document.getElementById(\'gaRaidDuracao\'))">🏴 Iniciar Raid</button>'+
+        '<input type="text" id="gaRaidHab" placeholder="Habilidade (opcional -- vazio = aleatória)" class="ga-chat-input" title="Deixe vazio pra sortear entre as Habilidades normais da Espécie (padrão). Preenchido, precisa ser EXATAMENTE uma Habilidade real dela (confere \'Habilidades possíveis\' na Pokédex) -- ex: \'Own Tempo\' só existe assim pro Rockruff, exatamente por isso essa Habilidade especial só sai daqui.">'+
+        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminIniciarRaid(document.getElementById(\'gaRaidNum\'),document.getElementById(\'gaRaidLevel\'),document.getElementById(\'gaRaidDuracao\'),document.getElementById(\'gaRaidHab\'))">🏴 Iniciar Raid</button>'+
       '</div>';
   }
   out += '<h3 class="ga-subhead">⚙️ Configuração (vale pra próxima Raid iniciada)</h3>'+
