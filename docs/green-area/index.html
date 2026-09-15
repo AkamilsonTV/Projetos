@@ -6034,27 +6034,73 @@ DT.gaAdminAtualizarConfigRaid = function(statMultEl, hpMultEl, captureMultEl, pa
    pra várias Raids ao mesmo tempo) quando `SESSION.raidRoomId` não
    está setado; a SALA de uma Raid específica (ranking/chat/log/entrar)
    quando está. */
+/* Cap. leva desta sessão ("podíamos deixar lá no histórico, as raids
+   passadas (pode ser as últimas 3), com o Pokémon que foi enfrentado,
+   o card dele com as informações de moveset e etc e o top 3 danos"):
+   `GA_RAIDS_TODAS` (ver attachSocialListeners) já é a coleção INTEIRA
+   de `green_area_raids`, ativas E terminadas -- `raidsAtivas()` só
+   filtra as ainda ativas; aqui filtra o oposto (`r.finished` truthy:
+   'derrotado'/'expirado'/'encerrado_admin', os 3 jeitos de uma Raid
+   acabar) e ordena pela mais recente primeiro (`finishedAt`). */
+function raidsHistoricoUltimas3(){
+  return GA_RAIDS_TODAS.filter(function(r){ return !!r.finished; })
+    .sort(function(a,b){ return (b.finishedAt||0)-(a.finishedAt||0); })
+    .slice(0,3);
+}
+/* Card de UMA Raid do histórico -- moveset recalculado NA HORA via
+   `pickMovesForLevel(num,level)` (função pura, mesmo Nível/Espécie
+   sempre devolve o mesmo kit -- nunca precisou ficar gravado no
+   documento da Raid, só num/level bastam). Habilidade: se o Admin
+   travou uma na hora de iniciar (`habilidadeForcada`, ver Console de
+   Raid), mostra ela; senão foi sorteada de forma diferente em cada
+   tentativa de cada jogador (nunca gravada num lugar só), então mostra
+   "Aleatória" em vez de inventar um valor único que não existiu de
+   verdade. */
+function raidHistoricoCardHTML(r){
+  var sp = speciesByNum(r.num);
+  var spNome = sp ? sp.name : ('#'+r.num);
+  var moves = pickMovesForLevel(r.num, r.level);
+  var statusTexto = r.finished==='derrotado' ? '🏆 Derrotada' : r.finished==='expirado' ? '⌛ Expirou sem ser derrotada' : '🚫 Encerrada pelo Admin';
+  var ranking = raidRankingDano(r).slice(0,3);
+  return '<div class="ga-poke-card ga-raid-historico-card">'+
+    '<img src="'+spriteUrl(r.num)+'" loading="lazy" alt="">'+
+    '<div class="ga-poke-name">'+esc2(spNome)+'</div>'+
+    '<div class="ga-poke-meta">Nv. '+r.level+(sp?' · '+typeTagsHTML(sp):'')+'</div>'+
+    '<div class="ga-hint">'+statusTexto+' em '+esc2(new Date(r.finishedAt||r.expiresAt).toLocaleString('pt-BR'))+'</div>'+
+    '<div class="ga-hint">✨ <strong>Habilidade:</strong> '+esc2(r.habilidadeForcada||'Aleatória (sorteada a cada tentativa)')+'</div>'+
+    '<div class="ga-hint">🗡️ <strong>Moveset:</strong> '+esc2(moves.map(function(m){ return m.name; }).join(', '))+'</div>'+
+    '<div class="ga-hint">🏆 <strong>Top 3 em dano:</strong></div>'+
+    (ranking.length
+      ? '<ol class="ga-raid-historico-ranking">'+ranking.map(function(rk){ return '<li>'+esc2(rk.nome)+' -- '+rk.dano+' de dano</li>'; }).join('')+'</ol>'
+      : '<p class="ga-hint">Ninguém chegou a lutar contra essa Raid.</p>')+
+  '</div>';
+}
 function raidsScreenHTML(){
   if(SESSION.raidRoomId) return raidSalaHTML(SESSION.raidRoomId);
   var ativas = raidsAtivas();
+  var historico = raidsHistoricoUltimas3();
   var out = '<div class="ga-card"><h2>🏴 Raids Ativas</h2>'+
     '<p class="ga-hint">Pokémon muito mais forte que o normal -- enfrente com seu time (você SEMPRE ataca primeiro, a Regra de Ouro da Raid), some dano no PV compartilhado dele junto com outros Treinadores, e ganhe recompensa de participação (XP/Pokédólares/itens) + uma chance de capturar quando ele cair, mesmo se você estiver offline na hora. Precisa de 1 🎟️ Raid Pass pra cada tentativa -- você tem <strong>'+(STATE.itens.raidpass||0)+'</strong> agora.</p>';
-  if(!ativas.length){
-    out += '<p class="ga-hint">Nenhuma Raid ativa agora -- volte mais tarde.</p></div>';
-    return out;
-  }
-  out += '<div class="ga-poke-grid">'+ativas.map(function(r){
-    var sp = speciesByNum(r.num);
-    var hpAtual = Math.max(0, r.hpAtual);
-    return '<div class="ga-poke-card">'+
-      '<img src="'+spriteUrl(r.num)+'" loading="lazy" alt="">'+
-      '<div class="ga-poke-name">'+esc2(sp?sp.name:('#'+r.num))+'</div>'+
-      '<div class="ga-poke-meta">Nv. '+r.level+(sp?' · '+typeTagsHTML(sp):'')+'</div>'+
-      hpBarHTML(hpAtual, r.hpMax)+
-      '<div class="ga-hint">Expira: '+esc2(new Date(r.expiresAt).toLocaleString('pt-BR'))+'</div>'+
-      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirSalaRaid(\''+r.id+'\')">⚔️ Entrar</button>'+
-    '</div>';
-  }).join('')+'</div></div>';
+  out += !ativas.length
+    ? '<p class="ga-hint">Nenhuma Raid ativa agora -- volte mais tarde.</p>'
+    : '<div class="ga-poke-grid">'+ativas.map(function(r){
+        var sp = speciesByNum(r.num);
+        var hpAtual = Math.max(0, r.hpAtual);
+        return '<div class="ga-poke-card">'+
+          '<img src="'+spriteUrl(r.num)+'" loading="lazy" alt="">'+
+          '<div class="ga-poke-name">'+esc2(sp?sp.name:('#'+r.num))+'</div>'+
+          '<div class="ga-poke-meta">Nv. '+r.level+(sp?' · '+typeTagsHTML(sp):'')+'</div>'+
+          hpBarHTML(hpAtual, r.hpMax)+
+          '<div class="ga-hint">Expira: '+esc2(new Date(r.expiresAt).toLocaleString('pt-BR'))+'</div>'+
+          '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirSalaRaid(\''+r.id+'\')">⚔️ Entrar</button>'+
+        '</div>';
+      }).join('')+'</div>';
+  out += '</div>';
+  out += '<div class="ga-card"><h2>📜 Últimas Raids (histórico)</h2>'+
+    (historico.length
+      ? '<div class="ga-poke-grid">'+historico.map(raidHistoricoCardHTML).join('')+'</div>'
+      : '<p class="ga-hint">Nenhuma Raid terminou ainda.</p>')+
+  '</div>';
   return out;
 }
 function raidSalaHTML(raidId){
