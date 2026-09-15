@@ -203,6 +203,18 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-raid-preview{ flex:1 1 220px; background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
 .ga-raid-preview img{ width:72px; height:72px; display:block; margin:0 auto 6px; image-rendering:pixelated; }
 .ga-raid-preview ul{ list-style:none; padding:0; margin:6px 0; text-align:left; display:inline-block; }
+/* Cap. leva desta sessão ("Na box, quero que seja rolado só o que tem
+   de pokémon, não o navegador todo... uma janela onde o menu acima
+   ficaria fixo... um botão de 'voltar ao topo'... fácil de ser
+   clicado com o mouse e com o dedo"): a grade de cards da Caixa ganha
+   sua PRÓPRIA rolagem interna (title/filtros/contagem ficam de fora,
+   nunca rolam junto -- "fixos"), com altura de sobra tanto em telas
+   grandes quanto pequenas. `.ga-back-to-top` é um alvo de toque
+   GRANDE de propósito (padding generoso, min-height 44px -- tamanho
+   mínimo recomendado pra toque confortável no dedo), nunca um botão
+   pequeno igual os `.ga-btn-sm` genéricos ao redor. */
+.ga-poke-grid-scroll{ max-height:min(70vh,720px); overflow-y:auto; padding-right:4px; margin-top:8px; }
+.ga-back-to-top{ min-height:44px; padding:8px 16px; font-size:.95rem; }
 /* Cap. leva desta sessão (Centro Pokémon): card de Treinador/pedido de
    amizade -- reaproveita o MESMO grid `.ga-poke-grid` de sempre, só
    com um card mais simples (sem sprite, só nome + ação). */
@@ -6678,7 +6690,7 @@ var HELD_ITEMS = [
   { key:'faixa-escolha', nome:'Choice Band', icon:'choice-band', preco:250, desc:'Aumenta o Ataque em 50%, mas trava no PRIMEIRO Movimento usado até trocar de campo.' },
   { key:'oculos-escolha', nome:'Choice Specs', icon:'choice-specs', preco:250, desc:'Aumenta o Ataque Especial em 50%, mesma trava do Choice Band.' },
   { key:'lenco-escolha', nome:'Choice Scarf', icon:'choice-scarf', preco:250, desc:'Aumenta a Velocidade em 50%, mesma trava do Choice Band.' },
-  { key:'cinto-foco', nome:'Focus Sash', icon:'focus-sash', preco:200, desc:'Sobrevive com 1 PV de um golpe que desmaiaria, saindo de PV cheio (inclusive Nocaute em 1 Golpe) -- some depois de usar (1 uso só).' },
+  { key:'cinto-foco', nome:'Focus Sash', icon:'focus-sash', preco:200, desc:'Sobrevive com 1 PV de um golpe que desmaiaria, saindo de PV cheio (inclusive Nocaute em 1 Golpe) -- ativa só 1x por luta, mas continua equipado pra sempre (disponível de novo na próxima luta).' },
   { key:'baga-oran', nome:'Oran Berry', icon:'oran-berry', preco:60, desc:'Cura 10 PV sozinha quando o PV cai pra 50% ou menos -- some depois de usar.' },
   { key:'baga-sitrus', nome:'Sitrus Berry', icon:'sitrus-berry', preco:120, desc:'Cura 25% do PV Máximo sozinha quando o PV cai pra 50% ou menos -- some depois de usar.' },
   { key:'baga-lum', nome:'Lum Berry', icon:'lum-berry', preco:150, desc:'Cura QUALQUER Condição (inclusive Confusão) assim que é infligida -- some depois de usar.' },
@@ -6688,9 +6700,9 @@ var HELD_ITEMS = [
   { key:'faixa-poder', nome:'Muscle Band', icon:'muscle-band', preco:150, desc:'Aumenta em 10% o dano de golpe Físico.' },
   { key:'oculos-sabios', nome:'Wise Glasses', icon:'wise-glasses', preco:150, desc:'Aumenta em 10% o dano de golpe Especial.' },
   { key:'garra-rapida', nome:'Quick Claw', icon:'quick-claw', preco:200, desc:'20% de chance de agir PRIMEIRO na Rodada, ignorando Prioridade e Velocidade.' },
-  { key:'politica-fraqueza', nome:'Weakness Policy', icon:'weakness-policy', preco:200, desc:'Sobe +2 Ataque E +2 Ataque Especial ao ser atingido por um golpe Super Efetivo -- some depois de usar.' },
+  { key:'politica-fraqueza', nome:'Weakness Policy', icon:'weakness-policy', preco:200, desc:'Sobe +2 Ataque E +2 Ataque Especial ao ser atingido por um golpe Super Efetivo -- ativa só 1x por luta, mas continua equipado pra sempre (disponível de novo na próxima luta).' },
   { key:'sino-concha', nome:'Shell Bell', icon:'shell-bell', preco:200, desc:'Cura 1/8 do dano CAUSADO de volta pro próprio PV.' },
-  { key:'balao-de-ar', nome:'Air Balloon', icon:'air-balloon', preco:150, desc:'Imune a golpes de Tipo Terra -- estoura (e some) na primeira vez que toma QUALQUER dano.' },
+  { key:'balao-de-ar', nome:'Air Balloon', icon:'air-balloon', preco:150, desc:'Imune a golpes de Tipo Terra -- estoura na primeira vez que toma QUALQUER dano (some a imunidade só ATÉ o fim desta luta; continua equipado, disponível de novo na próxima).' },
   /* Cap. leva desta sessão (Grupo 1 de formas alternativas -- Ogerpon):
      as 3 Máscaras são item SEGURADO de verdade no jogo oficial (nunca
      consumidas) -- por isso entram aqui, no MESMO catálogo/slot único
@@ -6713,20 +6725,64 @@ var CHOICE_ITEMS = { 'faixa-escolha':'atk', 'oculos-escolha':'spa', 'lenco-escol
    do jogo já consulta -- Evolite só funciona em quem tem pelo menos 1
    aresta de saída ali. */
 function aindaPodeEvoluir(num){ return (EVOLUTIONS_DEX[num]||[]).length>0; }
-/* Item consumido de vez (bagas/Cinto Foco/Política de Fraqueza/Balão
-   de Ar) -- some do battler NA HORA e, se for do time do JOGADOR
-   (battler.partyId existe), some PRA SEMPRE do Pokémon de verdade
-   também (igual o jogo oficial: um item comido precisa ser comprado
-   e equipado de novo depois da luta -- NUNCA volta sozinho, ao
-   contrário de Estágio/Status/PP que resetam a cada luta nova). */
+/* Ativa o efeito de um item segurado em luta (bagas/Cinto Foco/
+   Política de Fraqueza/Balão de Ar/etc). Cap. leva desta sessão
+   ("Itens de batalha, que não sejam poção e berries de uso do
+   pokémon, não podem acabar ao serem ativados na luta, por exemplo
+   focus sash e afins"): só as BAGAS (`baga-oran`/`baga-sitrus`/
+   `baga-lum`, únicos itens "de uso do Pokémon" no catálogo -- comidas
+   de verdade, mesmo espírito de uma poção da Mochila) somem do
+   battler/Pokémon depois de ativar; qualquer OUTRO item segurado
+   (Focus Sash, Weakness Policy, Air Balloon e qualquer um "e afins"
+   que ative em luta) continua no slot pra sempre -- ativa o efeito
+   quantas vezes precisar, luta após luta, igual Habilidade/Natureza.
+   ANTES desta leva, TODOS esses itens somiam depois de 1 uso
+   (documentado antes como "igual o jogo oficial") -- mudança
+   deliberada de propósito, pedido explícito do usuário. */
 function consomeItemSegurado(battler, b, motivo){
   var def = heldItemByKey(battler.item);
-  battler.item = null;
-  if(battler.partyId){
-    var p = STATE.party.filter(function(x){ return x.id===battler.partyId; })[0];
-    if(p) p.itemSegurado = null;
+  var ehBaga = !!(battler.item && battler.item.indexOf('baga-')===0);
+  if(ehBaga){
+    battler.item = null;
+    if(battler.partyId){
+      var p = STATE.party.filter(function(x){ return x.id===battler.partyId; })[0];
+      if(p) p.itemSegurado = null;
+    }
+  } else if(b){
+    // Cap. leva desta sessão -- marca ATIVADO NESTA LUTA (chave estável
+    // por Pokémon, ver itemSeguradoDisponivelNestaLuta), pra travar em
+    // 1x por luta mesmo o item continuando equipado pra sempre.
+    b.itemAtivadoLuta = b.itemAtivadoLuta || {};
+    b.itemAtivadoLuta[battler.partyId || battler.key] = true;
   }
-  if(b && b.log && def) b.log.push('🎒 '+displayName(battler)+' usou '+def.nome+'! ('+motivo+')');
+  if(b && b.log && def) b.log.push('🎒 '+displayName(battler)+' usou '+def.nome+'! ('+motivo+')'+(ehBaga?'':' -- continua equipado, mas não ativa de novo nesta luta.'));
+}
+/* Cap. leva desta sessão ("eles tem que continuar equipados no
+   pokémon e serem usados em outro combate. Obviamente naquele
+   combate, usado uma vez ele não será mais ativado. Mas ao terminar a
+   batalha e voltar em outra, ele tem que estar apto para uso.
+   Lembrando que não pode ser ativado no mesmo combate mesmo que o
+   oponente troque de pokémon ou que o jogador troque como uma forma
+   de 'burlar' a regra"): itens de 1 gatilho por luta (Cinto Foco/
+   Balão de Ar/Política de Fraqueza) continuam "disponíveis" até
+   ativarem 1x DENTRO desta luta -- `b.itemAtivadoLuta` é um mapa NOVO
+   a cada `STATE.battle` (some sozinho quando a luta acaba/uma nova
+   começa, nunca persistido no Pokémon), então volta a ficar disponível
+   na PRÓXIMA luta automaticamente. A chave usada (`battler.partyId ||
+   battler.key`) é a identidade ESTÁVEL do Pokémon (nunca a do battler
+   em si) -- crucial porque trocar de Pokémon e voltar reconstrói um
+   `battler` NOVO (ver buildBattlerFromParty em DT.gaTrocarPokemon/
+   tentarTrocaForcada), então uma trava guardada só no objeto do
+   battler se perderia ao trocar; presa em `b` (a luta inteira),
+   sobrevive a qualquer troca dos 2 lados. Bagas (`baga-*`) NUNCA usam
+   isso -- elas continuam com a regra de sempre (somem de vez no uso,
+   ver consomeItemSegurado). */
+function itemSeguradoDisponivelNestaLuta(battler, b){
+  if(!battler || !battler.item) return false;
+  if(battler.item.indexOf('baga-')===0) return true;
+  if(!b) return true;
+  var idn = battler.partyId || battler.key;
+  return !(b.itemAtivadoLuta && b.itemAtivadoLuta[idn]);
 }
 /* Multiplicador de Atributo por Item (Cap. Faixa/Óculos/Lenço Escolha
    ×1,5 no Atributo certo; Evolite ×1,5 em Defesa E Defesa Especial se
@@ -6749,7 +6805,7 @@ function itemStatMult(battler, stat){
    próprio golpe de Terra bloqueado aqui NÃO estoura o Balão, regra
    oficial. */
 function checaImunidadeDeTipoPorItem(move, user, target, b, userName, targetName){
-  if(move.tipo==='Terra' && temItemSegurado(target,'balao-de-ar')){
+  if(move.tipo==='Terra' && temItemSegurado(target,'balao-de-ar') && itemSeguradoDisponivelNestaLuta(target,b)){
     b.log.push('🎈 '+userName+' usou '+move.name+' -- '+targetName+' é imune (Air Balloon).');
     return true;
   }
@@ -6934,7 +6990,18 @@ function spawnPoke(num, level){
     id: uid(), num: num, level: clampInt(level,1,NIVEL_MAX), apelido:'',
     moves: pickMovesForLevel(num, level), xpNivel: 0,
     natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num),
-    papelCombate: 'ataque', vitorias: 0, derrotas: 0, felicidade: FELICIDADE_INICIAL
+    papelCombate: 'ataque', vitorias: 0, derrotas: 0, felicidade: FELICIDADE_INICIAL,
+    /* Cap. leva desta sessão ("Também coloque uma aba de 'Data de
+       Captura' (real) para que assim os jogadores consigam organizar
+       pelos mais recentes capturados e os mais antigos"): timestamp
+       REAL (Date.now(), nunca o relógio acelerado do jogo) do instante
+       em que este Pokémon entrou na conta -- todo Pokémon novo passa
+       por aqui (inicial, captura selvagem, recompensa de Raid), então
+       cobre 100% dos casos daqui pra frente. Um Pokémon que já existia
+       numa conta ANTES desta leva não tem este campo -- ver
+       caixaFilteredList, que trata isso como "o mais antigo possível"
+       na ordenação, nunca quebra por `undefined`. */
+    capturedAt: Date.now()
   };
 }
 
@@ -7155,7 +7222,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'' };
 
 function freshState(trainerName){
   return {
@@ -9991,9 +10058,9 @@ function resolveGaTurn(user, target, preSelectedMove){
     }
     // Cap. Cinto Foco (Itens Segurados): também imune de verdade a
     // Nocaute em 1 Golpe (regra oficial) -- só com PV cheio, consumido no uso.
-    if(temItemSegurado(target,'cinto-foco') && b.hp[target.key]===gaHpMax(target)){
+    if(temItemSegurado(target,'cinto-foco') && itemSeguradoDisponivelNestaLuta(target,b) && b.hp[target.key]===gaHpMax(target)){
       consomeItemSegurado(target, b, 'sobreviveu ao Nocaute em 1 Golpe');
-      b.log.push('🛡️ '+userName+' usou '+move.name+', mas '+targetName+' resistiu com 1 PV (Focus Sash já foi usado).');
+      b.log.push('🛡️ '+userName+' usou '+move.name+', mas '+targetName+' resistiu com 1 PV (Focus Sash).');
       b.hp[target.key] = 1;
       return;
     }
@@ -10229,7 +10296,7 @@ function resolveGaTurn(user, target, preSelectedMove){
       // Habilidade Sturdy já não salvou (nunca os 2 juntos) -- consumido no uso.
       var maxTarget = gaHpMax(target), hpAntesHit = b.hp[target.key];
       var vaiSturdy = hpAntesHit===maxTarget && result.dano>=hpAntesHit && temHab(target,'Sturdy') && !ignoraHabilidadeDefensiva(user);
-      var vaiFocusSash = !vaiSturdy && hpAntesHit===maxTarget && result.dano>=hpAntesHit && temItemSegurado(target,'cinto-foco');
+      var vaiFocusSash = !vaiSturdy && hpAntesHit===maxTarget && result.dano>=hpAntesHit && temItemSegurado(target,'cinto-foco') && itemSeguradoDisponivelNestaLuta(target,b);
       b.hp[target.key] = (vaiSturdy||vaiFocusSash) ? 1 : Math.max(0, b.hp[target.key]-result.dano);
       totalDano += (vaiSturdy||vaiFocusSash) ? (hpAntesHit-1) : result.dano;
       if(vaiSturdy){ salvoPeloSturdy = true; break; } // encerra os hits restantes -- já não tem mais o que derrubar
@@ -10250,11 +10317,11 @@ function resolveGaTurn(user, target, preSelectedMove){
     // alvo continua vivo.
     if(totalDano>0 && b.hp[target.key]>0){
       checaBagaDePV(target, b);
-      if(temItemSegurado(target,'balao-de-ar')) consomeItemSegurado(target, b, 'estourou com o dano recebido');
+      if(temItemSegurado(target,'balao-de-ar') && itemSeguradoDisponivelNestaLuta(target,b)) consomeItemSegurado(target, b, 'estourou com o dano recebido');
     }
     // Cap. Política de Fraqueza (Itens Segurados): reage a levar um
     // golpe SUPER EFETIVO com +2 Ataque E +2 Ataque Especial.
-    if(totalDano>0 && b.hp[target.key]>0 && ultimoResult.typeEff>1 && temItemSegurado(target,'politica-fraqueza')){
+    if(totalDano>0 && b.hp[target.key]>0 && ultimoResult.typeEff>1 && temItemSegurado(target,'politica-fraqueza') && itemSeguradoDisponivelNestaLuta(target,b)){
       bumpStage(target,'atk',2); bumpStage(target,'spa',2);
       b.log.push('📈 '+targetName+': Ataque e Ataque Especial foram pra Estágio +2 (Weakness Policy).');
       consomeItemSegurado(target, b, 'reagiu ao golpe Super Efetivo');
@@ -10576,7 +10643,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'' };
   render();
 };
 
@@ -11845,15 +11912,16 @@ DT.gaIniciarLutasComTodaEnergia = function(leadId, zonaId){
    automática nem estiver ligada, ver pendingSequenciaConfirmPopupHTML),
    mas guardado como campo PRÓPRIO da sequência (não um sub-estado de
    autoCapturar) pra ficar simples de ler em resolverLutaAutomaticamente. */
-DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl){
+DT.gaConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl, ignorarJaCapturadosEl){
   var psc = SESSION.pendingSequenciaConfirm; if(!psc) return;
   SESSION.pendingSequenciaConfirm = null;
   var autoCapturar = !!(autoCapEl && autoCapEl.checked);
   var autoCurar = !!(autoCurEl && autoCurEl.checked);
   var ignorarPossuidos = autoCapturar && !!(ignorarPossuidosEl && ignorarPossuidosEl.checked);
+  var ignorarJaCapturados = autoCapturar && !!(ignorarJaCapturadosEl && ignorarJaCapturadosEl.checked);
   var zona = zonaByStatus(psc.zonaId);
-  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, finished:false, pararSemEnergia:false, relatorio:[], lastTickAt: Date.now() };
-  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+(ignorarPossuidos?', ignorando quem já tem':'')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
+  STATE.captureSequence = { leadId: psc.leadId, zonaId: psc.zonaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, ignorarJaCapturados: ignorarJaCapturados, finished:false, pararSemEnergia:false, relatorio:[], lastTickAt: Date.now() };
+  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) na Zona '+(zona?zona.nome:'?')+' (captura automática '+(autoCapturar?'LIGADA':'desligada')+(ignorarPossuidos?', ignorando quem já tem':'')+(ignorarJaCapturados?', ignorando quem já capturei alguma vez':'')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
   mutate();
   captureSequenceTick(); // dispara a 1ª luta na hora, sem esperar o próximo tick do relógio de fundo
 };
@@ -11981,9 +12049,19 @@ function resolverLutaAutomaticamente(cs){
          quando o toggle está ligado; sem ele, o jogo continua
          tentando capturar duplicatas de propósito (é uma escolha
          explícita do jogador, não um comportamento padrão novo). */
-      if(cs.ignorarPossuidos && especieJaPossuida(numAlvo)){
+      /* Cap. leva desta sessão ("ignorar pokémons que já tenham sido
+         capturados uma vez, mesmo que ele não esteja no time ou na
+         box"): 2º motivo pra pular a tentativa, INDEPENDENTE do de
+         cima -- `especieJaPossuida` olha só a posse ATUAL, `dexEntry
+         (numAlvo).caught` olha o HISTÓRICO (nunca desmarca sozinho,
+         mesmo soltando/trocando o Pokémon depois). `motivo` guardado
+         no relatório só pra escolher a frase certa depois. */
+      var motivoIgnorarCaptura = null;
+      if(cs.ignorarPossuidos && especieJaPossuida(numAlvo)) motivoIgnorarCaptura = 'possui';
+      else if(cs.ignorarJaCapturados && dexEntry(numAlvo).caught) motivoIgnorarCaptura = 'jaCapturado';
+      if(motivoIgnorarCaptura){
         b2.captureDone = true;
-        b2.capturaIgnoradaPossuida = { especie: speciesByNum(numAlvo).name };
+        b2.capturaIgnoradaPossuida = { especie: speciesByNum(numAlvo).name, motivo: motivoIgnorarCaptura };
         return;
       }
       var bola = pokebolaRecomendada(numAlvo);
@@ -12273,7 +12351,9 @@ function sequenciaRelatorioHTML(cs){
       if(r.captura) extras.push(r.captura.sucesso
         ? ('🎯 capturou '+esc2(r.captura.especie)+' com '+esc2(r.captura.bola))
         : ('💨 tentou capturar '+esc2(r.captura.especie)+' com '+esc2(r.captura.bola)+' -- escapou'));
-      if(r.capturaIgnoradaPossuida) extras.push('🚫 já tinha '+esc2(r.capturaIgnoradaPossuida.especie)+' -- não tentou capturar');
+      if(r.capturaIgnoradaPossuida) extras.push(r.capturaIgnoradaPossuida.motivo==='jaCapturado'
+        ? ('📕 já capturou '+esc2(r.capturaIgnoradaPossuida.especie)+' alguma vez -- não tentou capturar de novo')
+        : ('🚫 já tinha '+esc2(r.capturaIgnoradaPossuida.especie)+' -- não tentou capturar'));
       if(r.trocouPokemon) extras.push('🔄 trocou de Pokémon');
       return '<details class="ga-seq-relatorio-item"><summary>Luta '+r.numero+' — '+esc2(KIND_LABEL[r.kind]||r.kind)+' ('+esc2(r.label)+') — '+resultTxt+(extras.length ? ' · '+extras.join(' · ') : '')+'</summary>'+
         '<div class="ga-battle-log">'+r.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>'+
@@ -13600,12 +13680,20 @@ DT.gaSetCaixaSearch = function(el){ SESSION.caixaSearch = (el.value||''); render
 DT.gaSetCaixaFiltroTipo1 = function(el){ SESSION.caixaFiltroTipo1 = el.value||''; render(); };
 DT.gaSetCaixaFiltroTipo2 = function(el){ SESSION.caixaFiltroTipo2 = el.value||''; render(); };
 DT.gaSetCaixaFiltroPapel = function(v){ SESSION.caixaFiltroPapel = v; render(); };
+/* Cap. leva desta sessão ("uma aba de 'Data de Captura' (real)...
+   organizar pelos mais recentes capturados e os mais antigos"):
+   `''` mantém a ordem de sempre do array (sem reordenar nada),
+   `recente`/`antigo` ordenam por `p.capturedAt` -- um Pokémon SEM
+   esse campo (de antes desta leva) vira `0` só pra ordenação, então
+   cai sempre no fim de "mais recentes primeiro" e no início de "mais
+   antigos primeiro", sem quebrar nem sumir da lista. */
+DT.gaSetCaixaOrdenar = function(v){ SESSION.caixaOrdenar = v; render(); };
 function caixaFilteredList(){
   var q = (SESSION.caixaSearch||'').trim().toLowerCase();
   var t1 = SESSION.caixaFiltroTipo1 || '';
   var t2 = SESSION.caixaFiltroTipo2 || '';
   var papel = SESSION.caixaFiltroPapel || '';
-  return (STATE.box||[]).filter(function(p){
+  var lista = (STATE.box||[]).filter(function(p){
     var sp = speciesByNum(p.num);
     if(t1 && sp.tipo1!==t1) return false;
     if(t2 && sp.tipo2!==t2) return false;
@@ -13618,6 +13706,9 @@ function caixaFilteredList(){
     }
     return true;
   });
+  if(SESSION.caixaOrdenar==='recente') lista = lista.slice().sort(function(a,b){ return (b.capturedAt||0)-(a.capturedAt||0); });
+  else if(SESSION.caixaOrdenar==='antigo') lista = lista.slice().sort(function(a,b){ return (a.capturedAt||0)-(b.capturedAt||0); });
+  return lista;
 }
 function caixaFiltrosHTML(){
   var tipos = todosOsTipos();
@@ -13636,6 +13727,17 @@ function caixaFiltrosHTML(){
         [':Papel: qualquer'].concat(ROLES_COMBATE.map(function(r){ return r+':'+PAPEL_COMBATE_LABEL[r]; })).map(function(pair){
           var idx = pair.indexOf(':'), kv=[pair.slice(0,idx), pair.slice(idx+1)];
           return '<button class="'+(papelAtual===kv[0]?'active':'')+'" onclick="DT.gaSetCaixaFiltroPapel(\''+kv[0]+'\')">'+kv[1]+'</button>';
+        }).join('')+
+      '</span>'+
+      /* Cap. leva desta sessão ("uma aba de 'Data de Captura' (real)
+         para que assim os jogadores consigam organizar pelos mais
+         recentes capturados e os mais antigos"): mesma aba `.ga-tabs`
+         de Papel de Combate acima, só que pra ORDEM da lista (não um
+         filtro que esconde Pokémon -- todos continuam aparecendo,
+         só a ORDEM muda). */
+      '<span class="ga-tabs">'+
+        [['','🕓 Ordem: padrão'],['recente','🆕 Mais recentes'],['antigo','🕰️ Mais antigos']].map(function(pair){
+          return '<button class="'+(SESSION.caixaOrdenar===pair[0]?'active':'')+'" onclick="DT.gaSetCaixaOrdenar(\''+pair[0]+'\')">'+pair[1]+'</button>';
         }).join('')+
       '</span>'+
     '</div>';
@@ -13702,8 +13804,16 @@ function equipeScreenHTML(){
          gaAskLiberar como já estão -- eles já filtram tanto
          STATE.party quanto STATE.box, então soltar da Caixa funciona
          de graça, só faltava o botão aqui. */
+      /* Cap. leva desta sessão -- ordenado por Data de Captura, mostra
+         a data real (Date.now() de quando este Pokémon entrou na
+         conta, ver spawnPoke) em cima das ações de cada card, pra
+         explicar visualmente por que a ordem mudou. Um Pokémon sem
+         `capturedAt` (de antes desta leva) mostra "desconhecida" em
+         vez de inventar uma data. */
+      var mostrarData = SESSION.caixaOrdenar==='recente' || SESSION.caixaOrdenar==='antigo';
       var grid = lista.map(function(p){
-        var actions = '<div class="ga-poke-actions">'+
+        var actions = (mostrarData ? '<p class="ga-hint">🕓 '+(p.capturedAt?esc2(new Date(p.capturedAt).toLocaleString('pt-BR')):'data desconhecida')+'</p>' : '')+
+          '<div class="ga-poke-actions">'+
           '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
           '<button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button>'+
           (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Item</button>' : '')+
@@ -13712,10 +13822,26 @@ function equipeScreenHTML(){
         '</div>';
         return pokeCardMini(p, actions, '', '', true);
       }).join('');
+      /* Cap. leva desta sessão ("Na box, quero que seja rolado só o
+         que tem de pokémon, não o navegador todo. Então ali seria uma
+         janela onde o menu acima ficaria fixo e uma barra lateral
+         traria os pokémon. Na barra superior, seria interessante
+         colocar um botão de 'voltar ao topo'"): título/filtros/contagem
+         ficam FORA do container que rola (`#gaCaixaScroll`, CSS
+         `max-height`+`overflow-y:auto`) -- nunca saem da tela, exatamente
+         "o menu acima ficaria fixo", enquanto só a grade de cards rola
+         por dentro ("uma barra lateral traria os pokémon"). O botão
+         "⬆️ Voltar ao topo" manipula o `scrollTop` do MESMO container
+         direto via DOM (sem precisar de handler no DT -- mesmo padrão
+         de manipulação DOM crua já usado no drag-and-drop da Equipe),
+         grande o bastante (`.ga-back-to-top`, CSS) pra ser fácil de
+         acertar com o dedo no celular. */
       return '<div class="ga-card"><h2>📦 Caixa ('+STATE.box.length+')</h2>'+
         caixaFiltrosHTML()+
-        '<p class="ga-hint">'+lista.length+' de '+STATE.box.length+' Pokémon com esses filtros.</p>'+
-        '<div class="ga-poke-grid">'+(grid||'<p class="ga-hint">Nenhum Pokémon da Caixa bate com esses filtros.</p>')+'</div></div>';
+        '<p class="ga-hint">'+lista.length+' de '+STATE.box.length+' Pokémon com esses filtros. '+
+          '<button class="ga-btn-sm ga-back-to-top" onclick="var el=document.getElementById(\'gaCaixaScroll\'); if(el) el.scrollTop=0;">⬆️ Voltar ao topo</button>'+
+        '</p>'+
+        '<div class="ga-poke-grid-scroll" id="gaCaixaScroll"><div class="ga-poke-grid">'+(grid||'<p class="ga-hint">Nenhum Pokémon da Caixa bate com esses filtros.</p>')+'</div></div></div>';
     })() : '');
   return out;
 }
@@ -14307,10 +14433,20 @@ function pendingSequenciaConfirmPopupHTML(){
        depender de JS pra habilitar/desabilitar -- DT.gaConfirmarSequencia
        já ignora esse checkbox se autoCapturar estiver desmarcado). */
     '<label class="ga-check-row" style="margin-left:22px"><input type="checkbox" id="gaSeqIgnorarPossuidos"> 🚫 Não tentar capturar quem eu já tenho (Equipe ou Caixa)</label>'+
+    /* Cap. leva desta sessão ("coloque uma opção de ignorar pokémons
+       que já tenham sido capturados uma vez, mesmo que ele não esteja
+       no time ou na box"): 4º toggle, DIFERENTE do de cima -- aquele
+       olha a posse ATUAL (Equipe/Caixa), este olha o HISTÓRICO da
+       Pokédex (`dexEntry(num).caught`, marcado por markCaught e NUNCA
+       desmarcado sozinho -- nem soltando nem trocando o Pokémon depois
+       -- ver comentário de STATE.dex[num].raidCaught, mesmo espírito).
+       Os 2 são independentes e combináveis (ex: ignora quem já tem
+       AGORA e também quem já teve uma vez, mesmo já tendo solto). */
+    '<label class="ga-check-row" style="margin-left:22px"><input type="checkbox" id="gaSeqIgnorarJaCapturados"> 📕 Não tentar capturar quem eu já capturei alguma vez (mesmo fora da Equipe/Caixa hoje)</label>'+
     '<label class="ga-check-row"><input type="checkbox" id="gaSeqAutoCur"> 💊 Curar automaticamente (usa o item de cura mais recomendado pra situação)</label>'+
     '<p class="ga-hint">Se deixar as duas primeiras desmarcadas, a sequência roda do mesmo jeito, só que sem gastar nenhum item nem Pokébola.</p>'+
     '<div class="ga-btn-row">'+
-      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarSequencia(document.getElementById(\'gaSeqAutoCap\'),document.getElementById(\'gaSeqAutoCur\'),document.getElementById(\'gaSeqIgnorarPossuidos\'))">▶️ Começar sequência</button>'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarSequencia(document.getElementById(\'gaSeqAutoCap\'),document.getElementById(\'gaSeqAutoCur\'),document.getElementById(\'gaSeqIgnorarPossuidos\'),document.getElementById(\'gaSeqIgnorarJaCapturados\'))">▶️ Começar sequência</button>'+
       '<button class="ga-btn-sm" onclick="DT.gaCancelarSequencia()">Cancelar</button>'+
     '</div>'+
   '</div></div>';
@@ -14443,7 +14579,7 @@ function lojaScreenHTML(){
        "🎒 Item" no card, ver equipeScreenHTML) -- mesmo fluxo genérico
        de compra de sempre, só cai em STATE.itens por chave igual GA_
        ITEMS/EVOLUTION_STONES. */
-    lojaSecaoHTML('segurados', '🎒 Itens Segurados', 'Compre aqui, depois EQUIPE num Pokémon da Equipe (botão "🎒 Item" no card dele) -- item segurado é permanente (igual Habilidade/Natureza), nunca reseta sozinho entre lutas, mas alguns se CONSOMEM no uso (bagas, Focus Sash, Weakness Policy, Air Balloon) e precisam ser comprados/equipados de novo depois.', HELD_ITEMS),
+    lojaSecaoHTML('segurados', '🎒 Itens Segurados', 'Compre aqui, depois EQUIPE num Pokémon da Equipe (botão "🎒 Item" no card dele) -- item segurado é permanente (igual Habilidade/Natureza), nunca reseta sozinho entre lutas. Só as BAGAS (Oran/Sitrus/Lum) se consomem de vez no uso (mesmo espírito de uma poção -- precisa comprar/equipar de novo depois); Focus Sash/Weakness Policy/Air Balloon e afins ativam só 1x POR LUTA, mas continuam equipados pra sempre (disponíveis de novo já na próxima luta).', HELD_ITEMS),
     /* Cap. leva desta sessão ("faça o que você tá recomendando" --
        item segurado de verdade na Troca/Nível+Dia-Noite): mesmo
        catálogo genérico de sempre, cai em STATE.itens por chave --
