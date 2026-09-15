@@ -6610,7 +6610,7 @@ function aplicarHabilidadeDeContatoDoAlvo(alvo, atacante, b, alvoNome, atacanteN
     applyAilment(atacante, r<1/3?'poison':(r<2/3?'paralysis':'sleep'), '', b, atacanteNome, alvo);
   }
   if((h==='Rough Skin' || h==='Iron Barbs') && b.hp[atacante.key]>0 && !temHab(atacante,'Magic Guard')){
-    var maxA = gaHpMax(atacante), dano = Math.max(1, Math.floor(maxA/8));
+    var maxA = gaHpMaxDanoPercentual(atacante), dano = Math.max(1, Math.floor(maxA/8));
     b.hp[atacante.key] = Math.max(0, b.hp[atacante.key]-dano);
     b.log.push('🩸 '+atacanteNome+' sofreu '+dano+' de dano ao tocar '+alvoNome+' ('+h+').');
   }
@@ -6861,6 +6861,24 @@ function effStat(poke, stat){
   return v;
 }
 function gaHpMax(poke){ return effStat(poke, 'hp'); }
+/* Cap. leva desta sessão ("limitar qualquer dano que ele [boss de Raid]
+   sofra por porcentagem da vida pra porcentagem da vida SEM os buffs"):
+   Veneno/Queimadura/Clima/Semente Maligna/Pedras Pontiagudas/Lama Negra/
+   Pedra Vida/Capacete Rochoso/Aftermath (Rough Skin/Iron Barbs incluso)
+   são todos "N/M do PV Máximo" -- contra um boss de Raid, "PV Máximo"
+   NUNCA pode ser o PV já inflado por `raidHpMult` (senão 1/8 de Veneno
+   vira um dano gigante, ex.: 1404 num Arcanine Nv.100 -- bug reportado
+   nesta sessão), e sim o PV que ele teria SEM o buff de Raid, como numa
+   luta comum no mesmo Nível (`raidStatMult` nunca entra aqui -- só afeta
+   os OUTROS 5 Atributos, nunca o PV). Só troca quando o battler É de
+   Raid (`raidHpMult` truthy) -- qualquer outro battler do jogo continua
+   batendo com gaHpMax de sempre. O PV ATUAL (`b.hp[key]`) e o PV Máximo
+   pra cura/barra/display continuam na escala normal (inflada) -- só a
+   FRAÇÃO usada pra calcular dano por porcentagem muda. */
+function gaHpMaxDanoPercentual(poke){
+  if(poke && poke.raidHpMult) return officialStat(poke.num, poke.level, 'hp', poke.natureza, poke.forma);
+  return gaHpMax(poke);
+}
 /* Estágio (-6..+6, Cap. "Quero tudo dos combates mesmo"): a MESMA
    tabela de fração oficial usada pros 5 Atributos de batalha (Ataque
    até Velocidade) E, numa tabela um pouco diferente, pra Precisão/
@@ -8123,7 +8141,7 @@ function resolveFaintAfterDamage(target, user, b, moveUsado){
   // GOLPE DE CONTATO, dá 1/4 do PRÓPRIO PV Máximo de dano em quem
   // desferiu o golpe (bloqueado só pelo Magic Guard de quem recebe).
   if(temHab(target,'Aftermath') && user && moveUsado && golpeFazContato(moveUsado) && b.hp[user.key]>0 && !temHab(user,'Magic Guard')){
-    var maxAfter = gaHpMax(target), danoAfter = Math.max(1, Math.floor(maxAfter/4));
+    var maxAfter = gaHpMaxDanoPercentual(target), danoAfter = Math.max(1, Math.floor(maxAfter/4));
     b.hp[user.key] = Math.max(0, b.hp[user.key]-danoAfter);
     b.log.push('💢 '+displayName(user)+' sofreu '+danoAfter+' de dano (Aftermath de '+displayName(target)+').');
   }
@@ -9161,7 +9179,7 @@ function applyWeatherResidual(atkB, defB, b){
     var sp = tiposEfetivos(battler);
     var imune = WEATHER_CHIP_IMMUNE[w] && ((sp.tipo1 && WEATHER_CHIP_IMMUNE[w][sp.tipo1]) || (sp.tipo2 && WEATHER_CHIP_IMMUNE[w][sp.tipo2]));
     if(imune || temHab(battler,'Magic Guard')) return; // Cap. Habilidade Magic Guard: imune a chip de Clima também
-    var maxHp = gaHpMax(battler), dano = Math.max(1, Math.floor(maxHp/16));
+    var maxHp = gaHpMaxDanoPercentual(battler), dano = Math.max(1, Math.floor(maxHp/16));
     b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
     b.log.push((w==='areia'?'🏜️':'🌨️')+' '+displayName(battler)+' sofreu '+dano+' de dano do '+WEATHER_LABELS[w]+'.');
     checaBagaDePV(battler, b);
@@ -9233,7 +9251,8 @@ function applyHeldItemEndOfTurn(battler, b){
       b.hp[battler.key] = Math.min(max, antes+Math.max(1, Math.floor(max/16)));
       if(b.hp[battler.key]>antes) b.log.push('⚫ '+displayName(battler)+' recuperou '+(b.hp[battler.key]-antes)+' PV (Black Sludge).');
     } else if(!temHab(battler,'Magic Guard')){
-      var dano = Math.max(1, Math.floor(max/8));
+      var maxDano = gaHpMaxDanoPercentual(battler);
+      var dano = Math.max(1, Math.floor(maxDano/8));
       b.hp[battler.key] = Math.max(0, antes-dano);
       b.log.push('⚫ '+displayName(battler)+' sofreu '+dano+' de dano (Black Sludge).');
     }
@@ -9457,7 +9476,7 @@ function aplicarArmadilhasDeEntrada(battler, ladoAlvo, b){
   var sp = tiposEfetivos(battler);
   if(haz.stealthRock && b.hp[battler.key]>0 && !temHab(battler,'Magic Guard')){
     var mult = typeEffMultiplier('Pedra', sp.tipo1, sp.tipo2);
-    var dano = Math.max(1, Math.floor(gaHpMax(battler) * mult / 8));
+    var dano = Math.max(1, Math.floor(gaHpMaxDanoPercentual(battler) * mult / 8));
     b.hp[battler.key] = Math.max(0, b.hp[battler.key]-dano);
     b.log.push('🪨 Pedras Pontiagudas cravaram em '+nome+' ao entrar -- '+dano+' de dano.');
     checaBagaDePV(battler, b);
@@ -9486,7 +9505,7 @@ function applyLeechSeedResidual(atkB, defB, b){
     var semeado = par[0], oposto = par[1];
     if(!semeado || !semeado.leechSeeded || b.hp[semeado.key]===undefined || b.hp[semeado.key]<=0) return;
     if(temHab(semeado,'Magic Guard')) return; // Cap. Habilidade Magic Guard: imune ao dreno da Semente Maligna também
-    var maxSemeado = gaHpMax(semeado);
+    var maxSemeado = gaHpMaxDanoPercentual(semeado);
     var dreno = Math.min(b.hp[semeado.key], Math.max(1, Math.floor(maxSemeado/8)));
     b.hp[semeado.key] = Math.max(0, b.hp[semeado.key]-dreno);
     b.log.push('🌱 Semente Maligna drenou '+dreno+' PV de '+displayName(semeado)+'.');
@@ -9824,7 +9843,7 @@ function statusImpedeAcao(battler, b){
    de cada Rodada (depois dos 2 agirem), só se ele ainda estiver vivo. */
 function applyEndOfTurnStatus(battler, b){
   if(!battler || !battler.status || b.hp[battler.key]===undefined || b.hp[battler.key]<=0) return;
-  var maxHp = gaHpMax(battler), nome = displayName(battler), dano = 0;
+  var maxHp = gaHpMaxDanoPercentual(battler), nome = displayName(battler), dano = 0;
   if(battler.status==='queimadura') dano = Math.max(1, Math.floor(maxHp/16));
   else if(battler.status==='veneno') dano = Math.max(1, Math.floor(maxHp/8));
   else if(battler.status==='veneno_grave'){ dano = Math.max(1, Math.floor(maxHp*battler.statusTurns/16)); battler.statusTurns++; }
@@ -10352,7 +10371,7 @@ function resolveGaTurn(user, target, preSelectedMove){
   // contra o Substituto (totalDano já conta o absorvido, regra oficial
   // de recuo/dreno de sempre).
   if(totalDano>0 && temItemSegurado(user,'pedra-vida') && !temHab(user,'Magic Guard')){
-    var recuoOrb = Math.max(1, Math.floor(gaHpMax(user)/10));
+    var recuoOrb = Math.max(1, Math.floor(gaHpMaxDanoPercentual(user)/10));
     b.hp[user.key] = Math.max(0, b.hp[user.key]-recuoOrb);
     b.log.push('🔮 '+userName+' sofreu '+recuoOrb+' de recuo (Life Orb).');
     checaBagaDePV(user, b);
@@ -10393,7 +10412,7 @@ function resolveGaTurn(user, target, preSelectedMove){
       // Máximo de quem ATACOU, mesmo padrão de Rough Skin/Iron Barbs
       // acima -- respeita Magic Guard de quem atacou.
       if(b.hp[user.key]>0 && b.hp[target.key]>0 && temItemSegurado(target,'capacete-rochoso') && !temHab(user,'Magic Guard')){
-        var danoCapacete = Math.max(1, Math.floor(gaHpMax(user)/6));
+        var danoCapacete = Math.max(1, Math.floor(gaHpMaxDanoPercentual(user)/6));
         b.hp[user.key] = Math.max(0, b.hp[user.key]-danoCapacete);
         b.log.push('⛑️ '+userName+' sofreu '+danoCapacete+' de dano ao tocar '+targetName+' (Rocky Helmet).');
         checaBagaDePV(user, b);
