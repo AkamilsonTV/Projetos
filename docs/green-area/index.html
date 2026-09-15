@@ -406,6 +406,10 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-admin-log-row{ font-size:.82rem; border-bottom:1px solid var(--line); padding:4px 0; }
 .ga-admin-log-row:last-child{ border-bottom:none; }
 .ga-tag-log{ display:inline-block; background:var(--accent-dim); color:var(--accent); border-radius:4px; padding:0 5px; font-size:.72rem; text-transform:uppercase; margin:0 4px; }
+.ga-admin-battle-log{ margin-top:4px; }
+.ga-admin-battle-log summary{ cursor:pointer; font-size:.78rem; color:var(--accent); user-select:none; }
+.ga-admin-battle-log-row{ font-size:.78rem; font-family:monospace; padding:2px 0 2px 14px; border-bottom:1px dashed var(--line); }
+.ga-admin-battle-log-row:last-child{ border-bottom:none; }
 
 .ga-move-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; text-align:left; }
 .ga-move-row:last-child{ border-bottom:none; }
@@ -5835,7 +5839,7 @@ function finalizarBatalhaRaid(b, result){
   b.log.push(result==='vitoria'
     ? '🏆 Você derrotou a Raid nesta tentativa! (causou '+danoNestaTentativa+' de dano ao todo)'
     : '☠️ Sua Equipe não aguentou desta vez (causou '+danoNestaTentativa+' de dano à Raid, que continua de pé).');
-  logAction('raid', 'Lutou contra a Raid (causou '+danoNestaTentativa+' de dano, '+tentativa.resultado+').');
+  logAction('raid', 'Lutou contra a Raid (causou '+danoNestaTentativa+' de dano, '+tentativa.resultado+').', b.log);
   if(raidsCol){
     raidsCol.doc(raidId).update({
       tentativas: firebase.firestore.FieldValue.arrayUnion(tentativa),
@@ -7410,10 +7414,26 @@ function mutate(){ if(STATE){ tickEnergy(); tickPoketickets(); tickRaidPass(); }
    antigas são descartadas) -- nunca cresce pra sempre, o documento do
    Firestore não pode crescer sem limite. */
 var ACTION_LOG_MAX = 500;
-function logAction(tipo, desc){
+/* Cap. leva desta sessão ("o Admin ver o log das batalhas dos outros
+   jogadores, o log completo"): a linha de resultado ("Venceu a luta"/
+   "Lutou contra a Raid"/Duelo) já existia no actionLog, mas só como
+   resumo -- o log de COMBATE de verdade (golpe a golpe, "usou Water
+   Pulse -- 29 de dano"...) nunca saía do `b.log` daquela luta. Agora
+   quem chama `logAction` de um fim de luta pode passar um 4º
+   parâmetro opcional `detalhes` (cópia de `b.log`) -- guardado JUNTO
+   na mesma entrada do actionLog (`entry.detalhes`), sem coleção nova
+   nem consulta a mais (mesmo raciocínio do próprio actionLog: o
+   Painel Admin já carrega o `state` inteiro). Cortado em
+   BATTLE_LOG_DETALHES_MAX linhas (as ÚLTIMAS, que são as que mais
+   importam pra entender como a luta terminou) pra nunca deixar o
+   documento salvo explodir de tamanho com uma luta gigante. */
+var BATTLE_LOG_DETALHES_MAX = 150;
+function logAction(tipo, desc, detalhes){
   if(!STATE) return;
   if(!STATE.actionLog || !Array.isArray(STATE.actionLog)) STATE.actionLog = [];
-  STATE.actionLog.push({ ts: Date.now(), tipo: tipo, desc: desc });
+  var entry = { ts: Date.now(), tipo: tipo, desc: desc };
+  if(detalhes && detalhes.length) entry.detalhes = detalhes.slice(-BATTLE_LOG_DETALHES_MAX);
+  STATE.actionLog.push(entry);
   if(STATE.actionLog.length > ACTION_LOG_MAX) STATE.actionLog.splice(0, STATE.actionLog.length - ACTION_LOG_MAX);
 }
 
@@ -8637,10 +8657,10 @@ function finishBattle(result){
        golpe (ver grantXpAndMaybeEvolve, chamado de dentro de
        runBattleUntilPause a cada oponente desmaiado) -- não tem mais
        nada de progressão pra fazer aqui no fim. */
-    logAction('batalha', 'Venceu a luta ('+b.kind+', '+b.label+'): +'+premio+' Pokédólares'+(tix>0?', +'+tix+' Pokétickets':'')+'.');
+    logAction('batalha', 'Venceu a luta ('+b.kind+', '+b.label+'): +'+premio+' Pokédólares'+(tix>0?', +'+tix+' Pokétickets':'')+'.', b.log);
   } else {
     b.log.push('☠️ Sua Equipe não aguentou -- luta perdida.');
-    logAction('batalha', 'Perdeu a luta ('+b.kind+', '+b.label+').');
+    logAction('batalha', 'Perdeu a luta ('+b.kind+', '+b.label+').', b.log);
   }
 }
 
@@ -11511,7 +11531,7 @@ function aplicarMeuResultadoDuelo(d){
     var pFin = STATE.party.filter(function(x){return x.id===finalizadorId;})[0] || STATE.box.filter(function(x){return x.id===finalizadorId;})[0];
     if(pFin){ pFin.vitorias = (pFin.vitorias||0)+1; gainFelicidade(pFin, FELICIDADE_POR_VITORIA); } // Cap. leva desta sessão -- sistema de felicidade
   }
-  logAction('duelo', 'Duelo PvP com '+(souA?d.bNome:d.aNome)+' terminou: '+(b.vencedor===meuLado?'🏆 vitória':'☠️ derrota')+'.');
+  logAction('duelo', 'Duelo PvP com '+(souA?d.bNome:d.aNome)+' terminou: '+(b.vencedor===meuLado?'🏆 vitória':'☠️ derrota')+'.', b.log);
   mutate();
   var upd = {}; upd[souA?'creditadoA':'creditadoB'] = true;
   return duelosCol.doc(d.id).update(upd).catch(function(err){ SESSION.error='Não consegui aplicar o resultado do Duelo ('+erroFirestoreMsg(err)+').'; render(); });
@@ -14813,7 +14833,13 @@ function fichaAdminPopupHTML(docId){
     '<h3 class="ga-subhead">📜 Log de ações ('+log.length+', mais recente primeiro)</h3>'+
     (log.length
       ? '<div class="ga-admin-log">'+log.map(function(l){
-          return '<div class="ga-admin-log-row"><span class="ga-hint">'+esc2(new Date(l.ts).toLocaleString('pt-BR'))+'</span> <span class="ga-tag-log">'+esc2(l.tipo)+'</span> '+esc2(l.desc)+'</div>';
+          return '<div class="ga-admin-log-row"><span class="ga-hint">'+esc2(new Date(l.ts).toLocaleString('pt-BR'))+'</span> <span class="ga-tag-log">'+esc2(l.tipo)+'</span> '+esc2(l.desc)+
+            (l.detalhes && l.detalhes.length
+              ? '<details class="ga-admin-battle-log"><summary>⚔️ Ver log completo da luta ('+l.detalhes.length+' linha'+(l.detalhes.length===1?'':'s')+')</summary>'+
+                l.detalhes.map(function(linha){ return '<div class="ga-admin-battle-log-row">'+esc2(linha)+'</div>'; }).join('')+
+                '</details>'
+              : '')+
+            '</div>';
         }).join('')+'</div>'
       : '<p class="ga-hint">Essa conta ainda não fez nenhuma ação registrada.</p>')+
   '</div></div>';
