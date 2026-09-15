@@ -10402,8 +10402,26 @@ function resolveGaTurn(user, target, preSelectedMove){
       b.hp[target.key] = 1;
       return;
     }
-    b.hp[target.key] = 0;
-    b.log.push('💀 '+userName+' usou '+move.name+' -- Nocaute em 1 Golpe! '+targetName+' desmaiou na hora!');
+    /* Cap. leva desta sessão ("tem pokémon boss morrendo e tomando
+       dano que é absurdo... principalmente na raid"): Nocaute em 1
+       Golpe zerava `b.hp[target.key]` direto -- contra um boss de
+       Raid isso apagava de vez o PV COMPARTILHADO inteiro (entre
+       TODOS os jogadores que já lutaram) com 1 golpe só, não importa
+       quanto ainda sobrava. Mesmo princípio já usado em
+       gaHpMaxDanoPercentual (Veneno/Queimadura/etc -- "qualquer % que
+       o boss sofra tem que ser com base no nível base dele"): contra
+       Raid, em vez de zerar tudo, causa o equivalente a 1 PV Máximo
+       BASE dele (`gaHpMaxDanoPercentual`) -- ainda um golpe pesado de
+       verdade, só não instant-kill o esforço de todo mundo. Fora de
+       Raid, comportamento 100% igual a antes (zera na hora). */
+    if(target.raidHpMult){
+      var danoOhkoRaid = gaHpMaxDanoPercentual(target);
+      b.hp[target.key] = Math.max(0, b.hp[target.key]-danoOhkoRaid);
+      b.log.push('💀 '+userName+' usou '+move.name+' -- Nocaute em 1 Golpe! Como '+targetName+' é o boss de uma Raid, causa '+danoOhkoRaid+' de dano (equivalente ao PV Máximo base dele) em vez de zerar o PV compartilhado de uma vez.');
+    } else {
+      b.hp[target.key] = 0;
+      b.log.push('💀 '+userName+' usou '+move.name+' -- Nocaute em 1 Golpe! '+targetName+' desmaiou na hora!');
+    }
     return;
   }
 
@@ -10436,6 +10454,17 @@ function resolveGaTurn(user, target, preSelectedMove){
     } else if(fd.igualaProprio){
       danoFd = b.hp[user.key];
     }
+    /* Cap. leva desta sessão (mesmo raciocínio do Nocaute em 1 Golpe
+       acima): Super Fang ("metade do PV ATUAL"), Endeavor ("iguala ao
+       PV do usuário") e Final Gambit ("dano = PV atual do usuário")
+       são todos calculados em cima do PV COMPARTILHADO inflado de um
+       boss de Raid -- sem trava, um único golpe desses podia cortar
+       uma fatia gigante (até METADE) do esforço de todo mundo de uma
+       vez. Trava no MESMO teto do Nocaute em 1 Golpe: nunca mais que
+       1 PV Máximo BASE do boss por golpe, mesmo que a conta bruta dê
+       um número maior. Nunca afeta luta fora de Raid (`raidHpMult`
+       só existe no battler do boss). */
+    if(target.raidHpMult) danoFd = Math.min(danoFd, gaHpMaxDanoPercentual(target));
     if(target.subHp>0){
       var absorvidoFd = Math.min(target.subHp, danoFd);
       target.subHp -= absorvidoFd;
