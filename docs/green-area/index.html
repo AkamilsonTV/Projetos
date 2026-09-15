@@ -8244,6 +8244,13 @@ function runBattleUntilPause(){
     if(b.hp[atkB.key]<=0){ if(resolveFaintAfterDamage(atkB, null, b)) return; continue; }
     applyHeldItemEndOfTurn(defB, b);
     if(b.hp[defB.key]<=0){ if(resolveFaintAfterDamage(defB, null, b)) return; continue; }
+
+    /* Cap. leva desta sessão ("A cada 3 rodadas, caso ele tenha
+       alguma condição, o ele será curado pela sua força de vontade"):
+       só em Raid, boss é sempre `defB` aqui -- último passo do FIM de
+       Rodada, depois de todo residual (nunca causa desmaio, então sem
+       checagem de PV depois). */
+    applyRaidBossWillpowerCure(defB, b);
   }
   // guard estourou (não deveria em uso normal) -- força um resultado justo, sem travar o jogo
   if(!b.finished){
@@ -8969,6 +8976,34 @@ function applyAbilityEndOfTurn(battler, b){
     }
   }
 }
+/* Cap. leva desta sessão ("O boss de raid, SOMENTE durante a raid...
+   A cada 3 rodadas, caso ele tenha alguma condição, o ele será curado
+   pela sua força de vontade"): só em `b.kind==='raid'` -- o boss é
+   sempre o `defB` do laço principal de `runBattleUntilPause` (única
+   Espécie oponente numa Raid). Contador PRÓPRIO (`b.raidRoundCount`,
+   nunca `b.roundGuard` -- esse incrementa a cada iteração do `while`,
+   inclusive quando a Rodada é abandonada cedo por um desmaio/troca, o
+   que NÃO conta como Rodada completa de verdade) -- incrementado só
+   aqui, no MESMO ponto de FIM de Rodada que já roda 1x por Rodada
+   realmente concluída (depois de todo residual de Status/Clima/
+   Terreno/Item, sem nenhum `return`/`continue` ter interrompido antes
+   de chegar aqui). Mesmo padrão de "curar o PRÓPRIO Status" já usado
+   em Shed Skin/Hydration acima (`battler.status = null; .statusTurns
+   = 0`), só que o gatilho é a contagem de Rodada em vez de Habilidade,
+   e a mensagem é a exigida: "O pokémon curou (nome da condição), com
+   sua força de vontade." */
+function applyRaidBossWillpowerCure(bossB, b){
+  if(b.kind!=='raid') return;
+  b.raidRoundCount = (b.raidRoundCount||0)+1;
+  if(b.raidRoundCount%3!==0) return;
+  // `side==='raid'` de propósito, além do `b.kind` acima -- reforço
+  // (nunca aconteceria de verdade dentro do motor, que sempre chama
+  // isto só com `defB`/o boss) pra garantir que o battler do JOGADOR
+  // nunca seria curado mesmo se algum dia chamado errado.
+  if(!bossB || bossB.side!=='raid' || b.hp[bossB.key]===undefined || b.hp[bossB.key]<=0 || !bossB.status) return;
+  b.log.push('💪 '+displayName(bossB)+' curou '+STATUS_LABELS_PT[bossB.status]+', com sua força de vontade.');
+  bossB.status = null; bossB.statusTurns = 0;
+}
 /* Itens Segurados passivos de FIM de Rodada: Restos (cura 1/16 do PV
    Máximo) e Lama Negra (cura 1/16 em Tipo Venenoso, mas TIRA 1/8 de
    qualquer outro Tipo). Mesmo padrão de applyAbilityEndOfTurn, chamado
@@ -9676,6 +9711,16 @@ function applyStatChanges(statChanges, moveTarget, user, target, b, userName, ta
    vindo direto de MOVES_OFICIAL (dado real da PokeAPI), não mais um
    efeito por papel inventado. */
 var STRUGGLE_RECOIL_PCT = 0.25;
+/* Cap. leva desta sessão ("O boss de raid, SOMENTE durante a raid.
+   Tem que ser imune a recuo, ataques que ele use que vão causar dano
+   nele mesmo tem que ser ignorado o dano que ele sofre, no oponente
+   ele pode causar dano"): mensagem única reusada nos 2 pontos que
+   aplicam recuo (Struggle e recuo/dreno oficial de MOVES_OFICIAL,
+   ex. Flare Blitz/Double-Edge/Brave Bird) -- só dispara quando
+   `user.side==='raid'` (o battler do BOSS, nunca o jogador -- ver
+   buildBattlerRaid). O dano CAUSADO no alvo nunca muda, só o recuo
+   que o próprio boss sofreria fica zerado. */
+var RAID_BOSS_SEM_RECUO_AVISO = '🛡️ Pokémon de Raid não recebe dano de recuo de ataques como Flare Blitz.';
 function resolveGaTurn(user, target, preSelectedMove){
   var b = STATE.battle;
   var userName = displayName(user), targetName = speciesByNum(target.num).name;
@@ -9726,9 +9771,14 @@ function resolveGaTurn(user, target, preSelectedMove){
   if(move.name==='Struggle'){
     var struggleDano = Math.max(1, Math.floor((2*user.level/5+2)*50*effStat(user,'atk')/effStat(target,'def')/50)+2);
     b.hp[target.key] = Math.max(0, b.hp[target.key]-struggleDano);
-    var recuo = Math.max(1, Math.floor(gaHpMax(user)*STRUGGLE_RECOIL_PCT));
-    b.hp[user.key] = Math.max(0, b.hp[user.key]-recuo);
-    b.log.push('💢 '+userName+' usou Struggle (sem PP sobrando!) em '+targetName+' -- '+struggleDano+' de dano, e sofreu '+recuo+' de recuo.');
+    if(user.side==='raid'){
+      b.log.push('💢 '+userName+' usou Struggle (sem PP sobrando!) em '+targetName+' -- '+struggleDano+' de dano.');
+      b.log.push(RAID_BOSS_SEM_RECUO_AVISO);
+    } else {
+      var recuo = Math.max(1, Math.floor(gaHpMax(user)*STRUGGLE_RECOIL_PCT));
+      b.hp[user.key] = Math.max(0, b.hp[user.key]-recuo);
+      b.log.push('💢 '+userName+' usou Struggle (sem PP sobrando!) em '+targetName+' -- '+struggleDano+' de dano, e sofreu '+recuo+' de recuo.');
+    }
     return;
   }
 
@@ -10078,6 +10128,9 @@ function resolveGaTurn(user, target, preSelectedMove){
       var antesD = b.hp[user.key];
       b.hp[user.key] = Math.min(maxUserD, b.hp[user.key]+drainQtd);
       if(b.hp[user.key]>antesD) b.log.push('🩸 '+userName+' drenou '+(b.hp[user.key]-antesD)+' PV de '+targetName+'.');
+    } else if(user.side==='raid'){
+      // Cap. leva desta sessão -- boss de Raid é imune a recuo (o dano CAUSADO no alvo, logado antes deste bloco, nunca muda)
+      b.log.push(RAID_BOSS_SEM_RECUO_AVISO);
     } else if(!temHab(user,'Magic Guard')){
       b.hp[user.key] = Math.max(0, b.hp[user.key]-drainQtd);
       b.log.push('💥 '+userName+' sofreu '+drainQtd+' de recuo.');
