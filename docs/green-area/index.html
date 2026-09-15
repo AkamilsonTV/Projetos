@@ -7460,14 +7460,72 @@ function queueSave(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(doSave, 400);
 }
+/* Cap. leva desta sessão ("Não consegui salvar no banco de dados...
+   Esse é o motivo do rollback. Ainda continua"): 2 bugs DIFERENTES por
+   trás do mesmo aviso.
+
+   BUG 1 (o motivo real do "rollback continuar"): `localStateVersion`
+   era marcado como a versão "nossa mais recente" ANTES de saber se a
+   escrita ia dar certo -- numa escrita que FALHA (rede caiu, ou o
+   documento ficou grande demais, ver BUG 2), o STATE local com o
+   progresso novo NUNCA chegava no Firestore, mas `localStateVersion`
+   já tinha avançado como se tivesse chegado -- daí em diante, o
+   listener (`attachSaveListener`) passava a REJEITAR até a versão
+   antiga de verdade que ainda estava no banco (por achar que já era
+   "eco de uma escrita mais velha"), então um F5/catch-up/outro
+   aparelho voltava pra ela -- o progresso "sumia" de vez. Corrigido
+   restaurando `localStateVersion` pro valor de ANTES quando a escrita
+   falha (`versaoAntes` abaixo) -- só fica valendo de verdade quando o
+   Firestore confirma.
+
+   BUG 2 (por que a escrita FALHAVA especificamente depois de uma
+   sequência automática grande): cada luta fechada grava o log
+   golpe-a-golpe inteiro (`entry.detalhes`, até BATTLE_LOG_DETALHES_MAX
+   linhas) dentro de `STATE.actionLog` (até ACTION_LOG_MAX entradas) --
+   Firestore tem um TETO REAL de ~1MiB por documento; uma conta com
+   histórico real (meses de luta/raid/duelo) pode chegar perto ou
+   passar disso, e a partir daí TODA escrita falha (não é rede -- é
+   tamanho), então "tente de novo" nunca resolvia sozinho, e cada
+   sequência automática grande (que fecha várias lutas de uma vez,
+   cada uma com `detalhes` cheio) empurrava o documento ainda mais pra
+   cima do teto. `encolherActionLogSeNecessario` mede o tamanho REAL em
+   bytes (UTF-8, não caracteres) antes de cada escrita e, só se estourar
+   uma margem de segurança, apaga o `detalhes` (golpe-a-golpe) das
+   entradas MAIS ANTIGAS primeiro -- nunca o resumo (tipo/descrição/
+   data), só o log turno-a-turno de lutas já bem antigas -- até caber
+   de novo. Autocorretivo: uma conta que já estourou o teto se
+   destrava sozinha na PRÓXIMA escrita, sem precisar de nenhuma ação
+   manual do Mestre. */
+var FIRESTORE_DOC_SAFE_BYTES = 900000; // margem abaixo do teto real (1.048.576 bytes) -- sobra espaço pro resto do documento (party/box/dex/etc.)
+function byteSize(str){
+  try{ return new TextEncoder().encode(str).length; }catch(e){ return str.length; } // fallback grosseiro (ambiente sem TextEncoder)
+}
+function encolherActionLogSeNecessario(){
+  var log = STATE.actionLog;
+  if(!log || !log.length) return;
+  var tamanhoAtual = byteSize(JSON.stringify(sanitizeForFirestore(STATE)));
+  if(tamanhoAtual <= FIRESTORE_DOC_SAFE_BYTES) return;
+  for(var i=0; i<log.length && tamanhoAtual>FIRESTORE_DOC_SAFE_BYTES; i++){
+    if(!log[i].detalhes) continue;
+    tamanhoAtual -= byteSize(JSON.stringify(log[i].detalhes));
+    delete log[i].detalhes;
+  }
+}
+var saveRetryTimer = null;
 function doSave(){
   if(!currentSaveRef || !STATE) return;
   if(saveInFlight){ saveQueuedAfter = true; return; }
   saveInFlight = true;
+  encolherActionLogSeNecessario();
   var ts = Date.now();
+  var versaoAntes = localStateVersion;
   localStateVersion = ts;
   currentSaveRef.update({ state: sanitizeForFirestore(STATE), updatedAt: ts }).catch(function(e){
-    SESSION.error = 'Não consegui salvar no banco de dados (verifique sua internet). Sua alteração pode não ter sido salva -- tente de novo.';
+    localStateVersion = versaoAntes; // a escrita NÃO aconteceu de verdade -- desfaz o avanço otimista (ver BUG 1 acima)
+    console.error('[Green Área] Falha ao salvar no Firestore:', e);
+    SESSION.error = 'Não consegui salvar no banco de dados (verifique sua internet). Tentando de novo sozinho em alguns segundos...';
+    clearTimeout(saveRetryTimer);
+    saveRetryTimer = setTimeout(queueSave, 5000); // auto-retry -- nunca depende do jogador clicar em nada
     render();
   }).then(function(){
     saveInFlight = false;
