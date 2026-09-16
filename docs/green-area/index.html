@@ -5268,7 +5268,8 @@ var EVOLUTION_STONE_OVERRIDE = {
      destino) porque os 2 pergaminhos são igualmente válidos pra essa
      ÚNICA espécie destino aqui (`pedrasElegiveisPara`/`stoneByKey`
      abaixo tratam string OU array do mesmo jeito). */
-  892: ['pergaminho-trevas', 'pergaminho-aguas']
+  892: ['pergaminho-trevas', 'pergaminho-aguas'],
+  869: 'doce' // Cap. leva desta sessão -- Milcery->Alcremie, ver EVOLUTION_EXCLUSIVE_ITEMS acima (trigger oficial "spin", sem item no dado -- vira exigência de item aqui por pedido explícito do jogador)
 };
 /* Cap. leva desta sessão ("Segue com seu próximo palpite" -- 3º grupo
    do checklist, "📦 item exclusivo (10)"): os ~10 itens de evolução
@@ -5297,6 +5298,19 @@ var EVOLUTION_EXCLUSIVE_ITEMS = [
   { key:'armadura-auspiciosa', item:'auspicious-armor', icon:null, emoji:'🛡️', nome:'Auspicious Armor', preco:300, desc:'Use fora de luta pra evoluir Charcadet em Armarouge.' },
   { key:'armadura-maligna', item:'malicious-armor', icon:null, emoji:'🖤', nome:'Malicious Armor', preco:300, desc:'Use fora de luta pra evoluir Charcadet em Ceruledge.' },
   { key:'xicara-comum', item:'unremarkable-teacup', icon:null, emoji:'🍵', nome:'Unremarkable Teacup', preco:300, desc:'Use fora de luta pra evoluir Poltchageist em Sinistcha.' },
+  /* Cap. leva desta sessão ("Milcery pode seguir sua dica [botão fora
+     de luta, evolui na hora]... Mas o Milcery tem que estar segurando
+     Sweet... se não tiver o item, cria ele"): oficial tem 7 Doces
+     diferentes (Morango/Amor/Baga/Trevo/Flor/Estrela/Fita), cada um só
+     muda a forma COSMÉTICA do Alcremie (que este protótipo não
+     modela) -- os 7 viram 1 item só aqui, mesmo espírito de
+     simplificação já usado nos outros itens exclusivos desta lista
+     (ex. Cracked Pot pro Sinistea/Polteageist, que também não distingue
+     forma Falsa/Antiga). Reusa o MESMO fluxo de EVOLUTION_STONES
+     (Mochila -- comprar na Loja, usar fora de luta, consome 1 e evolui
+     na hora), documentado como aproximação de "segurar E girar": aqui
+     vira só "ter e usar", igual todo o resto desta lista. */
+  { key:'doce', item:'strawberry-sweet', icon:null, emoji:'🍬', nome:'Sweet', preco:300, desc:'Use fora de luta (representa segurar um Doce e girar) pra evoluir Milcery em Alcremie -- as 7 variedades oficiais viram 1 item só, já que este protótipo não modela as formas cosméticas do Alcremie.' },
   /* Cap. leva desta sessão ("Grupo A" do checklist -- ver EVOLUTION_
      STONE_OVERRIDE[892] acima pro porquê): confirmado por curl que
      NENHUM dos 2 tem sprite oficial na PokeAPI/sprites -- mesmo
@@ -5506,6 +5520,27 @@ var EVOLUTION_SURVIVE_BIG_HIT_REQUIRED = { 867: { minDamage:49, flagField:'tomou
    documentada: solta a exigência oficial do item segurado específico
    no Bisharp derrotado (Movimento Negro/Movimento Branco). */
 var EVOLUTION_DEFEATED_SPECIES_COUNT_REQUIRED = { 983: { speciesNum:625, count:3, counterField:'bisharpDerrotados' } };
+/* Cap. leva desta sessão ("Pawmo, Bramblin e Rellor, é possível usar
+   um contador de clicks no site enquanto ele estiver na equipe? Não
+   reseta se voltar pro box, mas não conta se estiver na box... a
+   quantidade de clicks que usamos pra acessar as outras abas do site,
+   usar item, iniciar combate etc"): aproximação pro "andar X passos"
+   oficial (Pawmo->Pawmot 1000, Bramblin->Brambleghast 1012, Rellor->
+   Rabsca 1000, os 3 do grupo "contador de vínculo" do checklist) --
+   `p.cliquesNoSite`, UM contador só (nome genérico, não por Espécie)
+   persistente NO PRÓPRIO Pokémon, incrementado por um listener de
+   click GLOBAL (ver perto do fim do arquivo, mesmo padrão do listener
+   de 'beforeunload' já existente) que roda em CIMA de QUALQUER clique
+   na página inteira, contanto que o Pokémon esteja em `STATE.party`
+   NO MOMENTO do clique -- nunca toca em quem está na Caixa (satisfaz
+   "não conta se estiver na box" por CONSTRUÇÃO, e "não reseta se
+   voltar" de graça, já que simplesmente não mexe no campo enquanto
+   ele não está na Equipe, em vez de zerar e reacumular). */
+var EVOLUTION_SITE_CLICK_COUNT_REQUIRED = {
+  923: { count:1000, counterField:'cliquesNoSite' }, // Pawmo -> Pawmot
+  947: { count:1012, counterField:'cliquesNoSite' }, // Bramblin -> Brambleghast
+  954: { count:1000, counterField:'cliquesNoSite' }  // Rellor -> Rabsca
+};
 /* Helpers do contador de recuo acumulado (Basculin->Basculegion, ver
    EVOLUTION_RECOIL_ACCUM_REQUIRED acima) -- usados em resolveGaTurn
    (soma no Struggle e no recuo oficial de MOVES_OFICIAL) e no heal em
@@ -9247,6 +9282,9 @@ function eligibleEvolution(p){
     /* Bisharp -> Kingambit: ver EVOLUTION_DEFEATED_SPECIES_COUNT_REQUIRED acima. */
     var derrotasNecessarias = EVOLUTION_DEFEATED_SPECIES_COUNT_REQUIRED[e.to];
     if(derrotasNecessarias) return (p[derrotasNecessarias.counterField]||0) >= derrotasNecessarias.count;
+    /* Pawmo/Bramblin/Rellor -> ver EVOLUTION_SITE_CLICK_COUNT_REQUIRED acima. */
+    var cliquesNecessarios = EVOLUTION_SITE_CLICK_COUNT_REQUIRED[e.to];
+    if(cliquesNecessarios) return (p[cliquesNecessarios.counterField]||0) >= cliquesNecessarios.count;
     if(e.minHappiness!=null) return (p.felicidade||0) >= e.minHappiness;
     /* Cap. leva desta sessão -- as arestas com item segurado, Movimento
        conhecido ou Espécie no time exigidos (`itemNecessario`/
@@ -16153,6 +16191,30 @@ if(document.readyState==='complete' || document.readyState==='interactive') boot
    protege o harness de teste em Node, que não tem essa API. */
 if(typeof window!=='undefined' && window.addEventListener){
   window.addEventListener('beforeunload', function(){ sairDaPresencaDoCentro(); });
+}
+
+/* Cap. leva desta sessão ("Pawmo, Bramblin e Rellor... contador de
+   clicks no site enquanto ele estiver na equipe... a quantidade de
+   clicks que usamos pra acessar as outras abas do site, usar item,
+   iniciar combate etc"): listener GLOBAL de click na `document`
+   inteira -- pega literalmente QUALQUER clique na página (navegação
+   de aba, usar item, iniciar luta, o que for), bubble normal, roda
+   DEPOIS de qualquer `onclick="DT.gaXxx()"` específico do elemento
+   clicado (a fase de bubble já estava computada antes do render()
+   trocar o HTML, então continua chegando até aqui mesmo se o elemento
+   clicado tiver sido substituído no meio do clique). Só incrementa
+   `p.cliquesNoSite` de quem está em `STATE.party` NO MOMENTO -- nunca
+   mexe em quem tá na Caixa, satisfazendo "não conta na box"/"não
+   reseta ao voltar" só por NUNCA tocar no campo fora da Equipe, em vez
+   de zerar e reacumular. `queueSave()` (já debounced, 400ms -- ver
+   função acima) garante que sobrevive a um F5 sem precisar de nenhuma
+   ação extra do jogador nem virar spam de escrita no Firestore. */
+if(typeof document!=='undefined' && document.addEventListener){
+  document.addEventListener('click', function(){
+    if(!STATE || !STATE.party || !STATE.party.length) return;
+    STATE.party.forEach(function(p){ p.cliquesNoSite = (p.cliquesNoSite||0) + 1; });
+    queueSave();
+  });
 }
 
 })();
