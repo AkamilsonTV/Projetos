@@ -14930,9 +14930,34 @@ window.DT = DT;
    Render / telas
    ============================================================ */
 var appEl_ = null;
+/* Cap. leva desta sessão ("ele sempre volta ao topo quando
+   selecionamos uma opção... quero que apesar da opção ele continue a
+   navegação de onde parou"): `render()` reconstrói `appEl_.innerHTML`
+   inteiro TODA vez (qualquer clique/filtro chama render de novo,
+   mesmo padrão do projeto inteiro) -- isso DESTRÓI e recria os
+   containers com rolagem própria (Caixa/Pokédex/Movimentos, cada um
+   com `max-height`+`overflow-y:auto`), e um elemento novo sempre
+   nasce com `scrollTop:0`, por isso a lista sempre pulava pro topo
+   mesmo pra uma ação pequena (favoritar/desfavoritar um Pokémon,
+   trocar um filtro) que não deveria mexer em onde o jogador estava
+   rolado. Salva o `scrollTop` de cada um (pelo id, só os que EXISTEM
+   na tela atual) antes de trocar o HTML, e devolve o MESMO valor
+   depois -- funciona porque o id é sempre o mesmo elemento reaparecendo
+   no mesmo lugar da árvore, nunca uma rolagem "adivinhada". */
+var GA_SCROLL_PRESERVE_IDS = ['gaCaixaScroll','gaDexScroll','gaMovDexScroll'];
 function render(){
   if(!appEl_) appEl_ = document.getElementById('app');
+  var scrollPos = {};
+  GA_SCROLL_PRESERVE_IDS.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) scrollPos[id] = el.scrollTop;
+  });
   appEl_.innerHTML = screenHTML();
+  GA_SCROLL_PRESERVE_IDS.forEach(function(id){
+    if(scrollPos[id]===undefined) return;
+    var el = document.getElementById(id);
+    if(el) el.scrollTop = scrollPos[id];
+  });
 }
 function esc2(s){ return esc(s); }
 
@@ -15758,7 +15783,7 @@ function dexScreenHTML(){
       '</select>'+
     '</div>'+
     '<p class="ga-hint">'+lista.length+' de '+counts.total+' espécies com esses filtros.</p>'+
-    '<div class="ga-dex-grid">'+(grid||'<p class="ga-hint">Nenhuma espécie bate com esses filtros.</p>')+'</div></div>';
+    '<div class="ga-dex-grid" id="gaDexScroll">'+(grid||'<p class="ga-hint">Nenhuma espécie bate com esses filtros.</p>')+'</div></div>';
   return out;
 }
 
@@ -15841,7 +15866,7 @@ function movesScreenHTML(){
         }).join('')+
       '</span>'+
     '</div>'+
-    '<div class="ga-movdex-tablewrap"><table class="ga-movdex-table"><thead><tr>'+
+    '<div class="ga-movdex-tablewrap" id="gaMovDexScroll"><table class="ga-movdex-table"><thead><tr>'+
       '<th>Nome</th><th>Tipo</th><th>Categoria</th><th>Poder</th><th>Precisão</th><th>PP</th><th>Papéis</th><th>Efeito</th>'+
     '</tr></thead><tbody>'+
     (linhas||'<tr><td colspan="8" class="ga-hint">Nenhum Movimento bate com esses filtros.</td></tr>')+
