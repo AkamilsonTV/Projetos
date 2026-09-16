@@ -5429,6 +5429,22 @@ var EVOLUTION_PARTY_SPECIES_REQUIRED = { 226: 223 };
    MOVES_DEX de novo. */
 var EVOLUTION_MIN_HAPPINESS_OVERRIDE = { 700: 204 };
 var EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED = { 700: 'Fada' }; // mesma grafia de MOVES_DEX[*].tipo (ex. Moonblast: tipo:'Fada')
+/* Cap. leva desta sessão ("Pode mexer na questão do annihilape",
+   fechando o 1º item do checklist salvo no README -- decisão anterior
+   "vamos de 1"): Primeape -> Annihilape (#979, trigger oficial
+   "use-move", sem Nível numerico nenhum) exige CONHECER Rage Fist e
+   ter USADO esse golpe 20x. Contador SIMPLIFICADO (opção 1 discutida
+   com o jogador): `p[counterField]` (`usosRageFist`) persistente NO
+   PRÓPRIO Pokémon -- igual `felicidade`, nunca reseta sozinho --
+   incrementado em `resolveGaTurn` toda vez que ELE usa o golpe em
+   QUALQUER luta (Selvagem/Treinador/Raid). NÃO é a mecânica oficial
+   exata (jogo oficial conta vezes ATINGIDO, não vezes usado, e reseta
+   ao passar pelo PC) -- decisão de design documentada no README.
+   Indexado pela Espécie DESTINO, mesmo padrão dos mapas acima; guarda
+   `counterField` pra já deixar pronto reusar esse MESMO mecanismo nas
+   outras evoluções por contador de combate do checklist (Farfetch'd/
+   Qwilfish/Stantler), ainda não implementadas. */
+var EVOLUTION_MOVE_USE_COUNT_REQUIRED = { 979: { move:'Rage Fist', count:20, counterField:'usosRageFist' } };
 /* Dia/Noite -- Cap. leva desta sessão ("Quero colocar o esquema de dia
    e noite no jogo... 4 períodos durante 24h, 1 dia dura 6h..."), COM a
    correção de uma leva seguinte ("A hora ainda não tá legal. Não é pra
@@ -9103,6 +9119,16 @@ function eligibleEvolution(p){
       var temEspecie = STATE.party.some(function(x){ return x.num===especieNecessaria; }) || STATE.box.some(function(x){ return x.num===especieNecessaria; });
       if(!temEspecie) return false;
     }
+    /* Cap. leva desta sessão -- Primeape->Annihilape, ver
+       EVOLUTION_MOVE_USE_COUNT_REQUIRED acima: exige CONHECER o
+       Movimento E o contador dedicado (`p[counterField]`) já ter
+       batido a meta. */
+    var usoMovimentoNecessario = EVOLUTION_MOVE_USE_COUNT_REQUIRED[e.to];
+    if(usoMovimentoNecessario){
+      var conheceGolpeDeUso = (p.moves||[]).some(function(m){ return m.name===usoMovimentoNecessario.move; });
+      if(!conheceGolpeDeUso) return false;
+      return (p[usoMovimentoNecessario.counterField]||0) >= usoMovimentoNecessario.count;
+    }
     if(e.minHappiness!=null) return (p.felicidade||0) >= e.minHappiness;
     /* Cap. leva desta sessão -- as arestas com item segurado, Movimento
        conhecido ou Espécie no time exigidos (`itemNecessario`/
@@ -10347,6 +10373,22 @@ function resolveGaTurn(user, target, preSelectedMove){
   // Habilidade gasta 1 PP A MAIS (oficial: "custa o dobro").
   if(!liberandoCarga && move.name!=='Struggle' && temHab(target,'Pressure') && user.pp && user.pp[move.name]!==undefined){
     user.pp[move.name] = Math.max(0, user.pp[move.name]-1);
+  }
+  /* Cap. leva desta sessão -- Primeape->Annihilape (ver
+     EVOLUTION_MOVE_USE_COUNT_REQUIRED acima): soma 1 no contador
+     dedicado desse golpe, se ele tiver um mapeado, toda vez que É
+     USADO de verdade nesta Rodada -- igual PP, conta na hora do uso,
+     não depende de acertar/causar dano. Só `user.partyId`
+     (buildBattlerFromParty) tem esse campo -- selvagem/Treinador/boss
+     de Raid nunca contam, e Pokémon de PVP não persistem, então nunca
+     ficam elegíveis de verdade mesmo que o contador suba à toa. */
+  if(!liberandoCarga && user.side==='player' && user.partyId){
+    Object.keys(EVOLUTION_MOVE_USE_COUNT_REQUIRED).forEach(function(toNum){
+      var cfg = EVOLUTION_MOVE_USE_COUNT_REQUIRED[toNum];
+      if(cfg.move!==move.name) return;
+      var pOwner = STATE.party.filter(function(x){ return x.id===user.partyId; })[0];
+      if(pOwner) pOwner[cfg.counterField] = (pOwner[cfg.counterField]||0) + 1;
+    });
   }
 
   // Struggle: sempre acerta, sem Tipo (nunca Super/Pouco Efetivo), recuo de 1/4 do próprio PV Máximo
