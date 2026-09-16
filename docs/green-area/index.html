@@ -5290,6 +5290,37 @@ var EVOLUTION_STONE_OVERRIDE = {
    `level` pra já deixar pronto reusar esse MESMO mecanismo em outra
    evolução parecida no futuro. */
 var EVOLUTION_MANUAL_TRIGGER_REQUIRED = { 687: { level: 30 } };
+/* Cap. leva desta sessão (Gimmighoul->Gholdengo #999->#1000, trigger
+   oficial "gimmighoul-coins" -- pedido detalhado do jogador): fecha o
+   ÚLTIMO item do levantamento de evoluções salvo no README inteiro.
+   `STATE.itens['moedas-gimmighoul']` é um item de MOCHILA comum
+   (contador COMPARTILHADO, ao contrário de todos os outros contadores
+   desta leva que moram no PRÓPRIO Pokémon) -- junta 999 pra evoluir
+   QUALQUER Gimmighoul que esteja na Equipe na hora (`eligibleEvolution`
+   roda por Pokémon, então se 2+ Gimmighoul estiverem na Equipe ao
+   mesmo tempo, o primeiro a evoluir zera o contador compartilhado e os
+   outros perdem a elegibilidade sozinhos, sem duplicar). Ver
+   `somarMoedasGimmighoul`/hook do desmaio em `resolveFaintAfterDamage`
+   (drop) e `DT.gaJogarPokebola` (Gimmighoul capturado sem ter outro no
+   time) logo abaixo, e `zerarItemDeEvolucaoConsumido` (consumido ao
+   evoluir). Indexado pela Espécie DESTINO como os outros mapas. */
+var EVOLUTION_ITEM_COUNT_REQUIRED = { 1000: { itemKey:'moedas-gimmighoul', count:999 } };
+/* Zera qualquer item de evolução CONSUMIDO (ver EVOLUTION_ITEM_COUNT_
+   REQUIRED acima) assim que o Pokémon evolui de verdade pra essa
+   Espécie destino -- chamado nos 3 pontos que trocam `p.num` de
+   verdade (luta manual/fora de luta/decisão adiada de sequência). */
+function zerarItemDeEvolucaoConsumido(toNum){
+  Object.keys(EVOLUTION_ITEM_COUNT_REQUIRED).forEach(function(destino){
+    if(Number(destino)!==toNum) return;
+    STATE.itens[EVOLUTION_ITEM_COUNT_REQUIRED[destino].itemKey] = 0;
+  });
+}
+/* Soma Moedas de Gimmighoul na Mochila -- loga na luta se `b` (battle
+   em andamento) for passado. */
+function somarMoedasGimmighoul(qtd, b){
+  STATE.itens['moedas-gimmighoul'] = (STATE.itens['moedas-gimmighoul']||0) + qtd;
+  if(b && b.log) b.log.push('🪙 Ganhou '+qtd+' Moeda(s) de Gimmighoul!');
+}
 /* Toda evolução por gatilho MANUAL (ver EVOLUTION_MANUAL_TRIGGER_
    REQUIRED acima) que este Pokémon já pode usar AGORA -- mesmo
    espírito de `pedrasElegiveisPara`, só que sem item nenhum envolvido
@@ -8587,6 +8618,26 @@ function resolveFaintAfterDamage(target, user, b, moveUsado){
       if(pDerrotou) pDerrotou[cfg.counterField] = (pDerrotou[cfg.counterField]||0) + 1;
     });
   }
+  /* Cap. leva desta sessão -- Gimmighoul->Gholdengo (ver
+     EVOLUTION_ITEM_COUNT_REQUIRED/somarMoedasGimmighoul acima): moeda
+     só dropa de luta SELVAGEM de verdade (`b.kind==='wild'`, nunca
+     Treinador/Mestre/Elite/Raid), e só se o jogador JÁ tiver um
+     Gimmighoul na EQUIPE (nunca a Caixa) na hora do desmaio. Derrotar
+     um Gimmighoul específico dá 50-60 garantido; qualquer OUTRA
+     Espécie tem 30% de chance de 1-10. Se o alvo derrotado FOR um
+     Gimmighoul mas o jogador NÃO tiver outro na Equipe, a recompensa
+     fica pendente (`b.gimmighoulCoinsPendente`) esperando a decisão de
+     captura desta MESMA luta (ver DT.gaJogarPokebola abaixo) -- "se
+     for só luta [sem capturar este] o drop não ocorre". */
+  if(b.kind==='wild'){
+    var temGimmighoulNoTime = STATE.party.some(function(x){ return x.num===999; });
+    if(target.num===999){
+      if(temGimmighoulNoTime) somarMoedasGimmighoul(50 + Math.floor(Math.random()*11), b);
+      else b.gimmighoulCoinsPendente = true;
+    } else if(temGimmighoulNoTime && Math.random()<0.30){
+      somarMoedasGimmighoul(1 + Math.floor(Math.random()*10), b);
+    }
+  }
   /* Cap. leva desta sessão (Raids): NUNCA credita XP por Faixa aqui --
      o "boss" de uma Raid é um HP COMPARTILHADO entre vários jogadores/
      tentativas (ver finalizarBatalhaRaid), então "derrotar" ele numa
@@ -9322,6 +9373,10 @@ function eligibleEvolution(p){
     /* Pawmo/Bramblin/Rellor -> ver EVOLUTION_SITE_CLICK_COUNT_REQUIRED acima. */
     var cliquesNecessarios = EVOLUTION_SITE_CLICK_COUNT_REQUIRED[e.to];
     if(cliquesNecessarios) return (p[cliquesNecessarios.counterField]||0) >= cliquesNecessarios.count;
+    /* Gimmighoul -> Gholdengo: ver EVOLUTION_ITEM_COUNT_REQUIRED acima
+       -- contador COMPARTILHADO (Mochila), não por Pokémon. */
+    var moedasNecessarias = EVOLUTION_ITEM_COUNT_REQUIRED[e.to];
+    if(moedasNecessarias) return (STATE.itens[moedasNecessarias.itemKey]||0) >= moedasNecessarias.count;
     if(e.minHappiness!=null) return (p.felicidade||0) >= e.minHappiness;
     /* Cap. leva desta sessão -- as arestas com item segurado, Movimento
        conhecido ou Espécie no time exigidos (`itemNecessario`/
@@ -9416,6 +9471,7 @@ DT.gaResponderEvolucao = function(aceitar){
     var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
     var habAntesDeEvoluir = p.habilidade; // Cap. leva desta sessão (Lycanroc Dusk) -- lida ANTES de p.num mudar, só pra checar Own Tempo abaixo
     p.num = pe.toNum;
+    zerarItemDeEvolucaoConsumido(pe.toNum); // Cap. Gimmighoul->Gholdengo (ver EVOLUTION_ITEM_COUNT_REQUIRED acima) -- consome as Moedas se for o caso
     var formaAutoBatalha = formaAutomaticaPorEvolucao(p.num, habAntesDeEvoluir); // Cap. leva desta sessão (Lycanroc) -- mesma forma automática por Dia/Noite (ou Dusk, se Own Tempo)
     if(formaAutoBatalha) p.forma = formaAutoBatalha;
     if(formaAutoBatalha==='dusk') p.habilidade = 'Tough Claws'; // Dusk é a única forma travada numa Habilidade real (ver ALT_FORMS[745])
@@ -11156,10 +11212,18 @@ DT.gaJogarPokebola = function(ballKey){
     if(STATE.party.length<6) STATE.party.push(novo); else STATE.box.push(novo);
     b.log.push('🎯 '+bola.nome+'... capturou! '+speciesByNum(num).name+' entrou pra sua '+(STATE.party.length<=6?'Equipe':'Caixa')+'.');
     logAction('captura', 'Capturou '+speciesByNum(num).name+' (Nv. '+level+') com '+bola.nome+'.');
+    /* Cap. leva desta sessão -- Gimmighoul->Gholdengo (ver
+       resolveFaintAfterDamage acima): capturar o Gimmighoul que
+       acabou de derrotar libera a recompensa que tinha ficado
+       pendente (não tinha outro Gimmighoul na Equipe ANTES desta
+       luta -- "obviamente se capturar ele ganha moedas porque acabou
+       de pegar um"). */
+    if(b.gimmighoulCoinsPendente) somarMoedasGimmighoul(50 + Math.floor(Math.random()*11), b);
   } else {
     b.log.push('💨 A '+bola.nome+' balançou e o Pokémon escapou.');
     logAction('captura', 'Tentou capturar '+speciesByNum(num).name+' com '+bola.nome+' -- escapou.');
   }
+  b.gimmighoulCoinsPendente = false;
   b.captureDone = true;
   mutate();
 };
@@ -13118,6 +13182,7 @@ function aplicarEvolucaoForaDeLuta(p, toNum, motivoLog, forma){
   var newSp = speciesByNum(toNum);
   var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
   p.num = toNum;
+  zerarItemDeEvolucaoConsumido(toNum); // Cap. Gimmighoul->Gholdengo (ver EVOLUTION_ITEM_COUNT_REQUIRED acima) -- consome as Moedas se for o caso
   /* Cap. leva desta sessão ("Cada urshifu tem que ter seus moveset
      específico"): `forma` só vem preenchido quando quem chamou já
      sabe qual (hoje só DT.gaUsarPedra, indexado por URSHIFU_FORM_
@@ -13311,6 +13376,7 @@ DT.gaEvoluirPosSequencia = function(partyId, aceitar){
     var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
     var habAntesDeEvoluirSeq = p.habilidade; // Cap. leva desta sessão (Lycanroc Dusk) -- lida ANTES de p.num mudar, só pra checar Own Tempo abaixo
     p.num = evo.to;
+    zerarItemDeEvolucaoConsumido(evo.to); // Cap. Gimmighoul->Gholdengo (ver EVOLUTION_ITEM_COUNT_REQUIRED acima) -- consome as Moedas se for o caso
     var formaAutoSeq = formaAutomaticaPorEvolucao(p.num, habAntesDeEvoluirSeq); // Cap. leva desta sessão (Lycanroc) -- mesma forma automática por Dia/Noite (ou Dusk, se Own Tempo)
     if(formaAutoSeq) p.forma = formaAutoSeq;
     if(formaAutoSeq==='dusk') p.habilidade = 'Tough Claws'; // Dusk é a única forma travada numa Habilidade real (ver ALT_FORMS[745])
@@ -14365,6 +14431,14 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
        -- agora aparece em TODO card, mesmo espírito do V:/D: acima
        (só informativo, sem ação nenhuma atrelada). */
     '<div class="ga-hint" title="Felicidade -- sobe com Nível/vitória, desce ao desmaiar; algumas evoluções dependem dela">❤️ '+(poke.felicidade!=null?poke.felicidade:FELICIDADE_INICIAL)+'/'+FELICIDADE_MAX+'</div>'+
+    /* Cap. leva desta sessão -- Gimmighoul->Gholdengo (ver
+       EVOLUTION_ITEM_COUNT_REQUIRED/somarMoedasGimmighoul acima):
+       contador COMPARTILHADO (Mochila, não por Pokémon), mas só faz
+       sentido mostrar no card do PRÓPRIO Gimmighoul -- "aparece a
+       partir do momento que você tem ele na Equipe" (pedido do
+       jogador), então aparece em TODO card dele, dono ou não (mesmo
+       espírito informativo do V:/D: acima). */
+    (poke.num===999 ? '<div class="ga-hint" title="Moedas de Gimmighoul -- só acumula enquanto ele estiver na Equipe (nunca na Caixa); junte 999 pra evoluir em Gholdengo">🪙 '+(STATE.itens['moedas-gimmighoul']||0)+'/999</div>' : '')+
     (actionsHTML||'')+
   '</div>';
 }
