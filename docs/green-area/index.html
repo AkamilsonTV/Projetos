@@ -5822,7 +5822,7 @@ function iniciarBatalhaRaid(raidId, leadPartyId, bolaEscolhida){
       playerActive: playerBattler, playerPartyOrder: STATE.party.map(function(p){return p.id;}), usedPartyIds:[lead.id],
       oppTeam:[bossBattler], oppIdx:0, hp:hp,
       log:['⚔️ Entrou na Raid contra '+spNome+'! Você mandou '+displayName(playerBattler)+' -- Regra de Ouro: você ataca primeiro, sempre.'],
-      healedThisFaint:{}, pendingHeal:null, pendingSwitch:false, pendingEvolution:null, pendingAprenderMovimento:null,
+      healedThisFaint:{}, pendingHeal:null, pendingSwitch:false, pendingEvolution:null, pendingAprenderMovimento:null, pendingTrocarGolpeEvolucao:null,
       oppDefeatedLevels:[], finished:null, captureDone:false,
       weather:{tipo:'neutro',turnsLeft:null}, terrain:{tipo:'neutro',turnsLeft:null},
       hazards:{player:{stealthRock:false,toxicSpikes:0}, opponent:{stealthRock:false,toxicSpikes:0}}
@@ -8231,6 +8231,7 @@ function startBattle(kind, opts, skipDiscrepancia){
     pendingSwitch: false,
     pendingEvolution: null,
     pendingAprenderMovimento: null,
+    pendingTrocarGolpeEvolucao: null,
     oppDefeatedLevels: [],
     finished: null,
     captureDone: false,
@@ -8461,7 +8462,7 @@ function runBattleUntilPause(){
   b.roundGuard = b.roundGuard||0;
   while(b.roundGuard++<2000){
     if(b.finished) return;
-    if(b.pendingHeal || b.pendingSwitch || b.pendingEvolution || b.pendingAprenderMovimento) return;
+    if(b.pendingHeal || b.pendingSwitch || b.pendingEvolution || b.pendingAprenderMovimento || b.pendingTrocarGolpeEvolucao) return;
 
     var atkB = battlerObj(b, 'player');
     var defB = currentOpponent();
@@ -9214,6 +9215,17 @@ DT.gaResponderEvolucao = function(aceitar){
     markSeen(p.num); markCaught(p.num);
     b.log.push('✨ '+(p.apelido||oldSp.name)+' evoluiu para '+newSp.name+'!');
     logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+'.');
+    /* Cap. leva desta sessão ("moves apreendidos com evolução... se
+       houver espaço informe e coloque direto"): golpe(s) que a
+       Espécie NOVA aprende ao evoluir (`ls.evo`) -- ensina de graça
+       tudo que couber (loga no `b.log` da luta também, "informa" o
+       jogador na hora) ANTES da pergunta genérica logo abaixo, pra
+       nunca oferecer 2x o mesmo golpe. O que não couber vira pergunta
+       de troca (pausa a luta, mesmo padrão de pendingEvolution). */
+    var golpesEvoSemEspaco = ensinarGolpesDeEvolucao(p, function(msg){ b.log.push(msg); });
+    if(golpesEvoSemEspaco.length && !b.pendingTrocarGolpeEvolucao){
+      b.pendingTrocarGolpeEvolucao = { partyId: p.id, moveName: golpesEvoSemEspaco[0] };
+    }
     /* Cap. leva desta sessão: "quando evoluir... perguntar se deseja
        aprender algum ataque que o pokémon aprenda na evolução" --
        recalcula movimentosElegiveis JÁ com a Espécie/Nível novos: se
@@ -9254,6 +9266,30 @@ DT.gaResponderAprenderMovimento = function(moveName){
     }
   }
   b.pendingAprenderMovimento = null;
+  runBattleUntilPause();
+  mutate();
+};
+/* Responde o popup "trocar Movimento pelo golpe de evolução" (ver
+   DT.gaResponderEvolucao/ensinarGolpesDeEvolucao acima -- só aparece
+   quando a Equipe JÁ tem 4 Movimentos, então o bônus não coube
+   direto). `slotIndex` vazio/nulo = recusou; um índice válido troca
+   esse Movimento pelo golpe de evolução, sempre GRÁTIS. */
+DT.gaResponderTrocarGolpeEvolucao = function(slotIndex){
+  var b = STATE.battle; if(!b || !b.pendingTrocarGolpeEvolucao) return;
+  var pt = b.pendingTrocarGolpeEvolucao;
+  var p = STATE.party.filter(function(x){ return x.id===pt.partyId; })[0];
+  if(p && slotIndex!=null && slotIndex!==''){
+    var moveObj = findMoveByName(pt.moveName);
+    if(moveObj){
+      var nomeAntigo = p.moves[slotIndex] ? p.moves[slotIndex].name : '(vazio)';
+      p.moves[slotIndex] = moveObj;
+      b.log.push('📖 '+(p.apelido||speciesByNum(p.num).name)+' esqueceu '+nomeAntigo+' e aprendeu '+pt.moveName+' (golpe de evolução, grátis)!');
+      logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou '+nomeAntigo+' por '+pt.moveName+' (golpe de evolução, grátis).');
+    }
+  } else if(p){
+    logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' optou por não aprender '+pt.moveName+' (golpe de evolução).');
+  }
+  b.pendingTrocarGolpeEvolucao = null;
   runBattleUntilPause();
   mutate();
 };
@@ -12840,17 +12876,17 @@ function aplicarEvolucaoForaDeLuta(p, toNum, motivoLog, forma){
   else p.habilidade = rollAbilityForSpecies(p.num);
   markSeen(p.num); markCaught(p.num);
   logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+motivoLog+'.');
-  /* Golpe de evolução da forma (Wicked Blow/Surging Strikes) --
-     ensinado automaticamente e de graça, sem perguntar (é o próprio
-     golpe que DEFINE a forma, diferente do bônus eletivo genérico
-     logo abaixo) -- só se sobrar espaço vazio, igual todo o resto. */
-  var evoMove = formaEvoMove(p.num, p.forma);
-  if(evoMove){
-    var evoMoveObj = findMoveByName(evoMove);
-    if(evoMoveObj && (p.moves||[]).length<4 && !(p.moves||[]).some(function(m){ return m.name===evoMove; })){
-      p.moves[p.moves.length] = evoMoveObj;
-      logAction('equipe', (p.apelido||newSp.name)+' aprendeu '+evoMove+' (golpe de evolução, grátis).');
-    }
+  /* Cap. leva desta sessão ("moves apreendidos com evolução... se
+     houver espaço informe e coloque direto"): ensina de graça todo
+     golpe de evolução que couber (`ensinarGolpesDeEvolucao` já loga
+     via `logAction`, é o que "informa" fora de luta) -- o que não
+     couber (Equipe já com 4 Movimentos) vira pergunta de troca,
+     travando a navegação até responder, mesmo padrão de
+     STATE.pendingTradeEvolutions (ver DT.gaResponderEvoMoveSwap). */
+  var golpesSemEspaco = ensinarGolpesDeEvolucao(p, null);
+  if(golpesSemEspaco.length){
+    STATE.pendingEvoMoveSwap = STATE.pendingEvoMoveSwap || [];
+    golpesSemEspaco.forEach(function(nome){ STATE.pendingEvoMoveSwap.push({ partyId: p.id, moveName: nome }); });
   }
   if((p.moves||[]).length<4 && movimentosElegiveis(p).length>0){
     SESSION.pendingAprenderMovimentoSequencia = { partyId: p.id };
@@ -12917,6 +12953,27 @@ DT.gaResponderEvolucaoTroca = function(aceitar){
   } else if(p){
     var sp = speciesByNum(p.num);
     logAction('evolucao', (p.apelido||sp.name)+' recusou evoluir (chegou por troca).');
+  }
+  mutate();
+  render();
+};
+/* Responde o popup "trocar Movimento pelo golpe de evolução" fora de
+   luta (ver evoMoveSwapScreenHTML/ensinarGolpesDeEvolucao) -- mesmo
+   espírito de DT.gaResponderEvolucaoTroca, uma fila que a tela cheia
+   trava até esvaziar. */
+DT.gaResponderEvoMoveSwap = function(slotIndex){
+  var pend = (STATE.pendingEvoMoveSwap||[]).shift();
+  if(!pend){ render(); return; }
+  var p = STATE.party.filter(function(x){ return x.id===pend.partyId; })[0] || STATE.box.filter(function(x){ return x.id===pend.partyId; })[0];
+  if(p && slotIndex!=null && slotIndex!==''){
+    var moveObj = findMoveByName(pend.moveName);
+    if(moveObj){
+      var nomeAntigo = p.moves[slotIndex] ? p.moves[slotIndex].name : '(vazio)';
+      p.moves[slotIndex] = moveObj;
+      logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou '+nomeAntigo+' por '+pend.moveName+' (golpe de evolução, grátis).');
+    }
+  } else if(p){
+    logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' optou por não aprender '+pend.moveName+' (golpe de evolução).');
   }
   mutate();
   render();
@@ -12988,6 +13045,14 @@ DT.gaEvoluirPosSequencia = function(partyId, aceitar){
     else p.habilidade = rollAbilityForSpecies(p.num);
     markSeen(p.num); markCaught(p.num);
     logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+' (decisão adiada pro fim da sequência automática).');
+    /* Cap. leva desta sessão ("moves apreendidos com evolução"): mesmo
+       tratamento das outras 2 vias de evolução -- ensina de graça o
+       que couber, enfileira pergunta de troca pro que não couber. */
+    var golpesEvoSemEspacoSeq = ensinarGolpesDeEvolucao(p, null);
+    if(golpesEvoSemEspacoSeq.length){
+      STATE.pendingEvoMoveSwap = STATE.pendingEvoMoveSwap || [];
+      golpesEvoSemEspacoSeq.forEach(function(nome){ STATE.pendingEvoMoveSwap.push({ partyId: p.id, moveName: nome }); });
+    }
     /* Mesmo bônus "aprender Movimento novo" do popup em luta manual
        (ver DT.gaResponderEvolucao), versão adiada -- SESSION em vez de
        b.pendingAprenderMovimento porque aqui não existe luta em
@@ -13360,9 +13425,9 @@ var ALT_FORMS_NOTE = {
    inteiro, então só precisamos documentar a DIFERENÇA da Rapid
    Strike em cima dele): o Movimento de Nível 1 "Sucker Punch" vira
    "Aqua Jet" (mesmo Nível), o golpe de evolução some (Wicked Blow,
-   nunca ensinado por LEARNSETS[*].evo até esta leva -- essa chave
-   nunca foi lida em lugar nenhum do código, dado morto -- ver
-   formaEvoMove abaixo) e vira "Surging Strikes", e 8 TMs exclusivas
+   ensinado via `ls.evo`/golpesDeEvolucaoElegiveis, ver abaixo -- essa
+   chave era dado morto até a leva "moves apreendidos com evolução")
+   e vira "Surging Strikes", e 8 TMs exclusivas
    de Tipo Sombrio (Crunch/Dark Pulse/Foul Play/Lash Out/Metal Claw/
    Roar/Snarl/Throat Chop -- as que EXISTEM em LEARNSETS[892].tm hoje)
    saem pra dar lugar a 9 TMs de Tipo Água (Brine/Chilling Water/Dive/
@@ -13397,15 +13462,41 @@ function learnsetForma(num, forma){
   var tm = (ls.tm||[]).filter(function(m){ return (ov.tmRemove||[]).indexOf(m)===-1; }).concat(ov.tmAdd||[]);
   return { levelup: levelup, tm: tm, evo: ov.evoMove ? [ov.evoMove] : (ls.evo||[]), egg: ls.egg||[] };
 }
-/* Golpe de evolução da forma (Wicked Blow/Surging Strikes) -- só
-   existe pra Espécie com SPECIES_FORM_LEARNSET_OVERRIDE (só Urshifu
-   hoje); pra qualquer outra Espécie (mesmo as 245 com LEARNSETS[*].evo
-   não-vazio) devolve null de propósito -- ensinar esse golpe pras
-   outras 244 é um gap pré-existente maior, fora do escopo desta leva
-   (só Urshifu foi pedido). */
-function formaEvoMove(num, forma){
-  var ov = SPECIES_FORM_LEARNSET_OVERRIDE[num] && SPECIES_FORM_LEARNSET_OVERRIDE[num][forma||'single-strike'];
-  return (ov && ov.evoMove) || null;
+/* Cap. leva desta sessão ("implemente os moves apreendidos com
+   evolução... aproveite o popup depois da evolução pra informar do
+   move e perguntar se deseja trocar. Se houver espaço informe e
+   coloque direto"): golpe(s) que a Espécie DESTINO aprende ao evoluir
+   (`ls.evo`, via learnsetForma -- já cobre as ~245 Espécies com esse
+   dado real da PokeAPI, incluindo Urshifu por forma através do
+   override). Devolve só os nomes que `p` ainda NÃO conhece -- quem
+   chama decide se ensina direto (sobrou espaço) ou pergunta pra
+   trocar (Equipe cheia). */
+function golpesDeEvolucaoElegiveis(p){
+  var ls = learnsetForma(p.num, p.forma);
+  var conhecidos = {};
+  (p.moves||[]).forEach(function(m){ conhecidos[m.name]=true; });
+  return (ls && ls.evo || []).filter(function(nome){ return !conhecidos[nome]; });
+}
+/* Ensina de graça os golpes de evolução que couberem no espaço livre
+   (loga a mensagem certa pro contexto -- luta manual tem `logBatalha`
+   além do `logAction` de sempre) e devolve os que NÃO couberam, pra
+   quem chama enfileirar a pergunta de troca (ver
+   b.pendingTrocarGolpeEvolucao/STATE.pendingEvoMoveSwap logo abaixo). */
+function ensinarGolpesDeEvolucao(p, logBatalha){
+  var sobrando = [];
+  golpesDeEvolucaoElegiveis(p).forEach(function(nome){
+    var moveObj = findMoveByName(nome);
+    if(!moveObj) return;
+    if((p.moves||[]).length<4){
+      p.moves[p.moves.length] = moveObj;
+      var msg = '📖 '+(p.apelido||speciesByNum(p.num).name)+' aprendeu '+nome+' (golpe de evolução, grátis)!';
+      if(logBatalha) logBatalha(msg);
+      logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' aprendeu '+nome+' (golpe de evolução, grátis).');
+    } else {
+      sobrando.push(nome);
+    }
+  });
+  return sobrando;
 }
 /* Qual Pergaminho (ver EVOLUTION_EXCLUSIVE_ITEMS) vira qual forma --
    consultado por DT.gaUsarPedra na hora de evoluir Kubfu. */
@@ -13824,6 +13915,14 @@ function screenHTML(){
      completado enquanto o jogador nem estava online, ver
      evolucaoTrocaSeElegivel. */
   if((STATE.pendingTradeEvolutions||[]).length) return wrap(tradeEvoScreenHTML());
+  /* Cap. leva desta sessão ("moves apreendidos com evolução... se
+     houver espaço informe e coloque direto"): golpe de evolução que
+     não coube (Equipe cheia) numa evolução FORA de luta (pedra/Troca/
+     decisão adiada de sequência) -- mesmo padrão de
+     pendingTradeEvolutions logo acima (persistido em STATE, trava a
+     navegação até responder, sobrevive a F5). Em luta, o equivalente é
+     b.pendingTrocarGolpeEvolucao (ver battleScreenHTML). */
+  if((STATE.pendingEvoMoveSwap||[]).length) return wrap(evoMoveSwapScreenHTML());
   /* Cap. leva desta sessão: sequência automática que terminou fica
      travada nessa tela de resumo (com a pergunta de evolução adiada)
      ATÉ o jogador fechar -- aparece por CIMA de qualquer tela, do
@@ -14321,16 +14420,24 @@ function movimentosElegiveis(poke){
       }
     });
   }
-  /* Golpe de evolução da forma (Wicked Blow/Surging Strikes) -- SEM
-     custo nenhum (nem Nível nem TM), igual o bônus automático já
-     ensina na hora de evoluir (ver aplicarEvolucaoForaDeLuta); essa
-     entrada aqui cobre o caso de não ter sobrado espaço NAQUELA hora
-     -- o Treinador ainda consegue trocar pra ele depois, na tela
-     normal de Movimentos. */
-  var evoMove = formaEvoMove(poke.num, poke.forma);
-  if(evoMove && !conhecidos[evoMove] && !opcoes.some(function(o){ return o.name===evoMove; })){
-    opcoes.push({ name:evoMove, fonte:'evolucao' });
-  }
+  /* Cap. leva desta sessão ("implemente os moves apreendidos com
+     evolução... esses moves tem que ficar na lista do pokémon
+     posteriormente"): golpe(s) aprendido(s) na EVOLUÇÃO (`ls.evo`,
+     dado real da PokeAPI, já populado pra ~245 Espécies mas nunca lido
+     por aqui até esta leva -- só o caso especial de Urshifu, via
+     `learnsetForma`, usava algo parecido). SEM custo nenhum (nem
+     Nível nem TM), igual o bônus automático já ensina na hora de
+     evoluir (ver aplicarEvolucaoForaDeLuta/golpesDeEvolucaoElegiveis);
+     essa entrada aqui cobre o caso de não ter sobrado espaço NAQUELA
+     hora -- o Treinador ainda consegue trocar pra ele depois, na tela
+     normal de Movimentos. `learnsetForma` já devolve o golpe certo de
+     Urshifu dentro do próprio `.evo` (override por forma), então este
+     ÚNICO laço cobre as 246 Espécies de uma vez, sem caso especial. */
+  (ls && ls.evo || []).forEach(function(nome){
+    if(!conhecidos[nome] && !opcoes.some(function(o){ return o.name===nome; })){
+      opcoes.push({ name:nome, fonte:'evolucao' });
+    }
+  });
   opcoes.sort(function(a,b){ return a.name<b.name?-1:(a.name>b.name?1:0); });
   return opcoes;
 }
@@ -14345,24 +14452,30 @@ DT.gaTrocarMovimento = function(pid, slotIndex, moveName){
   var ls = learnsetForma(p.num, p.forma);
   var viaNivel = ls && ls.levelup && ls.levelup.some(function(pair){ return pair[0]===moveObj.name && pair[1]<=p.level; });
   var viaTM = ls && ls.tm && ls.tm.indexOf(moveObj.name)!==-1;
-  /* Golpe de evolução da forma (Wicked Blow/Surging Strikes) -- cobre
-     o caso de não ter sobrado espaço na hora de evoluir (ver
-     movimentosElegiveis acima): dá pra aprender depois aqui, sempre
-     GRÁTIS, mesmo espírito do bônus automático. */
-  var viaEvolucao = formaEvoMove(p.num, p.forma)===moveObj.name;
-  if(viaNivel){
+  /* Golpe aprendido na evolução (`ls.evo`, ver movimentosElegiveis
+     acima) -- cobre o caso de não ter sobrado espaço na hora de
+     evoluir: dá pra aprender depois aqui, sempre GRÁTIS, mesmo
+     espírito do bônus automático. Checado ANTES de Nível/TM -- alguns
+     golpes de evolução TAMBÉM aparecem no `.tm`/`.levelup` cru da
+     PokeAPI (ex. Petal Blizzard no Venusaur), e a via de evolução
+     (grátis, sempre disponível) nunca deveria ficar refém de faltar
+     Energia ou uma TM que o jogador não tem. */
+  var viaEvolucao = (ls && ls.evo || []).indexOf(moveObj.name)!==-1;
+  if(viaEvolucao){
+    // grátis, sem custo nenhum -- nada a debitar
+  } else if(viaNivel){
     if(STATE.energy<10){ SESSION.error='Energia insuficiente -- trocar Movimento de Nível custa 10.'; render(); return; }
     STATE.energy -= 10;
   } else if(viaTM){
     if((STATE.tms[moveObj.name]||0)<=0){ SESSION.error='Você não tem essa TM -- compre na Loja primeiro.'; render(); return; }
     STATE.tms[moveObj.name] -= 1;
-  } else if(!viaEvolucao){
+  } else {
     SESSION.error='Esse Pokémon não pode aprender esse Movimento (nem por Nível nem por TM).'; render(); return;
   }
   var nomeAntigo = p.moves[slotIndex] ? p.moves[slotIndex].name : '(vazio)';
   p.moves[slotIndex] = moveObj;
   SESSION.notice = (p.apelido||speciesByNum(p.num).name)+' agora conhece '+moveObj.name+'!';
-  logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou o Movimento '+nomeAntigo+' por '+moveObj.name+' (via '+(viaNivel?'Nível, 10 Energia':(viaTM?'TM, grátis':'golpe de evolução, grátis'))+').');
+  logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou o Movimento '+nomeAntigo+' por '+moveObj.name+' (via '+(viaEvolucao?'golpe de evolução, grátis':(viaNivel?'Nível, 10 Energia':'TM, grátis'))+').');
   mutate();
 };
 function movesPopupHTML(pid){
@@ -14636,8 +14749,7 @@ function movimentosPossiveisLista(num, forma){
   var set = {};
   (ls.levelup||[]).forEach(function(p){ set[p[0]]=true; });
   (ls.tm||[]).forEach(function(n){ set[n]=true; });
-  var evoMove = formaEvoMove(num, forma);
-  if(evoMove) set[evoMove] = true;
+  (ls.evo||[]).forEach(function(n){ set[n]=true; });
   return Object.keys(set).sort();
 }
 function dexPopupHTML(num){
@@ -15712,6 +15824,7 @@ function battleScreenHTML(){
      log de batalha rolando. */
   if(b.pendingEvolution) out += evolucaoPopupHTML(b.pendingEvolution);
   if(b.pendingAprenderMovimento) out += aprenderMovimentoPopupHTML(b.pendingAprenderMovimento);
+  if(b.pendingTrocarGolpeEvolucao) out += trocarGolpeEvolucaoPopupHTML(b.pendingTrocarGolpeEvolucao);
   return out;
 }
 /* Popup de evolução (ver comentário acima) -- MESMA troca de
@@ -15763,6 +15876,36 @@ function tradeEvoScreenHTML(){
     (restantes>0 ? '<p class="ga-hint">e mais '+restantes+' evolução(ões) por Troca esperando resposta depois desta.</p>' : '')+
   '</div>';
 }
+/* Tela "trocar Movimento pelo golpe de evolução" fora de luta (ver
+   DT.gaResponderEvoMoveSwap/ensinarGolpesDeEvolucao) -- MESMO padrão
+   de tradeEvoScreenHTML acima (fila em STATE, uma pergunta de cada
+   vez, trava a navegação até responder). Só aparece quando a Equipe
+   já tinha os 4 Movimentos cheios na hora de evoluir (pedra/Troca/
+   decisão adiada de sequência) -- se sobrava espaço, o golpe já foi
+   ensinado direto (ver aplicarEvolucaoForaDeLuta), sem passar por
+   aqui. */
+function evoMoveSwapScreenHTML(){
+  var pend = STATE.pendingEvoMoveSwap[0];
+  var p = STATE.party.filter(function(x){ return x.id===pend.partyId; })[0] || STATE.box.filter(function(x){ return x.id===pend.partyId; })[0];
+  if(!p){
+    // Rede de segurança: o Pokémon nem deveria poder sumir com essa tela travando a navegação, mas nunca trava esperando por um id que não existe mais
+    STATE.pendingEvoMoveSwap.shift();
+    return STATE.pendingEvoMoveSwap.length ? evoMoveSwapScreenHTML() : hubScreenHTML();
+  }
+  var sp = speciesByNum(p.num);
+  var opts = (p.moves||[]).map(function(m,i){ return '<option value="'+i+'">'+esc2(m.name)+'</option>'; }).join('');
+  var restantes = STATE.pendingEvoMoveSwap.length - 1;
+  return '<div class="ga-card ga-evo-troca">'+
+    '<h2>📖 '+esc2(p.apelido||sp.name)+' pode aprender '+esc2(pend.moveName)+'!</h2>'+
+    '<p class="ga-hint">Golpe de evolução -- grátis. '+esc2(p.apelido||sp.name)+' já conhece 4 Movimentos -- esquecer qual deles pra aprender '+esc2(pend.moveName)+'?</p>'+
+    '<select id="gaEvoMoveSwapSelect">'+opts+'</select>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderEvoMoveSwap(document.getElementById(\'gaEvoMoveSwapSelect\').value)">📖 Trocar e aprender</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaResponderEvoMoveSwap(\'\')">Não, obrigado</button>'+
+    '</div>'+
+    (restantes>0 ? '<p class="ga-hint">e mais '+restantes+' golpe(s) de evolução esperando resposta depois deste.</p>' : '')+
+  '</div>';
+}
 /* Popup "aprender Movimento novo" (bônus de evolução -- ver comentário
    de DT.gaResponderAprenderMovimento). Reusa movimentosElegiveis, mesma
    fonte de dados do popup normal de Movimentos, só que sempre GRÁTIS e
@@ -15784,6 +15927,26 @@ function aprenderMovimentoPopupHTML(pa){
     '<div class="ga-btn-row">'+
       '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderAprenderMovimento(document.getElementById(\'gaAprenderNovo\').value)">📖 Aprender</button>'+
       '<button class="ga-btn-sm" onclick="DT.gaResponderAprenderMovimento(\'\')">Não, obrigado</button>'+
+    '</div>'+
+  '</div></div>';
+}
+/* Popup "trocar Movimento pelo golpe de evolução" (ver
+   DT.gaResponderTrocarGolpeEvolucao) -- só aparece quando a Equipe já
+   está com os 4 Movimentos cheios, então o golpe de evolução (SEMPRE
+   grátis) não coube direto; deixa escolher QUAL dos 4 esquecer. */
+function trocarGolpeEvolucaoPopupHTML(pt){
+  var p = STATE.party.filter(function(x){ return x.id===pt.partyId; })[0];
+  if(!p) return '';
+  var sp = speciesByNum(p.num);
+  var opts = (p.moves||[]).map(function(m,i){ return '<option value="'+i+'">'+esc2(m.name)+'</option>'; }).join('');
+  return '<div class="ga-overlay" onclick="DT.gaResponderTrocarGolpeEvolucao(\'\')"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaResponderTrocarGolpeEvolucao(\'\')">✕</button>'+
+    '<h2>📖 '+esc2(p.apelido||sp.name)+' quer aprender '+esc2(pt.moveName)+'!</h2>'+
+    '<p class="ga-hint">Golpe de evolução -- grátis. Mas '+esc2(p.apelido||sp.name)+' já conhece 4 Movimentos -- esquecer qual deles?</p>'+
+    '<select id="gaTrocarGolpeEvo">'+opts+'</select>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderTrocarGolpeEvolucao(document.getElementById(\'gaTrocarGolpeEvo\').value)">📖 Trocar e aprender</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaResponderTrocarGolpeEvolucao(\'\')">Não, obrigado</button>'+
     '</div>'+
   '</div></div>';
 }
