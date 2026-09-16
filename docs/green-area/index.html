@@ -5381,26 +5381,99 @@ function criarShedinjaAoEvoluir(nincadaQueEvoluiu, battleLogPushFn){
    EXIBIR, `DT.gaEvoluirPosSequencia` pra APLICAR), então podiam
    sortear resultados DIFERENTES um do outro: exatamente o bug
    relatado (popup mostrando Clodsire, resultado de verdade saindo
-   Quagsire, ou vice-versa). Corrigido virando forma de verdade em vez
-   de aleatório a cada tela: Wooper (padrão, Água/Terra, `key:'agua'`)
-   e Wooper de Paldea (Venenoso/Terra, `key:'paldea'`, sprite oficial
-   10253 -- confirmado por curl, Atributos Base IDÊNTICOS aos 2, só o
-   Tipo muda, dado real da PokeAPI) -- ver ALT_FORMS[194] mais abaixo.
-   `spawnPoke` já sorteia `p.forma` 50/50 na hora da captura (Wooper
-   NOVO); `eligibleEvolution` sorteia só na PRIMEIRA checagem de
-   evolução pra Wooper que já existia antes desta correção (nunca tinha
-   `p.forma`) -- depois de decidida, a forma nunca muda mais, então as
-   2 chamadas (exibir/aplicar) sempre concordam. Indexado pela Espécie
-   ORIGEM (ao contrário dos outros mapas de evolução, que são pela
-   DESTINO) porque aqui é a forma do PRÓPRIO Pokémon que decide, não
-   uma condição por aresta. Simplificação documentada: Habilidade
-   continua sempre rolada da lista de SPECIES_DEX[194] (Damp/Water
-   Absorb/Unaware) mesmo pro Wooper de Paldea (oficialmente Poison
-   Point/Water Absorb/Unaware) -- mesmo espírito de simplificação já
-   usado em todo o resto das formas alternativas deste jogo (Urshifu/
-   Oricorio/Ogerpon/Lycanroc), que também não trocam Habilidade por
-   forma exceto o único caso especial (Lycanroc Dusk). */
-var EVOLUTION_FORM_TARGET = { 194: { agua: 195, paldea: 980 } };
+   Quagsire, ou vice-versa).
+
+   Cap. leva SEGUINTE ("o wooper não tem que ser definido na captura
+   não. Ele tem que aparecer na versão certa pra o jogador saber.
+   Reveja as outras espécies com a mesma lógica: galar, alola e etc.
+   Corrija elas"): a correção anterior sorteava `p.forma` DENTRO de
+   `spawnPoke` (na hora de CAPTURAR) -- corrigia o resultado da
+   evolução, mas o jogador só descobria qual Wooper tinha depois de já
+   ter capturado, sem ver na hora do encontro. Movido pra sortear no
+   ENCONTRO selvagem de verdade (`iniciarLutaDeZona`, ver
+   `rollFormaDeEncontro`/`WILD_FORMA_ROLL` logo abaixo -- o battler
+   selvagem já nasce com a forma certa, visível em Tipo/Atributos Base/
+   sprite durante a LUTA inteira, antes de capturar), e a captura
+   (`DT.gaJogarPokebola`) copia essa MESMA forma pro Pokémon que entra
+   na Equipe/Caixa -- nunca mais um sorteio escondido. `spawnPoke`
+   ganhou um 3º parâmetro opcional `forma` pra isso; sem ele (Raid/
+   Admin/testes antigos), ainda sorteia como rede de segurança.
+
+   Levantamento das OUTRAS espécies com a mesma lógica (regional --
+   Alola/Galar/Hisui/Paldea -- com evolução diferente por forma),
+   cruzando o catálogo de 98 Espécies com forma alternativa real
+   (levantado numa leva bem anterior desta sessão, "Grupo 1 das formas
+   alternativas") contra `EVOLUTIONS_DEX`: achados MAIS 2 casos com a
+   MESMA ambiguidade de Wooper (2 arestas pro mesmo `de`, sem nenhuma
+   condição que as separe) -- **Meowth (#52)** vira Persian (#53,
+   Kanto/Alola) OU Perrserker (#863, Galar) no MESMO Nível 28, e
+   **Yamask (#562)** vira Cofagrigus (#563, padrão) no Nível 34 OU
+   Runerigus (#867, Galar) sobrevivendo a um golpe forte -- a 2ª
+   aresta de Yamask JÁ tinha mecanismo próprio (`EVOLUTION_SURVIVE_
+   BIG_HIT_REQUIRED`, leva anterior desta sessão), mas um Yamask
+   Nível 34+ que TAMBÉM sobrevivesse a um golpe forte ficava com as 2
+   arestas elegíveis ao mesmo tempo -- o MESMO bug do Wooper, só que
+   este projeto nunca tinha topado com o cenário que expõe ele.
+   Meowth entra no MESMO mapa `EVOLUTION_FORM_TARGET` de Wooper
+   (ambiguidade nova, sem comportamento anterior publicado pra
+   preservar -- pode usar o sorteio forte/definitivo).
+
+   Yamask é DIFERENTE: a evolução pra Runerigus já tinha sido
+   implementada e testada numa leva anterior desta MESMA sessão
+   assumindo (por engano, mas já divulgado) que QUALQUER Yamask
+   poderia tentar -- travar isso agora pra só o Yamask de Galar
+   quebraria o progresso de quem já estava perseguindo essa evolução.
+   Por isso Yamask (e as outras 4 espécies que tinham EXATAMENTE esse
+   problema -- uma ÚNICA aresta sem ambiguidade nenhuma no dado, mas
+   que na verdade só deveria valer pra 1 forma regional: Farfetch'd
+   #83 -> Sirfetch'd só em Galar, Qwilfish #211 -> Overqwil só em
+   Hisui, Corsola #222 -> Cursola só em Galar, Linoone #264 ->
+   Obstagoon só em Galar) usam **`EVOLUTION_FORM_REQUIRED`** (mapa
+   pela Espécie DESTINO, valor = forma exigida) com uma trava
+   "macia": só BLOQUEIA quando `p.forma` está EXPLICITAMENTE setado E
+   diferente da forma exigida -- um Pokémon "legado" (capturado ANTES
+   desta leva, sem `p.forma` nenhum) passa direto, mantendo o
+   comportamento de sempre (nunca perde progresso já feito); só quem
+   captura DAQUI PRA FRENTE, já com a forma certa vinda do encontro
+   selvagem, é filtrado de verdade pela forma. Zigzagoon (#263) entra
+   só pro SORTEIO no encontro (pra aparecer certo já como Zigzagoon) --
+   sua própria evolução pra Linoone (Nível 20) não tem forma exigida
+   nenhuma (vale pras 2), mas `p.forma` SOBREVIVE a essa evolução (o
+   motor nunca zera `p.forma` ao trocar `p.num`, ver os 3 pontos que
+   aplicam evolução), então um Zigzagoon de Galar vira um Linoone de
+   Galar automaticamente, e só ESSE consegue depois perseguir
+   Obstagoon. */
+var EVOLUTION_FORM_TARGET = { 194: { agua: 195, paldea: 980 }, 52: { padrao: 53, galar: 863 } };
+/* Ver comentário grande acima -- trava MACIA (só bloqueia com
+   `p.forma` EXPLICITAMENTE setado e diferente): Farfetch'd/Qwilfish/
+   Corsola/Linoone (evolução já existia, 1 aresta só, mas deveria valer
+   só pra 1 forma regional) e as 2 metades de Yamask (a aresta de
+   Cofagrigus TAMBÉM precisa ficar de fora pra quem já é Galar, senão
+   um Yamask de Galar Nível 34+ continuaria conseguindo Cofagrigus por
+   engano). */
+var EVOLUTION_FORM_REQUIRED = { 865: 'galar', 904: 'hisui', 864: 'galar', 862: 'galar', 563: 'padrao', 867: 'galar' };
+/* Espécies cuja forma (regional ou não) precisa aparecer JÁ CERTA no
+   ENCONTRO selvagem, pro jogador ver Tipo/Atributos Base/sprite reais
+   ANTES de decidir capturar -- chamado por `iniciarLutaDeZona` (ver
+   abaixo) na hora de sortear QUEM vai aparecer, nunca escondido até
+   depois de já ter capturado. Cada entrada é a lista de `key`s
+   possíveis de ALT_FORMS pra essa Espécie -- sorteio uniforme entre
+   elas (mesmo espírito 50/50 já usado, sem dado oficial de raridade
+   relativa por região pra seguir). */
+var WILD_FORMA_ROLL = {
+  194: ['agua','paldea'],   // Wooper
+  52:  ['padrao','galar'],  // Meowth
+  83:  ['padrao','galar'],  // Farfetch'd
+  211: ['padrao','hisui'],  // Qwilfish
+  222: ['padrao','galar'],  // Corsola
+  263: ['padrao','galar'],  // Zigzagoon
+  264: ['padrao','galar'],  // Linoone (aparece encontrado direto tb, não só evoluído de Zigzagoon)
+  562: ['padrao','galar']   // Yamask
+};
+function rollFormaDeEncontro(num){
+  var opcoes = WILD_FORMA_ROLL[num];
+  return opcoes ? opcoes[Math.floor(Math.random()*opcoes.length)] : null;
+}
 /* Toda evolução por gatilho MANUAL (ver EVOLUTION_MANUAL_TRIGGER_
    REQUIRED acima) que este Pokémon já pode usar AGORA -- mesmo
    espírito de `pedrasElegiveisPara`, só que sem item nenhum envolvido
@@ -7377,7 +7450,18 @@ function gainFelicidade(p, delta){
   var mult = (delta>0 && p.itemSegurado===CHA_AMIZADE_KEY) ? 2 : 1;
   p.felicidade = clampInt((p.felicidade!=null?p.felicidade:FELICIDADE_INICIAL) + delta*mult, 0, FELICIDADE_MAX);
 }
-function spawnPoke(num, level){
+/* Cap. leva desta sessão ("o wooper não tem que ser definido na
+   captura não... Reveja as outras espécies com a mesma lógica"): 3º
+   parâmetro `forma` opcional -- o chamador (captura selvagem de
+   verdade, ver DT.gaJogarPokebola) já sabe a forma exata do battler
+   que acabou de vencer/capturar (rolada no ENCONTRO, ver
+   `rollFormaDeEncontro`/`iniciarLutaDeZona`) e passa ela direto, sem
+   sortear de novo aqui -- o Pokémon que entra na Equipe/Caixa é
+   EXATAMENTE o que apareceu na luta. Sem `forma` passado (Raid/Admin/
+   troca/chamadas antigas de teste que não passam por luta selvagem),
+   ainda sorteia como rede de segurança pra nunca nascer sem forma
+   numa Espécie que precisa dela (ver WILD_FORMA_ROLL). */
+function spawnPoke(num, level, forma){
   var p = {
     id: uid(), num: num, level: clampInt(level,1,NIVEL_MAX), apelido:'',
     moves: pickMovesForLevel(num, level), xpNivel: 0,
@@ -7395,12 +7479,8 @@ function spawnPoke(num, level){
        na ordenação, nunca quebra por `undefined`. */
     capturedAt: Date.now()
   };
-  /* Cap. leva desta sessão (Wooper -> Quagsire/Clodsire, ver
-     EVOLUTION_FORM_TARGET/ALT_FORMS[194] abaixo): Wooper NOVO já nasce
-     com a forma sorteada 50/50 na hora da captura -- pro Wooper que já
-     existia ANTES desta correção (sem `p.forma`), eligibleEvolution
-     sorteia na primeira checagem de evolução, só 1 vez. */
-  if(num===194) p.forma = Math.random()<0.5 ? 'agua' : 'paldea';
+  if(forma) p.forma = forma;
+  else if(WILD_FORMA_ROLL[num]) p.forma = rollFormaDeEncontro(num);
   return p;
 }
 
@@ -8413,8 +8493,16 @@ function initBattlerExtras(b){
 function buildBattlerFromParty(poke){
   return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade, item: poke.itemSegurado||null, forma: formaEfetivaAtual(poke) });
 }
-function buildBattlerWild(num, level){
-  return initBattlerExtras({ key:'w_'+num, side:'wild', num:num, level:level, moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num) });
+/* Cap. leva desta sessão ("o wooper tem que aparecer na versão certa
+   pra o jogador saber"): `forma` opcional -- já vem PRONTA de
+   `iniciarLutaDeZona` (sorteada no exato instante do encontro, ver
+   `rollFormaDeEncontro`), nunca sorteada aqui de novo. Preenchendo
+   `.forma` no battler, o resto do motor (tiposEfetivos/baseStatOf/
+   spriteNumEfetivo, já genéricos por ALT_FORMS) mostra a forma
+   REGIONAL certa (Tipo/Atributos Base/sprite) durante a luta inteira,
+   ANTES do jogador decidir capturar ou não. */
+function buildBattlerWild(num, level, forma){
+  return initBattlerExtras({ key:'w_'+num, side:'wild', num:num, level:level, moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num), forma: forma||null });
 }
 function buildBattlerTrainer(num, level, tag){
   return initBattlerExtras({ key:'t_'+tag+'_'+num, side:'trainer', num:num, level:level, moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num) });
@@ -8442,7 +8530,7 @@ function startBattle(kind, opts, skipDiscrepancia){
   var custoEnergia;
   var label;
   if(kind==='wild'){
-    oppTeam = [buildBattlerWild(opts.wildNum, opts.wildLevel)];
+    oppTeam = [buildBattlerWild(opts.wildNum, opts.wildLevel, opts.wildForma)];
     custoEnergia = custoEnergiaZona(opts.zonaIdx);
     label = 'Área de Captura';
   } else if(kind==='rival'){
@@ -9397,13 +9485,19 @@ function xpMultiplicadorPorTipoDeLuta(kind){
 function eligibleEvolution(p){
   var opts = EVOLUTIONS_DEX[p.num] || [];
   if(!opts.length) return null;
-  /* Cap. leva desta sessão -- Wooper, ver EVOLUTION_FORM_TARGET acima:
-     decide a forma AQUI, 1 vez só (mutando `p.forma` de verdade, igual
-     spawnPoke já faz pro Wooper novo), antes de filtrar as arestas --
-     nunca mais é re-sorteada a cada chamada desta função. */
+  /* Cap. leva desta sessão -- Wooper/Meowth, ver EVOLUTION_FORM_TARGET
+     acima: decide a forma AQUI, 1 vez só (mutando `p.forma` de
+     verdade, igual `spawnPoke` já faz pro Pokémon novo), antes de
+     filtrar as arestas -- nunca mais é re-sorteada a cada chamada
+     desta função. Genérico pelas CHAVES de `formaAlvoMap` (nunca
+     hardcoded 'agua'/'paldea' -- cobre qualquer Espécie nova que entre
+     nesse mapa, ex. Meowth com 'padrao'/'galar'). */
   var formaAlvoMap = EVOLUTION_FORM_TARGET[p.num];
-  if(formaAlvoMap && p.forma!=='agua' && p.forma!=='paldea'){
-    p.forma = Math.random()<0.5 ? 'agua' : 'paldea';
+  if(formaAlvoMap){
+    var chavesFormaAlvo = Object.keys(formaAlvoMap);
+    if(chavesFormaAlvo.indexOf(p.forma)===-1){
+      p.forma = chavesFormaAlvo[Math.floor(Math.random()*chavesFormaAlvo.length)];
+    }
   }
   var elegiveis = opts.filter(function(e){
     if(e.trigger==='use-item' || e.trigger==='trade' || e.trigger==='shed') return false;
@@ -9412,6 +9506,16 @@ function eligibleEvolution(p){
        sobrevive -- a OUTRA nunca fica "elegível" nem entra no sorteio
        genérico do fim desta função. */
     if(formaAlvoMap && e.to!==formaAlvoMap[p.forma]) return false;
+    /* Cap. leva desta sessão -- Farfetch'd/Qwilfish/Corsola/Linoone/
+       Yamask, ver EVOLUTION_FORM_REQUIRED acima: trava MACIA, só
+       bloqueia quando `p.forma` está EXPLICITAMENTE setado (Pokémon
+       capturado DEPOIS desta correção, já com forma vinda do encontro
+       selvagem) e diferente da forma exigida -- um Pokémon "legado"
+       (sem `p.forma`, capturado antes) passa direto, sem perder
+       progresso já feito rumo a uma evolução que já estava disponível
+       pra ele antes desta correção existir. */
+    var formaExigida = EVOLUTION_FORM_REQUIRED[e.to];
+    if(formaExigida && p.forma && p.forma!==formaExigida) return false;
     /* Cap. leva desta sessão -- EVOLUTION_STONE_OVERRIDE acima: essas
        arestas saem do fluxo de Nível normal por completo, só evoluem
        pela pedra agora (ver pedrasElegiveisPara/DT.gaUsarPedra). */
@@ -11320,7 +11424,12 @@ DT.gaJogarPokebola = function(ballKey){
   var sucesso = Math.random() < catchChance(num, ballKey);
   if(sucesso){
     markCaught(num);
-    var novo = spawnPoke(num, level);
+    /* Cap. leva desta sessão ("o wooper tem que aparecer na versão
+       certa"): a forma do Pokémon capturado é EXATAMENTE a do battler
+       que acabou de ser vencido (`b.oppTeam[0].forma`, já rolada no
+       encontro por `iniciarLutaDeZona`/`rollFormaDeEncontro`) -- nunca
+       um sorteio novo e independente aqui dentro. */
+    var novo = spawnPoke(num, level, b.oppTeam[0].forma);
     if(STATE.party.length<6) STATE.party.push(novo); else STATE.box.push(novo);
     b.log.push('🎯 '+bola.nome+'... capturou! '+speciesByNum(num).name+' entrou pra sua '+(STATE.party.length<=6?'Equipe':'Caixa')+'.');
     logAction('captura', 'Capturou '+speciesByNum(num).name+' (Nv. '+level+') com '+bola.nome+'.');
@@ -12672,7 +12781,13 @@ function iniciarLutaDeZona(leadId, zonaId, skipDiscrepancia){
   var sp = pool[Math.floor(Math.random()*pool.length)];
   var level = zona.min + Math.floor(Math.random()*(zona.max-zona.min+1));
   markSeen(sp.num);
-  startBattle('wild', { leadPartyId: leadId, wildNum: sp.num, wildLevel: level, zonaIdx: idx }, skipDiscrepancia);
+  /* Cap. leva desta sessão ("o wooper tem que aparecer na versão certa
+     pra o jogador saber"): forma (Wooper/Meowth/Farfetch'd/Qwilfish/
+     Corsola/Zigzagoon/Linoone/Yamask, ver WILD_FORMA_ROLL acima)
+     sorteada AQUI, no exato instante em que a Espécie do encontro é
+     decidida -- nunca escondida até depois de já ter capturado. */
+  var forma = rollFormaDeEncontro(sp.num);
+  startBattle('wild', { leadPartyId: leadId, wildNum: sp.num, wildLevel: level, wildForma: forma, zonaIdx: idx }, skipDiscrepancia);
 }
 /* Cap. leva desta sessão: enquanto uma sequência automática (ver
    STATE.captureSequence mais abaixo) está rodando, NENHUMA luta nova
@@ -13834,13 +13949,61 @@ var ALT_FORMS = {
      `wooper-paldea` (confirmado resolvendo de verdade em
      /sprites/pokemon/10253.png). Diferente de Urshifu/Oricorio/Ogerpon
      (forma decidida por item/evolução), aqui a forma nasce JÁ decidida
-     -- `spawnPoke`/`eligibleEvolution` sorteiam `p.forma` (ver
-     comentário grande de EVOLUTION_FORM_TARGET), nunca um botão nem um
-     item pro jogador trocar depois (Wooper não troca de forma sozinho
-     nos jogos oficiais também). */
+     no ENCONTRO selvagem (ver `rollFormaDeEncontro`/`WILD_FORMA_ROLL`
+     acima -- correção de uma leva SEGUINTE, "o wooper tem que
+     aparecer na versão certa pra o jogador saber", antes sorteava
+     dentro de `spawnPoke`, escondido até depois de já capturar; agora
+     visível em Tipo/Atributos Base/sprite durante a luta inteira,
+     antes de decidir capturar), nunca um botão nem um item pro jogador
+     trocar depois (Wooper não troca de forma sozinho nos jogos
+     oficiais também). */
   194: [
     { key:'agua', nome:'Wooper (padrão, Água/Terra)', tipo1:'Água', tipo2:'Terra', spriteNum:194, golpeAssinatura:null },
     { key:'paldea', nome:'Wooper de Paldea (Venenoso/Terra)', tipo1:'Venenoso', tipo2:'Terra', spriteNum:10253, golpeAssinatura:null }
+  ],
+  /* Cap. leva desta sessão ("Reveja as outras espécies com a mesma
+     lógica: galar, alola e etc. Corrija elas"): mesmo levantamento do
+     Wooper (auditoria do catálogo de 98 Espécies com forma alternativa
+     real, "Grupo 1 das formas alternativas", cruzado contra
+     EVOLUTIONS_DEX) achou MAIS 7 casos -- ver o comentário grande de
+     EVOLUTION_FORM_TARGET/EVOLUTION_FORM_REQUIRED acima pro mecanismo
+     de cada um. `spriteNum`/Tipo/Atributos Base de TODAS confirmados
+     por curl direto na PokeAPI antes de escrever isso (nunca
+     inventados). */
+  52: [ // Meowth (Kanto/Alola idênticos aqui -- Alola só difere em cor/lore, não em Tipo/Atributos/evolução -- Persian; Galar vira Perrserker, ver EVOLUTION_FORM_TARGET)
+    { key:'padrao', nome:'Meowth (padrão, Normal)', tipo1:'Normal', tipo2:'', spriteNum:52, golpeAssinatura:null },
+    { key:'galar', nome:'Meowth de Galar (Aço)', tipo1:'Aço', tipo2:'', spriteNum:10161, golpeAssinatura:null, base:{hp:50,atk:65,def:55,spa:40,spd:40,spe:40} }
+  ],
+  83: [ // Farfetch'd -- só o de Galar evolui pra Sirfetch'd (3 críticos numa luta, ver EVOLUTION_FORM_REQUIRED[865])
+    { key:'padrao', nome:"Farfetch'd (padrão, Normal/Voador)", tipo1:'Normal', tipo2:'Voador', spriteNum:83, golpeAssinatura:null },
+    { key:'galar', nome:"Farfetch'd de Galar (Lutador)", tipo1:'Lutador', tipo2:'', spriteNum:10166, golpeAssinatura:null, base:{hp:52,atk:95,def:55,spa:58,spd:62,spe:55} }
+  ],
+  211: [ // Qwilfish -- só o de Hisui evolui pra Overqwil (20 usos de Barb Barrage, ver EVOLUTION_FORM_REQUIRED[904]); Atributos Base idênticos, só o Tipo muda
+    { key:'padrao', nome:'Qwilfish (padrão, Água/Venenoso)', tipo1:'Água', tipo2:'Venenoso', spriteNum:211, golpeAssinatura:null },
+    { key:'hisui', nome:'Qwilfish de Hisui (Sombrio/Venenoso)', tipo1:'Sombrio', tipo2:'Venenoso', spriteNum:10234, golpeAssinatura:null }
+  ],
+  222: [ // Corsola -- só o de Galar evolui pra Cursola (Nível 38, ver EVOLUTION_FORM_REQUIRED[864]); o padrão oficialmente NUNCA evolui
+    { key:'padrao', nome:'Corsola (padrão, Água/Pedra)', tipo1:'Água', tipo2:'Pedra', spriteNum:222, golpeAssinatura:null },
+    { key:'galar', nome:'Corsola de Galar (Fantasma)', tipo1:'Fantasma', tipo2:'', spriteNum:10173, golpeAssinatura:null, base:{hp:60,atk:55,def:100,spa:65,spd:100,spe:30} }
+  ],
+  /* Zigzagoon não tem evolução form-gated nenhuma em si (Nível 20 vale
+     pras 2 formas, ver EVOLUTIONS_DEX[263]) -- entra aqui só pra
+     aparecer com a forma certa já no ENCONTRO selvagem (ver
+     WILD_FORMA_ROLL). `p.forma` sobrevive à evolução pra Linoone (o
+     motor nunca zera `p.forma` ao trocar `p.num`), então um Zigzagoon
+     de Galar vira um Linoone de Galar sozinho, sem precisar de nenhum
+     código extra aqui. */
+  263: [
+    { key:'padrao', nome:'Zigzagoon (padrão, Normal)', tipo1:'Normal', tipo2:'', spriteNum:263, golpeAssinatura:null },
+    { key:'galar', nome:'Zigzagoon de Galar (Sombrio/Normal)', tipo1:'Sombrio', tipo2:'Normal', spriteNum:10174, golpeAssinatura:null }
+  ],
+  264: [ // Linoone -- só o de Galar evolui pra Obstagoon (Nível 35 de Noite, ver EVOLUTION_FORM_REQUIRED[862]); tb entra no encontro selvagem direto (não só via evoluir de Zigzagoon)
+    { key:'padrao', nome:'Linoone (padrão, Normal)', tipo1:'Normal', tipo2:'', spriteNum:264, golpeAssinatura:null },
+    { key:'galar', nome:'Linoone de Galar (Sombrio/Normal)', tipo1:'Sombrio', tipo2:'Normal', spriteNum:10175, golpeAssinatura:null }
+  ],
+  562: [ // Yamask -- padrão vira Cofagrigus (Nível 34), só o de Galar vira Runerigus (golpe forte), ver EVOLUTION_FORM_TARGET[562]
+    { key:'padrao', nome:'Yamask (padrão, Fantasma)', tipo1:'Fantasma', tipo2:'', spriteNum:562, golpeAssinatura:null },
+    { key:'galar', nome:'Yamask de Galar (Terra/Fantasma)', tipo1:'Terra', tipo2:'Fantasma', spriteNum:10179, golpeAssinatura:null, base:{hp:38,atk:55,def:85,spa:30,spd:65,spe:30} }
   ]
 };
 /* Qual forma um Rockruff (#744) vira ao evoluir, conforme Dia/Noite (ou
@@ -14580,7 +14743,12 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
        padrão #0025 usado no resto do jogo), em TODO card, sem
        depender de contexto nenhum (dono ou não) -- só informativo,
        mesmo espírito do V:/D: acima. */
-    '<div class="ga-poke-meta">#'+String(poke.num).padStart(4,'0')+' · Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
+    /* Cap. leva desta sessão ("o wooper tem que aparecer na versão
+       certa"): achado de passagem -- igual o sprite (spriteNumEfetivo
+       acima), o Tipo mostrado aqui também lia `sp` (a Espécie CRUA),
+       ignorando `.forma` -- mesmo bug pré-existente, mesma correção
+       (`tiposEfetivos(poke)` no lugar de `sp`). */
+    '<div class="ga-poke-meta">#'+String(poke.num).padStart(4,'0')+' · Nv. '+poke.level+' · '+typeTagsHTML(tiposEfetivos(poke))+'</div>'+
     '<div class="ga-hint">'+esc2(poke.natureza||'—')+' · '+esc2(poke.habilidade||'—')+'</div>'+
     '<div class="ga-hint">'+progresso+'</div>'+
     /* Cap. leva desta sessão ("sistema de felicidade"): antes disso
@@ -16234,7 +16402,7 @@ function dueloScreenHTML(){
         ? '<p class="ga-hint">Você já escolheu -- esperando '+esc2(outroNome)+(outroEscolheu?' (já escolheu também, começando o Duelo...)':' escolher')+'.</p>'
         : '<p class="ga-hint">Revelação simultânea -- o outro lado não vê sua escolha até os 2 terem escolhido.</p><div class="ga-poke-grid">'+minhaParty.map(function(p){
             var sp = speciesByNum(p.num);
-            return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(sp)+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherLiderDuelo(\''+d.id+'\',\''+p.id+'\')">Escolher</button></div>';
+            return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(tiposEfetivos(p))+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherLiderDuelo(\''+d.id+'\',\''+p.id+'\')">Escolher</button></div>';
           }).join('')+'</div>')+
       '<button class="ga-btn-sm danger" onclick="DT.gaDesistirDuelo(\''+d.id+'\')">Desistir</button></div>';
   }
