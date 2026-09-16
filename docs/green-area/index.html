@@ -13979,7 +13979,13 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
     (poke.deRaid ? '<div class="ga-raid-badge" title="Capturado numa Raid">R</div>' : '')+
     '<img src="'+spriteUrl(poke.num)+'" loading="lazy" alt="">'+
     '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+lapis+estrela+'</div>'+
-    '<div class="ga-poke-meta">Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
+    /* Cap. leva desta sessão ("Nos cards de pokémon adicione
+       #numerodopokemon pra ficar visível sempre"): número oficial da
+       Pokédex (`poke.num`, 4 dígitos com zero à esquerda -- mesmo
+       padrão #0025 usado no resto do jogo), em TODO card, sem
+       depender de contexto nenhum (dono ou não) -- só informativo,
+       mesmo espírito do V:/D: acima. */
+    '<div class="ga-poke-meta">#'+String(poke.num).padStart(4,'0')+' · Nv. '+poke.level+' · '+typeTagsHTML(sp)+'</div>'+
     '<div class="ga-hint">'+esc2(poke.natureza||'—')+' · '+esc2(poke.habilidade||'—')+'</div>'+
     '<div class="ga-hint">'+progresso+'</div>'+
     /* Cap. leva desta sessão ("sistema de felicidade"): antes disso
@@ -14137,6 +14143,12 @@ function caixaFilteredList(){
   });
   if(SESSION.caixaOrdenar==='recente') lista = lista.slice().sort(function(a,b){ return (b.capturedAt||0)-(a.capturedAt||0); });
   else if(SESSION.caixaOrdenar==='antigo') lista = lista.slice().sort(function(a,b){ return (a.capturedAt||0)-(b.capturedAt||0); });
+  else if(SESSION.caixaOrdenar==='nome') lista = lista.slice().sort(function(a,b){
+    var na = (a.apelido||speciesByNum(a.num).name).toLowerCase();
+    var nb = (b.apelido||speciesByNum(b.num).name).toLowerCase();
+    return na.localeCompare(nb);
+  });
+  else if(SESSION.caixaOrdenar==='numero') lista = lista.slice().sort(function(a,b){ return a.num-b.num; });
   return lista;
 }
 function caixaFiltrosHTML(){
@@ -14164,9 +14176,12 @@ function caixaFiltrosHTML(){
          recentes capturados e os mais antigos"): mesma aba `.ga-tabs`
          de Papel de Combate acima, só que pra ORDEM da lista (não um
          filtro que esconde Pokémon -- todos continuam aparecendo,
-         só a ORDEM muda). */
+         só a ORDEM muda). Cap. leva posterior ("uma organização Por
+         nome e também por número na pokedex"): mesmo padrão, só
+         adicionando 'nome' (A-Z, usa apelido se tiver) e 'numero'
+         (crescente pela Pokédex) às opções já existentes. */
       '<span class="ga-tabs">'+
-        [['','🕓 Ordem: padrão'],['recente','🆕 Mais recentes'],['antigo','🕰️ Mais antigos']].map(function(pair){
+        [['','🕓 Ordem: padrão'],['recente','🆕 Mais recentes'],['antigo','🕰️ Mais antigos'],['nome','🔤 Nome (A-Z)'],['numero','#️⃣ Número da Pokédex']].map(function(pair){
           return '<button class="'+(SESSION.caixaOrdenar===pair[0]?'active':'')+'" onclick="DT.gaSetCaixaOrdenar(\''+pair[0]+'\')">'+pair[1]+'</button>';
         }).join('')+
       '</span>'+
