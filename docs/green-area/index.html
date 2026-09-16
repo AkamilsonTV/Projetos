@@ -5405,7 +5405,8 @@ var EVOLUTION_HELD_ITEM_REQUIRED = {
 var EVOLUTION_KNOWN_MOVE_REQUIRED = {
   463:'Rollout', 465:'Ancient Power', 424:'Double Hit', 469:'Ancient Power', 981:'Twin Beam',
   982:'Hyper Drill', 473:'Ancient Power', 185:'Mimic', 122:'Mimic', 763:'Stomp',
-  804:'Dragon Pulse', 853:'Taunt', 1019:'Dragon Cheer'
+  804:'Dragon Pulse', 853:'Taunt', 1019:'Dragon Cheer',
+  899:'Psyshield Bash' // Cap. leva desta sessão -- Stantler->Wyrdeer, combinado com EVOLUTION_MOVE_USE_COUNT_REQUIRED[899] (anyMove:true) mais abaixo
 };
 /* Mantyke (#458) -> Mantine (#226): precisa ter um Remoraid (#223) em
    QUALQUER LUGAR do time (Equipe OU Caixa) -- mesma interpretação
@@ -5444,7 +5445,90 @@ var EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED = { 700: 'Fada' }; // mesma grafia de MOV
    `counterField` pra já deixar pronto reusar esse MESMO mecanismo nas
    outras evoluções por contador de combate do checklist (Farfetch'd/
    Qwilfish/Stantler), ainda não implementadas. */
-var EVOLUTION_MOVE_USE_COUNT_REQUIRED = { 979: { move:'Rage Fist', count:20, counterField:'usosRageFist' } };
+/* Cap. leva desta sessão ("Aplicar suas sugestões em: Farfetch'd,
+   Qwilfish, Stantler..."): Qwilfish->Overqwil reusa o MESMO mecanismo
+   acima (golpe de assinatura Barb Barrage 20x, soltando a parte do
+   "Estilo Forte" que só existe em Legends Arceus). Stantler->Wyrdeer
+   combina 2 mecanismos já existentes: EVOLUTION_KNOWN_MOVE_REQUIRED
+   (Psyshield Bash, abaixo) E este aqui com `anyMove:true` -- conta
+   QUALQUER Movimento usado (aproximação do "Estilo Ágil" 20x, que no
+   jogo oficial vale pra qualquer golpe nesse estilo, não só Psyshield
+   Bash) -- `eligibleEvolution` roda o check de Movimento conhecido
+   ANTES deste (ordem do código), então as 2 condições ficam em E. */
+var EVOLUTION_MOVE_USE_COUNT_REQUIRED = {
+  979: { move:'Rage Fist', count:20, counterField:'usosRageFist' },
+  904: { move:'Barb Barrage', count:20, counterField:'usosBarbBarrage' },
+  899: { anyMove:true, count:20, counterField:'usosGolpesStantler' }
+};
+/* Farfetch'd -> Sirfetch'd (#865): 3 acertos críticos numa ÚNICA luta
+   -- contador POR-BATALHA (`p.criticosNaLuta`, diferente dos contadores
+   acima que NUNCA resetam), zerado pra TODO o Time toda vez que uma
+   luta nova começa (ver startBattle/iniciarBatalhaRaid) e incrementado
+   em `resolveGaTurn` toda vez que ELE desfere um Crítico de verdade.
+   Simplificação documentada: não exige "sem desmaiar" à parte -- só
+   reseta em luta NOVA, igual ao design aprovado no README. */
+var EVOLUTION_BATTLE_CRIT_REQUIRED = { 865: { count:3, counterField:'criticosNaLuta' } };
+/* Zera os contadores POR-BATALHA (só criticosNaLuta por enquanto) de
+   TODO o Time -- chamado no INÍCIO de toda luta nova (startBattle/
+   iniciarBatalhaRaid), nunca em troca/entrada no MEIO da mesma luta
+   (senão perderia progresso à toa). */
+function zerarContadoresPorBatalha(){
+  Object.keys(EVOLUTION_BATTLE_CRIT_REQUIRED).forEach(function(toNum){
+    var campo = EVOLUTION_BATTLE_CRIT_REQUIRED[toNum].counterField;
+    STATE.party.forEach(function(p){ p[campo] = 0; });
+  });
+}
+/* Basculin (listrado) -> Basculegion (#902): acumular 294 de dano de
+   recuo sem curar -- `p.recuoAcumulado` persistente (nunca reseta
+   sozinho, igual usosRageFist), incrementado em `resolveGaTurn` toda
+   vez que ELE sofre recuo de verdade (golpe oficial com `drain`
+   negativo OU Struggle) e ZERADO toda vez que é curado em luta (item
+   de cura -- DT.gaUsarItemCura -- ou golpe de Status de cura própria).
+   Simplificação documentada: a parte "resetado ao trocar" do
+   levantamento original não foi implementada (cura já cobre o caso
+   central, e o motor daqui não persiste PV parcial entre lutas -- toda
+   luta nova já começa com PV cheio de qualquer forma). */
+var EVOLUTION_RECOIL_ACCUM_REQUIRED = { 902: { count:294, counterField:'recuoAcumulado' } };
+/* Yamask (Galar) -> Runerigus (#867): sofrer ≥49 de dano num único
+   golpe sem desmaiar -- `p.tomouGolpeForteSemDesmaiar` (flag booleana
+   permanente, nunca reseta -- vira um "feito" marcado pro resto da
+   vida do Pokémon), marcada em `resolveGaTurn` na hora que um hit de
+   dano bate a meta e ele sobrevive. Aproximação documentada: só a
+   parte do DANO -- a exigência oficial de localização específica
+   (Grandes Ruínas de Galar) não dá pra simular aqui. */
+var EVOLUTION_SURVIVE_BIG_HIT_REQUIRED = { 867: { minDamage:49, flagField:'tomouGolpeForteSemDesmaiar' } };
+/* Bisharp -> Kingambit (#983): derrotar 3 Bisharp -- `p.bisharpDerrotados`
+   persistente (nunca reseta sozinho), incrementado em
+   `resolveFaintAfterDamage` toda vez que ELE desfere o golpe que
+   derruba um Bisharp adversário de verdade (Selvagem/Treinador, nunca
+   Raid -- mesma exclusão que XP/vitória já usam pra Raid, cujo "boss"
+   é um HP compartilhado entre várias tentativas). Aproximação
+   documentada: solta a exigência oficial do item segurado específico
+   no Bisharp derrotado (Movimento Negro/Movimento Branco). */
+var EVOLUTION_DEFEATED_SPECIES_COUNT_REQUIRED = { 983: { speciesNum:625, count:3, counterField:'bisharpDerrotados' } };
+/* Helpers do contador de recuo acumulado (Basculin->Basculegion, ver
+   EVOLUTION_RECOIL_ACCUM_REQUIRED acima) -- usados em resolveGaTurn
+   (soma no Struggle e no recuo oficial de MOVES_OFICIAL) e no heal em
+   luta (DT.gaUsarItemCura + golpe de Status de cura própria, que
+   zeram). Só `user.partyId` (buildBattlerFromParty) conta -- oponente/
+   Pokémon de PVP nunca acumulam nada de verdade. */
+function somarRecuoParaEvolucao(user, quantidade){
+  if(!user || user.side!=='player' || !user.partyId || quantidade<=0) return;
+  var p = STATE.party.filter(function(x){ return x.id===user.partyId; })[0];
+  if(!p) return;
+  Object.keys(EVOLUTION_RECOIL_ACCUM_REQUIRED).forEach(function(toNum){
+    var cfg = EVOLUTION_RECOIL_ACCUM_REQUIRED[toNum];
+    p[cfg.counterField] = (p[cfg.counterField]||0) + quantidade;
+  });
+}
+function zerarRecuoAcumulado(user){
+  if(!user || user.side!=='player' || !user.partyId) return;
+  var p = STATE.party.filter(function(x){ return x.id===user.partyId; })[0];
+  if(!p) return;
+  Object.keys(EVOLUTION_RECOIL_ACCUM_REQUIRED).forEach(function(toNum){
+    p[EVOLUTION_RECOIL_ACCUM_REQUIRED[toNum].counterField] = 0;
+  });
+}
 /* Dia/Noite -- Cap. leva desta sessão ("Quero colocar o esquema de dia
    e noite no jogo... 4 períodos durante 24h, 1 dia dura 6h..."), COM a
    correção de uma leva seguinte ("A hora ainda não tá legal. Não é pra
@@ -5824,6 +5908,7 @@ function iniciarBatalhaRaid(raidId, leadPartyId, bolaEscolhida){
     if((STATE.itens.raidpass||0)<1){ SESSION.error='Você não tem nenhum Raid Pass.'; render(); return; }
     if(STATE.battle){ SESSION.error='Já tem uma luta em andamento -- termine ela primeiro.'; render(); return; }
     STATE.itens.raidpass--;
+    zerarContadoresPorBatalha(); // Cap. Farfetch'd->Sirfetch'd (ver EVOLUTION_BATTLE_CRIT_REQUIRED) -- toda luta NOVA zera criticosNaLuta de todo o Time
     var bossBattler = buildBattlerRaid(raid);
     var hpAtualFetched = Math.max(0, raid.hpAtual);
     var playerBattler = buildBattlerFromParty(lead);
@@ -8225,6 +8310,7 @@ function startBattle(kind, opts, skipDiscrepancia){
   }
   STATE.energy -= custoEnergia;
   logAction('batalha', 'Entrou numa luta ('+kind+'): '+label+', '+oppTeam.length+' oponente(s), custou '+custoEnergia+' de Energia.');
+  zerarContadoresPorBatalha(); // Cap. Farfetch'd->Sirfetch'd (ver EVOLUTION_BATTLE_CRIT_REQUIRED) -- toda luta NOVA zera criticosNaLuta de todo o Time
 
   var hp = {};
   var playerBattler = buildBattlerFromParty(lead);
@@ -8420,6 +8506,20 @@ function resolveFaintAfterDamage(target, user, b, moveUsado){
   }
   b.oppDefeatedLevels.push(target.level);
   var xpUser = (user && user.side==='player') ? user : battlerObj(b,'player');
+  /* Cap. leva desta sessão -- Bisharp->Kingambit (ver
+     EVOLUTION_DEFEATED_SPECIES_COUNT_REQUIRED acima): conta a Espécie
+     derrotada pra quem desferiu (ou levou o crédito do) golpe final --
+     mesma regra de "quem" usada pra XP logo abaixo, e a MESMA exclusão
+     de Raid (target de Raid é HP compartilhado entre várias
+     tentativas, nunca um abate normal de verdade). */
+  if(xpUser.side==='player' && xpUser.partyId && b.kind!=='raid'){
+    Object.keys(EVOLUTION_DEFEATED_SPECIES_COUNT_REQUIRED).forEach(function(toNum){
+      var cfg = EVOLUTION_DEFEATED_SPECIES_COUNT_REQUIRED[toNum];
+      if(target.num!==cfg.speciesNum) return;
+      var pDerrotou = STATE.party.filter(function(x){ return x.id===xpUser.partyId; })[0];
+      if(pDerrotou) pDerrotou[cfg.counterField] = (pDerrotou[cfg.counterField]||0) + 1;
+    });
+  }
   /* Cap. leva desta sessão (Raids): NUNCA credita XP por Faixa aqui --
      o "boss" de uma Raid é um HP COMPARTILHADO entre vários jogadores/
      tentativas (ver finalizarBatalhaRaid), então "derrotar" ele numa
@@ -9125,10 +9225,28 @@ function eligibleEvolution(p){
        batido a meta. */
     var usoMovimentoNecessario = EVOLUTION_MOVE_USE_COUNT_REQUIRED[e.to];
     if(usoMovimentoNecessario){
-      var conheceGolpeDeUso = (p.moves||[]).some(function(m){ return m.name===usoMovimentoNecessario.move; });
-      if(!conheceGolpeDeUso) return false;
+      /* Cap. leva desta sessão -- Stantler->Wyrdeer: `anyMove:true`
+         pula a checagem de golpe específico aqui (o Movimento exigido,
+         Psyshield Bash, já foi checado acima via moveNecessario) --
+         conta uso de QUALQUER golpe. */
+      if(!usoMovimentoNecessario.anyMove){
+        var conheceGolpeDeUso = (p.moves||[]).some(function(m){ return m.name===usoMovimentoNecessario.move; });
+        if(!conheceGolpeDeUso) return false;
+      }
       return (p[usoMovimentoNecessario.counterField]||0) >= usoMovimentoNecessario.count;
     }
+    /* Farfetch'd -> Sirfetch'd: ver EVOLUTION_BATTLE_CRIT_REQUIRED acima. */
+    var critNecessario = EVOLUTION_BATTLE_CRIT_REQUIRED[e.to];
+    if(critNecessario) return (p[critNecessario.counterField]||0) >= critNecessario.count;
+    /* Basculin -> Basculegion: ver EVOLUTION_RECOIL_ACCUM_REQUIRED acima. */
+    var recuoNecessario = EVOLUTION_RECOIL_ACCUM_REQUIRED[e.to];
+    if(recuoNecessario) return (p[recuoNecessario.counterField]||0) >= recuoNecessario.count;
+    /* Yamask (Galar) -> Runerigus: ver EVOLUTION_SURVIVE_BIG_HIT_REQUIRED acima. */
+    var golpeForteNecessario = EVOLUTION_SURVIVE_BIG_HIT_REQUIRED[e.to];
+    if(golpeForteNecessario) return !!p[golpeForteNecessario.flagField];
+    /* Bisharp -> Kingambit: ver EVOLUTION_DEFEATED_SPECIES_COUNT_REQUIRED acima. */
+    var derrotasNecessarias = EVOLUTION_DEFEATED_SPECIES_COUNT_REQUIRED[e.to];
+    if(derrotasNecessarias) return (p[derrotasNecessarias.counterField]||0) >= derrotasNecessarias.count;
     if(e.minHappiness!=null) return (p.felicidade||0) >= e.minHappiness;
     /* Cap. leva desta sessão -- as arestas com item segurado, Movimento
        conhecido ou Espécie no time exigidos (`itemNecessario`/
@@ -10385,7 +10503,7 @@ function resolveGaTurn(user, target, preSelectedMove){
   if(!liberandoCarga && user.side==='player' && user.partyId){
     Object.keys(EVOLUTION_MOVE_USE_COUNT_REQUIRED).forEach(function(toNum){
       var cfg = EVOLUTION_MOVE_USE_COUNT_REQUIRED[toNum];
-      if(cfg.move!==move.name) return;
+      if(!cfg.anyMove && cfg.move!==move.name) return; // Cap. Stantler->Wyrdeer: anyMove:true conta QUALQUER golpe
       var pOwner = STATE.party.filter(function(x){ return x.id===user.partyId; })[0];
       if(pOwner) pOwner[cfg.counterField] = (pOwner[cfg.counterField]||0) + 1;
     });
@@ -10402,6 +10520,7 @@ function resolveGaTurn(user, target, preSelectedMove){
       var recuo = Math.max(1, Math.floor(gaHpMax(user)*STRUGGLE_RECOIL_PCT));
       b.hp[user.key] = Math.max(0, b.hp[user.key]-recuo);
       b.log.push('💢 '+userName+' usou Struggle (sem PP sobrando!) em '+targetName+' -- '+struggleDano+' de dano, e sofreu '+recuo+' de recuo.');
+      somarRecuoParaEvolucao(user, recuo);
     }
     return;
   }
@@ -10654,6 +10773,7 @@ function resolveGaTurn(user, target, preSelectedMove){
       var antes = b.hp[user.key];
       b.hp[user.key] = Math.min(maxUser, b.hp[user.key]+cura);
       b.log.push('💚 '+userName+' usou '+move.name+' -- recuperou '+(b.hp[user.key]-antes)+' PV.');
+      zerarRecuoAcumulado(user); // Cap. Basculin->Basculegion (ver EVOLUTION_RECOIL_ACCUM_REQUIRED acima) -- curar zera o acumulado
     }
     // mudança de Estágio (Swords Dance, Growl...) -- statChance 0 num golpe de Status = sempre aplica (é a função do golpe)
     var doStatChange = of.statChance>0 ? (Math.random()*100<of.statChance) : true;
@@ -10743,12 +10863,32 @@ function resolveGaTurn(user, target, preSelectedMove){
       var vaiSturdy = hpAntesHit===maxTarget && result.dano>=hpAntesHit && temHab(target,'Sturdy') && !ignoraHabilidadeDefensiva(user);
       var vaiFocusSash = !vaiSturdy && hpAntesHit===maxTarget && result.dano>=hpAntesHit && temItemSegurado(target,'cinto-foco') && itemSeguradoDisponivelNestaLuta(target,b);
       b.hp[target.key] = (vaiSturdy||vaiFocusSash) ? 1 : Math.max(0, b.hp[target.key]-result.dano);
-      totalDano += (vaiSturdy||vaiFocusSash) ? (hpAntesHit-1) : result.dano;
+      var hpPerdidoNesseHit = (vaiSturdy||vaiFocusSash) ? (hpAntesHit-1) : result.dano;
+      totalDano += hpPerdidoNesseHit;
+      /* Cap. leva desta sessão -- Yamask (Galar)->Runerigus (ver
+         EVOLUTION_SURVIVE_BIG_HIT_REQUIRED acima): marca a flag
+         permanente assim que ELE sofre um hit ≥49 de dano REAL (já
+         considerando Sturdy/Cinto Foco) e continua vivo depois -- nunca
+         desmarca, "feito" pro resto da vida do Pokémon. */
+      if(target.partyId && b.hp[target.key]>0 && hpPerdidoNesseHit>=EVOLUTION_SURVIVE_BIG_HIT_REQUIRED[867].minDamage){
+        var pGolpeForte = STATE.party.filter(function(x){ return x.id===target.partyId; })[0];
+        if(pGolpeForte) pGolpeForte[EVOLUTION_SURVIVE_BIG_HIT_REQUIRED[867].flagField] = true;
+      }
       if(vaiSturdy){ salvoPeloSturdy = true; break; } // encerra os hits restantes -- já não tem mais o que derrubar
       if(vaiFocusSash){ salvoPeloFocusSash = true; consomeItemSegurado(target, b, 'sobreviveu com 1 PV'); break; }
     }
   }
   var extra = (ultimoResult.typeEff>=2?' Super efetivo!':(ultimoResult.typeEff>0&&ultimoResult.typeEff<1?' Pouco efetivo.':'')) + (crit?' Crítico!':'');
+  /* Cap. leva desta sessão -- Farfetch'd->Sirfetch'd (ver
+     EVOLUTION_BATTLE_CRIT_REQUIRED acima): soma 1 no contador
+     POR-BATALHA (criticosNaLuta) toda vez que ELE desfere um Crítico
+     de verdade (golpe acertou/atingiu, não foi bloqueado por imunidade
+     -- chegou até aqui). Zerado toda luta nova em startBattle/
+     iniciarBatalhaRaid. */
+  if(crit && user.side==='player' && user.partyId){
+    var pCrit = STATE.party.filter(function(x){ return x.id===user.partyId; })[0];
+    if(pCrit) pCrit.criticosNaLuta = (pCrit.criticosNaLuta||0) + 1;
+  }
   var hitsMsg = hits>1 ? ' ('+hits+' vezes)' : '';
   if(atingiuSubstituto){
     b.log.push('⚔️ '+userName+' usou '+move.name+' em '+targetName+hitsMsg+' -- atingiu o Substituto ('+totalDano+' de dano absorvido).'+extra+(target.subHp<=0?' O Substituto quebrou!':''));
@@ -10788,6 +10928,7 @@ function resolveGaTurn(user, target, preSelectedMove){
       b.hp[user.key] = Math.max(0, b.hp[user.key]-drainQtd);
       b.log.push('💥 '+userName+' sofreu '+drainQtd+' de recuo.');
       checaBagaDePV(user, b);
+      somarRecuoParaEvolucao(user, drainQtd);
     }
   }
   // Cap. Itens Segurados que reagem a CAUSAR dano: Pedra Vida (recuo
@@ -10894,6 +11035,7 @@ DT.gaUsarItemCura = function(itemKey){
   STATE.itens[itemKey]--;
   b.log.push('💊 Você usou '+it.nome+' em '+displayName(alvo)+' -- recuperou '+cura+' PV.');
   logAction('item', 'Usou '+it.nome+' em '+displayName(alvo)+' no meio da luta (+'+cura+' PV).');
+  zerarRecuoAcumulado(alvo); // Cap. Basculin->Basculegion (ver EVOLUTION_RECOIL_ACCUM_REQUIRED acima) -- item de cura zera o acumulado
   b.pendingHeal = null;
   runBattleUntilPause();
   mutate();
