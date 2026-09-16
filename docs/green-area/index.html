@@ -6244,7 +6244,7 @@ function iniciarBatalhaRaid(raidId, leadPartyId, bolaEscolhida){
       playerActive: playerBattler, playerPartyOrder: STATE.party.map(function(p){return p.id;}), usedPartyIds:[lead.id],
       oppTeam:[bossBattler], oppIdx:0, hp:hp,
       log:['⚔️ Entrou na Raid contra '+spNome+'! Você mandou '+displayName(playerBattler)+' -- Regra de Ouro: você ataca primeiro, sempre.'],
-      healedThisFaint:{}, pendingHeal:null, pendingSwitch:false, pendingEvolution:null, pendingAprenderMovimento:null, pendingTrocarGolpeEvolucao:null,
+      healedThisFaint:{}, pendingHeal:null, pendingSwitch:false, pendingEvolution:null, pendingEvolutionQueue:null, pendingAprenderMovimento:null, pendingTrocarGolpeEvolucao:null,
       oppDefeatedLevels:[], finished:null, captureDone:false,
       weather:{tipo:'neutro',turnsLeft:null}, terrain:{tipo:'neutro',turnsLeft:null},
       hazards:{player:{stealthRock:false,toxicSpikes:0}, opponent:{stealthRock:false,toxicSpikes:0}}
@@ -6286,23 +6286,36 @@ function finalizarBatalhaRaid(b, result){
      não só o líder) -- ganhe ou perca. Usa `xpParaVitoria` de sempre
      (nível de cada Pokémon vs o nível BASE do boss -- `raidStatMult`/
      `raidHpMult` nunca tocam `level`, só as stats, ver buildBattlerRaid)
-     × XP_MULT_RAID (×8). `grantXpSemPausarEvolucao` -- nunca pausa
-     esperando resposta de evolução aqui: com 2+ Pokémon ganhando XP na
-     MESMA tentativa, os 2 disputariam o único `b.pendingEvolution` da
-     luta; uma evolução elegível só pergunta na PRÓXIMA luta de
-     verdade (mesmo espírito já usado no bônus de participação). Isso
-     é XP LOCAL desta tentativa -- não depende do Firestore, nunca se
-     perde mesmo se a escrita abaixo falhar. */
+     × XP_MULT_RAID (×3). Isso é XP LOCAL desta tentativa -- não
+     depende do Firestore, nunca se perde mesmo se a escrita abaixo
+     falhar.
+     Cap. leva desta sessão ("quando um pokémon acumular XP que ele
+     chegue em nível para evoluir, pode fazer o processo de evolução
+     normal mesmo com derrota"): `grantXpSemPausarEvolucao` agora
+     DEVOLVE um descritor quando o Pokémon ficou elegível pra evoluir
+     -- com 2+ Pokémon evoluindo na MESMA tentativa, em vez de disputar
+     o único `b.pendingEvolution` da luta (perdendo a pergunta um do
+     outro), empilha todos numa fila (`b.pendingEvolutionQueue`) e
+     pergunta um de cada vez (ver avancarFilaEvolucao) -- o popup real
+     de evolução aparece por cima da tela de resultado da Raid, MESMO
+     quando `result` foi derrota (evolucaoPopupHTML sempre renderiza
+     por cima do card de vitória/derrota, ver screenHTML da luta). */
   var bossLevel = b.oppTeam[0].level;
+  var evolucoesElegiveisNaRaid = [];
   (b.usedPartyIds||[]).forEach(function(pid){
     var pRaid = STATE.party.filter(function(x){ return x.id===pid; })[0];
     if(!pRaid) return;
     var xpGanhoRaid = xpParaVitoria(pRaid.level, bossLevel) * XP_MULT_RAID;
     if(xpGanhoRaid>0){
-      grantXpSemPausarEvolucao(pRaid, xpGanhoRaid);
+      var evoRaid = grantXpSemPausarEvolucao(pRaid, xpGanhoRaid);
+      if(evoRaid) evolucoesElegiveisNaRaid.push(evoRaid);
       b.log.push('✨ '+(pRaid.apelido||speciesByNum(pRaid.num).name)+' ganhou '+xpGanhoRaid+' XP por participar da Raid.');
     }
   });
+  if(evolucoesElegiveisNaRaid.length){
+    b.pendingEvolutionQueue = evolucoesElegiveisNaRaid;
+    avancarFilaEvolucao(b);
+  }
   logAction('raid', 'Lutou contra a Raid (causou '+danoNestaTentativa+' de dano, '+tentativa.resultado+').', b.log);
   if(raidsCol){
     raidsCol.doc(raidId).update({
@@ -9535,10 +9548,16 @@ function xpParaVitoria(nivelProprio, nivelOponente){
      Selvagem (kind 'wild')            -> ×1 (valor puro de sempre)
      Treinador/Elite de Zona ('rival'/'elite') -> ×2 (NOVO -- antes não tinham bônus nenhum)
      Mestre Especialista ('trainer', dá Insígnia) -> ×5
-     Raid, por TENTATIVA (ver finalizarBatalhaRaid) -> ×8 */
+     Raid, por TENTATIVA (ver finalizarBatalhaRaid) -> ×3 (Cap. leva
+     desta sessão -- "a experiência eu quero, em vez de deixar alto
+     como está baixar para x3 por tentativa": era ×8, ficava alto
+     DEMAIS por causa do bônus de Habilidade/Golpe/Item/o quanto o
+     boss é mais forte que a Faixa normal -- ×3 continua maior que
+     Selvagem puro (era o objetivo, Raid ainda compensa mais), só sem
+     disparar Nível tão rápido) */
 var XP_MULT_TREINADOR = 2;
 var XP_MULT_MESTRE = 5;
-var XP_MULT_RAID = 8;
+var XP_MULT_RAID = 3;
 function xpMultiplicadorPorTipoDeLuta(kind){
   if(kind==='trainer') return XP_MULT_MESTRE;
   if(kind==='rival' || kind==='elite') return XP_MULT_TREINADOR;
@@ -9814,17 +9833,31 @@ function grantXpAndMaybeEvolve(b, partyId, xpGain){
 }
 /* Cap. leva desta sessão (Recompensa de XP de Raid -- participação
    quando o boss cai E a NOVA por tentativa, ver finalizarBatalhaRaid):
-   MESMA curva de Nível de cima (xpParaProximoNivel), só sem pausar
-   esperando resposta de evolução -- reusa o mesmo raciocínio já
-   documentado em aplicarRecompensaRaid ("XP aplicada fora de uma luta
-   de verdade nunca dispara popup de evolução -- se cruzar Nível
-   elegível, a evolução fica pendente pro PRÓXIMO ganho de XP EM luta
-   de verdade"). Sem essa separação, 2+ Pokémon ganhando XP na MESMA
-   tentativa de Raid (ver b.usedPartyIds) poderiam disputar o ÚNICO
-   `b.pendingEvolution` da luta e perder a pergunta de evolução um do
-   outro. */
+   MESMA curva de Nível de cima (xpParaProximoNivel), só sem PAUSAR a
+   luta no meio do loop esperando resposta de evolução -- 2+ Pokémon
+   ganhando XP na MESMA tentativa de Raid (ver b.usedPartyIds)
+   poderiam disputar o ÚNICO `b.pendingEvolution` se checássemos a
+   cada Nível subido, igual grantXpAndMaybeEvolve faz em luta normal.
+   Em vez disso, só checa eligibleEvolution() UMA VEZ no final (depois
+   de já ter subido todos os Níveis que o XP der direito -- o
+   resultado é o MESMO, porque eligibleEvolution só olha Nível/Espécie
+   ATUAIS, nunca "em qual Nível exato cruzou") e devolve um descritor
+   `{partyId,fromNum,toNum,atLevel}` se elegível, ou null. Quem chama
+   (finalizarBatalhaRaid) empilha os descritores de TODOS os
+   participantes numa fila (`b.pendingEvolutionQueue`) e pergunta um
+   de cada vez -- ver `avancarFilaEvolucao`.
+   Cap. leva desta sessão ("pode fazer o processo de evolução normal
+   mesmo com derrota"): ANTES essa função nunca oferecia evolução
+   nenhuma (só ficava "pendente pro PRÓXIMO ganho de XP em luta de
+   verdade", que nunca chegava a acontecer de fato numa Raid) -- agora
+   o popup de evolução de verdade aparece por cima da tela de
+   resultado da Raid, ganhe ou perca essa tentativa (ver
+   evolucaoPopupHTML/b.finished, que sempre renderiza por cima). A
+   recompensa "por participação" (aplicarRecompensaRaid, fora de
+   luta) continua sem popup -- lá não existe tela de batalha pra
+   mostrar nada, só a mensagem de log mesmo. */
 function grantXpSemPausarEvolucao(p, xpGain){
-  if(!p || xpGain<=0) return;
+  if(!p || xpGain<=0) return null;
   p.xpNivel = (p.xpNivel||0) + xpGain;
   while(p.xpNivel>=xpParaProximoNivel(p.level) && p.level<NIVEL_MAX){
     p.xpNivel -= xpParaProximoNivel(p.level);
@@ -9832,6 +9865,24 @@ function grantXpSemPausarEvolucao(p, xpGain){
     gainFelicidade(p, FELICIDADE_POR_LEVEL);
   }
   if(p.level>=NIVEL_MAX) p.xpNivel = 0;
+  var evoOpt = eligibleEvolution(p);
+  return evoOpt ? { partyId: p.id, fromNum: p.num, toNum: evoOpt.to, atLevel: p.level } : null;
+}
+/* Faz a fila de evolução da Raid (ver grantXpSemPausarEvolucao acima)
+   andar 1 passo: só promove o PRÓXIMO descritor pendente pra
+   `b.pendingEvolution` (o que a tela/gaResponderEvolucao realmente
+   leem) quando NADA MAIS já está pausando a luta -- inclusive o
+   aprender-Movimento/trocar-golpe que a PRÓPRIA evolução anterior
+   pode ter aberto (ver gaResponderEvolucao), pra nunca pular a
+   pergunta de Movimento de um Pokémon só porque o próximo da fila já
+   tomou o lugar. Chamada depois de CADA resposta (evolução/aprender
+   Movimento/trocar golpe) -- pra luta normal (sem fila, ver init de
+   STATE.battle) isso não faz nada, é 100% Raid-only. */
+function avancarFilaEvolucao(b){
+  if(!b || b.pendingEvolution || b.pendingHeal || b.pendingSwitch || b.pendingAprenderMovimento || b.pendingTrocarGolpeEvolucao) return;
+  if(b.pendingEvolutionQueue && b.pendingEvolutionQueue.length){
+    b.pendingEvolution = b.pendingEvolutionQueue.shift();
+  }
 }
 /* Responde o popup de evolução (Cap. "pergunte ao treinador se ele
    quer impedir a evolução ou manter"): aceitar troca a Espécie (num),
@@ -9916,6 +9967,7 @@ DT.gaResponderEvolucao = function(aceitar){
   }
   b.pendingEvolution = null;
   runBattleUntilPause();
+  avancarFilaEvolucao(b); // Raid-only (ver comentário acima) -- promove a próxima evolução da fila, se nada mais estiver pausando
   mutate();
 };
 /* Responde o popup "aprender Movimento novo" (bônus de evolução --
@@ -9940,6 +9992,7 @@ DT.gaResponderAprenderMovimento = function(moveName){
   }
   b.pendingAprenderMovimento = null;
   runBattleUntilPause();
+  avancarFilaEvolucao(b); // Raid-only -- ver comentário em grantXpSemPausarEvolucao/avancarFilaEvolucao
   mutate();
 };
 /* Responde o popup "trocar Movimento pelo golpe de evolução" (ver
@@ -9964,6 +10017,7 @@ DT.gaResponderTrocarGolpeEvolucao = function(slotIndex){
   }
   b.pendingTrocarGolpeEvolucao = null;
   runBattleUntilPause();
+  avancarFilaEvolucao(b); // Raid-only -- ver comentário em grantXpSemPausarEvolucao/avancarFilaEvolucao
   mutate();
 };
 
