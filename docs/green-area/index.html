@@ -8632,7 +8632,7 @@ function resolveFaintAfterDamage(target, user, b, moveUsado){
   if(b.kind==='wild'){
     var temGimmighoulNoTime = STATE.party.some(function(x){ return x.num===999; });
     if(target.num===999){
-      if(temGimmighoulNoTime) somarMoedasGimmighoul(50 + Math.floor(Math.random()*11), b);
+      if(temGimmighoulNoTime) somarMoedasGimmighoul(50 + Math.floor(Math.random()*31), b);
       else b.gimmighoulCoinsPendente = true;
     } else if(temGimmighoulNoTime && Math.random()<0.30){
       somarMoedasGimmighoul(1 + Math.floor(Math.random()*10), b);
@@ -11218,7 +11218,7 @@ DT.gaJogarPokebola = function(ballKey){
        pendente (não tinha outro Gimmighoul na Equipe ANTES desta
        luta -- "obviamente se capturar ele ganha moedas porque acabou
        de pegar um"). */
-    if(b.gimmighoulCoinsPendente) somarMoedasGimmighoul(50 + Math.floor(Math.random()*11), b);
+    if(b.gimmighoulCoinsPendente) somarMoedasGimmighoul(50 + Math.floor(Math.random()*31), b);
   } else {
     b.log.push('💨 A '+bola.nome+' balançou e o Pokémon escapou.');
     logAction('captura', 'Tentou capturar '+speciesByNum(num).name+' com '+bola.nome+' -- escapou.');
