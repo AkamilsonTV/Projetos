@@ -6859,6 +6859,38 @@ function findAbilityByName(nome){
 function rollNatureForSpecies(){
   return NATURES_DEX[Math.floor(Math.random()*NATURES_DEX.length)].nome;
 }
+/* Cap. leva desta sessão ("cada espécie tem que ter sua
+   particularidade... Se eles tem habilidade [diferente]... tem que
+   ter isso"): até esta leva, NENHUMA das 8 Espécies com forma
+   regional (ver ALT_FORMS/WILD_FORMA_ROLL) tinha Habilidade própria
+   por forma -- todo mundo sorteava sempre de `SPECIES_DEX[num].hab`
+   (a lista da forma PADRÃO), mesmo pra formas regionais com
+   Habilidade real diferente. Confirmado por curl direto na PokeAPI
+   (`/pokemon/<variedade>`, campo `abilities`) que só 5 das 8 têm
+   Habilidade REALMENTE diferente entre as formas -- Qwilfish e
+   Zigzagoon/Linoone têm a Habilidade IDÊNTICA nas 2 formas (só o
+   Movimento muda, ver SPECIES_FORM_LEARNSET_OVERRIDE acima), então
+   ficam de fora deste mapa de propósito (sem entrada aqui, cai no
+   `sp.hab` de sempre, que já está certo pra elas). Só a forma
+   REGIONAL entra (chave batendo com ALT_FORMS) -- a forma
+   'padrao'/'agua' nunca precisa, mesmo motivo do Learnset acima. */
+var SPECIES_FORM_ABILITY_OVERRIDE = {
+  52: { galar: [{n:'Pickup',h:false},{n:'Tough Claws',h:false},{n:'Unnerve',h:true}] }, // Meowth de Galar -- Technician vira Tough Claws
+  83: { galar: [{n:'Steadfast',h:false},{n:'Scrappy',h:true}] }, // Farfetch'd de Galar -- perde Keen Eye/Inner Focus/Defiant, ganha Steadfast/Scrappy
+  222: { galar: [{n:'Weak Armor',h:false},{n:'Cursed Body',h:true}] }, // Corsola de Galar -- perde Hustle/Natural Cure/Regenerator, ganha Weak Armor/Cursed Body
+  562: { galar: [{n:'Wandering Spirit',h:false}] }, // Yamask de Galar -- Mummy vira Wandering Spirit (só 1 Habilidade, sem oculta, igual o padrão)
+  194: { paldea: [{n:'Poison Point',h:false},{n:'Water Absorb',h:false},{n:'Unaware',h:true}] } // Wooper de Paldea -- Damp vira Poison Point
+};
+/* Devolve a lista de Habilidade (mesmo formato de `SPECIES_DEX[x].hab`)
+   já com a diferença de forma aplicada -- pra QUALQUER Espécie/forma
+   SEM entrada em SPECIES_FORM_ABILITY_OVERRIDE (todo o resto do jogo,
+   incluindo Qwilfish/Zigzagoon/Linoone e a forma 'padrao'/'agua' das
+   outras 5), devolve `sp.hab` cru, sem tocar em nada. */
+function habListForma(num, forma){
+  var sp = speciesByNum(num);
+  var ov = SPECIES_FORM_ABILITY_OVERRIDE[num] && SPECIES_FORM_ABILITY_OVERRIDE[num][forma];
+  return ov || (sp && sp.hab) || [];
+}
 /* Cap. leva desta sessão ("Vamos habilitar o Rockruff com Own Tempo,
    mas será por raid"): até esta leva, `hab` de toda Espécie só tinha
    Habilidades normais/ocultas de verdade, então rolar um índice
@@ -6869,12 +6901,17 @@ function rollNatureForSpecies(){
    explicitamente no Console de Raid (ver DT.gaAdminIniciarRaid mais
    abaixo) consegue conceder Own Tempo. `pool` cai pro array cru se
    por algum motivo só sobrarem entradas `raid:true` (nunca trava
-   numa lista vazia). */
-function rollAbilityForSpecies(num){
+   numa lista vazia).
+   `forma` opcional (Cap. leva desta sessão, ver SPECIES_FORM_ABILITY_
+   OVERRIDE acima) -- só muda o resultado pras 5 Espécies/formas com
+   entrada real ali; todo o resto continua exatamente igual (`sp.hab`
+   via `habListForma`, que devolve ele cru sem override). */
+function rollAbilityForSpecies(num, forma){
   var sp = speciesByNum(num);
   if(!sp || !sp.hab || !sp.hab.length) return '';
-  var pool = sp.hab.filter(function(h){ return !h.raid; });
-  if(!pool.length) pool = sp.hab;
+  var habList = habListForma(num, forma);
+  var pool = habList.filter(function(h){ return !h.raid; });
+  if(!pool.length) pool = habList;
   return pool[Math.floor(Math.random()*pool.length)].n;
 }
 
@@ -7395,9 +7432,21 @@ function findMoveByName(name){
    Movimento de dano (troca o mais fraco por FALLBACK_MOVE se sobrar
    só Status). Roda na hora de nascer/capturar o Pokémon E de novo
    toda vez que ele sobe de Nível (ver applyLevelUps) -- assim ele
-   aprende Movimento novo de verdade conforme evolui de Nível. */
-function pickMovesForLevel(num, level){
-  var ls = LEARNSETS[num];
+   aprende Movimento novo de verdade conforme evolui de Nível.
+   `forma` opcional -- Cap. leva desta sessão ("cada espécie tem que
+   ter sua particularidade... moves diferentes, tem que ter isso"):
+   até esta leva, SEMPRE lia `LEARNSETS[num]` cru, ignorando forma por
+   completo -- um Wooper de Paldea/Meowth de Galar/etc. nascia com o
+   kit de Movimentos da forma PADRÃO, nunca o da forma real (gap que
+   não afetava Urshifu, que nunca nasce selvagem, só evolui de Kubfu
+   já com `golpesDeEvolucaoElegiveis`/`learnsetForma` cobrindo o golpe
+   de evolução -- mas afeta bastante essas 8 Espécies, que nascem
+   selvagens direto). Agora usa `learnsetForma(num, forma)` -- pra
+   qualquer Espécie/forma SEM diff real (todo o resto do jogo, ou a
+   forma "padrão" das 8 novas), devolve `LEARNSETS[num]` cru, idêntico
+   ao comportamento de sempre. */
+function pickMovesForLevel(num, level, forma){
+  var ls = learnsetForma(num, forma);
   var pool = (ls && ls.levelup ? ls.levelup : []).filter(function(pair){ return pair[1]<=level; });
   pool.sort(function(a,b){ return b[1]-a[1]; }); // mais alto Nível primeiro
   var picked = pool.slice(0,4).map(function(pair){ return findMoveByName(pair[0]); }).filter(Boolean);
@@ -7462,10 +7511,18 @@ function gainFelicidade(p, delta){
    ainda sorteia como rede de segurança pra nunca nascer sem forma
    numa Espécie que precisa dela (ver WILD_FORMA_ROLL). */
 function spawnPoke(num, level, forma){
+  /* Cap. leva desta sessão ("cada espécie tem que ter sua
+     particularidade... moves diferentes, tem que ter isso"): forma
+     decidida ANTES de montar Movimentos/Habilidade (não depois), pra
+     `pickMovesForLevel`/`rollAbilityForSpecies` já lerem a forma
+     certa -- mesma rede de segurança de sempre (forma explícita tem
+     prioridade; sem ela, WILD_FORMA_ROLL sorteia; espécie sem entrada
+     lá cai em `forma` undefined, comportamento idêntico ao de antes). */
+  var formaFinal = forma || (WILD_FORMA_ROLL[num] ? rollFormaDeEncontro(num) : undefined);
   var p = {
     id: uid(), num: num, level: clampInt(level,1,NIVEL_MAX), apelido:'',
-    moves: pickMovesForLevel(num, level), xpNivel: 0,
-    natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num),
+    moves: pickMovesForLevel(num, level, formaFinal), xpNivel: 0,
+    natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num, formaFinal),
     papelCombate: 'ataque', vitorias: 0, derrotas: 0, felicidade: FELICIDADE_INICIAL,
     /* Cap. leva desta sessão ("Também coloque uma aba de 'Data de
        Captura' (real) para que assim os jogadores consigam organizar
@@ -7479,8 +7536,7 @@ function spawnPoke(num, level, forma){
        na ordenação, nunca quebra por `undefined`. */
     capturedAt: Date.now()
   };
-  if(forma) p.forma = forma;
-  else if(WILD_FORMA_ROLL[num]) p.forma = rollFormaDeEncontro(num);
+  if(formaFinal) p.forma = formaFinal;
   return p;
 }
 
@@ -8500,12 +8556,24 @@ function buildBattlerFromParty(poke){
    `.forma` no battler, o resto do motor (tiposEfetivos/baseStatOf/
    spriteNumEfetivo, já genéricos por ALT_FORMS) mostra a forma
    REGIONAL certa (Tipo/Atributos Base/sprite) durante a luta inteira,
-   ANTES do jogador decidir capturar ou não. */
+   ANTES do jogador decidir capturar ou não.
+   Cap. leva desta sessão ("moves diferentes, tem que ter isso"):
+   `forma` agora também entra em `pickMovesForLevel`/
+   `rollAbilityForSpecies`, então o selvagem já LUTA com o Movimento/
+   Habilidade real da forma certa, não só mostra Tipo/sprite certos. */
 function buildBattlerWild(num, level, forma){
-  return initBattlerExtras({ key:'w_'+num, side:'wild', num:num, level:level, moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num), forma: forma||null });
+  return initBattlerExtras({ key:'w_'+num, side:'wild', num:num, level:level, moves: pickMovesForLevel(num, level, forma), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num, forma), forma: forma||null });
 }
-function buildBattlerTrainer(num, level, tag){
-  return initBattlerExtras({ key:'t_'+tag+'_'+num, side:'trainer', num:num, level:level, moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num) });
+/* `forma` opcional -- Cap. leva desta sessão: nenhum elenco de
+   Treinador/Rival/Elite Four/Líder cadastrado hoje usa uma das 8
+   Espécies com forma alternativa real, mas o parâmetro existe pra
+   qualquer roster futuro que use (`slot.forma`, ver chamadores) já
+   nascer com Movimento/Habilidade certos -- sem forma explícita, cai
+   na mesma rede de segurança do WILD_FORMA_ROLL (nunca um Treinador
+   com uma Espécie "sem forma" numa Espécie que precisa de uma). */
+function buildBattlerTrainer(num, level, tag, forma){
+  var formaFinal = forma || (WILD_FORMA_ROLL[num] ? rollFormaDeEncontro(num) : undefined);
+  return initBattlerExtras({ key:'t_'+tag+'_'+num, side:'trainer', num:num, level:level, moves: pickMovesForLevel(num, level, formaFinal), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num, formaFinal), forma: formaFinal||null });
 }
 /* Cap. leva desta sessão (Raids): battler do "boss" -- `raidStatMult`/
    `raidHpMult` vêm CONGELADOS do próprio documento da Raid (nunca da
@@ -14079,6 +14147,83 @@ var SPECIES_FORM_LEARNSET_OVERRIDE = {
       tmRemove: ['Crunch','Dark Pulse','Foul Play','Lash Out','Metal Claw','Roar','Snarl','Throat Chop'],
       tmAdd: ['Brine','Chilling Water','Dive','Ice Spinner','Liquidation','Rain Dance','Scald','Waterfall','Whirlpool']
     }
+  },
+  /* Cap. leva desta sessão ("cada espécie tem que ter sua
+     particularidade. Igual fizemos no urshifu... moves diferentes,
+     tem que ter isso"): mesmo tratamento do Urshifu acima, agora pras
+     8 Espécies com forma regional (ver ALT_FORMS/WILD_FORMA_ROLL) --
+     só a forma REGIONAL (chave 'galar'/'hisui'/'paldea', batendo com
+     ALT_FORMS) entra aqui; a forma 'padrao'/'agua' nunca precisa de
+     entrada (sem override, `learnsetForma` já devolve LEARNSETS[num]
+     cru, que É o Learnset da forma padrão). Todo diff (levelup + TM)
+     confirmado por curl direto na PokeAPI, comparando as 2 variedades
+     DENTRO do mesmo version_group (Sword/Shield pras 6 de Galar,
+     Scarlet/Violet pro par Qwilfish/Wooper -- únicos jogos com as 2
+     variedades juntas, mesmo método do diff do Urshifu acima), nunca
+     inventado. Nenhuma das 8 tem golpe de evolução exclusivo por
+     forma (diferente do Urshifu) -- `evoMove` fica de fora, `ls.evo`
+     original passa direto. */
+  52: { // Meowth de Galar -- vira Perrserker (ver EVOLUTION_FORM_TARGET[52])
+    galar: {
+      levelupRemove: ['Bite','Nasty Plot','Feint','Assurance','Play Rough'],
+      levelupAdd: [['Hone Claws',4],['Metal Claw',16],['Swagger',24],['Metal Sound',40],['Thrash',44]],
+      tmRemove: ['Charm','Icy Wind','Swift'],
+      tmAdd: ['Crunch','Gyro Ball','Iron Defense','Iron Head','Swords Dance']
+    }
+  },
+  83: { // Farfetch'd de Galar -- só ele vira Sirfetch'd (ver EVOLUTION_FORM_REQUIRED[865])
+    galar: {
+      levelupRemove: ['Agility','Slash','False Swipe','Cut','Air Cutter','Air Slash','Aerial Ace'],
+      levelupAdd: [['Rock Smash',15],['Brutal Swing',20],['Detect',25],['Brick Break',40],['Slam',50],['Defog',35],['Final Gambit',60]],
+      tmRemove: ['Acrobatics','Agility','Air Slash','Baton Pass','False Swipe','Fly','Heat Wave','Iron Tail','Swift','Thief','U-turn','Uproar'],
+      tmAdd: ['Assurance','Brick Break','Superpower']
+    }
+  },
+  211: { // Qwilfish de Hisui -- só ele vira Overqwil (ver EVOLUTION_FORM_REQUIRED[904]); Habilidades idênticas nas 2 formas, só Movimentos mudam
+    hisui: {
+      levelupRemove: ['Water Gun','Poison Jab','Aqua Tail'],
+      levelupAdd: [['Bite',8],['Barb Barrage',28],['Crunch',48]],
+      tmRemove: ['Flip Turn','Sludge Wave','Thunder Wave','Whirlpool'],
+      tmAdd: ['Dark Pulse','Lash Out']
+    }
+  },
+  222: { // Corsola de Galar -- só ele vira Cursola (ver EVOLUTION_FORM_REQUIRED[864]); o padrão oficialmente nunca evolui
+    galar: {
+      levelupRemove: ['Water Gun','Aqua Ring','Bubble Beam','Flail','Life Dew','Earth Power','Recover','Endure'],
+      levelupAdd: [['Astonish',5],['Disable',10],['Spite',15],['Hex',25],['Curse',30],['Strength Sap',35],['Night Shade',45],['Grudge',50]],
+      tmAdd: ['Giga Drain','Hex','Will-O-Wisp']
+    }
+  },
+  263: { // Zigzagoon de Galar -- Habilidades idênticas nas 2 formas, só Movimentos mudam (evolução em si não é form-gated, ver ALT_FORMS[263])
+    galar: {
+      levelupRemove: ['Growl','Tail Whip','Covet','Fling','Flail','Belly Drum'],
+      levelupAdd: [['Leer',1],['Lick',6],['Snarl',9],['Scary Face',27],['Counter',30],['Taunt',33]],
+      tmRemove: ['Charm','Tail Slap'],
+      tmAdd: ['Assurance','Fake Tears','Payback','Scary Face','Screech','Snarl','Taunt']
+    }
+  },
+  264: { // Linoone de Galar -- só ele vira Obstagoon (ver EVOLUTION_FORM_REQUIRED[862]); Habilidades idênticas, só Movimentos mudam
+    galar: {
+      levelupRemove: ['Slash','Growl','Tail Whip','Covet','Fling','Flail','Belly Drum'],
+      levelupAdd: [['Night Slash',0],['Leer',1],['Lick',1],['Snarl',9],['Scary Face',33],['Counter',38],['Taunt',43]],
+      tmRemove: ['Charm','Play Rough','Tail Slap'],
+      tmAdd: ['Assurance','Body Press','Fake Tears','Payback','Scary Face','Screech','Snarl','Taunt']
+    }
+  },
+  562: { // Yamask de Galar -- padrão vira Cofagrigus, só o de Galar vira Runerigus (ver EVOLUTION_FORM_TARGET[562])
+    galar: {
+      levelupRemove: ['Dark Pulse','Will-O-Wisp','Grudge'],
+      levelupAdd: [['Brutal Swing',16],['Slam',32],['Earthquake',44]],
+      tmAdd: ['Brutal Swing','Earth Power','Earthquake','Rock Slide','Rock Tomb','Sandstorm']
+    }
+  },
+  194: { // Wooper de Paldea -- vira Clodsire (ver EVOLUTION_FORM_TARGET[194]); Wooper padrão vira Quagsire
+    paldea: {
+      levelupRemove: ['Water Gun','Mist','Rain Dance','Muddy Water','Aqua Tail','Haze','Mud Shot'],
+      levelupAdd: [['Mud Shot',1],['Tackle',4],['Poison Tail',8],['Toxic Spikes',12],['Poison Jab',24],['Sludge Wave',28]],
+      tmRemove: ['Avalanche','Blizzard','Encore','Ice Beam','Icy Wind','Muddy Water','Snowscape','Whirlpool'],
+      tmAdd: ['Body Press','Gunk Shot','Low Kick','Poison Jab','Poison Tail','Toxic Spikes','Venoshock']
+    }
   }
 };
 /* Devolve o Learnset (mesmo formato de LEARNSETS[num]) já com a
@@ -15485,7 +15630,16 @@ function dexPopupHTML(num){
              de sortear entre as normais/ocultas da Espécie, mesma
              ideia do Lycanroc Dusk (ver ALT_FORMS acima). */
           ? formaAtiva.habilidadeFixa+' (Habilidade travada -- só via Raid, nunca em encontro comum)'
-          : (sp.hab||[]).filter(function(h){ return !h.raid; }).map(function(h){ return h.n+(h.h?' (oculta)':''); }).join(', ')
+          /* Cap. leva desta sessão ("cada espécie tem que ter sua
+             particularidade... habilidade... tem que ter isso"): até
+             aqui sempre lia `sp.hab` cru (a lista da forma PADRÃO),
+             ignorando a aba ativa -- errado pras 5 formas regionais
+             com Habilidade REAL diferente (ver SPECIES_FORM_ABILITY_
+             OVERRIDE acima). `habListForma` devolve a lista certa da
+             forma ativa (ou `sp.hab` de sempre, pra quem não tem
+             override -- inclui Qwilfish/Zigzagoon/Linoone, que têm a
+             MESMA Habilidade nas 2 formas de verdade). */
+          : habListForma(num, formaAtiva?formaAtiva.key:undefined).filter(function(h){ return !h.raid; }).map(function(h){ return h.n+(h.h?' (oculta)':''); }).join(', ')
       || '—')+'</p>'+
       loreHTML+
       '<audio controls preload="none" src="https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/'+num+'.ogg">Seu navegador não suporta áudio.</audio>';
