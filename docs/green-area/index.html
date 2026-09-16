@@ -5365,6 +5365,42 @@ function criarShedinjaAoEvoluir(nincadaQueEvoluiu, battleLogPushFn){
   logAction('evolucao', 'Um Shedinja surgiu junto da evolução pra Ninjask, usando '+bolaGasta.nome+'.');
   if(battleLogPushFn) battleLogPushFn('👻 Um Shedinja surgiu junto da evolução, usando '+bolaGasta.nome+'!');
 }
+/* Cap. leva desta sessão (Wooper -> Quagsire/Clodsire, pedido do
+   jogador: "Temos 2 Wooper no jogo... Um que vira Clodsire e outro
+   que vira quagsire... meu wooper azul virou quagsire com a foto do
+   clodsire tá errado"): investigando, achado o bug de verdade --
+   `EVOLUTIONS_DEX[194]` tem 2 arestas de Nível 20 pro MESMO Wooper
+   (`{to:195}`/Quagsire e `{to:980}`/Clodsire) porque a extração deste
+   jogo trabalha por NÚMERO de Pokédex, e o dado bruto da PokeAPI tem 2
+   VARIEDADES diferentes pra Wooper (`wooper`/`wooper-paldea`), cada
+   uma com sua própria cadeia de evolução -- a extração juntou as 2
+   arestas na mesma Espécie #194. O fallback genérico de
+   `eligibleEvolution` ("sorteia 1 entre as elegíveis", fim da função)
+   re-rolava a CADA chamada -- a tela de decisão adiada de sequência
+   tem 2 chamadas INDEPENDENTES (`evolucaoSequenciaPopupHTML` pra
+   EXIBIR, `DT.gaEvoluirPosSequencia` pra APLICAR), então podiam
+   sortear resultados DIFERENTES um do outro: exatamente o bug
+   relatado (popup mostrando Clodsire, resultado de verdade saindo
+   Quagsire, ou vice-versa). Corrigido virando forma de verdade em vez
+   de aleatório a cada tela: Wooper (padrão, Água/Terra, `key:'agua'`)
+   e Wooper de Paldea (Venenoso/Terra, `key:'paldea'`, sprite oficial
+   10253 -- confirmado por curl, Atributos Base IDÊNTICOS aos 2, só o
+   Tipo muda, dado real da PokeAPI) -- ver ALT_FORMS[194] mais abaixo.
+   `spawnPoke` já sorteia `p.forma` 50/50 na hora da captura (Wooper
+   NOVO); `eligibleEvolution` sorteia só na PRIMEIRA checagem de
+   evolução pra Wooper que já existia antes desta correção (nunca tinha
+   `p.forma`) -- depois de decidida, a forma nunca muda mais, então as
+   2 chamadas (exibir/aplicar) sempre concordam. Indexado pela Espécie
+   ORIGEM (ao contrário dos outros mapas de evolução, que são pela
+   DESTINO) porque aqui é a forma do PRÓPRIO Pokémon que decide, não
+   uma condição por aresta. Simplificação documentada: Habilidade
+   continua sempre rolada da lista de SPECIES_DEX[194] (Damp/Water
+   Absorb/Unaware) mesmo pro Wooper de Paldea (oficialmente Poison
+   Point/Water Absorb/Unaware) -- mesmo espírito de simplificação já
+   usado em todo o resto das formas alternativas deste jogo (Urshifu/
+   Oricorio/Ogerpon/Lycanroc), que também não trocam Habilidade por
+   forma exceto o único caso especial (Lycanroc Dusk). */
+var EVOLUTION_FORM_TARGET = { 194: { agua: 195, paldea: 980 } };
 /* Toda evolução por gatilho MANUAL (ver EVOLUTION_MANUAL_TRIGGER_
    REQUIRED acima) que este Pokémon já pode usar AGORA -- mesmo
    espírito de `pedrasElegiveisPara`, só que sem item nenhum envolvido
@@ -7342,7 +7378,7 @@ function gainFelicidade(p, delta){
   p.felicidade = clampInt((p.felicidade!=null?p.felicidade:FELICIDADE_INICIAL) + delta*mult, 0, FELICIDADE_MAX);
 }
 function spawnPoke(num, level){
-  return {
+  var p = {
     id: uid(), num: num, level: clampInt(level,1,NIVEL_MAX), apelido:'',
     moves: pickMovesForLevel(num, level), xpNivel: 0,
     natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num),
@@ -7359,6 +7395,13 @@ function spawnPoke(num, level){
        na ordenação, nunca quebra por `undefined`. */
     capturedAt: Date.now()
   };
+  /* Cap. leva desta sessão (Wooper -> Quagsire/Clodsire, ver
+     EVOLUTION_FORM_TARGET/ALT_FORMS[194] abaixo): Wooper NOVO já nasce
+     com a forma sorteada 50/50 na hora da captura -- pro Wooper que já
+     existia ANTES desta correção (sem `p.forma`), eligibleEvolution
+     sorteia na primeira checagem de evolução, só 1 vez. */
+  if(num===194) p.forma = Math.random()<0.5 ? 'agua' : 'paldea';
+  return p;
 }
 
 /* ============================================================
@@ -9354,8 +9397,21 @@ function xpMultiplicadorPorTipoDeLuta(kind){
 function eligibleEvolution(p){
   var opts = EVOLUTIONS_DEX[p.num] || [];
   if(!opts.length) return null;
+  /* Cap. leva desta sessão -- Wooper, ver EVOLUTION_FORM_TARGET acima:
+     decide a forma AQUI, 1 vez só (mutando `p.forma` de verdade, igual
+     spawnPoke já faz pro Wooper novo), antes de filtrar as arestas --
+     nunca mais é re-sorteada a cada chamada desta função. */
+  var formaAlvoMap = EVOLUTION_FORM_TARGET[p.num];
+  if(formaAlvoMap && p.forma!=='agua' && p.forma!=='paldea'){
+    p.forma = Math.random()<0.5 ? 'agua' : 'paldea';
+  }
   var elegiveis = opts.filter(function(e){
     if(e.trigger==='use-item' || e.trigger==='trade' || e.trigger==='shed') return false;
+    /* Cap. leva desta sessão -- Wooper, ver EVOLUTION_FORM_TARGET
+       acima: só a aresta que bate com a forma JÁ decidida (acima)
+       sobrevive -- a OUTRA nunca fica "elegível" nem entra no sorteio
+       genérico do fim desta função. */
+    if(formaAlvoMap && e.to!==formaAlvoMap[p.forma]) return false;
     /* Cap. leva desta sessão -- EVOLUTION_STONE_OVERRIDE acima: essas
        arestas saem do fluxo de Nível normal por completo, só evoluem
        pela pedra agora (ver pedrasElegiveisPara/DT.gaUsarPedra). */
@@ -13403,7 +13459,7 @@ function usarPedraPopupHTML(pid){
   var opcoes = pedrasElegiveisPara(p);
   return '<div class="ga-overlay" onclick="DT.gaCancelUsarPedra()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCancelUsarPedra()">✕</button>'+
-    '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(spriteNumEfetivo(p))+'" alt="">'+
     '<h2>🪨 Usar item em '+esc2(p.apelido||sp.name)+'</h2>'+
     '<p class="ga-hint">Evolui na hora -- sem precisar de Nível nenhum.</p>'+
     opcoes.map(function(o){
@@ -13768,6 +13824,23 @@ var ALT_FORMS = {
     { key:'midday', nome:'Lycanroc Midday', tipo1:'Pedra', tipo2:'', spriteNum:745, golpeAssinatura:'Accelerock', base:{hp:75,atk:115,def:65,spa:55,spd:65,spe:112} },
     { key:'midnight', nome:'Lycanroc Midnight', tipo1:'Pedra', tipo2:'', spriteNum:10126, golpeAssinatura:'Accelerock', base:{hp:85,atk:115,def:75,spa:55,spd:75,spe:82} },
     { key:'dusk', nome:'Lycanroc Dusk', tipo1:'Pedra', tipo2:'', spriteNum:10152, golpeAssinatura:'Accelerock', base:{hp:75,atk:117,def:65,spa:55,spd:65,spe:110} }
+  ],
+  /* Cap. leva desta sessão (Wooper -> Quagsire/Clodsire, ver
+     EVOLUTION_FORM_TARGET acima pro mecanismo completo): dados
+     confirmados por curl direto na PokeAPI antes de escrever isso --
+     Atributos Base IDÊNTICOS nas 2 variedades (55/45/45/25/25/15), só
+     o Tipo muda (`wooper` Água/Terra, `wooper-paldea` Venenoso/Terra).
+     `spriteNum:10253` é o ID que a própria PokeAPI usa pra
+     `wooper-paldea` (confirmado resolvendo de verdade em
+     /sprites/pokemon/10253.png). Diferente de Urshifu/Oricorio/Ogerpon
+     (forma decidida por item/evolução), aqui a forma nasce JÁ decidida
+     -- `spawnPoke`/`eligibleEvolution` sorteiam `p.forma` (ver
+     comentário grande de EVOLUTION_FORM_TARGET), nunca um botão nem um
+     item pro jogador trocar depois (Wooper não troca de forma sozinho
+     nos jogos oficiais também). */
+  194: [
+    { key:'agua', nome:'Wooper (padrão, Água/Terra)', tipo1:'Água', tipo2:'Terra', spriteNum:194, golpeAssinatura:null },
+    { key:'paldea', nome:'Wooper de Paldea (Venenoso/Terra)', tipo1:'Venenoso', tipo2:'Terra', spriteNum:10253, golpeAssinatura:null }
   ]
 };
 /* Qual forma um Rockruff (#744) vira ao evoluir, conforme Dia/Noite (ou
@@ -13943,6 +14016,32 @@ function formaEfetivaAtual(p){
   if(p.num===1017) return (p.itemSegurado && OGERPON_MASK_BY_ITEM[p.itemSegurado]) || 'teal';
   return p.forma || null;
 }
+/* Cap. leva desta sessão (Wooper -> Quagsire/Clodsire, ver
+   EVOLUTION_FORM_TARGET/ALT_FORMS[194] acima): achado nesta leva que
+   `pokeCardMini` e a maioria dos popups individuais usavam
+   `spriteUrl(poke.num)` direto -- ignorando `.forma` por completo, um
+   bug pré-existente que afeta QUALQUER Espécie com ALT_FORMS (Urshifu
+   Rapid Strike, Oricorio não-Baile etc. sempre mostravam o sprite da
+   forma PADRÃO no card, mesmo quando a forma de verdade era outra) --
+   só não tinha sido notado ainda porque nenhuma Espécie alternava de
+   forma tão cedo/visivelmente quanto Wooper (logo na captura). Corrige
+   pra qualquer Pokémon (ou battler de luta, que também carrega
+   `.forma`, ver buildBattlerFromParty acima) com uma forma alternativa
+   registrada em ALT_FORMS -- devolve o `spriteNum` daquela forma
+   específica; sem entrada (todo o resto do jogo, ou uma forma
+   desconhecida), devolve `x.num` cru, idêntico ao comportamento de
+   sempre. Usado no lugar de `spriteUrl(x.num)` direto em todo lugar
+   que mostra o PRÓPRIO Pokémon do jogador (pokeCardMini e os popups
+   de Apelido/Item Segurado/Soltar/Usar Item/Hub/Duelo/Arena) -- nunca
+   nos popups que mostram só a Espécie-ALVO antes de virar um indivíduo
+   de verdade (evolução/Dex/oponente selvagem-Treinador-Mestre, que já
+   não tem `.forma` nenhum pra ler mesmo). */
+function spriteNumEfetivo(x){
+  var formas = ALT_FORMS[x.num];
+  var forma = formaEfetivaAtual(x);
+  var formaObj = (formas && forma) ? formas.filter(function(f){ return f.key===forma; })[0] : null;
+  return formaObj ? formaObj.spriteNum : x.num;
+}
 /* Néctares de Oricorio -- catálogo à parte de HELD_ITEMS (não são item
    segurado, são CONSUMIDOS igual pedra de evolução, só que sem
    evoluir nada -- por isso também não entram em EVOLUTION_EXCLUSIVE_
@@ -14051,7 +14150,7 @@ function editApelidoPopupHTML(pid){
   var sp = speciesByNum(p.num);
   return '<div class="ga-overlay" onclick="DT.gaCancelApelido()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCancelApelido()">✕</button>'+
-    '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(spriteNumEfetivo(p))+'" alt="">'+
     '<h2>✏️ Apelidar '+esc2(sp.name)+'</h2>'+
     '<p class="ga-hint">Só dá pra colocar UMA vez -- depois fica travado (sem edição por enquanto, até um item futuro liberar trocar de novo).</p>'+
     '<div class="ga-field"><input type="text" id="gaApelidoInput" maxlength="20" placeholder="ex: Pikachu"></div>'+
@@ -14106,7 +14205,7 @@ function itemSeguradoPopupHTML(pid){
   var disponiveis = HELD_ITEMS.concat(EVOLUTION_HELD_ITEMS).filter(function(it){ return (STATE.itens[it.key]||0)>0 || p.itemSegurado===it.key; }); // Cap. leva desta sessão -- os 2 catálogos dividem o MESMO slot único (ver p.itemSegurado), então aparecem juntos aqui
   return '<div class="ga-overlay" onclick="DT.gaCancelItemSegurado()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCancelItemSegurado()">✕</button>'+
-    '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(spriteNumEfetivo(p))+'" alt="">'+
     '<h2>🎒 Item Segurado -- '+esc2(sp.name)+'</h2>'+
     '<p class="ga-hint">Equipado agora: '+(p.itemSegurado ? itemIconHTML(heldItemByKey(p.itemSegurado))+' '+esc2(heldItemByKey(p.itemSegurado).nome) : 'Nenhum')+'</p>'+
     (p.itemSegurado ? '<button class="ga-btn-sm" onclick="DT.gaDesequiparItem(\''+pid+'\')">Desequipar (volta pra Mochila)</button>' : '')+
@@ -14151,7 +14250,7 @@ function confirmarLiberarPopupHTML(pid){
   var nome = p.apelido || sp.name;
   return '<div class="ga-overlay" onclick="DT.gaCancelLiberar()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCancelLiberar()">✕</button>'+
-    '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
+    '<img class="ga-dex-popup-img" src="'+spriteUrl(spriteNumEfetivo(p))+'" alt="">'+
     '<h2>🚫 Soltar '+esc2(nome)+'?</h2>'+
     '<p class="ga-hint">Tem certeza que quer soltar '+esc2(nome)+' (Nv. '+p.level+') pra sempre? Essa ação não pode ser desfeita.</p>'+
     '<div class="ga-btn-row">'+
@@ -14473,7 +14572,7 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
        nenhum pra aplicar `image-rendering:pixelated`, então o
        quadrado inteiro já nasce sem serrilhado por design). */
     (poke.deRaid ? '<div class="ga-raid-badge" title="Capturado numa Raid">R</div>' : '')+
-    '<img src="'+spriteUrl(poke.num)+'" loading="lazy" alt="">'+
+    '<img src="'+spriteUrl(spriteNumEfetivo(poke))+'" loading="lazy" alt="">'+
     '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+lapis+estrela+'</div>'+
     /* Cap. leva desta sessão ("Nos cards de pokémon adicione
        #numerodopokemon pra ficar visível sempre"): número oficial da
@@ -14515,7 +14614,7 @@ function hubScreenHTML(){
   var counts = dexCounts();
   return '<div class="ga-hub">'+
     '<div class="ga-card ga-trainer-card">'+
-      '<img class="ga-trainer-sprite" src="'+spriteUrl(lead.num)+'" alt="">'+
+      '<img class="ga-trainer-sprite" src="'+spriteUrl(spriteNumEfetivo(lead))+'" alt="">'+
       '<div><h2>'+esc2(STATE.trainerName)+'</h2>'+
       '<p class="ga-hint">'+STATE.badges.length+' Insígnia(s) · '+counts.caught+'/'+counts.total+' na Pokédex</p></div>'+
     '</div>'+
@@ -15208,7 +15307,7 @@ function dexPopupHTML(num){
       (caught
         ? ('<table class="ga-stat-table"><tbody>'+STAT_ORDER.map(function(s){ return '<tr><td>'+STAT_LABELS[s]+'</td><td class="num">'+baseStatOf(num, s, formaAtiva?formaAtiva.key:undefined)+'</td></tr>'; }).join('')+'</tbody></table>')
         : '<p class="ga-hint">Visto, mas ainda não capturado -- os Atributos Base só aparecem depois de capturar.</p>')+
-      (formas ? '<p class="ga-hint">🥋 <strong>Golpe de assinatura ('+esc2(formaAtiva.nome)+'):</strong> '+esc2(formaAtiva.golpeAssinatura)+' <em>('+esc2(ALT_FORMS_NOTE[num]||'os Atributos Base e a Habilidade são idênticos em todas as formas.')+')</em></p>' : '')+
+      (formas && formaAtiva.golpeAssinatura ? '<p class="ga-hint">🥋 <strong>Golpe de assinatura ('+esc2(formaAtiva.nome)+'):</strong> '+esc2(formaAtiva.golpeAssinatura)+' <em>('+esc2(ALT_FORMS_NOTE[num]||'os Atributos Base e a Habilidade são idênticos em todas as formas.')+')</em></p>' : '')+
       '<p class="ga-hint">📍 <strong>Onde encontrar:</strong> '+esc2(areaHintForSpecies(num))+'</p>'+
       '<p class="ga-hint">🗡️ <strong>Movimentos possíveis:</strong> '+esc2(movimentosPossiveisLista(num, formaAtiva?formaAtiva.key:undefined).join(', ')||'—')+'</p>'+
       '<p class="ga-hint">✨ <strong>Habilidades possíveis:</strong> '+esc2(
@@ -16135,7 +16234,7 @@ function dueloScreenHTML(){
         ? '<p class="ga-hint">Você já escolheu -- esperando '+esc2(outroNome)+(outroEscolheu?' (já escolheu também, começando o Duelo...)':' escolher')+'.</p>'
         : '<p class="ga-hint">Revelação simultânea -- o outro lado não vê sua escolha até os 2 terem escolhido.</p><div class="ga-poke-grid">'+minhaParty.map(function(p){
             var sp = speciesByNum(p.num);
-            return '<div class="ga-poke-card"><img src="'+spriteUrl(p.num)+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(sp)+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherLiderDuelo(\''+d.id+'\',\''+p.id+'\')">Escolher</button></div>';
+            return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(sp)+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherLiderDuelo(\''+d.id+'\',\''+p.id+'\')">Escolher</button></div>';
           }).join('')+'</div>')+
       '<button class="ga-btn-sm danger" onclick="DT.gaDesistirDuelo(\''+d.id+'\')">Desistir</button></div>';
   }
@@ -16149,7 +16248,7 @@ function dueloScreenHTML(){
     '<div class="ga-battle-field">'+
       '<div class="ga-battle-side"><img src="'+spriteUrl(outroAtivo.num)+'" alt=""><div>'+esc2(outroAtivo.apelido||outroSp.name)+' Nv.'+outroAtivo.level+'</div>'+hpBarHTML(b.hp[outroAtivo.key],gaHpMax(outroAtivo))+'</div>'+
       '<div class="ga-battle-vs">VS</div>'+
-      '<div class="ga-battle-side"><img src="'+spriteUrl(meuAtivo.num)+'" alt=""><div>'+esc2(meuAtivo.apelido||meuSp.name)+' Nv.'+meuAtivo.level+'</div>'+hpBarHTML(b.hp[meuAtivo.key],gaHpMax(meuAtivo))+'</div>'+
+      '<div class="ga-battle-side"><img src="'+spriteUrl(spriteNumEfetivo(meuAtivo))+'" alt=""><div>'+esc2(meuAtivo.apelido||meuSp.name)+' Nv.'+meuAtivo.level+'</div>'+hpBarHTML(b.hp[meuAtivo.key],gaHpMax(meuAtivo))+'</div>'+
     '</div>'+
     '<div class="ga-battle-log">'+b.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>';
 
@@ -16193,7 +16292,7 @@ function battleScreenHTML(){
     '<div class="ga-battle-field">'+
       '<div class="ga-battle-side"><img src="'+spriteUrl(opp.num)+'" alt=""><div>'+esc2(oppSp.name)+' Nv.'+opp.level+capturadoBadgeHTML(opp.num)+'</div>'+hpBarHTML(oppHP,oppMax)+'</div>'+
       '<div class="ga-battle-vs">VS</div>'+
-      '<div class="ga-battle-side"><img src="'+spriteUrl(b.playerActive.num)+'" alt=""><div>'+esc2(b.playerActive.apelido||playerSp.name)+' Nv.'+b.playerActive.level+'</div>'+hpBarHTML(playerHP,playerMax)+'</div>'+
+      '<div class="ga-battle-side"><img src="'+spriteUrl(spriteNumEfetivo(b.playerActive))+'" alt=""><div>'+esc2(b.playerActive.apelido||playerSp.name)+' Nv.'+b.playerActive.level+'</div>'+hpBarHTML(playerHP,playerMax)+'</div>'+
     '</div>'+
     '<div class="ga-battle-log">'+b.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>';
 
@@ -16284,7 +16383,7 @@ function tradeEvoScreenHTML(){
     '<h2>✨ '+esc2(p.apelido||fromSp.name)+' pode evoluir!</h2>'+
     '<p class="ga-hint">Chegou por Troca ao vivo e já é elegível pra virar '+esc2(toSp.name)+'.</p>'+
     '<div class="ga-btn-row">'+
-      '<img class="ga-dex-popup-img" src="'+spriteUrl(p.num)+'" alt="">'+
+      '<img class="ga-dex-popup-img" src="'+spriteUrl(spriteNumEfetivo(p))+'" alt="">'+
       '<span style="font-size:1.5em">➡️</span>'+
       '<img class="ga-dex-popup-img" src="'+spriteUrl(pend.toNum)+'" alt="">'+
     '</div>'+
