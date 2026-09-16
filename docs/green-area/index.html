@@ -5271,6 +5271,38 @@ var EVOLUTION_STONE_OVERRIDE = {
   892: ['pergaminho-trevas', 'pergaminho-aguas'],
   869: 'doce' // Cap. leva desta sessão -- Milcery->Alcremie, ver EVOLUTION_EXCLUSIVE_ITEMS acima (trigger oficial "spin", sem item no dado -- vira exigência de item aqui por pedido explícito do jogador)
 };
+/* Cap. leva desta sessão ("Como está para evoluir o Malamar?" ->
+   "faça essa aproximação, tipo a do Milcery"): Inkay->Malamar (#686->
+   #687) tem uma pegadinha igual Kubfu (ver comentário acima) -- o dado
+   BRUTO da PokeAPI (`EVOLUTIONS_DETAILS.js`, nunca embarcado no jogo)
+   tem `turnUpsideDown:true` além do `minLevel:30`, mas `extract.js`
+   descartou essa flag, sobrando só `{to:687, level:30}` no
+   `EVOLUTIONS_DEX.js` que roda de verdade -- então até esta leva
+   Malamar evoluía por Nível 30 SIMPLES, sem nenhuma condição especial,
+   e passava batido no levantamento original (a auditoria só sinalizava
+   arestas SEM Nível numérico nenhum; como esta TEM Nível, foi contada
+   como "já fiel" por engano). Diferente do Milcery (que vira item),
+   aqui não tem item nenhum oficial -- é uma ação física (virar o
+   console), então a aproximação escolhida pelo jogador foi um botão
+   MANUAL fora de luta ("🔄 Virar", mesmo espírito do "🪨 Usar Item"),
+   disponível a partir do Nível 30, em vez do popup automático de
+   sempre. Indexado pela Espécie DESTINO como os outros mapas; guarda
+   `level` pra já deixar pronto reusar esse MESMO mecanismo em outra
+   evolução parecida no futuro. */
+var EVOLUTION_MANUAL_TRIGGER_REQUIRED = { 687: { level: 30 } };
+/* Toda evolução por gatilho MANUAL (ver EVOLUTION_MANUAL_TRIGGER_
+   REQUIRED acima) que este Pokémon já pode usar AGORA -- mesmo
+   espírito de `pedrasElegiveisPara`, só que sem item nenhum envolvido
+   (a única condição é o Nível). */
+function giroElegivelPara(p){
+  var opts = EVOLUTIONS_DEX[p.num] || [];
+  var out = [];
+  opts.forEach(function(e){
+    var req = EVOLUTION_MANUAL_TRIGGER_REQUIRED[e.to];
+    if(req && p.level>=req.level) out.push({ to: e.to });
+  });
+  return out;
+}
 /* Cap. leva desta sessão ("Segue com seu próximo palpite" -- 3º grupo
    do checklist, "📦 item exclusivo (10)"): os ~10 itens de evolução
    Gen 8/9 exclusivos de 1 espécie cada, até esta leva de propósito
@@ -9222,6 +9254,11 @@ function eligibleEvolution(p){
        arestas saem do fluxo de Nível normal por completo, só evoluem
        pela pedra agora (ver pedrasElegiveisPara/DT.gaUsarPedra). */
     if(EVOLUTION_STONE_OVERRIDE[e.to]) return false;
+    /* Cap. leva desta sessão -- Inkay->Malamar (ver
+       EVOLUTION_MANUAL_TRIGGER_REQUIRED acima): sai do fluxo de Nível
+       automático por completo, só evolui pelo botão "🔄 Virar" agora
+       (ver giroElegivelPara/DT.gaVirarPokemon). */
+    if(EVOLUTION_MANUAL_TRIGGER_REQUIRED[e.to]) return false;
     /* Cap. leva desta sessão -- Eevee->Sylveon (ver EVOLUTION_MIN_
        HAPPINESS_OVERRIDE/EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED acima):
        Felicidade 80% + golpe de Tipo Fada, no lugar do stat de Afeto
@@ -13223,6 +13260,20 @@ DT.gaUsarPedra = function(pid, stoneKey){
   SESSION.usarPedraFor = null;
   mutate();
 };
+/* Cap. leva desta sessão -- Inkay->Malamar (ver
+   EVOLUTION_MANUAL_TRIGGER_REQUIRED/giroElegivelPara acima): mesma
+   disciplina de DT.gaUsarPedra (confere elegibilidade de novo aqui
+   dentro, nunca confia só na UI), mas SEM item nenhum envolvido -- só
+   1 opção possível por Pokémon, então clicar no botão já É a decisão
+   (igual clicar numa pedra específica), sem popup de confirmação. */
+DT.gaVirarPokemon = function(pid){
+  var p = STATE.party.filter(function(x){ return x.id===pid; })[0] || STATE.box.filter(function(x){ return x.id===pid; })[0];
+  if(!p) return;
+  var alvo = giroElegivelPara(p)[0];
+  if(!alvo) return;
+  aplicarEvolucaoForaDeLuta(p, alvo.to, ' (virou de cabeça pra baixo)');
+  mutate();
+};
 function usarPedraPopupHTML(pid){
   var p = STATE.party.filter(function(x){ return x.id===pid; })[0] || STATE.box.filter(function(x){ return x.id===pid; })[0];
   if(!p) return '';
@@ -14541,6 +14592,10 @@ function equipeScreenHTML(){
            pedra de verdade evoluiria esse Pokémon -- pedrasElegiveisPara
            já confere a Espécie contra EVOLUTIONS_DEX. */
         (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Item</button>' : '')+
+        /* Cap. leva desta sessão -- Inkay->Malamar (ver
+           EVOLUTION_MANUAL_TRIGGER_REQUIRED/giroElegivelPara acima):
+           só aparece a partir do Nível 30, sem item nenhum envolvido. */
+        (giroElegivelPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaVirarPokemon(\''+p.id+'\')">🔄 Virar</button>' : '')+
         /* Cap. leva desta sessão (Grupo 1 de formas alternativas): só
            aparece pra Oricorio (#741) de verdade -- ver DT.gaAskUsarNectar. */
         (p.num===741 ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarNectar(\''+p.id+'\')">🌺 Trocar Estilo</button>' : '')+
@@ -14583,6 +14638,10 @@ function equipeScreenHTML(){
           '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>'+
           '<button class="ga-btn-sm" onclick="DT.gaPuxarDaCaixa(\''+p.id+'\')" '+(STATE.party.length>=6?'disabled':'')+'>⬆️ Pra Equipe</button>'+
           (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Item</button>' : '')+
+        /* Cap. leva desta sessão -- Inkay->Malamar (ver
+           EVOLUTION_MANUAL_TRIGGER_REQUIRED/giroElegivelPara acima):
+           só aparece a partir do Nível 30, sem item nenhum envolvido. */
+        (giroElegivelPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaVirarPokemon(\''+p.id+'\')">🔄 Virar</button>' : '')+
           (p.num===741 ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarNectar(\''+p.id+'\')">🌺 Trocar Estilo</button>' : '')+
           '<button class="ga-btn-sm danger" onclick="DT.gaAskLiberar(\''+p.id+'\')">Soltar</button>'+
         '</div>';
