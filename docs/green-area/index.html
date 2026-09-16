@@ -5443,7 +5443,7 @@ function criarShedinjaAoEvoluir(nincadaQueEvoluiu, battleLogPushFn){
    aplicam evolução), então um Zigzagoon de Galar vira um Linoone de
    Galar automaticamente, e só ESSE consegue depois perseguir
    Obstagoon. */
-var EVOLUTION_FORM_TARGET = { 194: { agua: 195, paldea: 980 }, 52: { padrao: 53, galar: 863 } };
+var EVOLUTION_FORM_TARGET = { 194: { agua: 195, paldea: 980 }, 52: { padrao: 53, alola: 53, galar: 863 } };
 /* Ver comentário grande acima -- trava MACIA (só bloqueia com
    `p.forma` EXPLICITAMENTE setado e diferente): Farfetch'd/Qwilfish/
    Corsola/Linoone (evolução já existia, 1 aresta só, mas deveria valer
@@ -5451,7 +5451,7 @@ var EVOLUTION_FORM_TARGET = { 194: { agua: 195, paldea: 980 }, 52: { padrao: 53,
    Cofagrigus TAMBÉM precisa ficar de fora pra quem já é Galar, senão
    um Yamask de Galar Nível 34+ continuaria conseguindo Cofagrigus por
    engano). */
-var EVOLUTION_FORM_REQUIRED = { 865: 'galar', 904: 'hisui', 864: 'galar', 862: 'galar', 563: 'padrao', 867: 'galar' };
+var EVOLUTION_FORM_REQUIRED = { 865: 'galar', 904: 'hisui', 864: 'galar', 862: 'galar', 563: 'padrao', 867: 'galar', 903: 'hisui' }; // 903 (Sneasler): confirmado via evolution-chain real da PokeAPI -- so' Sneasel de Hisui evolui assim (base_form:'sneasel-hisui' no gatilho de Dia), Sneasel padrao evoluindo de Dia nao vira nada
 /* Espécies cuja forma (regional ou não) precisa aparecer JÁ CERTA no
    ENCONTRO selvagem, pro jogador ver Tipo/Atributos Base/sprite reais
    ANTES de decidir capturar -- chamado por `iniciarLutaDeZona` (ver
@@ -5462,13 +5462,72 @@ var EVOLUTION_FORM_REQUIRED = { 865: 'galar', 904: 'hisui', 864: 'galar', 862: '
    relativa por região pra seguir). */
 var WILD_FORMA_ROLL = {
   194: ['agua','paldea'],   // Wooper
-  52:  ['padrao','galar'],  // Meowth
+  52:  ['padrao','alola','galar'],  // Meowth (3 formas)
   83:  ['padrao','galar'],  // Farfetch'd
   211: ['padrao','hisui'],  // Qwilfish
   222: ['padrao','galar'],  // Corsola
   263: ['padrao','galar'],  // Zigzagoon
   264: ['padrao','galar'],  // Linoone (aparece encontrado direto tb, não só evoluído de Zigzagoon)
-  562: ['padrao','galar']   // Yamask
+  562: ['padrao','galar'],  // Yamask
+  /* Cap. leva desta sessão ("Implemente todas [as formas regionais]"):
+     as 47 Espécies novas (Alola/Galar/Hisui/Paldea, ver README) --
+     mesmo espírito de sempre, sorteio 50/50 (ou 4-way pro Tauros, que
+     tem 3 pelagens de Paldea) no ENCONTRO/evolução. 8 delas (Raichu/
+     Marowak/Typhlosion/Samurott/Lilligant/Braviary/Avalugg/Decidueye)
+     só têm forma alternativa na Espécie FINAL -- a pré-evolução
+     (Pikachu/Cubone/Quilava/Dewott/Petilil/Rufflet/Bergmite/Dartrix)
+     não tem entrada aqui de propósito (não existe uma variedade real
+     delas na PokeAPI -- a forma regional só nasce NA evolução, fiel
+     ao jogo oficial); a rede de segurança nos 3 pontos que aplicam
+     evolução (ver comentário grande logo abaixo de
+     `formaAutomaticaPorEvolucao`) sorteia a forma delas ali, nunca
+     aqui. */
+  19: ['padrao','alola'],  // Rattata
+  20: ['padrao','alola'],  // Raticate
+  26: ['padrao','alola'],  // Raichu
+  27: ['padrao','alola'],  // Sandshrew
+  28: ['padrao','alola'],  // Sandslash
+  37: ['padrao','alola'],  // Vulpix
+  38: ['padrao','alola'],  // Ninetales
+  50: ['padrao','alola'],  // Diglett
+  51: ['padrao','alola'],  // Dugtrio
+  53: ['padrao','alola'],  // Persian
+  58: ['padrao','hisui'],  // Growlithe
+  59: ['padrao','hisui'],  // Arcanine
+  74: ['padrao','alola'],  // Geodude
+  75: ['padrao','alola'],  // Graveler
+  76: ['padrao','alola'],  // Golem
+  77: ['padrao','galar'],  // Ponyta
+  78: ['padrao','galar'],  // Rapidash
+  79: ['padrao','galar'],  // Slowpoke
+  80: ['padrao','galar'],  // Slowbro
+  88: ['padrao','alola'],  // Grimer
+  89: ['padrao','alola'],  // Muk
+  100: ['padrao','hisui'],  // Voltorb
+  101: ['padrao','hisui'],  // Electrode
+  103: ['padrao','alola'],  // Exeggutor
+  105: ['padrao','alola'],  // Marowak
+  110: ['padrao','galar'],  // Weezing
+  122: ['padrao','galar'],  // Mr. Mime
+  144: ['padrao','galar'],  // Articuno
+  145: ['padrao','galar'],  // Zapdos
+  146: ['padrao','galar'],  // Moltres
+  157: ['padrao','hisui'],  // Typhlosion
+  199: ['padrao','galar'],  // Slowking
+  215: ['padrao','hisui'],  // Sneasel
+  503: ['padrao','hisui'],  // Samurott
+  549: ['padrao','hisui'],  // Lilligant
+  554: ['padrao','galar'],  // Darumaka
+  555: ['padrao','galar'],  // Darmanitan
+  570: ['padrao','hisui'],  // Zorua
+  571: ['padrao','hisui'],  // Zoroark
+  618: ['padrao','galar'],  // Stunfisk
+  628: ['padrao','hisui'],  // Braviary
+  705: ['padrao','hisui'],  // Sliggoo
+  706: ['padrao','hisui'],  // Goodra
+  713: ['padrao','hisui'],  // Avalugg
+  724: ['padrao','hisui'],  // Decidueye
+  128: ['padrao','paldea-combat','paldea-blaze','paldea-aqua']  // Tauros (3 pelagens de Paldea)
 };
 function rollFormaDeEncontro(num){
   var opcoes = WILD_FORMA_ROLL[num];
@@ -6875,11 +6934,56 @@ function rollNatureForSpecies(){
    REGIONAL entra (chave batendo com ALT_FORMS) -- a forma
    'padrao'/'agua' nunca precisa, mesmo motivo do Learnset acima. */
 var SPECIES_FORM_ABILITY_OVERRIDE = {
-  52: { galar: [{n:'Pickup',h:false},{n:'Tough Claws',h:false},{n:'Unnerve',h:true}] }, // Meowth de Galar -- Technician vira Tough Claws
+  52: { alola: [{n:'Pickup',h:false},{n:'Technician',h:false},{n:'Rattled',h:true}], galar: [{n:'Pickup',h:false},{n:'Tough Claws',h:false},{n:'Unnerve',h:true}] }, // Meowth -- Alola: Unnerve vira Rattled; Galar: Technician vira Tough Claws
   83: { galar: [{n:'Steadfast',h:false},{n:'Scrappy',h:true}] }, // Farfetch'd de Galar -- perde Keen Eye/Inner Focus/Defiant, ganha Steadfast/Scrappy
   222: { galar: [{n:'Weak Armor',h:false},{n:'Cursed Body',h:true}] }, // Corsola de Galar -- perde Hustle/Natural Cure/Regenerator, ganha Weak Armor/Cursed Body
   562: { galar: [{n:'Wandering Spirit',h:false}] }, // Yamask de Galar -- Mummy vira Wandering Spirit (só 1 Habilidade, sem oculta, igual o padrão)
-  194: { paldea: [{n:'Poison Point',h:false},{n:'Water Absorb',h:false},{n:'Unaware',h:true}] } // Wooper de Paldea -- Damp vira Poison Point
+  194: { paldea: [{n:'Poison Point',h:false},{n:'Water Absorb',h:false},{n:'Unaware',h:true}] }, // Wooper de Paldea -- Damp vira Poison Point
+  /* Cap. leva desta sessão ("Implemente todas [as formas regionais]"):
+     as 39 (de 47) Espécies novas com Habilidade REAL diferente --
+     confirmado por curl (Qwilfish/Zigzagoon/Linoone/Voltorb/Electrode/
+     Sneasel-Hisui/Darumaka-Galar/Zorua/Zoroark-Hisui têm a MESMA
+     Habilidade nas 2 formas de verdade, ficam de fora de propósito,
+     igual o Qwilfish/Zigzagoon/Linoone já documentados acima). */
+  19: { alola: [{n:'Gluttony',h:false}, {n:'Hustle',h:false}, {n:'Thick Fat',h:true}] }, // Rattata (alola)
+  20: { alola: [{n:'Gluttony',h:false}, {n:'Hustle',h:false}, {n:'Thick Fat',h:true}] }, // Raticate (alola)
+  26: { alola: [{n:'Surge Surfer',h:false}] }, // Raichu (alola)
+  27: { alola: [{n:'Snow Cloak',h:false}, {n:'Slush Rush',h:true}] }, // Sandshrew (alola)
+  28: { alola: [{n:'Snow Cloak',h:false}, {n:'Slush Rush',h:true}] }, // Sandslash (alola)
+  37: { alola: [{n:'Snow Cloak',h:false}, {n:'Snow Warning',h:true}] }, // Vulpix (alola)
+  38: { alola: [{n:'Snow Cloak',h:false}, {n:'Snow Warning',h:true}] }, // Ninetales (alola)
+  50: { alola: [{n:'Sand Veil',h:false}, {n:'Tangling Hair',h:false}, {n:'Sand Force',h:true}] }, // Diglett (alola)
+  51: { alola: [{n:'Sand Veil',h:false}, {n:'Tangling Hair',h:false}, {n:'Sand Force',h:true}] }, // Dugtrio (alola)
+  53: { alola: [{n:'Fur Coat',h:false}, {n:'Technician',h:false}, {n:'Rattled',h:true}] }, // Persian (alola)
+  58: { hisui: [{n:'Intimidate',h:false}, {n:'Flash Fire',h:false}, {n:'Rock Head',h:true}] }, // Growlithe (hisui)
+  59: { hisui: [{n:'Intimidate',h:false}, {n:'Flash Fire',h:false}, {n:'Rock Head',h:true}] }, // Arcanine (hisui)
+  74: { alola: [{n:'Magnet Pull',h:false}, {n:'Sturdy',h:false}, {n:'Galvanize',h:true}] }, // Geodude (alola)
+  75: { alola: [{n:'Magnet Pull',h:false}, {n:'Sturdy',h:false}, {n:'Galvanize',h:true}] }, // Graveler (alola)
+  76: { alola: [{n:'Magnet Pull',h:false}, {n:'Sturdy',h:false}, {n:'Galvanize',h:true}] }, // Golem (alola)
+  77: { galar: [{n:'Run Away',h:false}, {n:'Pastel Veil',h:false}, {n:'Anticipation',h:true}] }, // Ponyta (galar)
+  78: { galar: [{n:'Run Away',h:false}, {n:'Pastel Veil',h:false}, {n:'Anticipation',h:true}] }, // Rapidash (galar)
+  79: { galar: [{n:'Gluttony',h:false}, {n:'Own Tempo',h:false}, {n:'Regenerator',h:true}] }, // Slowpoke (galar)
+  80: { galar: [{n:'Quick Draw',h:false}, {n:'Own Tempo',h:false}, {n:'Regenerator',h:true}] }, // Slowbro (galar)
+  88: { alola: [{n:'Poison Touch',h:false}, {n:'Gluttony',h:false}, {n:'Power Of Alchemy',h:true}] }, // Grimer (alola)
+  89: { alola: [{n:'Poison Touch',h:false}, {n:'Gluttony',h:false}, {n:'Power Of Alchemy',h:true}] }, // Muk (alola)
+  103: { alola: [{n:'Frisk',h:false}, {n:'Harvest',h:true}] }, // Exeggutor (alola)
+  105: { alola: [{n:'Cursed Body',h:false}, {n:'Lightning Rod',h:false}, {n:'Rock Head',h:true}] }, // Marowak (alola)
+  110: { galar: [{n:'Levitate',h:false}, {n:'Neutralizing Gas',h:false}, {n:'Misty Surge',h:true}] }, // Weezing (galar)
+  122: { galar: [{n:'Vital Spirit',h:false}, {n:'Screen Cleaner',h:false}, {n:'Ice Body',h:true}] }, // Mr. Mime (galar)
+  144: { galar: [{n:'Competitive',h:false}] }, // Articuno (galar)
+  145: { galar: [{n:'Defiant',h:false}] }, // Zapdos (galar)
+  146: { galar: [{n:'Berserk',h:false}] }, // Moltres (galar)
+  157: { hisui: [{n:'Blaze',h:false}, {n:'Frisk',h:true}] }, // Typhlosion (hisui)
+  199: { galar: [{n:'Curious Medicine',h:false}, {n:'Own Tempo',h:false}, {n:'Regenerator',h:true}] }, // Slowking (galar)
+  503: { hisui: [{n:'Torrent',h:false}, {n:'Sharpness',h:true}] }, // Samurott (hisui)
+  549: { hisui: [{n:'Chlorophyll',h:false}, {n:'Hustle',h:false}, {n:'Leaf Guard',h:true}] }, // Lilligant (hisui)
+  555: { galar: [{n:'Gorilla Tactics',h:false}, {n:'Zen Mode',h:true}] }, // Darmanitan (galar)
+  618: { galar: [{n:'Mimicry',h:false}] }, // Stunfisk (galar)
+  628: { hisui: [{n:'Keen Eye',h:false}, {n:'Sheer Force',h:false}, {n:'Tinted Lens',h:true}] }, // Braviary (hisui)
+  705: { hisui: [{n:'Sap Sipper',h:false}, {n:'Shell Armor',h:false}, {n:'Gooey',h:true}] }, // Sliggoo (hisui)
+  706: { hisui: [{n:'Sap Sipper',h:false}, {n:'Shell Armor',h:false}, {n:'Gooey',h:true}] }, // Goodra (hisui)
+  713: { hisui: [{n:'Strong Jaw',h:false}, {n:'Ice Body',h:false}, {n:'Sturdy',h:true}] }, // Avalugg (hisui)
+  724: { hisui: [{n:'Overgrow',h:false}, {n:'Scrappy',h:true}] }, // Decidueye (hisui)
 };
 /* Devolve a lista de Habilidade (mesmo formato de `SPECIES_DEX[x].hab`)
    já com a diferença de forma aplicada -- pra QUALQUER Espécie/forma
@@ -9751,16 +9855,26 @@ DT.gaResponderEvolucao = function(aceitar){
     var oldMax = gaHpMax(p);
     var oldSp = speciesByNum(p.num);
     var newSp = speciesByNum(pe.toNum);
-    var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
+    var idxHab = (oldSp && oldSp.hab) ? habListForma(oldSp.num, p.forma).map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
     var habAntesDeEvoluir = p.habilidade; // Cap. leva desta sessão (Lycanroc Dusk) -- lida ANTES de p.num mudar, só pra checar Own Tempo abaixo
     p.num = pe.toNum;
     zerarItemDeEvolucaoConsumido(pe.toNum); // Cap. Gimmighoul->Gholdengo (ver EVOLUTION_ITEM_COUNT_REQUIRED acima) -- consome as Moedas/Doces se for o caso
     if(oldSp && oldSp.num===290 && pe.toNum===291) criarShedinjaAoEvoluir(p, function(msg){ b.log.push(msg); }); // Cap. Nincada->Shedinja (ver criarShedinjaAoEvoluir acima)
     var formaAutoBatalha = formaAutomaticaPorEvolucao(p.num, habAntesDeEvoluir); // Cap. leva desta sessão (Lycanroc) -- mesma forma automática por Dia/Noite (ou Dusk, se Own Tempo)
     if(formaAutoBatalha) p.forma = formaAutoBatalha;
+    /* Cap. leva desta sessão ("Implemente todas [as formas
+       regionais]"): rede de segurança pras 8 Espécies cuja forma só
+       nasce NA evolução (Raichu/Marowak/Typhlosion/Samurott/
+       Lilligant/Braviary/Avalugg/Decidueye -- pré-evolução sem
+       variedade real na PokeAPI, ver comentário grande de
+       WILD_FORMA_ROLL) -- só sorteia quando `p.forma` ainda não foi
+       decidido por nada (nem herdado da pré-evolução, nem pelo
+       Dia/Noite/Dusk acima), nunca sobrescreve uma forma já
+       inherited (ex: Zigzagoon de Galar virando Linoone). */
+    else if(!p.forma && WILD_FORMA_ROLL[p.num]) p.forma = rollFormaDeEncontro(p.num);
     if(formaAutoBatalha==='dusk') p.habilidade = 'Tough Claws'; // Dusk é a única forma travada numa Habilidade real (ver ALT_FORMS[745])
-    else if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
-    else p.habilidade = rollAbilityForSpecies(p.num);
+    else if(idxHab!==-1 && newSp && habListForma(newSp.num, p.forma)[idxHab]) p.habilidade = habListForma(newSp.num, p.forma)[idxHab].n;
+    else p.habilidade = rollAbilityForSpecies(p.num, p.forma);
     /* `gaHpMax`/o resto do cálculo de Atributo em luta lê `b.playerActive`
        (o battler JÁ em campo), nunca `p` de novo -- por isso `.forma`
        precisa ser copiado pro battler ATIVO também, na hora, senão o
@@ -13475,7 +13589,7 @@ function evolucaoSequenciaPopupHTML(p){
 function aplicarEvolucaoForaDeLuta(p, toNum, motivoLog, forma){
   var oldSp = speciesByNum(p.num);
   var newSp = speciesByNum(toNum);
-  var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
+  var idxHab = (oldSp && oldSp.hab) ? habListForma(oldSp.num, p.forma).map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
   p.num = toNum;
   zerarItemDeEvolucaoConsumido(toNum); // Cap. Gimmighoul->Gholdengo (ver EVOLUTION_ITEM_COUNT_REQUIRED acima) -- consome as Moedas/Doces se for o caso
   if(oldSp && oldSp.num===290 && toNum===291) criarShedinjaAoEvoluir(p, null); // Cap. Nincada->Shedinja (ver criarShedinjaAoEvoluir acima) -- na prática este call site nunca recebe 290->291 (Nincada evolui por Nível puro, sempre via luta), mas mantido pelo mesmo motivo de zerarItemDeEvolucaoConsumido acima: mesma defesa nos 3 pontos
@@ -13491,9 +13605,10 @@ function aplicarEvolucaoForaDeLuta(p, toNum, motivoLog, forma){
      pelo relógio do jogo em vez de qual item foi usado. */
   var formaFinal = forma || formaAutomaticaPorEvolucao(toNum, p.habilidade);
   if(formaFinal) p.forma = formaFinal;
+  else if(!p.forma && WILD_FORMA_ROLL[p.num]) p.forma = rollFormaDeEncontro(p.num); // Cap. leva desta sessão -- mesma rede de segurança do site de luta, ver comentário grande lá
   if(formaFinal==='dusk') p.habilidade = 'Tough Claws'; // Cap. leva desta sessão (Lycanroc Dusk) -- única forma travada numa Habilidade real (ver ALT_FORMS[745])
-  else if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
-  else p.habilidade = rollAbilityForSpecies(p.num);
+  else if(idxHab!==-1 && newSp && habListForma(newSp.num, p.forma)[idxHab]) p.habilidade = habListForma(newSp.num, p.forma)[idxHab].n;
+  else p.habilidade = rollAbilityForSpecies(p.num, p.forma);
   markSeen(p.num); markCaught(p.num);
   logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+motivoLog+'.');
   /* Cap. leva desta sessão ("moves apreendidos com evolução... se
@@ -13669,16 +13784,17 @@ DT.gaEvoluirPosSequencia = function(partyId, aceitar){
   if(aceitar){
     var oldSp = speciesByNum(p.num);
     var newSp = speciesByNum(evo.to);
-    var idxHab = (oldSp && oldSp.hab) ? oldSp.hab.map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
+    var idxHab = (oldSp && oldSp.hab) ? habListForma(oldSp.num, p.forma).map(function(h){ return h.n; }).indexOf(p.habilidade) : -1;
     var habAntesDeEvoluirSeq = p.habilidade; // Cap. leva desta sessão (Lycanroc Dusk) -- lida ANTES de p.num mudar, só pra checar Own Tempo abaixo
     p.num = evo.to;
     zerarItemDeEvolucaoConsumido(evo.to); // Cap. Gimmighoul->Gholdengo (ver EVOLUTION_ITEM_COUNT_REQUIRED acima) -- consome as Moedas/Doces se for o caso
     if(oldSp && oldSp.num===290 && evo.to===291) criarShedinjaAoEvoluir(p, null); // Cap. Nincada->Shedinja (ver criarShedinjaAoEvoluir acima)
     var formaAutoSeq = formaAutomaticaPorEvolucao(p.num, habAntesDeEvoluirSeq); // Cap. leva desta sessão (Lycanroc) -- mesma forma automática por Dia/Noite (ou Dusk, se Own Tempo)
     if(formaAutoSeq) p.forma = formaAutoSeq;
+    else if(!p.forma && WILD_FORMA_ROLL[p.num]) p.forma = rollFormaDeEncontro(p.num); // Cap. leva desta sessão -- mesma rede de segurança do site de luta, ver comentário grande lá
     if(formaAutoSeq==='dusk') p.habilidade = 'Tough Claws'; // Dusk é a única forma travada numa Habilidade real (ver ALT_FORMS[745])
-    else if(idxHab!==-1 && newSp && newSp.hab && newSp.hab[idxHab]) p.habilidade = newSp.hab[idxHab].n;
-    else p.habilidade = rollAbilityForSpecies(p.num);
+    else if(idxHab!==-1 && newSp && habListForma(newSp.num, p.forma)[idxHab]) p.habilidade = habListForma(newSp.num, p.forma)[idxHab].n;
+    else p.habilidade = rollAbilityForSpecies(p.num, p.forma);
     markSeen(p.num); markCaught(p.num);
     logAction('evolucao', (p.apelido||oldSp.name)+' evoluiu para '+newSp.name+' (decisão adiada pro fim da sequência automática).');
     /* Cap. leva desta sessão ("moves apreendidos com evolução"): mesmo
@@ -14038,8 +14154,20 @@ var ALT_FORMS = {
      de cada um. `spriteNum`/Tipo/Atributos Base de TODAS confirmados
      por curl direto na PokeAPI antes de escrever isso (nunca
      inventados). */
-  52: [ // Meowth (Kanto/Alola idênticos aqui -- Alola só difere em cor/lore, não em Tipo/Atributos/evolução -- Persian; Galar vira Perrserker, ver EVOLUTION_FORM_TARGET)
+  /* Cap. leva desta sessão ("As variações de Meowth também tem que ser
+     feitas"): correção do comentário de baixo -- Alola NÃO é idêntico
+     ao Kanto de verdade (confirmado por curl direto, nunca inventado).
+     Tipo (Sombrio, não Normal), Atributos Base (Ataque menor/Ataque
+     Especial maior), Habilidade (Rattled em vez de Unnerve) e
+     Learnset (ganha Dark Pulse/Quash/Embargo) SÃO diferentes -- só a
+     EVOLUÇÃO é igual à do padrão (Persian, Nível 28, por isso
+     `EVOLUTION_FORM_TARGET[52]` mapeia 'alola' pro mesmo destino 53
+     que 'padrao', nunca pro 863 de Galar). Meowth vira a única
+     Espécie com 3 formas cadastradas (padrão/Alola/Galar) --
+     WILD_FORMA_ROLL[52] agora sorteia entre as 3. */
+  52: [ // Meowth -- Alola vira Persian igual o padrão (ver EVOLUTION_FORM_TARGET); Galar vira Perrserker
     { key:'padrao', nome:'Meowth (padrão, Normal)', tipo1:'Normal', tipo2:'', spriteNum:52, golpeAssinatura:null },
+    { key:'alola', nome:'Meowth de Alola (Sombrio)', tipo1:'Sombrio', tipo2:'', spriteNum:10107, golpeAssinatura:null, base:{hp:40,atk:35,def:35,spa:50,spd:40,spe:90} },
     { key:'galar', nome:'Meowth de Galar (Aço)', tipo1:'Aço', tipo2:'', spriteNum:10161, golpeAssinatura:null, base:{hp:50,atk:65,def:55,spa:40,spd:40,spe:40} }
   ],
   83: [ // Farfetch'd -- só o de Galar evolui pra Sirfetch'd (3 críticos numa luta, ver EVOLUTION_FORM_REQUIRED[865])
@@ -14072,7 +14200,155 @@ var ALT_FORMS = {
   562: [ // Yamask -- padrão vira Cofagrigus (Nível 34), só o de Galar vira Runerigus (golpe forte), ver EVOLUTION_FORM_TARGET[562]
     { key:'padrao', nome:'Yamask (padrão, Fantasma)', tipo1:'Fantasma', tipo2:'', spriteNum:562, golpeAssinatura:null },
     { key:'galar', nome:'Yamask de Galar (Terra/Fantasma)', tipo1:'Terra', tipo2:'Fantasma', spriteNum:10179, golpeAssinatura:null, base:{hp:38,atk:55,def:85,spa:30,spd:65,spe:30} }
-  ]
+  ],
+/* Cap. leva desta sessão ("Implemente todas [as formas regionais]...
+   Como fizemos com o Wooper, ficou bom"): fecha o levantamento
+   completo das 4 regiões oficiais com forma regional real (Alola/
+   Galar/Hisui/Paldea, ver README) -- as 47 Espécies que faltavam
+   (todas confirmadas por curl direto na PokeAPI antes de escrever
+   isso, nunca inventadas), com o MESMO tratamento completo (Tipo/
+   Atributos Base/sprite/Habilidade/Movimento/evolução) já dado às 8
+   primeiras. */
+  19: [ // Rattata (alola)
+    { key:'padrao', nome:'Rattata (padrão, Normal)', tipo1:'Normal', tipo2:'', spriteNum:19, golpeAssinatura:null },
+    { key:'alola', nome:'Rattata de Alola (Sombrio/Normal)', tipo1:'Sombrio', tipo2:'Normal', spriteNum:10091, golpeAssinatura:null } ],
+  20: [ // Raticate (alola)
+    { key:'padrao', nome:'Raticate (padrão, Normal)', tipo1:'Normal', tipo2:'', spriteNum:20, golpeAssinatura:null },
+    { key:'alola', nome:'Raticate de Alola (Sombrio/Normal)', tipo1:'Sombrio', tipo2:'Normal', spriteNum:10092, golpeAssinatura:null, base:{hp:75,atk:71,def:70,spa:40,spd:80,spe:77} } ],
+  26: [ // Raichu (alola)
+    { key:'padrao', nome:'Raichu (padrão, Elétrico)', tipo1:'Elétrico', tipo2:'', spriteNum:26, golpeAssinatura:null },
+    { key:'alola', nome:'Raichu de Alola (Elétrico/Psíquico)', tipo1:'Elétrico', tipo2:'Psíquico', spriteNum:10100, golpeAssinatura:null, base:{hp:60,atk:85,def:50,spa:95,spd:85,spe:110} } ],
+  27: [ // Sandshrew (alola)
+    { key:'padrao', nome:'Sandshrew (padrão, Terra)', tipo1:'Terra', tipo2:'', spriteNum:27, golpeAssinatura:null },
+    { key:'alola', nome:'Sandshrew de Alola (Gelo/Aço)', tipo1:'Gelo', tipo2:'Aço', spriteNum:10101, golpeAssinatura:null, base:{hp:50,atk:75,def:90,spa:10,spd:35,spe:40} } ],
+  28: [ // Sandslash (alola)
+    { key:'padrao', nome:'Sandslash (padrão, Terra)', tipo1:'Terra', tipo2:'', spriteNum:28, golpeAssinatura:null },
+    { key:'alola', nome:'Sandslash de Alola (Gelo/Aço)', tipo1:'Gelo', tipo2:'Aço', spriteNum:10102, golpeAssinatura:null, base:{hp:75,atk:100,def:120,spa:25,spd:65,spe:65} } ],
+  37: [ // Vulpix (alola)
+    { key:'padrao', nome:'Vulpix (padrão, Fogo)', tipo1:'Fogo', tipo2:'', spriteNum:37, golpeAssinatura:null },
+    { key:'alola', nome:'Vulpix de Alola (Gelo)', tipo1:'Gelo', tipo2:'', spriteNum:10103, golpeAssinatura:null } ],
+  38: [ // Ninetales (alola)
+    { key:'padrao', nome:'Ninetales (padrão, Fogo)', tipo1:'Fogo', tipo2:'', spriteNum:38, golpeAssinatura:null },
+    { key:'alola', nome:'Ninetales de Alola (Gelo/Fada)', tipo1:'Gelo', tipo2:'Fada', spriteNum:10104, golpeAssinatura:null, base:{hp:73,atk:67,def:75,spa:81,spd:100,spe:109} } ],
+  50: [ // Diglett (alola)
+    { key:'padrao', nome:'Diglett (padrão, Terra)', tipo1:'Terra', tipo2:'', spriteNum:50, golpeAssinatura:null },
+    { key:'alola', nome:'Diglett de Alola (Terra/Aço)', tipo1:'Terra', tipo2:'Aço', spriteNum:10105, golpeAssinatura:null, base:{hp:10,atk:55,def:30,spa:35,spd:45,spe:90} } ],
+  51: [ // Dugtrio (alola)
+    { key:'padrao', nome:'Dugtrio (padrão, Terra)', tipo1:'Terra', tipo2:'', spriteNum:51, golpeAssinatura:null },
+    { key:'alola', nome:'Dugtrio de Alola (Terra/Aço)', tipo1:'Terra', tipo2:'Aço', spriteNum:10106, golpeAssinatura:null, base:{hp:35,atk:100,def:60,spa:50,spd:70,spe:110} } ],
+  53: [ // Persian (alola)
+    { key:'padrao', nome:'Persian (padrão, Normal)', tipo1:'Normal', tipo2:'', spriteNum:53, golpeAssinatura:null },
+    { key:'alola', nome:'Persian de Alola (Sombrio)', tipo1:'Sombrio', tipo2:'', spriteNum:10108, golpeAssinatura:null, base:{hp:65,atk:60,def:60,spa:75,spd:65,spe:115} } ],
+  58: [ // Growlithe (hisui)
+    { key:'padrao', nome:'Growlithe (padrão, Fogo)', tipo1:'Fogo', tipo2:'', spriteNum:58, golpeAssinatura:null },
+    { key:'hisui', nome:'Growlithe de Hisui (Fogo/Pedra)', tipo1:'Fogo', tipo2:'Pedra', spriteNum:10229, golpeAssinatura:null, base:{hp:60,atk:75,def:45,spa:65,spd:50,spe:55} } ],
+  59: [ // Arcanine (hisui)
+    { key:'padrao', nome:'Arcanine (padrão, Fogo)', tipo1:'Fogo', tipo2:'', spriteNum:59, golpeAssinatura:null },
+    { key:'hisui', nome:'Arcanine de Hisui (Fogo/Pedra)', tipo1:'Fogo', tipo2:'Pedra', spriteNum:10230, golpeAssinatura:null, base:{hp:95,atk:115,def:80,spa:95,spd:80,spe:90} } ],
+  74: [ // Geodude (alola)
+    { key:'padrao', nome:'Geodude (padrão, Pedra/Terra)', tipo1:'Pedra', tipo2:'Terra', spriteNum:74, golpeAssinatura:null },
+    { key:'alola', nome:'Geodude de Alola (Pedra/Elétrico)', tipo1:'Pedra', tipo2:'Elétrico', spriteNum:10109, golpeAssinatura:null } ],
+  75: [ // Graveler (alola)
+    { key:'padrao', nome:'Graveler (padrão, Pedra/Terra)', tipo1:'Pedra', tipo2:'Terra', spriteNum:75, golpeAssinatura:null },
+    { key:'alola', nome:'Graveler de Alola (Pedra/Elétrico)', tipo1:'Pedra', tipo2:'Elétrico', spriteNum:10110, golpeAssinatura:null } ],
+  76: [ // Golem (alola)
+    { key:'padrao', nome:'Golem (padrão, Pedra/Terra)', tipo1:'Pedra', tipo2:'Terra', spriteNum:76, golpeAssinatura:null },
+    { key:'alola', nome:'Golem de Alola (Pedra/Elétrico)', tipo1:'Pedra', tipo2:'Elétrico', spriteNum:10111, golpeAssinatura:null } ],
+  77: [ // Ponyta (galar)
+    { key:'padrao', nome:'Ponyta (padrão, Fogo)', tipo1:'Fogo', tipo2:'', spriteNum:77, golpeAssinatura:null },
+    { key:'galar', nome:'Ponyta de Galar (Psíquico)', tipo1:'Psíquico', tipo2:'', spriteNum:10162, golpeAssinatura:null } ],
+  78: [ // Rapidash (galar)
+    { key:'padrao', nome:'Rapidash (padrão, Fogo)', tipo1:'Fogo', tipo2:'', spriteNum:78, golpeAssinatura:null },
+    { key:'galar', nome:'Rapidash de Galar (Psíquico/Fada)', tipo1:'Psíquico', tipo2:'Fada', spriteNum:10163, golpeAssinatura:null } ],
+  79: [ // Slowpoke (galar)
+    { key:'padrao', nome:'Slowpoke (padrão, Água/Psíquico)', tipo1:'Água', tipo2:'Psíquico', spriteNum:79, golpeAssinatura:null },
+    { key:'galar', nome:'Slowpoke de Galar (Psíquico)', tipo1:'Psíquico', tipo2:'', spriteNum:10164, golpeAssinatura:null } ],
+  80: [ // Slowbro (galar)
+    { key:'padrao', nome:'Slowbro (padrão, Água/Psíquico)', tipo1:'Água', tipo2:'Psíquico', spriteNum:80, golpeAssinatura:null },
+    { key:'galar', nome:'Slowbro de Galar (Venenoso/Psíquico)', tipo1:'Venenoso', tipo2:'Psíquico', spriteNum:10165, golpeAssinatura:null, base:{hp:95,atk:100,def:95,spa:100,spd:70,spe:30} } ],
+  88: [ // Grimer (alola)
+    { key:'padrao', nome:'Grimer (padrão, Venenoso)', tipo1:'Venenoso', tipo2:'', spriteNum:88, golpeAssinatura:null },
+    { key:'alola', nome:'Grimer de Alola (Venenoso/Sombrio)', tipo1:'Venenoso', tipo2:'Sombrio', spriteNum:10112, golpeAssinatura:null } ],
+  89: [ // Muk (alola)
+    { key:'padrao', nome:'Muk (padrão, Venenoso)', tipo1:'Venenoso', tipo2:'', spriteNum:89, golpeAssinatura:null },
+    { key:'alola', nome:'Muk de Alola (Venenoso/Sombrio)', tipo1:'Venenoso', tipo2:'Sombrio', spriteNum:10113, golpeAssinatura:null } ],
+  100: [ // Voltorb (hisui)
+    { key:'padrao', nome:'Voltorb (padrão, Elétrico)', tipo1:'Elétrico', tipo2:'', spriteNum:100, golpeAssinatura:null },
+    { key:'hisui', nome:'Voltorb de Hisui (Elétrico/Grama)', tipo1:'Elétrico', tipo2:'Grama', spriteNum:10231, golpeAssinatura:null } ],
+  101: [ // Electrode (hisui)
+    { key:'padrao', nome:'Electrode (padrão, Elétrico)', tipo1:'Elétrico', tipo2:'', spriteNum:101, golpeAssinatura:null },
+    { key:'hisui', nome:'Electrode de Hisui (Elétrico/Grama)', tipo1:'Elétrico', tipo2:'Grama', spriteNum:10232, golpeAssinatura:null } ],
+  103: [ // Exeggutor (alola)
+    { key:'padrao', nome:'Exeggutor (padrão, Grama/Psíquico)', tipo1:'Grama', tipo2:'Psíquico', spriteNum:103, golpeAssinatura:null },
+    { key:'alola', nome:'Exeggutor de Alola (Grama/Dragão)', tipo1:'Grama', tipo2:'Dragão', spriteNum:10114, golpeAssinatura:null, base:{hp:95,atk:105,def:85,spa:125,spd:75,spe:45} } ],
+  105: [ // Marowak (alola)
+    { key:'padrao', nome:'Marowak (padrão, Terra)', tipo1:'Terra', tipo2:'', spriteNum:105, golpeAssinatura:null },
+    { key:'alola', nome:'Marowak de Alola (Fogo/Fantasma)', tipo1:'Fogo', tipo2:'Fantasma', spriteNum:10115, golpeAssinatura:null } ],
+  110: [ // Weezing (galar)
+    { key:'padrao', nome:'Weezing (padrão, Venenoso)', tipo1:'Venenoso', tipo2:'', spriteNum:110, golpeAssinatura:null },
+    { key:'galar', nome:'Weezing de Galar (Venenoso/Fada)', tipo1:'Venenoso', tipo2:'Fada', spriteNum:10167, golpeAssinatura:null } ],
+  122: [ // Mr. Mime (galar)
+    { key:'padrao', nome:'Mr. Mime (padrão, Psíquico/Fada)', tipo1:'Psíquico', tipo2:'Fada', spriteNum:122, golpeAssinatura:null },
+    { key:'galar', nome:'Mr. Mime de Galar (Gelo/Psíquico)', tipo1:'Gelo', tipo2:'Psíquico', spriteNum:10168, golpeAssinatura:null, base:{hp:50,atk:65,def:65,spa:90,spd:90,spe:100} } ],
+  144: [ // Articuno (galar)
+    { key:'padrao', nome:'Articuno (padrão, Gelo/Voador)', tipo1:'Gelo', tipo2:'Voador', spriteNum:144, golpeAssinatura:null },
+    { key:'galar', nome:'Articuno de Galar (Psíquico/Voador)', tipo1:'Psíquico', tipo2:'Voador', spriteNum:10169, golpeAssinatura:null, base:{hp:90,atk:85,def:85,spa:125,spd:100,spe:95} } ],
+  145: [ // Zapdos (galar)
+    { key:'padrao', nome:'Zapdos (padrão, Elétrico/Voador)', tipo1:'Elétrico', tipo2:'Voador', spriteNum:145, golpeAssinatura:null },
+    { key:'galar', nome:'Zapdos de Galar (Lutador/Voador)', tipo1:'Lutador', tipo2:'Voador', spriteNum:10170, golpeAssinatura:null, base:{hp:90,atk:125,def:90,spa:85,spd:90,spe:100} } ],
+  146: [ // Moltres (galar)
+    { key:'padrao', nome:'Moltres (padrão, Fogo/Voador)', tipo1:'Fogo', tipo2:'Voador', spriteNum:146, golpeAssinatura:null },
+    { key:'galar', nome:'Moltres de Galar (Sombrio/Voador)', tipo1:'Sombrio', tipo2:'Voador', spriteNum:10171, golpeAssinatura:null, base:{hp:90,atk:85,def:90,spa:100,spd:125,spe:90} } ],
+  157: [ // Typhlosion (hisui)
+    { key:'padrao', nome:'Typhlosion (padrão, Fogo)', tipo1:'Fogo', tipo2:'', spriteNum:157, golpeAssinatura:null },
+    { key:'hisui', nome:'Typhlosion de Hisui (Fogo/Fantasma)', tipo1:'Fogo', tipo2:'Fantasma', spriteNum:10233, golpeAssinatura:null, base:{hp:73,atk:84,def:78,spa:119,spd:85,spe:95} } ],
+  199: [ // Slowking (galar)
+    { key:'padrao', nome:'Slowking (padrão, Água/Psíquico)', tipo1:'Água', tipo2:'Psíquico', spriteNum:199, golpeAssinatura:null },
+    { key:'galar', nome:'Slowking de Galar (Venenoso/Psíquico)', tipo1:'Venenoso', tipo2:'Psíquico', spriteNum:10172, golpeAssinatura:null, base:{hp:95,atk:65,def:80,spa:110,spd:110,spe:30} } ],
+  215: [ // Sneasel (hisui)
+    { key:'padrao', nome:'Sneasel (padrão, Sombrio/Gelo)', tipo1:'Sombrio', tipo2:'Gelo', spriteNum:215, golpeAssinatura:null },
+    { key:'hisui', nome:'Sneasel de Hisui (Lutador/Venenoso)', tipo1:'Lutador', tipo2:'Venenoso', spriteNum:10235, golpeAssinatura:null } ],
+  503: [ // Samurott (hisui)
+    { key:'padrao', nome:'Samurott (padrão, Água)', tipo1:'Água', tipo2:'', spriteNum:503, golpeAssinatura:null },
+    { key:'hisui', nome:'Samurott de Hisui (Água/Sombrio)', tipo1:'Água', tipo2:'Sombrio', spriteNum:10236, golpeAssinatura:null, base:{hp:90,atk:108,def:80,spa:100,spd:65,spe:85} } ],
+  549: [ // Lilligant (hisui)
+    { key:'padrao', nome:'Lilligant (padrão, Grama)', tipo1:'Grama', tipo2:'', spriteNum:549, golpeAssinatura:null },
+    { key:'hisui', nome:'Lilligant de Hisui (Grama/Lutador)', tipo1:'Grama', tipo2:'Lutador', spriteNum:10237, golpeAssinatura:null, base:{hp:70,atk:105,def:75,spa:50,spd:75,spe:105} } ],
+  554: [ // Darumaka (galar)
+    { key:'padrao', nome:'Darumaka (padrão, Fogo)', tipo1:'Fogo', tipo2:'', spriteNum:554, golpeAssinatura:null },
+    { key:'galar', nome:'Darumaka de Galar (Gelo)', tipo1:'Gelo', tipo2:'', spriteNum:10176, golpeAssinatura:null } ],
+  555: [ // Darmanitan (galar)
+    { key:'padrao', nome:'Darmanitan (padrão, Fogo)', tipo1:'Fogo', tipo2:'', spriteNum:555, golpeAssinatura:null },
+    { key:'galar', nome:'Darmanitan de Galar (Gelo)', tipo1:'Gelo', tipo2:'', spriteNum:10177, golpeAssinatura:null } ],
+  570: [ // Zorua (hisui)
+    { key:'padrao', nome:'Zorua (padrão, Sombrio)', tipo1:'Sombrio', tipo2:'', spriteNum:570, golpeAssinatura:null },
+    { key:'hisui', nome:'Zorua de Hisui (Normal/Fantasma)', tipo1:'Normal', tipo2:'Fantasma', spriteNum:10238, golpeAssinatura:null, base:{hp:35,atk:60,def:40,spa:85,spd:40,spe:70} } ],
+  571: [ // Zoroark (hisui)
+    { key:'padrao', nome:'Zoroark (padrão, Sombrio)', tipo1:'Sombrio', tipo2:'', spriteNum:571, golpeAssinatura:null },
+    { key:'hisui', nome:'Zoroark de Hisui (Normal/Fantasma)', tipo1:'Normal', tipo2:'Fantasma', spriteNum:10239, golpeAssinatura:null, base:{hp:55,atk:100,def:60,spa:125,spd:60,spe:110} } ],
+  618: [ // Stunfisk (galar)
+    { key:'padrao', nome:'Stunfisk (padrão, Terra/Elétrico)', tipo1:'Terra', tipo2:'Elétrico', spriteNum:618, golpeAssinatura:null },
+    { key:'galar', nome:'Stunfisk de Galar (Terra/Aço)', tipo1:'Terra', tipo2:'Aço', spriteNum:10180, golpeAssinatura:null, base:{hp:109,atk:81,def:99,spa:66,spd:84,spe:32} } ],
+  628: [ // Braviary (hisui)
+    { key:'padrao', nome:'Braviary (padrão, Normal/Voador)', tipo1:'Normal', tipo2:'Voador', spriteNum:628, golpeAssinatura:null },
+    { key:'hisui', nome:'Braviary de Hisui (Psíquico/Voador)', tipo1:'Psíquico', tipo2:'Voador', spriteNum:10240, golpeAssinatura:null, base:{hp:110,atk:83,def:70,spa:112,spd:70,spe:65} } ],
+  705: [ // Sliggoo (hisui)
+    { key:'padrao', nome:'Sliggoo (padrão, Dragão)', tipo1:'Dragão', tipo2:'', spriteNum:705, golpeAssinatura:null },
+    { key:'hisui', nome:'Sliggoo de Hisui (Aço/Dragão)', tipo1:'Aço', tipo2:'Dragão', spriteNum:10241, golpeAssinatura:null, base:{hp:58,atk:75,def:83,spa:83,spd:113,spe:40} } ],
+  706: [ // Goodra (hisui)
+    { key:'padrao', nome:'Goodra (padrão, Dragão)', tipo1:'Dragão', tipo2:'', spriteNum:706, golpeAssinatura:null },
+    { key:'hisui', nome:'Goodra de Hisui (Aço/Dragão)', tipo1:'Aço', tipo2:'Dragão', spriteNum:10242, golpeAssinatura:null, base:{hp:80,atk:100,def:100,spa:110,spd:150,spe:60} } ],
+  713: [ // Avalugg (hisui)
+    { key:'padrao', nome:'Avalugg (padrão, Gelo)', tipo1:'Gelo', tipo2:'', spriteNum:713, golpeAssinatura:null },
+    { key:'hisui', nome:'Avalugg de Hisui (Gelo/Pedra)', tipo1:'Gelo', tipo2:'Pedra', spriteNum:10243, golpeAssinatura:null, base:{hp:95,atk:127,def:184,spa:34,spd:36,spe:38} } ],
+  724: [ // Decidueye (hisui)
+    { key:'padrao', nome:'Decidueye (padrão, Grama/Fantasma)', tipo1:'Grama', tipo2:'Fantasma', spriteNum:724, golpeAssinatura:null },
+    { key:'hisui', nome:'Decidueye de Hisui (Grama/Lutador)', tipo1:'Grama', tipo2:'Lutador', spriteNum:10244, golpeAssinatura:null, base:{hp:88,atk:112,def:80,spa:95,spd:95,spe:60} } ],
+  128: [ // Tauros -- de Paldea tem 3 pelagens oficiais (Combat/Blaze/Aqua Breed), so o Tipo secundario/golpe de assinatura mudam (Atributos Base e Habilidade identicos nas 3)
+    { key:'padrao', nome:'Tauros (padrão, Normal)', tipo1:'Normal', tipo2:'', spriteNum:128, golpeAssinatura:null },
+    { key:'paldea-combat', nome:'Tauros de Paldea (Pelagem Combativa, Lutador)', tipo1:'Lutador', tipo2:'', spriteNum:10250, golpeAssinatura:'Raging Bull', base:{hp:75,atk:110,def:105,spa:30,spd:70,spe:100} },
+    { key:'paldea-blaze', nome:'Tauros de Paldea (Pelagem Ardente, Lutador/Fogo)', tipo1:'Lutador', tipo2:'Fogo', spriteNum:10251, golpeAssinatura:'Raging Bull', base:{hp:75,atk:110,def:105,spa:30,spd:70,spe:100} },
+    { key:'paldea-aqua', nome:'Tauros de Paldea (Pelagem Aquática, Lutador/Água)', tipo1:'Lutador', tipo2:'Água', spriteNum:10252, golpeAssinatura:'Raging Bull', base:{hp:75,atk:110,def:105,spa:30,spd:70,spe:100} } ],
 };
 /* Qual forma um Rockruff (#744) vira ao evoluir, conforme Dia/Noite (ou
    Own Tempo, ver comentário grande acima) -- consultado nos 3 pontos
@@ -14163,7 +14439,11 @@ var SPECIES_FORM_LEARNSET_OVERRIDE = {
      inventado. Nenhuma das 8 tem golpe de evolução exclusivo por
      forma (diferente do Urshifu) -- `evoMove` fica de fora, `ls.evo`
      original passa direto. */
-  52: { // Meowth de Galar -- vira Perrserker (ver EVOLUTION_FORM_TARGET[52])
+  52: { // Meowth -- Alola vira Persian igual o padrão; Galar vira Perrserker (ver EVOLUTION_FORM_TARGET[52])
+    alola: { // Cap. leva desta sessão ("As variações de Meowth também tem que ser feitas") -- Tipo/Atributos/evolução iguais ao padrão, só o Movimento muda de verdade
+      levelupAdd: [['Dark Pulse',55]],
+      tmAdd: ['Embargo','Quash']
+    },
     galar: {
       levelupRemove: ['Bite','Nasty Plot','Feint','Assurance','Play Rough'],
       levelupAdd: [['Hone Claws',4],['Metal Claw',16],['Swagger',24],['Metal Sound',40],['Thrash',44]],
@@ -14224,6 +14504,56 @@ var SPECIES_FORM_LEARNSET_OVERRIDE = {
       tmRemove: ['Avalanche','Blizzard','Encore','Ice Beam','Icy Wind','Muddy Water','Snowscape','Whirlpool'],
       tmAdd: ['Body Press','Gunk Shot','Low Kick','Poison Jab','Poison Tail','Toxic Spikes','Venoshock']
     }
+  },
+  19: { alola: { tmRemove: ["Charge Beam", "Thunder", "Thunder Wave", "Thunderbolt", "Wild Charge", "Work Up"], tmAdd: ["Dark Pulse", "Embargo", "Quash", "Shadow Claw", "Sludge Bomb", "Snarl", "Torment"] } }, // Rattata (alola)
+  20: { alola: { tmRemove: ["Charge Beam", "Thunder", "Thunder Wave", "Thunderbolt", "Wild Charge", "Work Up"], tmAdd: ["Bulk Up", "Dark Pulse", "Embargo", "Quash", "Shadow Claw", "Sludge Bomb", "Sludge Wave", "Snarl", "Torment", "Venoshock"] } }, // Raticate (alola)
+  26: { alola: { levelupAdd: [["Psychic", 0], ["Speed Swap", 1]], tmAdd: ["Calm Mind", "Psychic", "Psyshock", "Reflect", "Safeguard"] } }, // Raichu (alola)
+  27: { alola: { levelupRemove: ["Dig", "Earthquake", "Magnitude", "Poison Sting", "Rollout", "Sand Attack", "Sand Tomb", "Sandstorm"], levelupAdd: [["Bide", 3], ["Blizzard", 46], ["Hail", 42], ["Ice Ball", 7], ["Iron Defense", 23], ["Iron Head", 30], ["Metal Claw", 14], ["Powder Snow", 5]], tmRemove: ["Rock Tomb", "Sandstorm"], tmAdd: ["Aurora Veil", "Blizzard", "Frost Breath", "Hail", "Leech Life", "Work Up"] } }, // Sandshrew (alola)
+  28: { alola: { levelupRemove: ["Crush Claw", "Dig", "Earthquake", "Fury Cutter", "Fury Swipes", "Gyro Ball", "Magnitude", "Poison Sting", "Rapid Spin", "Rollout", "Sand Attack", "Sand Tomb", "Sandstorm", "Scratch", "Slash", "Swift", "Swords Dance"], levelupAdd: [["Ice Ball", 1], ["Icicle Crash", 1], ["Icicle Spear", 0], ["Metal Burst", 1], ["Metal Claw", 1]], tmRemove: ["Rock Tomb", "Sandstorm", "Stone Edge"], tmAdd: ["Aurora Veil", "Blizzard", "Frost Breath", "Hail", "Leech Life", "Work Up"] } }, // Sandslash (alola)
+  37: { alola: { levelupRemove: ["Ember", "Fire Blast", "Fire Spin", "Flame Burst", "Flamethrower", "Inferno", "Quick Attack", "Will-O-Wisp"], levelupAdd: [["Aurora Beam", 28], ["Blizzard", 42], ["Ice Beam", 36], ["Ice Shard", 10], ["Icy Wind", 15], ["Mist", 20], ["Powder Snow", 1], ["Sheer Cold", 50]], tmRemove: ["Energy Ball", "Fire Blast", "Flame Charge", "Flamethrower", "Overheat", "Sunny Day", "Will-O-Wisp"], tmAdd: ["Aurora Veil", "Blizzard", "Frost Breath", "Hail", "Ice Beam", "Rain Dance"] } }, // Vulpix (alola)
+  38: { alola: { levelupRemove: ["Flamethrower", "Quick Attack"], levelupAdd: [["Dazzling Gleam", 0], ["Ice Beam", 1], ["Ice Shard", 1]], tmRemove: ["Energy Ball", "Fire Blast", "Flame Charge", "Flamethrower", "Overheat", "Solar Beam", "Sunny Day", "Will-O-Wisp"], tmAdd: ["Aurora Veil", "Blizzard", "Dazzling Gleam", "Frost Breath", "Hail", "Ice Beam", "Rain Dance"] } }, // Ninetales (alola)
+  50: { alola: { levelupRemove: ["Scratch", "Slash"], levelupAdd: [["Iron Head", 35], ["Metal Claw", 1]], tmAdd: ["Flash Cannon", "Work Up"] } }, // Diglett (alola)
+  51: { alola: { levelupRemove: ["Scratch", "Slash"], levelupAdd: [["Iron Head", 41], ["Metal Claw", 1]], tmAdd: ["Flash Cannon", "Work Up"] } }, // Dugtrio (alola)
+  53: { alola: { levelupAdd: [["Dark Pulse", 69], ["Quash", 1]], tmAdd: ["Quash", "Snarl"] } }, // Persian (alola)
+  58: { hisui: { levelupRemove: ["Agility", "Play Rough"], levelupAdd: [["Rock Slide", 48]], tmRemove: ["Charm", "Curse", "Play Rough", "Snarl", "Swift", "Thief", "Wild Charge"], tmAdd: ["Power Gem", "Rock Blast", "Rock Slide", "Rock Tomb", "Sandstorm", "Scorching Sands", "Smack Down", "Smart Strike", "Stealth Rock", "Stone Edge"] } }, // Growlithe (hisui)
+  59: { hisui: { levelupRemove: ["Play Rough"], levelupAdd: [["Raging Fury", 64], ["Rock Slide", 1], ["Rock Throw", 1]], tmRemove: ["Charm", "Curse", "Play Rough", "Swift"], tmAdd: ["Power Gem", "Rock Blast", "Rock Slide", "Rock Tomb", "Sandstorm", "Smack Down", "Smart Strike", "Stealth Rock", "Stone Edge"] } }, // Arcanine (hisui)
+  74: { alola: { levelupRemove: ["Bulldoze", "Earthquake", "Magnitude", "Mud Sport"], levelupAdd: [["Charge", 4], ["Discharge", 34], ["Spark", 12], ["Thunder Punch", 22]], tmAdd: ["Brutal Swing", "Charge Beam", "Thunder", "Thunderbolt", "Volt Switch"] } }, // Geodude (alola)
+  75: { alola: { levelupRemove: ["Bulldoze", "Earthquake", "Magnitude", "Mud Sport"], levelupAdd: [["Charge", 1], ["Discharge", 40], ["Spark", 12], ["Thunder Punch", 22]], tmAdd: ["Brutal Swing", "Charge Beam", "Thunder", "Thunderbolt", "Volt Switch"] } }, // Graveler (alola)
+  76: { alola: { levelupRemove: ["Bulldoze", "Earthquake", "Magnitude", "Mud Sport"], levelupAdd: [["Charge", 1], ["Discharge", 40], ["Spark", 12], ["Thunder Punch", 22]], tmAdd: ["Brutal Swing", "Charge Beam", "Echoed Voice", "Thunder", "Thunderbolt", "Volt Switch", "Wild Charge"] } }, // Golem (alola)
+  77: { galar: { levelupRemove: ["Ember", "Fire Blast", "Fire Spin", "Flame Charge", "Flame Wheel", "Flare Blitz", "Inferno"], levelupAdd: [["Confusion", 10], ["Dazzling Gleam", 45], ["Fairy Wind", 15], ["Heal Pulse", 35], ["Healing Wish", 55], ["Psybeam", 25], ["Psychic", 50]], tmRemove: ["Fire Blast", "Fire Spin", "Flamethrower", "Flare Blitz", "Heat Wave", "Overheat", "Solar Beam", "Solar Blade", "Sunny Day", "Will-O-Wisp"], tmAdd: ["Calm Mind", "Dazzling Gleam", "Future Sight", "Imprison", "Psychic", "Stored Power", "Zen Headbutt"] } }, // Ponyta (galar)
+  78: { galar: { levelupRemove: ["Ember", "Fire Blast", "Fire Spin", "Flame Charge", "Flame Wheel", "Flare Blitz", "Inferno", "Poison Jab", "Smart Strike"], levelupAdd: [["Confusion", 1], ["Dazzling Gleam", 49], ["Fairy Wind", 15], ["Heal Pulse", 35], ["Healing Wish", 63], ["Psybeam", 25], ["Psychic", 56], ["Psycho Cut", 0]], tmRemove: ["Fire Blast", "Fire Spin", "Flamethrower", "Flare Blitz", "Heat Wave", "Overheat", "Poison Jab", "Solar Beam", "Solar Blade", "Sunny Day", "Will-O-Wisp"], tmAdd: ["Calm Mind", "Dazzling Gleam", "Future Sight", "Imprison", "Magic Room", "Misty Terrain", "Psychic", "Psychic Terrain", "Psycho Cut", "Stored Power", "Trick Room", "Wonder Room", "Zen Headbutt"] } }, // Rapidash (galar)
+  79: { galar: { levelupRemove: ["Water Gun"], levelupAdd: [["Acid", 6]], tmAdd: ["Foul Play"] } }, // Slowpoke (galar)
+  80: { galar: { levelupRemove: ["Heal Pulse", "Psych Up", "Rain Dance", "Water Gun"], levelupAdd: [["Acid", 1], ["Shell Side Arm", 0]], tmRemove: ["Body Press"], tmAdd: ["Brutal Swing", "Poison Jab", "Sludge Bomb", "Sludge Wave", "Venoshock"] } }, // Slowbro (galar)
+  88: { alola: { levelupRemove: ["Mud Bomb", "Mud-Slap", "Sludge", "Sludge Bomb", "Sludge Wave"], levelupAdd: [["Acid Spray", 15], ["Bite", 7], ["Crunch", 32], ["Knock Off", 29], ["Poison Fang", 18]], tmRemove: ["Thunder", "Thunderbolt"], tmAdd: ["Brutal Swing", "Embargo", "Quash", "Rock Polish", "Snarl", "Stone Edge"] } }, // Grimer (alola)
+  89: { alola: { levelupRemove: ["Mud Bomb", "Mud-Slap", "Sludge", "Sludge Bomb", "Sludge Wave"], levelupAdd: [["Acid Spray", 15], ["Bite", 1], ["Crunch", 32], ["Knock Off", 29], ["Poison Fang", 18]], tmRemove: ["Thunder", "Thunderbolt"], tmAdd: ["Brutal Swing", "Embargo", "Quash", "Rock Polish", "Snarl", "Stone Edge"] } }, // Muk (alola)
+  100: { hisui: { levelupRemove: ["Discharge", "Eerie Impulse", "Light Screen", "Magnet Rise", "Mirror Coat", "Spark"], levelupAdd: [["Bullet Seed", 9], ["Energy Ball", 29], ["Grassy Terrain", 50], ["Seed Bomb", 34], ["Stun Spore", 6]], tmRemove: ["Eerie Impulse", "Helping Hand", "Light Screen", "Metal Sound"], tmAdd: ["Bullet Seed", "Energy Ball", "Giga Drain", "Grass Knot", "Grassy Glide", "Grassy Terrain", "Leaf Storm", "Reflect", "Seed Bomb", "Solar Beam"] } }, // Voltorb (hisui)
+  101: { hisui: { levelupRemove: ["Discharge", "Eerie Impulse", "Explosion", "Gyro Ball", "Light Screen", "Magnet Rise", "Magnetic Flux", "Mirror Coat", "Spark", "Thunder Shock"], levelupAdd: [["Bullet Seed", 9], ["Chloroblast", 0], ["Energy Ball", 29], ["Grassy Terrain", 50], ["Seed Bomb", 34], ["Stun Spore", 6]], tmRemove: ["Eerie Impulse", "Helping Hand", "Light Screen", "Metal Sound"], tmAdd: ["Bullet Seed", "Energy Ball", "Giga Drain", "Grass Knot", "Grassy Glide", "Grassy Terrain", "Leaf Storm", "Reflect", "Seed Bomb", "Solar Beam"] } }, // Electrode (hisui)
+  103: { alola: { levelupRemove: ["Stomp"], levelupAdd: [["Dragon Hammer", 0]], tmAdd: ["Brick Break", "Brutal Swing", "Bulldoze", "Dragon Tail", "Earthquake", "Flamethrower"] } }, // Exeggutor (alola)
+  105: { alola: { levelupRemove: ["Double-Edge", "False Swipe", "Focus Energy", "Headbutt", "Rage"], levelupAdd: [["Flame Wheel", 1], ["Flare Blitz", 53], ["Hex", 17], ["Shadow Bone", 27], ["Will-O-Wisp", 23]], tmAdd: ["Dark Pulse", "Dream Eater", "Flame Charge", "Rain Dance", "Shadow Ball", "Thunder", "Thunderbolt", "Will-O-Wisp"] } }, // Marowak (alola)
+  110: { galar: { levelupRemove: ["Haze"], levelupAdd: [["Aromatherapy", 24], ["Aromatic Mist", 1], ["Defog", 1], ["Fairy Wind", 1], ["Misty Terrain", 68], ["Strange Steam", 1]], tmAdd: ["Brutal Swing", "Dazzling Gleam", "Misty Terrain", "Overheat", "Play Rough", "Wonder Room"] } }, // Weezing (galar)
+  122: { galar: { levelupRemove: ["Dazzling Gleam", "Guard Swap", "Light Screen", "Mimic", "Power Swap", "Protect", "Quick Guard", "Recycle", "Reflect", "Role Play", "Safeguard", "Wide Guard"], levelupAdd: [["Ally Switch", 16], ["Double Kick", 24], ["Freeze-Dry", 44], ["Hypnosis", 32], ["Ice Shard", 1], ["Icy Wind", 20], ["Mirror Coat", 36], ["Misty Terrain", 1], ["Rapid Spin", 1]], tmRemove: ["Fire Punch", "Magical Leaf", "Mystical Fire", "Thunder Punch"], tmAdd: ["Avalanche", "Blizzard", "Hail", "Ice Beam", "Icicle Spear", "Screech", "Stomping Tantrum"] } }, // Mr. Mime (galar)
+  144: { galar: { levelupRemove: ["Blizzard", "Freeze-Dry", "Hail", "Ice Beam", "Ice Shard", "Mist", "Powder Snow", "Roost", "Sheer Cold"], levelupAdd: [["Confusion", 5], ["Dream Eater", 50], ["Freezing Glare", 45], ["Future Sight", 65], ["Hypnosis", 15], ["Psycho Cut", 35], ["Psycho Shift", 1], ["Recover", 40], ["Trick Room", 70]], tmRemove: ["Avalanche", "Blizzard", "Hail", "Ice Beam", "Icicle Spear", "Icy Wind", "Rain Dance", "Sandstorm", "Sunny Day", "Weather Ball"], tmAdd: ["Ally Switch", "Calm Mind", "Future Sight", "Guard Swap", "Hyper Voice", "Imprison", "Light Screen", "Power Swap", "Psychic", "Psycho Cut", "Psyshock", "Scary Face", "Shadow Ball", "Skill Swap", "Stored Power", "Trick Room"] } }, // Articuno (galar)
+  145: { galar: { levelupRemove: ["Charge", "Discharge", "Magnetic Flux", "Rain Dance", "Roost", "Thunder", "Thunder Shock", "Thunder Wave", "Zap Cannon"], levelupAdd: [["Brick Break", 30], ["Bulk Up", 50], ["Close Combat", 65], ["Counter", 55], ["Focus Energy", 1], ["Quick Guard", 40], ["Reversal", 70], ["Rock Smash", 5], ["Thunderous Kick", 45]], tmRemove: ["Baton Pass", "Eerie Impulse", "Hail", "Heat Wave", "Rain Dance", "Sandstorm", "Sunny Day", "Thunder", "Thunder Wave", "Thunderbolt", "Volt Switch", "Weather Ball", "Wild Charge"], tmAdd: ["Acrobatics", "Assurance", "Blaze Kick", "Bounce", "Brick Break", "Bulk Up", "Close Combat", "Focus Energy", "Low Kick", "Low Sweep", "Mega Kick", "Payback", "Retaliate", "Revenge", "Reversal", "Scary Face", "Screech", "Stomping Tantrum", "Superpower", "Taunt", "Throat Chop"] } }, // Zapdos (galar)
+  146: { galar: { levelupRemove: ["Burn Up", "Ember", "Heat Wave", "Incinerate", "Roost", "Sunny Day"], levelupAdd: [["After You", 40], ["Fiery Wrath", 45], ["Memento", 65], ["Nasty Plot", 50], ["Payback", 5], ["Sucker Punch", 30]], tmRemove: ["Fire Blast", "Fire Spin", "Flamethrower", "Flare Blitz", "Heat Wave", "Mystical Fire", "Overheat", "Rain Dance", "Sandstorm", "Solar Beam", "Sunny Day", "Weather Ball", "Will-O-Wisp"], tmAdd: ["Assurance", "Dark Pulse", "Foul Play", "Hex", "Hyper Voice", "Imprison", "Nasty Plot", "Payback", "Scary Face", "Shadow Ball", "Snarl", "Taunt"] } }, // Moltres (galar)
+  157: { hisui: { levelupAdd: [["Infernal Parade", 0]], tmRemove: ["Fling", "Helping Hand", "Rock Tomb", "Scorching Sands", "Throat Chop"] } }, // Typhlosion (hisui)
+  199: { galar: { levelupRemove: ["Water Gun"], levelupAdd: [["Acid", 1], ["Eerie Spell", 0]], tmAdd: ["Hex", "Sludge Bomb", "Sludge Wave", "Venom Drench", "Venoshock"] } }, // Slowking (galar)
+  215: { hisui: { levelupRemove: ["Blizzard", "Ice Shard"], levelupAdd: [["Close Combat", 43], ["Rock Smash", 6]] } }, // Sneasel (hisui)
+  503: { hisui: { levelupRemove: ["Slash", "Soak"], levelupAdd: [["Ceaseless Edge", 0], ["Sucker Punch", 1]] } }, // Samurott (hisui)
+  549: { hisui: { levelupRemove: ["Charm", "Magical Leaf", "Petal Dance", "Quiver Dance"], levelupAdd: [["Axe Kick", 5], ["Defog", 1], ["Leaf Blade", 1], ["Mega Kick", 1], ["Solar Blade", 1], ["Victory Dance", 0]], tmRemove: ["Alluring Voice", "Light Screen"], tmAdd: ["Acrobatics", "Aerial Ace", "Air Slash", "Brick Break", "Close Combat", "Coaching", "Hurricane", "Ice Spinner", "Low Kick", "Low Sweep", "Metronome", "Poison Jab", "Rain Dance", "Take Down", "Triple Axel", "Upper Hand", "Vacuum Wave"] } }, // Lilligant (hisui)
+  554: { galar: { levelupRemove: ["Ember", "Fire Fang", "Fire Punch", "Flare Blitz", "Incinerate"], levelupAdd: [["Avalanche", 12], ["Blizzard", 40], ["Ice Fang", 20], ["Ice Punch", 28], ["Powder Snow", 1]], tmAdd: ["Avalanche", "Blizzard", "Ice Beam", "Ice Fang", "Ice Punch"] } }, // Darumaka (galar)
+  555: { galar: { levelupRemove: ["Ember", "Fire Fang", "Fire Punch", "Flare Blitz", "Hammer Arm", "Incinerate"], levelupAdd: [["Avalanche", 12], ["Blizzard", 44], ["Ice Fang", 20], ["Ice Punch", 28], ["Icicle Crash", 0], ["Powder Snow", 1]], tmRemove: ["Future Sight", "Guard Swap", "Mystical Fire", "Power Swap", "Trick"], tmAdd: ["Avalanche", "Blizzard", "Ice Beam", "Ice Fang", "Ice Punch"] } }, // Darmanitan (galar)
+  570: { hisui: { levelupRemove: ["Fake Tears", "Fury Swipes", "Imprison", "Night Daze", "Scary Face"], levelupAdd: [["Bitter Malice", 40], ["Curse", 16], ["Shadow Ball", 36], ["Shadow Sneak", 12], ["Spite", 28]], tmRemove: ["Encore", "Grass Knot", "Helping Hand", "Hyper Voice", "Scary Face", "Sunny Day", "Swords Dance"], tmAdd: ["Curse", "Focus Punch", "Giga Impact", "Hyper Beam", "Icy Wind", "Phantom Force", "Snowscape", "Will-O-Wisp"] } }, // Zorua (hisui)
+  571: { hisui: { levelupRemove: ["Fake Tears", "Fury Swipes", "Imprison", "Night Daze", "Night Slash"], levelupAdd: [["Bitter Malice", 46], ["Curse", 16], ["Shadow Ball", 40], ["Shadow Claw", 0], ["Shadow Sneak", 12], ["Spite", 28]], tmRemove: ["Sunny Day", "Toxic"], tmAdd: ["Curse", "Focus Punch", "Icy Wind", "Phantom Force", "Poltergeist", "Snowscape", "Will-O-Wisp"] } }, // Zoroark (hisui)
+  618: { galar: { levelupRemove: ["Charge", "Discharge", "Electric Terrain", "Thunder Shock"], levelupAdd: [["Iron Defense", 30], ["Metal Claw", 1], ["Metal Sound", 20], ["Snap Trap", 45]], tmRemove: ["Eerie Impulse", "Electric Terrain", "Electroweb", "Thunder", "Thunderbolt"], tmAdd: ["Crunch", "Flash Cannon", "Ice Fang", "Iron Defense", "Screech"] } }, // Stunfisk (galar)
+  628: { hisui: { levelupRemove: ["Superpower"], levelupAdd: [["Esper Wing", 0], ["Hurricane", 80]], tmRemove: ["Iron Head"], tmAdd: ["Calm Mind", "Confuse Ray", "Dazzling Gleam", "Expanding Force", "Future Sight", "Hyper Voice", "Icy Wind", "Night Shade", "Psybeam", "Psych Up", "Psychic", "Psychic Noise", "Psychic Terrain", "Psyshock", "Shadow Ball", "Snarl", "Stored Power", "Vacuum Wave"] } }, // Braviary (hisui)
+  705: { hisui: { levelupRemove: ["Acid Spray", "Body Slam"], levelupAdd: [["Iron Head", 49], ["Shelter", 0]], tmRemove: ["Toxic"], tmAdd: ["Flash Cannon", "Gyro Ball", "Heavy Slam", "Ice Spinner", "Iron Head", "Rock Tomb", "Sandstorm", "Steel Beam"] } }, // Sliggoo (hisui)
+  706: { hisui: { levelupRemove: ["Aqua Tail", "Poison Tail", "Power Whip"], levelupAdd: [["Dragon Pulse", 35], ["Heavy Slam", 67], ["Iron Head", 49], ["Iron Tail", 0], ["Shelter", 1]], tmRemove: ["Focus Blast", "Focus Punch", "Poison Tail", "Scald", "Toxic"], tmAdd: ["Flash Cannon", "Gyro Ball", "Heavy Slam", "Ice Spinner", "Iron Head", "Lash Out", "Rock Tomb", "Sandstorm", "Scary Face", "Steel Beam"] } }, // Goodra (hisui)
+  713: { hisui: { levelupRemove: ["Body Slam", "Icicle Crash"], levelupAdd: [["Mountain Gale", 61], ["Rock Slide", 0], ["Stone Edge", 51]], tmRemove: ["Flash Cannon", "Hydro Pump", "Surf"], tmAdd: ["Dig", "Hard Press", "Meteor Beam", "Rock Blast", "Sandstorm", "Stealth Rock"] } }, // Avalugg (hisui)
+  724: { hisui: { levelupRemove: ["Astonish", "Nasty Plot", "Phantom Force", "Spirit Shackle", "Spite"], levelupAdd: [["Bulk Up", 30], ["Triple Arrows", 0]], tmRemove: ["Acrobatics", "Curse", "Hex", "Hurricane", "Imprison", "Phantom Force", "Poltergeist", "Shadow Ball", "Skitter Smack", "Solar Blade", "Spite"] } }, // Decidueye (hisui),
+  128: {
+    "paldea-combat": { levelupRemove: ["Giga Impact", "Horn Attack", "Payback"], levelupAdd: [["Close Combat", 60], ["Double Kick", 10], ["Headbutt", 20]], tmRemove: ["Blizzard", "Fire Blast", "Flamethrower", "Helping Hand", "Ice Beam", "Icy Wind", "Shadow Ball", "Solar Beam", "Thunder", "Thunderbolt"], tmAdd: ["Body Press", "Bulk Up", "Drill Run"] },
+    "paldea-blaze": { levelupRemove: ["Assurance", "Double-Edge", "Giga Impact", "Horn Attack", "Payback"], levelupAdd: [["Close Combat", 60], ["Double Kick", 10], ["Flame Charge", 15], ["Flare Blitz", 55], ["Headbutt", 20]], tmRemove: ["Blizzard", "Helping Hand", "Ice Beam", "Icy Wind", "Shadow Ball", "Solar Beam", "Surf", "Throat Chop", "Thunder", "Thunderbolt"], tmAdd: ["Body Press", "Bulk Up", "Drill Run", "Fire Spin", "Flame Charge", "Flare Blitz", "Overheat", "Temper Flare", "Will-O-Wisp"] },
+    "paldea-aqua": { levelupRemove: ["Assurance", "Double-Edge", "Giga Impact", "Horn Attack", "Payback"], levelupAdd: [["Aqua Jet", 15], ["Close Combat", 60], ["Double Kick", 10], ["Headbutt", 20], ["Wave Crash", 55]], tmRemove: ["Blizzard", "Fire Blast", "Flamethrower", "Helping Hand", "Ice Beam", "Icy Wind", "Shadow Ball", "Solar Beam", "Sunny Day", "Throat Chop", "Thunder", "Thunderbolt"], tmAdd: ["Body Press", "Bulk Up", "Chilling Water", "Drill Run", "Hydro Pump", "Liquidation", "Water Pulse", "Whirlpool"] }
   }
 };
 /* Devolve o Learnset (mesmo formato de LEARNSETS[num]) já com a
