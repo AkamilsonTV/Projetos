@@ -272,13 +272,14 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-team-move{ position:relative; border:none; border-radius:11px; padding:0; height:34px; cursor:pointer; overflow:hidden; -webkit-tap-highlight-color:transparent; }
 .ga-team-move-fill{ position:absolute; inset:0; opacity:.85; }
 .ga-team-move-label{ position:relative; display:flex; align-items:center; justify-content:center; height:100%; padding:0 6px; font-size:.7rem; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(0,0,0,.22)); }
-.ga-team-roles{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-.ga-team-role{ border:none; border-radius:12px; padding:8px 4px; cursor:pointer; font-size:.68rem; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); box-shadow:0 3px 8px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.2); transition:box-shadow .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
+.ga-team-roles-label{ text-align:center; font-size:.64rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim); margin-top:6px; }
+.ga-team-roles{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:2px; }
+.ga-team-role{ flex:0 0 auto; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border:none; border-radius:12px; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); box-shadow:0 3px 8px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.2); transition:box-shadow .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
 .ga-team-role:hover{ transform:translateY(-1px); }
 .ga-team-role-ataque,.ga-team-role-defesa,.ga-team-role-suporte,.ga-team-role-controle{ background:linear-gradient(150deg,#38bdf8,#2563eb); }
 .ga-team-role.ativo{ box-shadow:0 0 0 2px #fff, 0 0 0 4px #facc15, 0 0 14px 3px rgba(250,204,21,.55); transform:translateY(-1px) scale(1.02); }
-.ga-team-itemcaixa{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-.ga-team-item,.ga-team-caixa{ border:none; border-radius:11px; padding:7px 4px; cursor:pointer; font-size:.68rem; font-weight:800; color:#0d1c2b; box-shadow:0 3px 8px rgba(0,0,0,.25); transition:filter .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
+.ga-team-itemcaixa{ display:flex; justify-content:center; align-items:center; gap:8px; }
+.ga-team-item,.ga-team-caixa{ flex:0 0 auto; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border:none; border-radius:11px; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:#0d1c2b; box-shadow:0 3px 8px rgba(0,0,0,.25); transition:filter .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
 .ga-team-item:hover,.ga-team-caixa:hover{ filter:brightness(1.1); transform:translateY(-1px); }
 .ga-team-item,.ga-team-caixa{ background:linear-gradient(135deg,#a78bfa,#22d3ee); }
 .ga-team-caixa.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
@@ -16390,7 +16391,8 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
   var papelAtual = poke.papelCombate||'ataque';
   var rolesHTML = ROLES_COMBATE.map(function(papel){
     var ativo = papelAtual===papel;
-    return '<button type="button" class="ga-team-role ga-team-role-'+papel+(ativo?' ativo':'')+'" title="'+esc2(TOOLTIPS.papelCombate)+'" aria-pressed="'+ativo+'" onclick="DT.gaSetPapelCombate(\''+poke.id+'\',\''+papel+'\')">'+PAPEL_COMBATE_LABEL[papel]+'</button>';
+    var icone = PAPEL_COMBATE_LABEL[papel].split(' ')[0];
+    return '<button type="button" class="ga-team-role ga-team-role-'+papel+(ativo?' ativo':'')+'" title="'+esc2(TOOLTIPS.papelCombate)+' -- '+esc2(PAPEL_COMBATE_LABEL[papel])+'" aria-label="'+esc2(PAPEL_COMBATE_LABEL[papel])+'" aria-pressed="'+ativo+'" onclick="DT.gaSetPapelCombate(\''+poke.id+'\',\''+papel+'\')">'+icone+'</button>';
   }).join('');
   var podeCaixa = STATE.party.length>1;
   var actionsExtras = (pedrasElegiveisPara(poke).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+poke.id+'\')">🪨 Usar Item</button>' : '')+
@@ -16423,10 +16425,11 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
     '<div class="ga-team-subrow"><span class="ga-team-habilidade">'+esc2(poke.habilidade||'—')+'</span><span class="ga-team-natureza">'+esc2(poke.natureza||'—')+'</span></div>'+
     xpRowHTML+
     '<div class="ga-team-moves">'+movesHTML+'</div>'+
+    '<div class="ga-team-roles-label">Roles</div>'+
     '<div class="ga-team-roles">'+rolesHTML+'</div>'+
     '<div class="ga-team-itemcaixa">'+
-      '<button type="button" class="ga-team-item" onclick="DT.gaAskItemSegurado(\''+poke.id+'\')" title="'+(poke.itemSegurado?'Item: '+esc2(heldItemByKey(poke.itemSegurado).nome):'Nenhum item segurado')+'">🎒 Item'+(poke.itemSegurado?': '+esc2(heldItemByKey(poke.itemSegurado).nome):'')+'</button>'+
-      '<button type="button" class="ga-team-caixa'+(podeCaixa?'':' disabled')+'" '+(podeCaixa?'onclick="DT.gaMandarPraCaixa(\''+poke.id+'\')"':'')+' title="'+(podeCaixa?'Mandar pra Caixa':'Não dá pra mandar o único Pokémon da Equipe pra Caixa')+'">📦 Caixa</button>'+
+      '<button type="button" class="ga-team-item" aria-label="Item" onclick="DT.gaAskItemSegurado(\''+poke.id+'\')" title="'+(poke.itemSegurado?'Item: '+esc2(heldItemByKey(poke.itemSegurado).nome):'Nenhum item segurado')+'">🎒</button>'+
+      '<button type="button" class="ga-team-caixa'+(podeCaixa?'':' disabled')+'" aria-label="Caixa" '+(podeCaixa?'onclick="DT.gaMandarPraCaixa(\''+poke.id+'\')"':'')+' title="'+(podeCaixa?'Mandar pra Caixa':'Não dá pra mandar o único Pokémon da Equipe pra Caixa')+'">📦</button>'+
     '</div>'+
     (orderControls||'')+
     (poke.num===999 ? '<div class="ga-hint" title="Moedas de Gimmighoul -- só acumula enquanto ele estiver na Equipe (nunca na Caixa); junte 999 pra evoluir em Gholdengo">🪙 '+(STATE.itens['moedas-gimmighoul']||0)+'/999</div>' : '')+
