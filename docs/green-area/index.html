@@ -181,12 +181,21 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    fazem a arte (proporção 405:720, ver o protótipo) e TUDO dentro dela
    escalar junto conforme a grade aperta/alarga o card -- sem media query
    nenhuma, sem JS medindo pixel, só CSS. */
-.ga-team-card{ padding:0; overflow:hidden; }
+/* `.ga-poke-grid-equipe .ga-poke-card img{width:88px;height:88px}` (e
+   `.ga-poke-card img{width:64px;height:64px}` mais genérica ainda) tinham
+   mais especificidade CSS que uma classe só (`.ga-team-bg`/`.ga-team-
+   sprite`), porque combinam classe+elemento -- encolhiam a própria arte
+   de fundo pra um quadrado minúsculo no canto (é por isso que "ficou
+   horrível" -- a arte nunca apareceu de verdade). Essas 2 regras (e a de
+   padding logo abaixo) repetem a MESMA cadeia de ancestrais das regras
+   genéricas, só que com uma classe a mais no seletor final, pra ganhar
+   na especificidade de propósito, sem precisar de `!important`. */
+.ga-poke-grid-equipe .ga-poke-card.ga-team-card{ padding:0; overflow:hidden; }
 .ga-team-card .ga-poke-actions{ padding:0 14px 14px; }
 .ga-team-card .ga-poke-meta, .ga-team-card > .ga-hint{ margin-left:14px; margin-right:14px; }
 .ga-team-art{ container-type:inline-size; position:relative; width:100%; aspect-ratio:405/720; overflow:hidden; margin-bottom:8px; }
-.ga-team-bg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
-.ga-team-sprite{ position:absolute; left:24.94cqw; top:21.98cqw; width:50.12cqw; height:50.12cqw; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 2.5cqw 3cqw rgba(0,0,0,.4)); }
+.ga-poke-grid-equipe .ga-poke-card img.ga-team-bg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.ga-poke-grid-equipe .ga-poke-card img.ga-team-sprite{ position:absolute; left:24.94cqw; top:21.98cqw; width:50.12cqw; height:50.12cqw; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 2.5cqw 3cqw rgba(0,0,0,.4)); }
 .ga-team-badge{ position:absolute; left:68.64cqw; top:3.95cqw; width:29.63cqw; height:12.35cqw; border-radius:3.7cqw; background:#224d76; box-shadow:0 .75cqw 2cqw rgba(0,0,0,.35), inset 0 .25cqw 0 rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center; gap:2cqw; font-weight:800; font-size:4.69cqw; letter-spacing:.07cqw; line-height:1; color:#eaf6ff; }
 .ga-team-badge b{ font-weight:800; } .ga-team-badge .v{ color:#7cf0a8; } .ga-team-badge .d{ color:#ff8080; } .ga-team-badge .sep{ opacity:.4; }
 .ga-team-name{ position:absolute; left:22.96cqw; top:77.53cqw; width:54.32cqw; height:8.89cqw; background:#041729; border-radius:1.5cqw; display:flex; align-items:center; justify-content:center; gap:1.2cqw; padding:0 1.2cqw; }
