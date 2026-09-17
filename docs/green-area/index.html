@@ -121,7 +121,6 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    o texto do botão -- nunca alinhados de verdade entre si. Virou grid
    de 2 colunas IGUAIS -- agora as 2 colunas sempre começam no mesmo x,
    não importa a largura de cada rótulo. */
-.ga-papel-combate{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 
 .ga-hub{ display:flex; flex-direction:column; gap:14px; }
 .ga-trainer-card{ display:flex; align-items:center; gap:14px; }
@@ -173,6 +172,32 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-poke-grid-equipe .ga-poke-card img{ width:88px; height:88px; }
 .ga-poke-grid-equipe .ga-poke-name{ font-size:1rem; }
 .ga-poke-grid-equipe .ga-poke-meta{ font-size:.76rem; }
+/* Card da Equipe com a arte oficial (Cap. leva desta sessão -- protótipo
+   aprovado no Artifact, "Vamos colocar no site"): a mesma peça de arte
+   (assets/Card_Equipe.png) de fundo, com Vitórias/Derrotas, Movimentos e
+   Papel de Combate clicáveis por CIMA dela -- sem inventar nenhuma
+   mecânica nova, só reveste DT.gaOpenMoves/gaSetPapelCombate/gaAskApelido/
+   gaToggleFavorito que já existiam. `container-type:inline-size` + `cqw`
+   fazem a arte (proporção 405:720, ver o protótipo) e TUDO dentro dela
+   escalar junto conforme a grade aperta/alarga o card -- sem media query
+   nenhuma, sem JS medindo pixel, só CSS. */
+.ga-team-card{ padding:0; overflow:hidden; }
+.ga-team-card .ga-poke-actions{ padding:0 14px 14px; }
+.ga-team-card .ga-poke-meta, .ga-team-card > .ga-hint{ margin-left:14px; margin-right:14px; }
+.ga-team-art{ container-type:inline-size; position:relative; width:100%; aspect-ratio:405/720; overflow:hidden; margin-bottom:8px; }
+.ga-team-bg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.ga-team-sprite{ position:absolute; left:24.94cqw; top:21.98cqw; width:50.12cqw; height:50.12cqw; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 2.5cqw 3cqw rgba(0,0,0,.4)); }
+.ga-team-badge{ position:absolute; left:68.64cqw; top:3.95cqw; width:29.63cqw; height:12.35cqw; border-radius:3.7cqw; background:#224d76; box-shadow:0 .75cqw 2cqw rgba(0,0,0,.35), inset 0 .25cqw 0 rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center; gap:2cqw; font-weight:800; font-size:4.69cqw; letter-spacing:.07cqw; line-height:1; color:#eaf6ff; }
+.ga-team-badge b{ font-weight:800; } .ga-team-badge .v{ color:#7cf0a8; } .ga-team-badge .d{ color:#ff8080; } .ga-team-badge .sep{ opacity:.4; }
+.ga-team-name{ position:absolute; left:22.96cqw; top:77.53cqw; width:54.32cqw; height:8.89cqw; background:#041729; border-radius:1.5cqw; display:flex; align-items:center; justify-content:center; gap:1.2cqw; padding:0 1.2cqw; }
+.ga-team-name .nome{ font-size:5.19cqw; font-weight:800; letter-spacing:.25cqw; color:#4ee6e6; text-shadow:0 0 3cqw rgba(78,230,230,.45); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ga-team-name .ga-apelido-lapis, .ga-team-name .ga-favorito-estrela{ font-size:3.6cqw; flex:0 0 auto; }
+.ga-team-move{ position:absolute; border:none; padding:0; cursor:pointer; background:none; -webkit-tap-highlight-color:transparent; display:block; }
+.ga-team-move-fill{ position:absolute; inset:0; mix-blend-mode:color; }
+.ga-team-move-label{ position:relative; width:100%; height:100%; box-sizing:border-box; padding:0 2cqw; display:flex; align-items:center; justify-content:center; font-weight:800; color:#1c2a33; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ga-team-role{ position:absolute; border:none; background:none; padding:0; cursor:pointer; -webkit-tap-highlight-color:transparent; border-radius:11cqw; transition:box-shadow .15s ease, transform .15s ease; }
+.ga-team-role.ativo{ box-shadow:0 0 0 .75cqw #fff, 0 0 0 1.5cqw #facc15, 0 0 5.5cqw 1.5cqw rgba(250,204,21,.6); transform:scale(1.03); }
+.ga-team-papel-label{ position:absolute; left:0; top:161.98cqw; width:100%; text-align:center; font-size:3.2cqw; font-weight:700; color:#cfe8ff; text-shadow:0 .25cqw .75cqw rgba(0,0,0,.6); }
 /* Cap. leva desta sessão ("O card da Raid e do histórico de raid pode
    ficar maior, de forma que ele fique melhor distribuído em largura
    no site. Pode ser do tamanho do card da equipe e centralizado"):
@@ -15331,6 +15356,88 @@ function typeTagsHTML(sp){
   return '<span class="ga-type ga-type-'+sp.tipo1+'">'+sp.tipo1+'</span>'+(sp.tipo2?' <span class="ga-type ga-type-'+sp.tipo2+'">'+sp.tipo2+'</span>':'');
 }
 
+/* Cap. leva desta sessão ("Corrigi no arcanine como quero que fique, use
+   ele como o exemplo e aplique... Vamos colocar no site"): card da Equipe
+   com a arte de assets/Card_Equipe.png, aprovado antes num protótipo à
+   parte (Claude Artifact) -- Movimentos/Papel de Combate/Vitórias-
+   Derrotas continuam sendo os MESMOS de sempre (DT.gaOpenMoves,
+   DT.gaSetPapelCombate, poke.vitorias/derrotas), só ficam clicáveis
+   direto em cima da arte em vez de botões avulsos embaixo. A cor de cada
+   barra de Movimento segue o Tipo real do golpe (poke.moves[i].tipo, já
+   vem populado por findMoveByName -- nunca inventado), então troca
+   sozinha assim que o jogador troca o Movimento no popup de sempre. */
+var TEAM_CARD_TYPE_COLOR = {
+  'Normal':'#a8a878','Fogo':'#f08030','Água':'#6890f0','Grama':'#78c850','Elétrico':'#f8d030',
+  'Gelo':'#98d8d8','Lutador':'#c03028','Venenoso':'#a040a0','Terra':'#e0c068','Voador':'#a890f0',
+  'Psíquico':'#f85888','Inseto':'#a8b820','Pedra':'#b8a038','Fantasma':'#705898','Dragão':'#7038f8',
+  'Sombrio':'#705848','Aço':'#b8b8d0','Fada':'#ee99ac'
+};
+var TEAM_CARD_MOVE_SLOTS = [
+  { left:7.65, top:102.96, width:40.74, height:11.36, radius:4.94, fontSize:4.44 },
+  { left:51.11, top:103.46, width:38.77, height:9.88, radius:4.94, fontSize:4.44 },
+  { left:8.40, top:117.04, width:39.75, height:8.89, radius:4.20, fontSize:3.83 },
+  { left:50.86, top:117.04, width:40.99, height:9.14, radius:4.20, fontSize:3.83 }
+];
+var TEAM_CARD_ROLE_SLOTS = [
+  { key:'ataque', left:6.17, top:129.63, width:37.53, height:11.36 },
+  { key:'defesa', left:53.09, top:129.63, width:37.53, height:11.36 },
+  { key:'suporte', left:6.17, top:144.20, width:38.02, height:11.36 },
+  { key:'controle', left:52.84, top:144.20, width:38.02, height:11.36 }
+];
+function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
+  var sp = speciesByNum(poke.num);
+  var progresso = poke.level>=NIVEL_MAX ? 'Nível máximo' : ((poke.xpNivel||0)+'/'+xpParaProximoNivel(poke.level)+' XP pro próximo Nível');
+  var lapis = poke.apelido
+    ? ' <span class="ga-apelido-lapis travado" title="Apelido já definido -- travado por enquanto">✏️</span>'
+    : ' <span class="ga-apelido-lapis" title="Definir apelido (só uma vez)" onclick="event.stopPropagation();DT.gaAskApelido(\''+poke.id+'\')">✏️</span>';
+  var estrela = ' <span class="ga-favorito-estrela'+(poke.favorito?' on':'')+'" title="'+(poke.favorito?'Favorito -- clique pra tirar':'Marcar como favorito')+'" onclick="event.stopPropagation();DT.gaToggleFavorito(\''+poke.id+'\')">'+(poke.favorito?'⭐':'☆')+'</span>';
+  var moves = poke.moves||[];
+  var movesHTML = TEAM_CARD_MOVE_SLOTS.map(function(s, idx){
+    var m = moves[idx];
+    var nome = m ? m.name : '—';
+    var cor = m ? (TEAM_CARD_TYPE_COLOR[m.tipo]||'#8fb3a2') : '#3a4750';
+    var titulo = m ? (m.name+' ('+m.tipo+' · '+m.categoria+')') : 'Espaço de Movimento vazio';
+    return '<button type="button" class="ga-team-move" title="'+esc2(titulo)+'" onclick="DT.gaOpenMoves(\''+poke.id+'\')" '+
+      'style="left:'+s.left+'cqw;top:'+s.top+'cqw;width:'+s.width+'cqw;height:'+s.height+'cqw;">'+
+      '<span class="ga-team-move-fill" style="border-radius:'+s.radius+'cqw;background:'+cor+';"></span>'+
+      '<span class="ga-team-move-label" style="font-size:'+s.fontSize+'cqw;">'+esc2(nome)+'</span>'+
+    '</button>';
+  }).join('');
+  var papelAtual = poke.papelCombate||'ataque';
+  var rolesHTML = TEAM_CARD_ROLE_SLOTS.map(function(rs){
+    var ativo = papelAtual===rs.key;
+    return '<button type="button" class="ga-team-role'+(ativo?' ativo':'')+'" title="'+esc2(PAPEL_COMBATE_LABEL[rs.key])+'" '+
+      'aria-pressed="'+ativo+'" onclick="DT.gaSetPapelCombate(\''+poke.id+'\',\''+rs.key+'\')" '+
+      'style="left:'+rs.left+'cqw;top:'+rs.top+'cqw;width:'+rs.width+'cqw;height:'+rs.height+'cqw;"></button>';
+  }).join('');
+  var art = '<div class="ga-team-art">'+
+    '<img class="ga-team-bg" src="assets/Card_Equipe.png" alt="">'+
+    '<div class="ga-team-badge" title="Vitórias / Derrotas desse Pokémon"><b class="v">'+(poke.vitorias||0)+'V</b><span class="sep">|</span><b class="d">'+(poke.derrotas||0)+'D</b></div>'+
+    '<img class="ga-team-sprite" src="'+spriteUrl(spriteNumEfetivo(poke))+'" alt="">'+
+    '<div class="ga-team-name"><span class="nome">'+esc2((poke.apelido||sp.name).toUpperCase())+'</span>'+lapis+estrela+'</div>'+
+    movesHTML+rolesHTML+
+    '<div class="ga-team-papel-label">Papel em uso: '+esc2(PAPEL_COMBATE_LABEL[papelAtual])+'</div>'+
+  '</div>';
+  var actions = '<div class="ga-poke-actions">'+
+    (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
+    (STATE.party.length>1 ? '<button class="ga-btn-sm" onclick="DT.gaMandarPraCaixa(\''+poke.id+'\')">📦 Caixa</button>' : '')+
+    (pedrasElegiveisPara(poke).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+poke.id+'\')">🪨 Usar Item</button>' : '')+
+    (giroElegivelPara(poke).length ? '<button class="ga-btn-sm" onclick="DT.gaVirarPokemon(\''+poke.id+'\')">🔄 Virar</button>' : '')+
+    (poke.num===741 ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarNectar(\''+poke.id+'\')">🌺 Trocar Estilo</button>' : '')+
+    '<button class="ga-btn-sm" onclick="DT.gaAskItemSegurado(\''+poke.id+'\')">🎒 Item'+(poke.itemSegurado?': '+esc2(heldItemByKey(poke.itemSegurado).nome):'')+'</button>'+
+  '</div>';
+  return '<div class="ga-poke-card ga-team-card'+(i===0?' ativo':'')+'" '+(dragAttrs||'')+'>'+
+    (orderControls||'')+art+
+    '<div class="ga-poke-meta">#'+String(poke.num).padStart(4,'0')+' · Nv. '+poke.level+' · '+typeTagsHTML(tiposEfetivos(poke))+'</div>'+
+    '<div class="ga-hint">'+esc2(poke.natureza||'—')+' · '+esc2(poke.habilidade||'—')+'</div>'+
+    '<div class="ga-hint">'+progresso+'</div>'+
+    '<div class="ga-hint" title="Felicidade -- sobe com Nível/vitória, desce ao desmaiar; algumas evoluções dependem dela">❤️ '+(poke.felicidade!=null?poke.felicidade:FELICIDADE_INICIAL)+'/'+FELICIDADE_MAX+'</div>'+
+    (poke.num===999 ? '<div class="ga-hint" title="Moedas de Gimmighoul -- só acumula enquanto ele estiver na Equipe (nunca na Caixa); junte 999 pra evoluir em Gholdengo">🪙 '+(STATE.itens['moedas-gimmighoul']||0)+'/999</div>' : '')+
+    (poke.num===808 ? '<div class="ga-hint" title="Doce de Meltan -- item de Mochila comprável na Loja; junte 400 pra evoluir em Melmetal no próximo level up">🍡 '+(STATE.itens['doce-meltan']||0)+'/400</div>' : '')+
+    actions+
+  '</div>';
+}
+
 function hubScreenHTML(){
   var lead = STATE.party[0];
   var counts = dexCounts();
@@ -15378,13 +15485,6 @@ function hubScreenHTML(){
    persiste se o Pokémon passar pela Equipe depois, só não tem UI pra
    mudar direto na Caixa). */
 var PAPEL_COMBATE_LABEL = { ataque:'⚔️ Ataque', defesa:'🛡️ Defesa', suporte:'🌿 Suporte', controle:'🌀 Controle' };
-function papelCombateSeletorHTML(p){
-  return '<div class="ga-papel-combate" title="'+esc2(TOOLTIPS.papelCombate)+'">'+
-    ROLES_COMBATE.map(function(papel){
-      return '<button class="ga-btn-sm '+(( p.papelCombate||'ataque')===papel?'active':'')+'" onclick="DT.gaSetPapelCombate(\''+p.id+'\',\''+papel+'\')">'+PAPEL_COMBATE_LABEL[papel]+'</button>';
-    }).join('')+
-  '</div>';
-}
 DT.gaSetPapelCombate = function(pid, papel){
   if(ROLES_COMBATE.indexOf(papel)===-1) return;
   var p = STATE.party.filter(function(x){return x.id===pid;})[0];
@@ -15533,36 +15633,6 @@ function equipeScreenHTML(){
           (i>0 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',-1)">⬆️</button>' : '')+
           (i<STATE.party.length-1 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',1)">⬇️</button>' : '')+
         '</div>' : '';
-      /* Cap. leva desta sessão: "junta Movimentos e caixa ali embaixo"
-         -- os 2 na MESMA linha agora, em vez de Movimentos sozinho
-         numa linha e Caixa/Soltar noutra. Cap. leva seguinte: "Tirar o
-         botão soltar daqui deixar só na caixa" -- Soltar sai de vez da
-         Equipe ativa (o jogador manda o Pokémon pra 📦 Caixa primeiro,
-         com o botão que já existe logo ali, e solta de lá -- ver a
-         seção da Caixa abaixo, que mantém o próprio botão Soltar
-         dela). */
-      var actions = orderControls+'<div class="ga-poke-actions">'+
-        (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
-        papelCombateSeletorHTML(p)+
-        (STATE.party.length>1
-          ? '<div class="ga-btn-row"><button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button><button class="ga-btn-sm" onclick="DT.gaMandarPraCaixa(\''+p.id+'\')">📦 Caixa</button></div>'
-          : '<button class="ga-btn-sm" onclick="DT.gaOpenMoves(\''+p.id+'\')">🔁 Movimentos</button>')+
-        /* Cap. leva desta sessão (tarefa #183): só aparece quando ALGUMA
-           pedra de verdade evoluiria esse Pokémon -- pedrasElegiveisPara
-           já confere a Espécie contra EVOLUTIONS_DEX. */
-        (pedrasElegiveisPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+p.id+'\')">🪨 Usar Item</button>' : '')+
-        /* Cap. leva desta sessão -- Inkay->Malamar (ver
-           EVOLUTION_MANUAL_TRIGGER_REQUIRED/giroElegivelPara acima):
-           só aparece a partir do Nível 30, sem item nenhum envolvido. */
-        (giroElegivelPara(p).length ? '<button class="ga-btn-sm" onclick="DT.gaVirarPokemon(\''+p.id+'\')">🔄 Virar</button>' : '')+
-        /* Cap. leva desta sessão (Grupo 1 de formas alternativas): só
-           aparece pra Oricorio (#741) de verdade -- ver DT.gaAskUsarNectar. */
-        (p.num===741 ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarNectar(\''+p.id+'\')">🌺 Trocar Estilo</button>' : '')+
-        /* Cap. leva desta sessão (tarefa #195): item segurado só entra
-           em luta a partir da EQUIPE (a Caixa não entra em luta, mesma
-           régua do Papel de Combate acima -- nunca aparece lá). */
-        '<button class="ga-btn-sm" onclick="DT.gaAskItemSegurado(\''+p.id+'\')">🎒 Item'+(p.itemSegurado?': '+esc2(heldItemByKey(p.itemSegurado).nome):'')+'</button>'+
-      '</div>';
       /* Arrastar de verdade (Cap. "Coloca a opção de arrastar a ordem
          do pokémon"): HTML5 `draggable` nativo -- carrega o PRÓPRIO id
          no dataTransfer ao começar a arrastar, e ao soltar EM CIMA de
@@ -15574,7 +15644,13 @@ function equipeScreenHTML(){
          dentro do atributo), mesma disciplina de todo onclick inline
          do projeto, mesmo esses NÃO sendo onclick. */
       var dragAttrs = 'draggable="true" ondragstart="event.dataTransfer.setData(\'text/plain\',\''+p.id+'\')" ondragover="event.preventDefault()" ondrop="event.preventDefault();DT.gaArrastarEquipe(event.dataTransfer.getData(\'text/plain\'),\''+p.id+'\')"';
-      return pokeCardMini(p, actions, i===0?'ativo':'', dragAttrs, true);
+      /* Cap. leva desta sessão ("Vamos colocar no site"): a arte de
+         assets/Card_Equipe.png substitui o card antigo (sprite solto +
+         botões avulsos) só na tela de Equipe -- Movimentos e Papel de
+         Combate ficam clicáveis DIRETO em cima dela agora (ver
+         pokeCardEquipeHTML acima). Caixa/Raids/Pokédex/Trocas etc.
+         continuam com pokeCardMini de sempre, sem nenhuma mudança. */
+      return pokeCardEquipeHTML(p, i, orderControls, dragAttrs);
     }).join('')+
     '</div></div>'+
     (STATE.box.length ? (function(){
