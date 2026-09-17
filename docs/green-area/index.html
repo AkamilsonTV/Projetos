@@ -6474,7 +6474,7 @@ function iniciarBatalhaRaid(raidId, leadPartyId, bolaEscolhida){
       playerActive: playerBattler, playerPartyOrder: STATE.party.map(function(p){return p.id;}), usedPartyIds:[lead.id],
       oppTeam:[bossBattler], oppIdx:0, hp:hp,
       log:['⚔️ Entrou na Raid contra '+spNome+'! Você mandou '+displayName(playerBattler)+' -- Regra de Ouro: você ataca primeiro, sempre.'],
-      healedThisFaint:{}, pendingHeal:null, pendingSwitch:false, pendingEvolution:null, pendingEvolutionQueue:null, pendingAprenderMovimento:null, pendingTrocarGolpeEvolucao:null,
+      healedThisFaint:{}, pendingHeal:null, pendingSwitch:false, pendingEvolution:null, pendingEvolutionQueue:null, pendingAprenderMovimento:null, pendingTrocarGolpeEvolucao:null, pendingTrocarGolpeEvolucaoQueue:null,
       oppDefeatedLevels:[], finished:null, captureDone:false,
       weather:{tipo:'neutro',turnsLeft:null}, terrain:{tipo:'neutro',turnsLeft:null},
       hazards:{player:{stealthRock:false,toxicSpikes:0}, opponent:{stealthRock:false,toxicSpikes:0}}
@@ -9149,6 +9149,7 @@ function startBattle(kind, opts, skipDiscrepancia){
     pendingEvolution: null,
     pendingAprenderMovimento: null,
     pendingTrocarGolpeEvolucao: null,
+    pendingTrocarGolpeEvolucaoQueue: null,
     oppDefeatedLevels: [],
     finished: null,
     captureDone: false,
@@ -10224,6 +10225,20 @@ function grantXpSemPausarEvolucao(p, xpGain){
    tomou o lugar. Chamada depois de CADA resposta (evolução/aprender
    Movimento/trocar golpe) -- pra luta normal (sem fila, ver init de
    STATE.battle) isso não faz nada, é 100% Raid-only. */
+/* Enfileira golpe(s) de evolução que NÃO couberam (Equipe já com 4
+   Movimentos) -- o primeiro vira a pergunta ATIVA (`pendingTrocarGolpeEvolucao`,
+   o que a tela realmente lê), o resto espera em `pendingTrocarGolpeEvolucaoQueue`
+   e é promovido 1 por 1 conforme o Treinador responde (ver
+   DT.gaResponderTrocarGolpeEvolucao). Sem isso, evoluir pra uma Espécie
+   com 2+ golpes de evolução de uma vez só perguntava sobre o primeiro
+   e perdia os outros pra sempre. */
+function enfileirarGolpesTrocaEvolucao(b, partyId, nomes){
+  (nomes||[]).forEach(function(nome){
+    var item = { partyId: partyId, moveName: nome };
+    if(!b.pendingTrocarGolpeEvolucao) b.pendingTrocarGolpeEvolucao = item;
+    else { b.pendingTrocarGolpeEvolucaoQueue = b.pendingTrocarGolpeEvolucaoQueue || []; b.pendingTrocarGolpeEvolucaoQueue.push(item); }
+  });
+}
 function avancarFilaEvolucao(b){
   if(!b || b.pendingEvolution || b.pendingHeal || b.pendingSwitch || b.pendingAprenderMovimento || b.pendingTrocarGolpeEvolucao) return;
   if(b.pendingEvolutionQueue && b.pendingEvolutionQueue.length){
@@ -10293,9 +10308,19 @@ DT.gaResponderEvolucao = function(aceitar){
        nunca oferecer 2x o mesmo golpe. O que não couber vira pergunta
        de troca (pausa a luta, mesmo padrão de pendingEvolution). */
     var golpesEvoSemEspaco = ensinarGolpesDeEvolucao(p, function(msg){ b.log.push(msg); });
-    if(golpesEvoSemEspaco.length && !b.pendingTrocarGolpeEvolucao){
-      b.pendingTrocarGolpeEvolucao = { partyId: p.id, moveName: golpesEvoSemEspaco[0] };
-    }
+    /* Cap. leva desta sessão ("Se durante a run o pokémon aprender
+       mais de um ataque o jogo tem que dar a oportunidade de ele
+       ensinar cada um deles... se ele aprender 5 ataques e tiver
+       full, o jogo precisa me deixar selecionar se quero aprender
+       cada um deles e substituir por algum que esteja lá"): ANTES só
+       o PRIMEIRO golpe sem espaço virava pergunta (`golpesEvoSemEspaco[0]`)
+       -- se a Espécie nova tivesse 2+ golpes de evolução e a Equipe já
+       estivesse cheia, o(s) resto simplesmente sumia(m) pra sempre,
+       sem nunca perguntar. Agora enfileira TODOS (mesmo padrão que
+       `STATE.pendingEvoMoveSwap`, a versão FORA de luta, já fazia
+       certo) -- pergunta um de cada vez, avança pro próximo assim que
+       o Treinador responde o atual (ver DT.gaResponderTrocarGolpeEvolucao). */
+    enfileirarGolpesTrocaEvolucao(b, p.id, golpesEvoSemEspaco);
     /* Cap. leva desta sessão: "quando evoluir... perguntar se deseja
        aprender algum ataque que o pokémon aprenda na evolução" --
        recalcula movimentosElegiveis JÁ com a Espécie/Nível novos: se
@@ -10362,6 +10387,9 @@ DT.gaResponderTrocarGolpeEvolucao = function(slotIndex){
     logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' optou por não aprender '+pt.moveName+' (golpe de evolução).');
   }
   b.pendingTrocarGolpeEvolucao = null;
+  if(b.pendingTrocarGolpeEvolucaoQueue && b.pendingTrocarGolpeEvolucaoQueue.length){
+    b.pendingTrocarGolpeEvolucao = b.pendingTrocarGolpeEvolucaoQueue.shift(); // próximo golpe de evolução esperando, se sobrar mais de um (ver enfileirarGolpesTrocaEvolucao)
+  }
   runBattleUntilPause();
   avancarFilaEvolucao(b); // Raid-only -- ver comentário em grantXpSemPausarEvolucao/avancarFilaEvolucao
   mutate();
@@ -18721,7 +18749,7 @@ function battleScreenHTML(){
   if(b.finished) out += batalhaResultadoPopupHTML(b, opp);
   if(b.pendingEvolution) out += evolucaoPopupHTML(b.pendingEvolution);
   if(b.pendingAprenderMovimento) out += aprenderMovimentoPopupHTML(b.pendingAprenderMovimento);
-  if(b.pendingTrocarGolpeEvolucao) out += trocarGolpeEvolucaoPopupHTML(b.pendingTrocarGolpeEvolucao);
+  if(b.pendingTrocarGolpeEvolucao) out += trocarGolpeEvolucaoPopupHTML(b.pendingTrocarGolpeEvolucao, (b.pendingTrocarGolpeEvolucaoQueue||[]).length);
   return out;
 }
 /* Popup de resultado de batalha (Cap. leva desta sessão: "a tela de
@@ -18863,7 +18891,7 @@ function aprenderMovimentoPopupHTML(pa){
    DT.gaResponderTrocarGolpeEvolucao) -- só aparece quando a Equipe já
    está com os 4 Movimentos cheios, então o golpe de evolução (SEMPRE
    grátis) não coube direto; deixa escolher QUAL dos 4 esquecer. */
-function trocarGolpeEvolucaoPopupHTML(pt){
+function trocarGolpeEvolucaoPopupHTML(pt, restantes){
   var p = STATE.party.filter(function(x){ return x.id===pt.partyId; })[0];
   if(!p) return '';
   var sp = speciesByNum(p.num);
@@ -18877,6 +18905,7 @@ function trocarGolpeEvolucaoPopupHTML(pt){
       '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderTrocarGolpeEvolucao(document.getElementById(\'gaTrocarGolpeEvo\').value)">📖 Trocar e aprender</button>'+
       '<button class="ga-btn-sm" onclick="DT.gaResponderTrocarGolpeEvolucao(\'\')">Não, obrigado</button>'+
     '</div>'+
+    (restantes>0 ? '<p class="ga-hint">e mais '+restantes+' golpe(s) de evolução esperando resposta depois deste.</p>' : '')+
   '</div></div>';
 }
 
