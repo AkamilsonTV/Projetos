@@ -308,13 +308,18 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-team-item,.ga-team-caixa{ flex:0 0 auto; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,.18); border-radius:11px; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:#fff; background:#1c3247; box-shadow:0 4px 10px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.1); transition:filter .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
 .ga-team-item:hover,.ga-team-caixa:hover{ filter:brightness(1.3); transform:translateY(-1px); }
 .ga-team-caixa.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
-/* Setas de reordenar: `.ga-order-controls` (style.css raiz) nasce
-   `position:absolute` pro canto do card antigo -- aqui viram uma
-   linha centralizada embaixo de Item/Caixa, dentro do fluxo normal
-   (o `gap` do `.ga-team-card` já separa ela do resto, sem precisar
-   colar em nada). Seletor composto pra sempre vencer a regra de
-   origem, mesma razão do `.ga-team-nameplate .ga-raid-badge` acima. */
-.ga-team-card .ga-order-controls{ position:static; display:flex; flex-direction:row; justify-content:center; gap:10px; }
+/* Setas de reordenar (Equipe + Equipe ativa da Área de Captura): "só
+   deixe elas na versão de dispositivo móvel. Muda elas em vez de cima
+   e baixo de esquerda pra direita e aumenta o tamanho delas pra
+   facilitar o clique" -- já dá pra arrastar um card com o mouse pra
+   reordenar (`DT.gaArrastarEquipe`), então as setas SÓ fazem falta
+   em quem usa o dedo (sem drag confiável no touch); escondidas por
+   padrão (`display:none`) e reativadas maiores dentro do
+   `@media max-width:760px` lá embaixo (cascata sempre vence por vir
+   depois). Ícones trocaram de ⬆️/⬇️ (sobra de quando a ordem já foi
+   vertical) pra ⬅️/➡️, condizente com "da esquerda pra direita" que o
+   hint de cada tela já documentava. */
+.ga-order-controls{ display:none; flex-direction:row; justify-content:center; gap:10px; }
 /* Cap. leva desta sessão ("O card da Raid e do histórico de raid pode
    ficar maior, de forma que ele fique melhor distribuído em largura
    no site. Pode ser do tamanho do card da equipe e centralizado"):
@@ -372,23 +377,12 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-chat-input{ flex:1; }
 .ga-poke-card{ position:relative; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; display:flex; flex-direction:column; }
 .ga-poke-card img{ width:64px; height:64px; image-rendering:pixelated; align-self:center; }
-/* Cap. leva desta sessão: "As setas de cima e baixo coloca na parte
-   superior esquerda do card de cada pokémon" -- flutua por cima do
-   canto superior esquerdo do PRÓPRIO card (`.ga-poke-card` acima
-   ganhou `position:relative` só pra ancorar isso), em vez de uma linha
-   inteira perdida lá embaixo entre Movimentos e Caixa. `z-index`
-   garante que fica por cima do sprite (que já tem `align-self:center`,
-   sem posicionamento próprio, então não disputa a mesma camada por
-   padrão -- só reforçando pra nunca ficar escondido). */
-.ga-order-controls{ position:absolute; top:6px; left:6px; display:flex; flex-direction:column; gap:3px; z-index:2; }
-.ga-order-controls .ga-btn-sm{ padding:3px 6px; line-height:1; opacity:.85; }
-.ga-order-controls .ga-btn-sm:hover{ opacity:1; }
 /* Cap. leva desta sessão: "Coloque a opção de histórico de vitórias e
    derrotas de cada pokémon... Pode ser algo simples como V: e D: no
-   canto superior direito do card" -- espelha .ga-order-controls (mesmo
-   .ga-poke-card position:relative como âncora), só que no canto oposto
-   e sem nenhum botão, só texto -- é puramente informativo (ver
-   pokeCardMini/finishBattle). */
+   canto superior direito do card" -- flutua por cima do canto superior
+   direito do PRÓPRIO card (`.ga-poke-card` acima ganhou
+   `position:relative` só pra ancorar isso), sem nenhum botão, só
+   texto -- é puramente informativo (ver pokeCardMini/finishBattle). */
 .ga-vd-badge{ position:absolute; top:6px; right:6px; font-size:11px; line-height:1.3; background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:2px 5px; z-index:2; white-space:nowrap; opacity:.9; }
 /* Cap. leva desta sessão (Raids -- "adicionar um R, pixelado (que
    significa raid) no card dele e na pokedex de quem capturou"): sem
@@ -685,6 +679,12 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
   .ga-hub-hero .ga-trainer-sprite{ align-self:center; }
   .ga-banner{ flex-wrap:wrap; }
   .ga-poke-grid{ grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); }
+  /* Setas de reordenar (⬅️/➡️, ver comentário de `.ga-order-controls`
+     lá em cima) -- só aparecem aqui no celular, e com alvo de toque
+     bem maior (48px, acima do mínimo recomendado de 44px) pra facilitar
+     acertar com o dedo. */
+  .ga-order-controls{ display:flex; margin-top:6px; }
+  .ga-order-controls .ga-btn-sm{ min-width:48px; min-height:48px; padding:0; display:flex; align-items:center; justify-content:center; font-size:1.35rem; }
 }
 
 
@@ -16574,8 +16574,8 @@ DT.gaSetPapelCombate = function(pid, papel){
    SESSION.capturaLeadId), só não dava pra ESCOLHER quem ocupa esse
    posto sem passar Pokémon um por um pra Caixa e puxar de volta na
    ordem certa. Agora dá pra reordenar a Equipe direto -- arrastando
-   (`DT.gaArrastarEquipe`, ponteiro/mouse) ou pelos botões ⬆️/⬇️
-   (`DT.gaMoverEquipe`, funciona em QUALQUER aparelho, incluso celular
+   (`DT.gaArrastarEquipe`, ponteiro/mouse) ou pelos botões ⬅️/➡️
+   (`DT.gaMoverEquipe`, só aparecem no celular -- ver `.ga-order-controls`
    -- arrastar de verdade (HTML5 `draggable`) não tem suporte nativo
    confiável em touch). O primeiro da lista fica destacado com uma
    borda própria (`.ga-poke-card.ativo`, ver equipeScreenHTML/style.css)
@@ -16837,14 +16837,14 @@ function equipeScreenHTML(){
   var timeAtivo = timeAtivoAgora();
   var out = timesBarHTML()+
     '<div class="ga-card"><h2>🎒 '+(timeAtivo ? esc2(timeAtivo.nome) : 'Equipe')+' ('+STATE.party.length+'/6)</h2>'+
-    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início) -- é ele quem entra primeiro na Área de Captura, e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
+    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início) -- é ele quem entra primeiro na Área de Captura, e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita -- arraste um card pra reordenar, ou use ⬅️/➡️ no celular.</p>' : '')+
     '<div class="ga-poke-grid ga-poke-grid-equipe">'+
     STATE.party.map(function(p, i){
       /* `.ga-order-controls` é posicionado absoluto (ver style.css)
          sobre o canto superior esquerdo do PRÓPRIO card. */
       var orderControls = STATE.party.length>1 ? '<div class="ga-order-controls">'+
-          (i>0 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',-1)">⬆️</button>' : '')+
-          (i<STATE.party.length-1 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',1)">⬇️</button>' : '')+
+          (i>0 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',-1)">⬅️</button>' : '')+
+          (i<STATE.party.length-1 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',1)">➡️</button>' : '')+
         '</div>' : '';
       /* Arrastar de verdade (Cap. "Coloca a opção de arrastar a ordem
          do pokémon"): HTML5 `draggable` nativo -- carrega o PRÓPRIO id
@@ -17408,7 +17408,7 @@ function capturaScreenHTML(){
       ? '<div class="ga-banner ok">🔁 Sequência automática rodando: luta '+(STATE.captureSequence.total-STATE.captureSequence.remaining)+' de '+STATE.captureSequence.total+' ('+STATE.captureSequence.vitorias+'✅ '+STATE.captureSequence.derrotas+'☠️) -- continua sozinha mesmo se você sair dessa tela ou recarregar a página.</div>'
       : '')+
     ticketParaEnergiaWidgetHTML('captura')+
-    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é quem entra primeiro na luta (e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita) -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
+    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é quem entra primeiro na luta (e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita) -- arraste um card pra reordenar, ou use ⬅️/➡️ no celular.</p>' : '')+
     /* Cap. leva desta sessão ("Os cards da equipe [na Área de Captura],
        preencha ali em cima igual fez no quadro de equipe, pra ele
        ficar por igual e ocupando todo o espaço"): mesma grade
@@ -17418,9 +17418,9 @@ function capturaScreenHTML(){
     '<div class="ga-poke-grid ga-poke-grid-equipe">'+STATE.party.map(function(p, i){
       var actions = '<div class="ga-poke-actions">'+
         (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
-        (STATE.party.length>1 ? '<div class="ga-btn-row">'+
-          (i>0 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',-1)">⬆️</button>' : '')+
-          (i<STATE.party.length-1 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',1)">⬇️</button>' : '')+
+        (STATE.party.length>1 ? '<div class="ga-order-controls">'+
+          (i>0 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',-1)">⬅️</button>' : '')+
+          (i<STATE.party.length-1 ? '<button class="ga-btn-sm" onclick="DT.gaMoverEquipe(\''+p.id+'\',1)">➡️</button>' : '')+
         '</div>' : '')+
       '</div>';
       /* Mesmo arrastar-pra-reordenar da Equipe (Cap. "Essa opção da
