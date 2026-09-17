@@ -8,9 +8,11 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🟢</text></svg>">
 <style>
 :root{
-  --bg:#0c1410; --bg2:#111d17; --panel:#152420; --panel2:#1b3128;
-  --line:#274238; --ink:#e6f5ec; --ink-dim:#8fb3a2; --accent:#4ade80;
-  --accent-dim:#22c55e; --danger:#f87171; --warn:#fbbf24; --radius:10px;
+  --bg:#090f0c; --bg2:#0e1712; --panel:#121e19; --panel2:#182a21;
+  --panel3:#1e3428;
+  --line:#25402f; --ink:#eef7f0; --ink-dim:#87a696; --accent:#3ddc84;
+  --accent-dim:#1fae63; --gold:#f2b84b; --pink:#f4699a;
+  --danger:#f87171; --warn:#fbbf24; --radius:12px; --radius-lg:18px;
 }
 /* min-width:0 em tudo (Cap. leva desta sessão: "adaptado também para
    quando abrir no celular não oter problema"): sem isso, um item
@@ -75,6 +77,13 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    .ga-shell, que são ancestrais da barra lateral. */
 .ga-main{ flex:1; min-width:0; overflow-x:hidden; }
 .ga-mobtop{ display:none; }
+/* Cap. leva desta sessão ("desenvolve uma versão otimizada pra
+   celular que a atual tá uma merda"): a gaveta off-canvas continua
+   existindo (agora só pelo botão "Mais"), mas no celular os 4 destinos
+   mais usados ganham uma barra FIXA embaixo, sempre visível, sem
+   precisar abrir gaveta nenhuma pra trocar de tela -- ver
+   mobileTabbarHTML()/wrap(). Escondida por padrão (desktop). */
+.ga-tabbar{ display:none; }
 /* Cap. leva desta sessão: "esse retângulo do meio... pode pegar quase
    toda a tela, deixando só a parte lateral esquerda... sendo o
    limitador dele": sem teto artificial de largura -- o conteúdo usa
@@ -90,7 +99,7 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-banner.ok{ background:#0f2e1c; border:1px solid var(--accent); color:#bbf7d0; }
 .ga-banner button{ background:transparent; border:1px solid currentColor; color:inherit; border-radius:6px; padding:2px 8px; font-size:.72rem; }
 
-.ga-card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; }
+.ga-card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 28px rgba(0,0,0,.28); }
 .ga-hint{ color:var(--ink-dim); font-size:.76rem; }
 .ga-rule{ border:none; border-top:1px solid var(--line); margin:14px 0; }
 
@@ -579,7 +588,20 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
      `flex-wrap:wrap` do `.ga-mobtop` acima) empurra ele pra própria
      linha, sempre visível, sem cortar nem sobrepor nada. */
   .ga-game-clock-mob{ flex-basis:100%; font-size:.74rem; padding:4px 8px; }
-  .ga-body{ max-width:100%; }
+  .ga-body{ max-width:100%; padding-bottom:calc(74px + env(safe-area-inset-bottom, 0px)); }
+  /* Barra fixa embaixo, 5 atalhos (os 4 destinos mais usados + "Mais",
+     que reabre a MESMA gaveta lateral de sempre pro resto do menu --
+     nada de rota nova, só um 2º jeito de abrir DT.gaToggleSidebar()). */
+  .ga-tabbar{ display:flex; position:fixed; left:0; right:0; bottom:0; z-index:22;
+    background:linear-gradient(180deg,var(--panel2),var(--panel)); border-top:2px solid var(--accent-dim);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .ga-tabbar button{ flex:1; min-width:0; background:transparent; border:none; color:var(--ink-dim);
+    display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 2px; border-radius:10px;
+    font-size:.62rem; font-weight:700; position:relative; }
+  .ga-tabbar button .ga-nav-ic{ font-size:1.15rem; }
+  .ga-tabbar button.active{ color:var(--accent); }
+  .ga-tabbar-badge{ position:absolute; top:2px; right:18%; background:var(--danger); color:#fff; font-size:.6rem;
+    font-weight:800; border-radius:999px; padding:0 5px; line-height:1.3; }
   .ga-grid3{ grid-template-columns:1fr; }
   .ga-quicknav{ flex-direction:column; }
   .ga-quicknav button{ width:100%; }
@@ -15353,6 +15375,33 @@ function mobileTopbarHTML(){
     '<div class="ga-game-clock ga-game-clock-mob" id="ga-game-clock-mob" title="Relógio ACELERADO do jogo (4h de jogo pra cada 1h real) -- algumas evoluções só acontecem de Dia ou de Noite, Pokétickets somam a cada Dia do jogo novo">'+esc2(relogioDoJogoTexto())+'</div>'+
   '</div>';
 }
+/* Cap. leva desta sessão ("desenvolve uma versão otimizada pra
+   celular que a atual tá uma merda"): antes, TODA navegação no
+   celular passava pela gaveta (abrir ☰, esperar animar, tocar no
+   item) -- pros 4 destinos mais usados isso é atrito desnecessário.
+   Essa barra fica fixa embaixo (CSS só entra em @media max-width:760px,
+   ver .ga-tabbar acima), 1 toque direto pra Início/Equipe/Captura/
+   Centro, e "Mais" continua abrindo a MESMA gaveta de sempre (reusa
+   DT.gaToggleSidebar -- todo o resto do menu continua acessível, só
+   não precisa mais dela pros atalhos do dia a dia). */
+function mobileTabbarHTML(){
+  if(!STATE || !STATE.trainerName) return '';
+  var qtdPedidos = (SESSION.pedidosAmizade||[]).length;
+  var qtdDm = dmTotalNaoLidas();
+  function item(ativo, ic, label, onClick, badge){
+    return '<button class="'+(ativo?'active':'')+'" onclick="'+onClick+'">'+
+      (badge>0 ? '<span class="ga-tabbar-badge">'+badge+'</span>' : '')+
+      '<span class="ga-nav-ic">'+ic+'</span>'+label+
+    '</button>';
+  }
+  return '<nav class="ga-tabbar">'+
+    item(SESSION.screen==='hub','🏠','Início',"DT.gaGoto('hub')")+
+    item(SESSION.screen==='equipe','🎒','Equipe',"DT.gaGoto('equipe')")+
+    item(SESSION.screen==='captura','🌿','Captura',"DT.gaGoto('captura')")+
+    item(SESSION.screen==='centro','🏥','Centro',"DT.gaAbrirCentro()",qtdPedidos)+
+    item(SESSION.sidebarOpen,'☰','Mais',"DT.gaToggleSidebar()",qtdDm)+
+  '</nav>';
+}
 DT.gaToggleSidebar = function(){ SESSION.sidebarOpen = !SESSION.sidebarOpen; render(); };
 function bannersHTML(){
   var out = '';
@@ -15434,7 +15483,7 @@ function screenHTML(){
 function wrap(bodyHTML){
   return '<div class="ga-shell">'+sidebarHTML()+
     '<div class="ga-main">'+mobileTopbarHTML()+'<div class="ga-body">'+bannersHTML()+bodyHTML+'</div></div>'+
-  '</div>';
+  '</div>'+mobileTabbarHTML();
 }
 
 /* Tela de login/criação de conta (Firestore, Nome+PIN) -- substitui
