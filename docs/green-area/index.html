@@ -15328,7 +15328,7 @@ var TOOLTIPS = {
    -- fechada por padrão, abre com o botão ☰ na barrinha de topo
    compacta que só aparece nessa largura (ver mobileTopbarHTML +
    SESSION.sidebarOpen/DT.gaToggleSidebar). */
-var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','moves:🗡️:Movimentos','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','raids:🏴:Raids Ativas','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
+var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','moves:🗡️:Movimentos','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','raids:🏴:Raids Ativas','mochila:🧳:Mochila','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
 function navListHTML(){
   /* Cap. leva desta sessão (Centro Pokémon): entrada própria (não
      genérica via NAV_ITENS/gaGoto -- precisa carregar o diretório e
@@ -15489,6 +15489,7 @@ function screenHTML(){
     case 'captura': return wrap(capturaScreenHTML());
     case 'ginasios': return wrap(ginasiosScreenHTML());
     case 'raids': return wrap(raidsScreenHTML());
+    case 'mochila': return wrap(mochilaScreenHTML());
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
@@ -15769,9 +15770,10 @@ function hubScreenHTML(){
       '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.poketickets)+'"><div class="ga-stat-label">🎫 Pokétickets</div><div class="ga-stat-val">'+(STATE.poketickets||0)+'/'+POKETICKETS_MAX+'</div>'+
         '<div class="ga-hint">+'+POKETICKETS_POR_DIA+' em <span id="ga-ticket-countdown">'+formatHHMMSS(secondsToNextPoketicketTick())+'</span> (próximo Dia do jogo)</div>'+
         ticketParaEnergiaWidgetHTML('hub')+'</div>'+
-      '<div class="ga-card ga-stat-card" title="Itens que a luta automática usa -- Pokébolas pra capturar (depois de vencer um selvagem) e Poções pro gatilho de cura em PV baixo. Compre mais na 🏪 Loja."><div class="ga-stat-label">🎒 Mochila</div>'+
+      '<div class="ga-card ga-stat-card" style="cursor:pointer;" title="Itens que a luta automática usa -- Pokébolas pra capturar (depois de vencer um selvagem) e Poções pro gatilho de cura em PV baixo. Clique pra ver a Mochila inteira." onclick="DT.gaGoto(\'mochila\')"><div class="ga-stat-label">🧳 Mochila</div>'+
         '<div class="ga-hint ga-item-row">'+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+(STATE.pokebolas[bl.key]||0); }).join('')+'</div>'+
-        '<div class="ga-hint ga-item-row">'+GA_ITEMS.map(function(it){ return itemIconHTML(it)+' '+(STATE.itens[it.key]||0); }).join('')+'</div></div>'+
+        '<div class="ga-hint ga-item-row">'+GA_ITEMS.map(function(it){ return itemIconHTML(it)+' '+(STATE.itens[it.key]||0); }).join('')+'</div>'+
+        '<div class="ga-hint" style="color:var(--accent);font-weight:700;">Ver tudo →</div></div>'+
       '<div class="ga-card ga-stat-card"><div class="ga-stat-label">🎖️ Insígnias</div>'+
         '<div class="ga-badges">'+GYM_LEADERS.map(function(l){ return '<img class="ga-badge-icon'+(STATE.badges.indexOf(l.id)!==-1?' on':'')+'" title="'+esc2(l.nome)+' ('+esc2(l.insignia)+')" src="'+spriteUrl(gymAceNum(l))+'" alt="'+esc2(l.insignia)+'" loading="lazy">'; }).join('')+'</div></div>'+
     '</div>'+
@@ -15780,6 +15782,7 @@ function hubScreenHTML(){
       '<button class="ga-btn" onclick="DT.gaGoto(\'ginasios\')">🎖️ Mestres Especialistas</button>'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')">🎒 Sua Equipe</button>'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'dex\')">📕 Pokédex</button>'+
+      '<button class="ga-btn" onclick="DT.gaGoto(\'mochila\')">🧳 Mochila</button>'+
     '</div>'+
   '</div>';
 }
@@ -16894,6 +16897,67 @@ function lojaFiltrosHTML(){
 }
 DT.gaSetLojaSearch = function(el){ SESSION.lojaSearch = (el && el.value || '').trim(); render(); };
 DT.gaSetLojaCategoria = function(key){ SESSION.lojaCategoria = key||''; render(); };
+/* Cap. leva desta sessão ("no início também quero criar um menu
+   Mochila onde todos os itens tem que aparecer"): tela nova, só
+   LEITURA (usar um item continua sendo feito de dentro da Equipe/
+   Caixa/Loja, cada botão já existente pro seu próprio fluxo -- essa
+   tela não duplica nenhum desses botões de propósito, é só "o que eu
+   tenho, tudo junto, num lugar só"). Reaproveita os MESMOS catálogos
+   que a Loja já usa (POKEBALLS/GA_ITEMS/EVOLUTION_STONES/etc. -- ver
+   lojaScreenHTML logo abaixo) filtrados pra só quem `lojaQtdAtual(it)
+   > 0`, então qualquer item novo que a Loja ganhar no futuro já
+   aparece aqui sozinho, sem precisar tocar nesta função de novo. */
+function mochilaSecaoHTML(titulo, itens){
+  var possuidos = itens.filter(function(it){ return lojaQtdAtual(it) > 0; });
+  if(!possuidos.length) return '';
+  return '<div class="ga-card"><h2>'+titulo+'</h2><div class="ga-loja-grid">'+possuidos.map(mochilaCardHTML).join('')+'</div></div>';
+}
+function mochilaCardHTML(it){
+  return '<div class="ga-loja-card">'+
+    '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
+    (it.desc ? '<div class="ga-hint">'+esc2(it.desc)+'</div>' : '')+
+    '<div class="ga-loja-preco">Você tem: '+lojaQtdAtual(it)+'</div>'+
+  '</div>';
+}
+function mochilaSecaoTmHTML(){
+  var nomes = Object.keys(STATE.tms||{}).filter(function(nome){ return (STATE.tms[nome]||0)>0; }).sort();
+  if(!nomes.length) return '';
+  return '<div class="ga-card"><h2>💿 TMs</h2><div class="ga-loja-grid">'+nomes.map(function(nome){
+    return '<div class="ga-loja-card"><div class="ga-loja-nome">💿 '+esc2(nome)+'</div>'+
+      '<div class="ga-hint">Ensina esse Movimento pra qualquer Pokémon que a Espécie aprenda por TM (Equipe → 🔁 Movimentos).</div>'+
+      '<div class="ga-loja-preco">Você tem: '+STATE.tms[nome]+'</div></div>';
+  }).join('')+'</div></div>';
+}
+/* Moedas de Gimmighoul: de propósito FORA dos catálogos da Loja (não
+   é comprável -- só acumula sozinho enquanto o Gimmighoul está na
+   Equipe, ver EVOLUTION_ITEM_COUNT_REQUIRED), então não aparece nas
+   seções acima -- ganha uma seção dedicada só quando o jogador já tem
+   pelo menos 1. */
+function mochilaSecaoEspeciaisHTML(){
+  var moedas = STATE.itens['moedas-gimmighoul']||0;
+  if(!moedas) return '';
+  return '<div class="ga-card"><h2>🌟 Especiais</h2><div class="ga-loja-grid">'+
+    '<div class="ga-loja-card"><div class="ga-loja-nome">🪙 Moedas de Gimmighoul</div>'+
+    '<div class="ga-hint">Acumula sozinho enquanto o Gimmighoul estiver na Equipe -- junte 999 pra evoluir em Gholdengo.</div>'+
+    '<div class="ga-loja-preco">Você tem: '+moedas+'/999</div></div>'+
+  '</div></div>';
+}
+function mochilaScreenHTML(){
+  var secoes = [
+    mochilaSecaoHTML('⚾ Pokébolas', POKEBALLS),
+    mochilaSecaoHTML('🧪 Itens Gerais', GA_ITEMS),
+    mochilaSecaoHTML('🪨 Pedras e Itens de Evolução', EVOLUTION_STONES.concat(EVOLUTION_EXCLUSIVE_ITEMS)),
+    mochilaSecaoHTML('🎒 Itens Segurados', HELD_ITEMS),
+    mochilaSecaoHTML('🔄 Itens de Evolução por Troca', EVOLUTION_HELD_ITEMS),
+    mochilaSecaoHTML('🌺 Néctares de Oricorio', ORICORIO_NECTAR_ITEMS),
+    mochilaSecaoTmHTML(),
+    mochilaSecaoEspeciaisHTML()
+  ];
+  var vazia = secoes.every(function(s){ return !s; });
+  return '<div class="ga-card"><h2>🧳 Mochila</h2>'+
+    '<p class="ga-hint">Todos os itens que você já tem, agrupados por categoria. Pra usar um item, vá direto no Pokémon (🎒 Equipe/Caixa) ou compre mais na 🏪 Loja.</p></div>'+
+    (vazia ? '<div class="ga-card"><p class="ga-hint">Sua Mochila está vazia -- ainda não comprou nenhum item na 🏪 Loja.</p></div>' : secoes.join(''));
+}
 function lojaScreenHTML(){
   var secoes = [
     lojaSecaoHTML('pokebolas', '⚾ Pokébolas', '', POKEBALLS),
