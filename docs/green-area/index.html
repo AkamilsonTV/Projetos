@@ -151,8 +151,28 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    de 2 colunas IGUAIS -- agora as 2 colunas sempre começam no mesmo x,
    não importa a largura de cada rótulo. */
 .ga-hub{ display:flex; flex-direction:column; gap:14px; }
-.ga-trainer-card{ display:flex; align-items:center; gap:14px; }
 .ga-trainer-sprite{ width:72px; height:72px; image-rendering:pixelated; }
+/* Cap. leva desta sessão ("ideia pra esse início... pode ser
+   criativo"): banner maior no topo (era só um card pequeno com nome+
+   contagem) -- sprite maior com sombra, texto de boas-vindas e os 2
+   atalhos mais usados como CTA de propósito (mesmo raciocínio do
+   protótipo aprovado, adaptado pros dados REAIS do jogo -- nada de
+   "Zonas" fictícias, só Insígnias/Pokédex/Equipe que já existem). */
+.ga-hub-hero{ display:flex; align-items:center; justify-content:space-between; gap:22px; flex-wrap:wrap; }
+.ga-hub-hero-info{ display:flex; flex-direction:column; gap:8px; max-width:640px; }
+.ga-hub-hero-kicker{ font-size:.7rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+.ga-hub-hero-sub{ color:var(--ink-dim); font-size:.85rem; line-height:1.5; margin:0; }
+.ga-hub-hero-cta{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+.ga-hub-hero .ga-trainer-sprite{ width:104px; height:104px; filter:drop-shadow(0 10px 16px rgba(0,0,0,.4)); flex:0 0 auto; }
+/* Tira com a Equipe ativa inteira (antes só o líder aparecia, como
+   sprite do card de treinador) -- clique em qualquer um leva direto
+   pra tela Equipe. */
+.ga-hub-partystrip{ display:flex; gap:10px; flex-wrap:wrap; }
+.ga-hub-party-mini{ display:flex; flex-direction:column; align-items:center; gap:4px; background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:8px 12px; min-width:64px; cursor:pointer; }
+.ga-hub-party-mini:hover{ border-color:var(--accent-dim); }
+.ga-hub-party-mini.ativo{ border-color:var(--accent-dim); box-shadow:0 0 0 1px var(--accent-dim); }
+.ga-hub-party-mini img{ width:44px; height:44px; image-rendering:pixelated; }
+.ga-hub-party-mini span{ font-size:.66rem; font-weight:700; color:var(--ink-dim); }
 .ga-grid3{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
 /* Cap. leva desta sessão: "isso tem que ser feito em todos os cards.
    De preferência centralizando": MESMO padrão do .ga-poke-card
@@ -169,7 +189,14 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-badges{ display:flex; flex-wrap:wrap; gap:6px; }
 .ga-badge-icon{ width:28px; height:28px; image-rendering:pixelated; opacity:.25; filter:grayscale(1); }
 .ga-badge-icon.on{ opacity:1; filter:none; }
-.ga-quicknav{ display:flex; flex-wrap:wrap; gap:10px; }
+/* Cap. leva desta sessão: botões de atalho viram cards com ícone em
+   destaque (igual os cards de ação do protótipo) em vez de uma linha
+   de botões de texto puro -- `.ga-quicknav-ic` é só o emoji (1ª parte
+   do texto do botão) numa `<span>` própria pra poder crescer sozinho
+   sem esticar o rótulo junto. */
+.ga-quicknav{ display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:10px; }
+.ga-quicknav button{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:16px 10px; font-size:.8rem; }
+.ga-quicknav-ic{ font-size:1.7rem; line-height:1; }
 
 /* Cap. leva desta sessão: "qualquer delas que fiquem alinhadas pra ter
    padrão... Escolher/Liderando ficarem na mesma base pra não ficar
@@ -623,8 +650,9 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
   .ga-tabbar-badge{ position:absolute; top:2px; right:18%; background:var(--danger); color:#fff; font-size:.6rem;
     font-weight:800; border-radius:999px; padding:0 5px; line-height:1.3; }
   .ga-grid3{ grid-template-columns:1fr; }
-  .ga-quicknav{ flex-direction:column; }
-  .ga-quicknav button{ width:100%; }
+  .ga-quicknav{ grid-template-columns:repeat(2,1fr); }
+  .ga-hub-hero{ flex-direction:column; align-items:flex-start; }
+  .ga-hub-hero .ga-trainer-sprite{ align-self:center; }
   .ga-banner{ flex-wrap:wrap; }
   .ga-poke-grid{ grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); }
 }
@@ -15648,8 +15676,18 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
     (actionsHTML||'')+
   '</div>';
 }
+/* Cap. leva desta sessão ("ideia pra Caixa... pílula de tipo
+   colorida"): `.ga-type` sempre foi uma pílula CINZA única pra
+   qualquer Tipo -- reaproveita o MESMO mapa de cor por Tipo que os
+   cards novos da Equipe já usam (TEAM_CARD_TYPE_COLOR, ver
+   pokeCardEquipeHTML) via `style` inline (vence a cor cinza da
+   classe sem precisar de mais nenhuma classe nova) -- ganho
+   automático em QUALQUER card que já chama typeTagsHTML (Caixa,
+   Pokédex, Trocas, diretório do Centro Pokémon etc.), sem precisar
+   tocar em cada tela uma por uma. */
 function typeTagsHTML(sp){
-  return '<span class="ga-type ga-type-'+sp.tipo1+'">'+sp.tipo1+'</span>'+(sp.tipo2?' <span class="ga-type ga-type-'+sp.tipo2+'">'+sp.tipo2+'</span>':'');
+  function pill(t){ return '<span class="ga-type" style="background:'+(TEAM_CARD_TYPE_COLOR[t]||'#274238')+';color:#0d1c2b;">'+t+'</span>'; }
+  return pill(sp.tipo1)+(sp.tipo2?' '+pill(sp.tipo2):'');
 }
 
 /* Card novo da Equipe -- design aprovado num protótipo à parte (100%
@@ -15750,11 +15788,27 @@ function hubScreenHTML(){
   var lead = STATE.party[0];
   var counts = dexCounts();
   return '<div class="ga-hub">'+
-    '<div class="ga-card ga-trainer-card">'+
+    '<div class="ga-card ga-hub-hero">'+
+      '<div class="ga-hub-hero-info">'+
+        '<div class="ga-hub-hero-kicker">Bem-vindo de volta</div>'+
+        '<h1>'+esc2(STATE.trainerName)+', sua jornada continua</h1>'+
+        '<p class="ga-hub-hero-sub">'+STATE.badges.length+' Insígnia(s) · '+counts.caught+'/'+counts.total+' na Pokédex. Sua Equipe está pronta -- parta direto pra Área de Captura ou dê uma olhada em quem te acompanha.</p>'+
+        '<div class="ga-hub-hero-cta">'+
+          '<button class="ga-btn ga-btn-primary" onclick="DT.gaGoto(\'captura\')">🌿 Área de Captura</button>'+
+          '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')">🎒 Ver Equipe</button>'+
+        '</div>'+
+      '</div>'+
       '<img class="ga-trainer-sprite" src="'+spriteUrl(spriteNumEfetivo(lead))+'" alt="">'+
-      '<div><h2>'+esc2(STATE.trainerName)+'</h2>'+
-      '<p class="ga-hint">'+STATE.badges.length+' Insígnia(s) · '+counts.caught+'/'+counts.total+' na Pokédex</p></div>'+
     '</div>'+
+    (STATE.party.length ? '<div class="ga-card"><h2>🎒 Equipe ativa</h2><div class="ga-hub-partystrip">'+
+      STATE.party.map(function(p, i){
+        var sp = speciesByNum(p.num);
+        return '<div class="ga-hub-party-mini'+(i===0?' ativo':'')+'" title="'+esc2(p.apelido||sp.name)+' -- Nv. '+p.level+'" onclick="DT.gaGoto(\'equipe\')">'+
+          '<img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt="" loading="lazy">'+
+          '<span>Nv. '+p.level+'</span>'+
+        '</div>';
+      }).join('')+
+    '</div></div>' : '')+
     '<div class="ga-grid3">'+
       '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.energia)+'"><div class="ga-stat-label">🔋 Energia</div><div class="ga-stat-val">'+STATE.energy+' / 1000</div>'+
         '<div class="ga-bar"><i style="width:'+(STATE.energy/10)+'%"></i></div>'+
@@ -15778,11 +15832,11 @@ function hubScreenHTML(){
         '<div class="ga-badges">'+GYM_LEADERS.map(function(l){ return '<img class="ga-badge-icon'+(STATE.badges.indexOf(l.id)!==-1?' on':'')+'" title="'+esc2(l.nome)+' ('+esc2(l.insignia)+')" src="'+spriteUrl(gymAceNum(l))+'" alt="'+esc2(l.insignia)+'" loading="lazy">'; }).join('')+'</div></div>'+
     '</div>'+
     '<div class="ga-quicknav">'+
-      '<button class="ga-btn" onclick="DT.gaGoto(\'captura\')">🌿 Área de Captura</button>'+
-      '<button class="ga-btn" onclick="DT.gaGoto(\'ginasios\')">🎖️ Mestres Especialistas</button>'+
-      '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')">🎒 Sua Equipe</button>'+
-      '<button class="ga-btn" onclick="DT.gaGoto(\'dex\')">📕 Pokédex</button>'+
-      '<button class="ga-btn" onclick="DT.gaGoto(\'mochila\')">🧳 Mochila</button>'+
+      '<button class="ga-btn" onclick="DT.gaGoto(\'captura\')"><span class="ga-quicknav-ic">🌿</span>Área de Captura</button>'+
+      '<button class="ga-btn" onclick="DT.gaGoto(\'ginasios\')"><span class="ga-quicknav-ic">🎖️</span>Mestres Especialistas</button>'+
+      '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')"><span class="ga-quicknav-ic">🎒</span>Sua Equipe</button>'+
+      '<button class="ga-btn" onclick="DT.gaGoto(\'dex\')"><span class="ga-quicknav-ic">📕</span>Pokédex</button>'+
+      '<button class="ga-btn" onclick="DT.gaGoto(\'mochila\')"><span class="ga-quicknav-ic">🧳</span>Mochila</button>'+
     '</div>'+
   '</div>';
 }
