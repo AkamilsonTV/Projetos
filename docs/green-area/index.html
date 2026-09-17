@@ -15429,7 +15429,7 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
     var nome = m ? m.name : '—';
     var cor = m ? (TEAM_CARD_TYPE_COLOR[m.tipo]||'#8fb3a2') : '#3a4750';
     var titulo = m ? (m.name+' ('+m.tipo+' · '+m.categoria+')') : 'Espaço de Movimento vazio';
-    return '<button type="button" class="ga-team-move" title="'+esc2(titulo)+'" onclick="DT.gaOpenMoves(\''+poke.id+'\')">'+
+    return '<button type="button" class="ga-team-move" title="'+esc2(titulo)+'" onclick="DT.gaOpenMoves(\''+poke.id+'\','+idx+')">'+
       '<span class="ga-team-move-fill" style="background:'+cor+';"></span>'+
       '<span class="ga-team-move-label">'+esc2(nome)+'</span>'+
     '</button>';
@@ -15791,8 +15791,17 @@ function movimentosElegiveis(poke){
   opcoes.sort(function(a,b){ return a.name<b.name?-1:(a.name>b.name?1:0); });
   return opcoes;
 }
-DT.gaOpenMoves = function(pid){ SESSION.movesOpenFor = pid; render(); };
-DT.gaCloseMoves = function(){ SESSION.movesOpenFor = null; render(); };
+/* Cap. leva desta sessão ("Os moves, quero que eles sejam
+   individuais. Quando eu clicar em um ele aparecer só ele pra
+   trocar"): `slotIndex` é opcional -- o botão "🔁 Movimentos" da
+   Caixa (sem slot nenhum pra clicar de verdade) continua abrindo os
+   4 de uma vez, chamando `DT.gaOpenMoves(pid)` sem 2º argumento;
+   cada botão de Movimento do card novo da Equipe (`.ga-team-move`)
+   já sabe qual dos 4 é (seu índice no array), então passa
+   `DT.gaOpenMoves(pid, idx)` e `movesPopupHTML` filtra pra mostrar
+   só aquele. */
+DT.gaOpenMoves = function(pid, slotIndex){ SESSION.movesOpenFor = pid; SESSION.movesOpenSlot = (slotIndex==null ? null : slotIndex); render(); };
+DT.gaCloseMoves = function(){ SESSION.movesOpenFor = null; SESSION.movesOpenSlot = null; render(); };
 DT.gaTrocarMovimento = function(pid, slotIndex, moveName){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
   if(!p || !moveName){ SESSION.error='Escolha um Movimento pra trocar.'; render(); return; }
@@ -15848,8 +15857,10 @@ function movesPopupHTML(pid){
      travados (placeholder) pra nunca abrir um buraco no meio do array
      (moves[2] preenchido sem moves[1] quebraria PP e outras contas que
      assumem array denso). */
+  var apenasSlot = SESSION.movesOpenSlot;
   var linhas = [];
   for(var idx=0; idx<4; idx++){
+    if(apenasSlot!=null && idx!==apenasSlot) continue;
     if(idx < moves.length){
       var m = moves[idx];
       linhas.push('<div class="ga-move-row">'+
