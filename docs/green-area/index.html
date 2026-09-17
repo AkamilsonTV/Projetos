@@ -7981,7 +7981,8 @@ function freshState(trainerName){
     box: [],
     battle: null,
     actionLog: [],
-    teamSlots: defaultTeamSlots()
+    teamSlots: defaultTeamSlots(),
+    timeAtivoIdx: null
   };
 }
 
@@ -8093,6 +8094,7 @@ function migrateState(){
     while(t.membros.length<6) t.membros.push(null);
     if(t.membros.length>6) t.membros.length = 6;
   });
+  if(typeof STATE.timeAtivoIdx!=='number') STATE.timeAtivoIdx = null;
 }
 
 /* Acha um Pokémon "vivo" (na Equipe ou na Caixa) pelo id -- usado
@@ -15036,9 +15038,18 @@ function itemSeguradoPopupHTML(pid){
 DT.gaLiberar = function(pid){
   if(STATE.party.length<=1 && STATE.box.length===0){ SESSION.error='Você precisa de pelo menos 1 Pokémon na Equipe.'; render(); return; }
   var alvo = STATE.party.filter(function(p){return p.id===pid;})[0] || STATE.box.filter(function(p){return p.id===pid;})[0];
+  var saiuDaEquipe = STATE.party.some(function(p){ return p.id===pid; });
   STATE.party = STATE.party.filter(function(p){ return p.id!==pid; });
   STATE.box = STATE.box.filter(function(p){ return p.id!==pid; });
   SESSION.confirmRelease = null;
+  /* Cap. leva desta sessão ("Aqui tem que ficar o nome do time" --
+     ver DT.gaCarregarTime): STATE.timeAtivoIdx só continua fazendo
+     sentido enquanto a Equipe permanece IDÊNTICA ao que o Time
+     carregado tinha -- qualquer ação que muda quem está na Equipe
+     (soltar/mandar pra Caixa/puxar da Caixa) limpa o rótulo, pra
+     nunca mostrar um nome de Time que não bate mais com a Equipe de
+     verdade. */
+  if(saiuDaEquipe) STATE.timeAtivoIdx = null;
   if(alvo) logAction('equipe', 'Soltou '+(alvo.apelido||speciesByNum(alvo.num).name)+' (Nv. '+alvo.level+') pra sempre.');
   mutate();
 };
@@ -15076,6 +15087,7 @@ DT.gaPuxarDaCaixa = function(pid){
   var p = STATE.box.filter(function(x){return x.id===pid;})[0]; if(!p) return;
   STATE.box = STATE.box.filter(function(x){return x.id!==pid;});
   STATE.party.push(p);
+  STATE.timeAtivoIdx = null; // ver comentário em DT.gaLiberar -- Equipe mudou, rótulo do Time não bate mais
   logAction('equipe', 'Puxou '+(p.apelido||speciesByNum(p.num).name)+' da Caixa pra Equipe.');
   mutate();
 };
@@ -15084,6 +15096,7 @@ DT.gaMandarPraCaixa = function(pid){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0]; if(!p) return;
   STATE.party = STATE.party.filter(function(x){return x.id!==pid;});
   STATE.box.push(p);
+  STATE.timeAtivoIdx = null; // ver comentário em DT.gaLiberar
   logAction('equipe', 'Mandou '+(p.apelido||speciesByNum(p.num).name)+' da Equipe pra Caixa.');
   mutate();
 };
@@ -15123,6 +15136,7 @@ DT.gaCarregarTime = function(idx){
   var restoDaEquipeAntiga = STATE.party.filter(function(p){ return idsNovos.indexOf(p.id)===-1; });
   STATE.box = STATE.box.filter(function(p){ return idsNovos.indexOf(p.id)===-1; }).concat(restoDaEquipeAntiga);
   STATE.party = encontrados;
+  STATE.timeAtivoIdx = idx; // "Aqui tem que ficar o nome do time" -- ver equipeScreenHTML
   SESSION.timesMenuOpen = false;
   /* "E depois ele pode trocar com o pokémon que falta ficando preto
      e branco" -- o aviso só INFORMA quem sumiu; o Time em si
@@ -15962,8 +15976,9 @@ function escolherPokemonParaSlotPopupHTML(){
   '</div></div>';
 }
 function equipeScreenHTML(){
+  var timeAtivo = (STATE.timeAtivoIdx!=null && STATE.teamSlots[STATE.timeAtivoIdx]) ? STATE.teamSlots[STATE.timeAtivoIdx] : null;
   var out = timesBarHTML()+
-    '<div class="ga-card"><h2>🎒 Equipe ('+STATE.party.length+'/6)</h2>'+
+    '<div class="ga-card"><h2>🎒 '+(timeAtivo ? esc2(timeAtivo.nome) : 'Equipe')+' ('+STATE.party.length+'/6)</h2>'+
     (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início) -- é ele quem entra primeiro na Área de Captura, e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
     '<div class="ga-poke-grid ga-poke-grid-equipe">'+
     STATE.party.map(function(p, i){
