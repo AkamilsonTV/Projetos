@@ -198,15 +198,38 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-poke-grid-equipe .ga-poke-card img.ga-team-sprite{ position:absolute; left:24.94cqw; top:21.98cqw; width:50.12cqw; height:50.12cqw; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 2.5cqw 3cqw rgba(0,0,0,.4)); }
 .ga-team-badge{ position:absolute; left:68.64cqw; top:3.95cqw; width:29.63cqw; height:12.35cqw; border-radius:3.7cqw; background:#224d76; box-shadow:0 .75cqw 2cqw rgba(0,0,0,.35), inset 0 .25cqw 0 rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center; gap:2cqw; font-weight:800; font-size:4.69cqw; letter-spacing:.07cqw; line-height:1; color:#eaf6ff; }
 .ga-team-badge b{ font-weight:800; } .ga-team-badge .v{ color:#7cf0a8; } .ga-team-badge .d{ color:#ff8080; } .ga-team-badge .sep{ opacity:.4; }
-.ga-team-name{ position:absolute; left:22.96cqw; top:77.53cqw; width:54.32cqw; height:8.89cqw; background:#041729; border-radius:1.5cqw; display:flex; align-items:center; justify-content:center; gap:1.2cqw; padding:0 1.2cqw; }
+/* Cap. leva desta sessão ("número... ao lado esquerdo do nome, usando a
+   mesma fonte e cor. Tipo... logo abaixo da imagem. Nivel... logo abaixo
+   do nome. Habilidade, Nature e Amizade... abaixo do placar de vitória e
+   derrota, à direita"): reorganiza as informações que antes eram linhas
+   de texto soltas embaixo do card pros espaços vazios ao redor do
+   sprite, dentro da própria arte. */
+.ga-team-name{ position:absolute; left:8cqw; top:77.53cqw; width:84cqw; height:8.89cqw; background:#041729; border-radius:1.5cqw; display:flex; align-items:center; justify-content:center; gap:.8cqw; padding:0 1.2cqw; }
+.ga-team-name .dexnum{ font-size:3.6cqw; font-weight:800; letter-spacing:.1cqw; color:#4ee6e6; text-shadow:0 0 3cqw rgba(78,230,230,.45); flex:0 0 auto; opacity:.8; }
 .ga-team-name .nome{ font-size:5.19cqw; font-weight:800; letter-spacing:.25cqw; color:#4ee6e6; text-shadow:0 0 3cqw rgba(78,230,230,.45); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ga-team-name .ga-apelido-lapis, .ga-team-name .ga-favorito-estrela{ font-size:3.6cqw; flex:0 0 auto; }
+.ga-team-level{ position:absolute; left:0; top:87.3cqw; width:100%; text-align:center; font-size:3.4cqw; font-weight:700; color:#cfe8ff; text-shadow:0 .25cqw .75cqw rgba(0,0,0,.6); }
+.ga-team-type{ position:absolute; left:24.94cqw; top:73cqw; width:50.12cqw; display:flex; align-items:center; justify-content:center; gap:1cqw; }
+.ga-team-type .ga-type{ font-size:2.9cqw; padding:.4cqw 1.6cqw; }
+.ga-team-sideinfo{ position:absolute; left:75.5cqw; top:18cqw; width:23.5cqw; display:flex; flex-direction:column; align-items:flex-end; gap:1.4cqw; text-align:right; }
+.ga-team-sideinfo div{ font-size:2.9cqw; font-weight:700; color:#cfe8ff; text-shadow:0 .2cqw .6cqw rgba(0,0,0,.6); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .ga-team-move{ position:absolute; border:none; padding:0; cursor:pointer; background:none; -webkit-tap-highlight-color:transparent; display:block; }
 .ga-team-move-fill{ position:absolute; inset:0; mix-blend-mode:color; }
 .ga-team-move-label{ position:relative; width:100%; height:100%; box-sizing:border-box; padding:0 2cqw; display:flex; align-items:center; justify-content:center; font-weight:800; color:#1c2a33; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.ga-team-role{ position:absolute; border:none; background:none; padding:0; cursor:pointer; -webkit-tap-highlight-color:transparent; border-radius:11cqw; transition:box-shadow .15s ease, transform .15s ease; }
-.ga-team-role.ativo{ box-shadow:0 0 0 .75cqw #fff, 0 0 0 1.5cqw #facc15, 0 0 5.5cqw 1.5cqw rgba(250,204,21,.6); transform:scale(1.03); }
-.ga-team-papel-label{ position:absolute; left:0; top:161.98cqw; width:100%; text-align:center; font-size:3.2cqw; font-weight:700; color:#cfe8ff; text-shadow:0 .25cqw .75cqw rgba(0,0,0,.6); }
+.ga-team-role{ position:absolute; border:none; background:none; padding:0; cursor:pointer; -webkit-tap-highlight-color:transparent; border-radius:2.5cqw; transition:box-shadow .15s ease, transform .15s ease; }
+.ga-team-role.ativo{ box-shadow:0 0 0 .6cqw #fff, 0 0 0 1.2cqw #facc15, 0 0 4cqw 1cqw rgba(250,204,21,.6); transform:scale(1.03); }
+/* Item/Caixa (Cap. leva desta sessão: "tem que... ficar ali na imagem
+   igual as moves"): mesmo espírito dos botões de Papel -- overlay
+   invisível, transparente, só clicável em cima do próprio desenho
+   "Item"/"Caixa" já pintado na arte (posições medidas a pixel, ver
+   TEAM_CARD_ITEM_SLOT/TEAM_CARD_CAIXA_SLOT). `.disabled` (Caixa
+   quando é o único Pokémon da Equipe) fica esmaecido e sem clique,
+   mesma régua do botão antigo (`disabled` de verdade não dava pra usar
+   aqui porque a Caixa às vezes ESCONDE o onclick inteiro, não só
+   desativa). */
+.ga-team-item{ position:absolute; border:none; background:none; padding:0; cursor:pointer; -webkit-tap-highlight-color:transparent; border-radius:2.5cqw; transition:filter .15s ease, transform .15s ease; }
+.ga-team-item:hover, .ga-team-item:active{ filter:brightness(1.18); transform:scale(1.02); }
+.ga-team-item.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
 /* Cap. leva desta sessão ("O card da Raid e do histórico de raid pode
    ficar maior, de forma que ele fique melhor distribuído em largura
    no site. Pode ser do tamanho do card da equipe e centralizado"):
@@ -15387,12 +15410,26 @@ var TEAM_CARD_MOVE_SLOTS = [
   { left:8.40, top:117.04, width:39.75, height:8.89, radius:4.20, fontSize:3.83 },
   { left:50.86, top:117.04, width:40.99, height:9.14, radius:4.20, fontSize:3.83 }
 ];
+/* Cap. leva desta sessão ("Ele tem que fazer a seleção CERTINHA da
+   imagem que eu selecionar"): posições medidas a pixel de verdade em
+   cima do PNG (assets/Card_Equipe.png, 1215x2160), não mais chutadas --
+   script Python com PIL/numpy achou a caixa exata de cada botão colorido
+   (Ataque/Defesa/Suporte/Controle/Item/Caixa já vêm DESENHADOS na
+   própria arte, com Tipo de colisão bem definido pela borda de cada
+   um), depois convertido pra cqw (px/405*100, mesmo fator do resto do
+   card). Ataque/Defesa/Suporte/Controle continuam chamando
+   DT.gaSetPapelCombate; Item/Caixa (novos) chamam DT.gaAskItemSegurado/
+   DT.gaMandarPraCaixa -- exatamente os MESMOS botões que antes ficavam
+   soltos embaixo do card, só que agora clicáveis direto em cima do
+   próprio desenho "Item"/"Caixa" da imagem, igual pedido. */
 var TEAM_CARD_ROLE_SLOTS = [
-  { key:'ataque', left:6.17, top:129.63, width:37.53, height:11.36 },
-  { key:'defesa', left:53.09, top:129.63, width:37.53, height:11.36 },
-  { key:'suporte', left:6.17, top:144.20, width:38.02, height:11.36 },
-  { key:'controle', left:52.84, top:144.20, width:38.02, height:11.36 }
+  { key:'ataque', left:13.75, top:129.55, width:33.33, height:11.52 },
+  { key:'defesa', left:61.65, top:129.55, width:32.18, height:11.52 },
+  { key:'suporte', left:13.09, top:144.12, width:33.99, height:11.52 },
+  { key:'controle', left:58.84, top:144.12, width:34.98, height:11.52 }
 ];
+var TEAM_CARD_ITEM_SLOT = { left:6.09, top:158.60, width:40.99, height:11.52 };
+var TEAM_CARD_CAIXA_SLOT = { left:52.91, top:158.60, width:40.91, height:11.52 };
 function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
   var sp = speciesByNum(poke.num);
   var progresso = poke.level>=NIVEL_MAX ? 'Nível máximo' : ((poke.xpNivel||0)+'/'+xpParaProximoNivel(poke.level)+' XP pro próximo Nível');
@@ -15401,12 +15438,16 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
     : ' <span class="ga-apelido-lapis" title="Definir apelido (só uma vez)" onclick="event.stopPropagation();DT.gaAskApelido(\''+poke.id+'\')">✏️</span>';
   var estrela = ' <span class="ga-favorito-estrela'+(poke.favorito?' on':'')+'" title="'+(poke.favorito?'Favorito -- clique pra tirar':'Marcar como favorito')+'" onclick="event.stopPropagation();DT.gaToggleFavorito(\''+poke.id+'\')">'+(poke.favorito?'⭐':'☆')+'</span>';
   var moves = poke.moves||[];
+  /* Cap. leva desta sessão ("tem que abrir de cada um"): passa o índice
+     do próprio slot pro DT.gaOpenMoves -- o popup agora mostra só
+     aquele Movimento (ver movesPopupHTML/SESSION.movesOpenSlot), nunca
+     mais os 4 de uma vez só. */
   var movesHTML = TEAM_CARD_MOVE_SLOTS.map(function(s, idx){
     var m = moves[idx];
     var nome = m ? m.name : '—';
     var cor = m ? (TEAM_CARD_TYPE_COLOR[m.tipo]||'#8fb3a2') : '#3a4750';
     var titulo = m ? (m.name+' ('+m.tipo+' · '+m.categoria+')') : 'Espaço de Movimento vazio';
-    return '<button type="button" class="ga-team-move" title="'+esc2(titulo)+'" onclick="DT.gaOpenMoves(\''+poke.id+'\')" '+
+    return '<button type="button" class="ga-team-move" title="'+esc2(titulo)+'" onclick="DT.gaOpenMoves(\''+poke.id+'\','+idx+')" '+
       'style="left:'+s.left+'cqw;top:'+s.top+'cqw;width:'+s.width+'cqw;height:'+s.height+'cqw;">'+
       '<span class="ga-team-move-fill" style="border-radius:'+s.radius+'cqw;background:'+cor+';"></span>'+
       '<span class="ga-team-move-label" style="font-size:'+s.fontSize+'cqw;">'+esc2(nome)+'</span>'+
@@ -15419,28 +15460,42 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
       'aria-pressed="'+ativo+'" onclick="DT.gaSetPapelCombate(\''+poke.id+'\',\''+rs.key+'\')" '+
       'style="left:'+rs.left+'cqw;top:'+rs.top+'cqw;width:'+rs.width+'cqw;height:'+rs.height+'cqw;"></button>';
   }).join('');
+  var podeCaixa = STATE.party.length>1;
+  var itemCaixaHTML =
+    '<button type="button" class="ga-team-item" title="'+(poke.itemSegurado?'Item: '+esc2(heldItemByKey(poke.itemSegurado).nome):'Item segurado')+'" onclick="DT.gaAskItemSegurado(\''+poke.id+'\')" '+
+      'style="left:'+TEAM_CARD_ITEM_SLOT.left+'cqw;top:'+TEAM_CARD_ITEM_SLOT.top+'cqw;width:'+TEAM_CARD_ITEM_SLOT.width+'cqw;height:'+TEAM_CARD_ITEM_SLOT.height+'cqw;"></button>'+
+    '<button type="button" class="ga-team-item'+(podeCaixa?'':' disabled')+'" title="'+(podeCaixa?'Mandar pra Caixa':'Não dá pra mandar o único Pokémon da Equipe pra Caixa')+'" '+(podeCaixa?'onclick="DT.gaMandarPraCaixa(\''+poke.id+'\')"':'')+' '+
+      'style="left:'+TEAM_CARD_CAIXA_SLOT.left+'cqw;top:'+TEAM_CARD_CAIXA_SLOT.top+'cqw;width:'+TEAM_CARD_CAIXA_SLOT.width+'cqw;height:'+TEAM_CARD_CAIXA_SLOT.height+'cqw;"></button>';
+  /* Cap. leva desta sessão ("número... ao lado esquerdo do nome...
+     Tipo... logo abaixo da imagem. Nivel... logo abaixo do nome.
+     Habilidade, Nature e Amizade... abaixo do placar de vitória e
+     derrota, à direita"): tudo isso deixa de ser linha de texto solta
+     embaixo do card (só sobrava a barra de XP e os contadores
+     especiais de Gimmighoul/Meltan) e passa a ficar desenhado em cima
+     da própria arte, nos espaços que sobram ao redor do sprite. */
   var art = '<div class="ga-team-art">'+
     '<img class="ga-team-bg" src="assets/Card_Equipe.png" alt="">'+
     '<div class="ga-team-badge" title="Vitórias / Derrotas desse Pokémon"><b class="v">'+(poke.vitorias||0)+'V</b><span class="sep">|</span><b class="d">'+(poke.derrotas||0)+'D</b></div>'+
+    '<div class="ga-team-sideinfo">'+
+      '<div title="Habilidade">'+esc2(poke.habilidade||'—')+'</div>'+
+      '<div title="Natureza">'+esc2(poke.natureza||'—')+'</div>'+
+      '<div title="Felicidade -- sobe com Nível/vitória, desce ao desmaiar; algumas evoluções dependem dela">❤️ '+(poke.felicidade!=null?poke.felicidade:FELICIDADE_INICIAL)+'/'+FELICIDADE_MAX+'</div>'+
+    '</div>'+
     '<img class="ga-team-sprite" src="'+spriteUrl(spriteNumEfetivo(poke))+'" alt="">'+
-    '<div class="ga-team-name"><span class="nome">'+esc2((poke.apelido||sp.name).toUpperCase())+'</span>'+lapis+estrela+'</div>'+
-    movesHTML+rolesHTML+
-    '<div class="ga-team-papel-label">Papel em uso: '+esc2(PAPEL_COMBATE_LABEL[papelAtual])+'</div>'+
+    '<div class="ga-team-type">'+typeTagsHTML(tiposEfetivos(poke))+'</div>'+
+    '<div class="ga-team-name"><span class="dexnum">#'+String(poke.num).padStart(4,'0')+'</span><span class="nome">'+esc2((poke.apelido||sp.name).toUpperCase())+'</span>'+lapis+estrela+'</div>'+
+    '<div class="ga-team-level">Nv. '+poke.level+'</div>'+
+    movesHTML+rolesHTML+itemCaixaHTML+
   '</div>';
   var actions = '<div class="ga-poke-actions">'+
     (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
-    (STATE.party.length>1 ? '<button class="ga-btn-sm" onclick="DT.gaMandarPraCaixa(\''+poke.id+'\')">📦 Caixa</button>' : '')+
     (pedrasElegiveisPara(poke).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+poke.id+'\')">🪨 Usar Item</button>' : '')+
     (giroElegivelPara(poke).length ? '<button class="ga-btn-sm" onclick="DT.gaVirarPokemon(\''+poke.id+'\')">🔄 Virar</button>' : '')+
     (poke.num===741 ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarNectar(\''+poke.id+'\')">🌺 Trocar Estilo</button>' : '')+
-    '<button class="ga-btn-sm" onclick="DT.gaAskItemSegurado(\''+poke.id+'\')">🎒 Item'+(poke.itemSegurado?': '+esc2(heldItemByKey(poke.itemSegurado).nome):'')+'</button>'+
   '</div>';
   return '<div class="ga-poke-card ga-team-card'+(i===0?' ativo':'')+'" '+(dragAttrs||'')+'>'+
     (orderControls||'')+art+
-    '<div class="ga-poke-meta">#'+String(poke.num).padStart(4,'0')+' · Nv. '+poke.level+' · '+typeTagsHTML(tiposEfetivos(poke))+'</div>'+
-    '<div class="ga-hint">'+esc2(poke.natureza||'—')+' · '+esc2(poke.habilidade||'—')+'</div>'+
     '<div class="ga-hint">'+progresso+'</div>'+
-    '<div class="ga-hint" title="Felicidade -- sobe com Nível/vitória, desce ao desmaiar; algumas evoluções dependem dela">❤️ '+(poke.felicidade!=null?poke.felicidade:FELICIDADE_INICIAL)+'/'+FELICIDADE_MAX+'</div>'+
     (poke.num===999 ? '<div class="ga-hint" title="Moedas de Gimmighoul -- só acumula enquanto ele estiver na Equipe (nunca na Caixa); junte 999 pra evoluir em Gholdengo">🪙 '+(STATE.itens['moedas-gimmighoul']||0)+'/999</div>' : '')+
     (poke.num===808 ? '<div class="ga-hint" title="Doce de Meltan -- item de Mochila comprável na Loja; junte 400 pra evoluir em Melmetal no próximo level up">🍡 '+(STATE.itens['doce-meltan']||0)+'/400</div>' : '')+
     actions+
@@ -15766,8 +15821,14 @@ function movimentosElegiveis(poke){
   opcoes.sort(function(a,b){ return a.name<b.name?-1:(a.name>b.name?1:0); });
   return opcoes;
 }
-DT.gaOpenMoves = function(pid){ SESSION.movesOpenFor = pid; render(); };
-DT.gaCloseMoves = function(){ SESSION.movesOpenFor = null; render(); };
+/* Cap. leva desta sessão ("Moves quando clicamos em um ele tá abrindo
+   todos... tem que abrir de cada um"): `slotIndex` opcional -- quando vem
+   de um clique num Movimento específico do card novo da Equipe, o popup
+   mostra SÓ aquele espaço (ver movesPopupHTML abaixo); o botão "🔁
+   Movimentos" antigo (Caixa) continua chamando sem slot nenhum, mostrando
+   os 4 igual sempre. */
+DT.gaOpenMoves = function(pid, slotIndex){ SESSION.movesOpenFor = pid; SESSION.movesOpenSlot = (slotIndex==null ? null : slotIndex); render(); };
+DT.gaCloseMoves = function(){ SESSION.movesOpenFor = null; SESSION.movesOpenSlot = null; render(); };
 DT.gaTrocarMovimento = function(pid, slotIndex, moveName){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
   if(!p || !moveName){ SESSION.error='Escolha um Movimento pra trocar.'; render(); return; }
@@ -15823,8 +15884,10 @@ function movesPopupHTML(pid){
      travados (placeholder) pra nunca abrir um buraco no meio do array
      (moves[2] preenchido sem moves[1] quebraria PP e outras contas que
      assumem array denso). */
+  var apenasSlot = SESSION.movesOpenSlot;
   var linhas = [];
   for(var idx=0; idx<4; idx++){
+    if(apenasSlot!=null && idx!==apenasSlot) continue;
     if(idx < moves.length){
       var m = moves[idx];
       linhas.push('<div class="ga-move-row">'+
