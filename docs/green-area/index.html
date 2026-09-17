@@ -211,17 +211,20 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-poke-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
 /* Cap. leva desta sessão: "os cards tem que ser sempre do mesmo
    tamanho, caso não caiba na tela ele não tem que diminuir, e sim
-   ativar uma rolagem lateral" -- antes (`auto-fit`/`minmax(170px,1fr)`)
-   os cards ESTICAVAM pra preencher a largura sobrando com poucos
-   Pokémon e ENCOLHIAM pra caber telas estreitas; agora é uma fileira
-   flex de largura fixa (`.ga-poke-grid-equipe-card-w`) que NUNCA muda
-   de tamanho -- quando os cards não cabem todos na largura da tela,
-   `overflow-x:auto` abre rolagem lateral em vez de encolher ou quebrar
-   linha. Só a Equipe/Equipe ativa (sempre <=6 Pokémon) usa essa
-   variante; `.ga-poke-grid` padrão (Caixa/Pokédex/Trocas/etc., listas
-   longas) continua o grid normal, sem rolagem lateral. */
+   ativar uma rolagem lateral" + depois "o padrão tem que ser esse [6
+   cards grandes preenchendo a largura toda], só aumentar pra ficar
+   assim e aplicar a política que falei de rolagem" -- então é um
+   HÍBRIDO: cresce (`flex-grow:1`) pra preencher a largura sobrando
+   IGUAL o `auto-fit` de antes fazia (o "padrão" pedido, cards grandes
+   ocupando a área toda quando cabem), mas NUNCA encolhe abaixo do
+   piso de 220px (`flex-shrink:0` + `min-width`) -- quando os 6 não
+   cabem nem no piso, em vez de encolher (o que o `auto-fit` fazia e
+   foi rejeitado), `overflow-x:auto` abre rolagem lateral. Só a
+   Equipe/Equipe ativa (sempre <=6 Pokémon) usa essa variante;
+   `.ga-poke-grid` padrão (Caixa/Pokédex/Trocas/etc., listas longas)
+   continua o grid normal, sem rolagem lateral. */
 .ga-poke-grid-equipe{ display:flex; flex-wrap:nowrap; overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch; gap:14px; }
-.ga-poke-grid-equipe>*{ flex:0 0 200px; width:200px; }
+.ga-poke-grid-equipe>*{ flex:1 1 220px; min-width:220px; }
 .ga-poke-grid-equipe .ga-poke-card{ padding:16px; }
 .ga-poke-grid-equipe .ga-poke-card img{ width:88px; height:88px; }
 .ga-poke-grid-equipe .ga-poke-name{ font-size:1rem; }
@@ -285,14 +288,25 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-team-move-label{ position:relative; display:flex; align-items:center; justify-content:center; height:100%; padding:0 6px; font-size:.7rem; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(0,0,0,.22)); }
 .ga-team-roles-label{ text-align:center; font-size:.64rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim); margin-top:6px; }
 .ga-team-roles{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:2px; }
-.ga-team-role{ flex:0 0 auto; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border:none; border-radius:12px; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); box-shadow:0 3px 8px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.2); transition:box-shadow .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
+/* Cap. leva desta sessão ("Os botões de role e miscelânea podem ter a
+   mesma cor do fundo, mas estando um plano a frente. E uma bordinha
+   branca quase invisível pra ele não sumir no fundo"): saem os
+   gradientes de cor própria (azul do Papel de Combate, roxo-ciano do
+   Item/Caixa) -- os 6 botões (Papel de Combate + Item + Caixa) agora
+   usam o MESMO tom do fundo do `.ga-team-card` (`--team-card-mid`, o
+   ponto médio do gradiente do card), só um pouco mais claro pra ler
+   como "um plano à frente" (elevado) mesmo sem cor própria pra
+   diferenciar -- a profundidade vem do `box-shadow` (sombra por
+   baixo + brilho interno em cima) mais a borda branca quase invisível
+   pedida (`rgba(255,255,255,.18)`), que impede o botão de sumir
+   dentro do fundo idêntico. `.ativo` continua com o anel branco/dourado
+   de sempre, então o Papel escolhido ainda salta aos olhos igual. */
+.ga-team-role{ flex:0 0 auto; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,.18); border-radius:12px; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); background:#1c3247; box-shadow:0 4px 10px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.1); transition:box-shadow .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
 .ga-team-role:hover{ transform:translateY(-1px); }
-.ga-team-role-ataque,.ga-team-role-defesa,.ga-team-role-suporte,.ga-team-role-controle{ background:linear-gradient(150deg,#38bdf8,#2563eb); }
 .ga-team-role.ativo{ box-shadow:0 0 0 2px #fff, 0 0 0 4px #facc15, 0 0 14px 3px rgba(250,204,21,.55); transform:translateY(-1px) scale(1.02); }
 .ga-team-itemcaixa{ display:flex; justify-content:center; align-items:center; gap:8px; }
-.ga-team-item,.ga-team-caixa{ flex:0 0 auto; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border:none; border-radius:11px; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:#0d1c2b; box-shadow:0 3px 8px rgba(0,0,0,.25); transition:filter .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
-.ga-team-item:hover,.ga-team-caixa:hover{ filter:brightness(1.1); transform:translateY(-1px); }
-.ga-team-item,.ga-team-caixa{ background:linear-gradient(135deg,#a78bfa,#22d3ee); }
+.ga-team-item,.ga-team-caixa{ flex:0 0 auto; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,.18); border-radius:11px; padding:0; cursor:pointer; font-size:1.15rem; line-height:1; color:#fff; background:#1c3247; box-shadow:0 4px 10px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.1); transition:filter .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
+.ga-team-item:hover,.ga-team-caixa:hover{ filter:brightness(1.3); transform:translateY(-1px); }
 .ga-team-caixa.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
 /* Setas de reordenar: `.ga-order-controls` (style.css raiz) nasce
    `position:absolute` pro canto do card antigo -- aqui viram uma
