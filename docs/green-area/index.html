@@ -243,9 +243,11 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    fundo/borda tracejada mais apagados, sem sombra/gradiente vivo, só
    um ícone + texto centralizados, sem onclick (aria-hidden, puramente
    visual). */
-.ga-team-card-ghost{ background:transparent; border:2px dashed rgba(255,255,255,.14); box-shadow:none; align-items:center; justify-content:center; min-height:220px; gap:6px; }
-.ga-team-ghost-ic{ font-size:1.8rem; opacity:.28; }
-.ga-team-ghost-txt{ font-size:.78rem; font-weight:700; color:var(--ink-dim); opacity:.6; text-transform:uppercase; letter-spacing:.06em; }
+.ga-team-card-ghost{ background:transparent; border:2px dashed rgba(255,255,255,.14); box-shadow:none; align-items:center; justify-content:center; min-height:220px; gap:6px; cursor:pointer; transition:border-color .15s ease, background .15s ease; -webkit-tap-highlight-color:transparent; }
+.ga-team-card-ghost:hover,.ga-team-card-ghost:focus-visible{ border-color:var(--accent-dim); background:rgba(255,255,255,.03); outline:none; }
+.ga-team-card-ghost:hover .ga-team-ghost-ic,.ga-team-card-ghost:hover .ga-team-ghost-txt{ opacity:.85; }
+.ga-team-ghost-ic{ font-size:1.8rem; opacity:.28; transition:opacity .15s ease; }
+.ga-team-ghost-txt{ font-size:.78rem; font-weight:700; color:var(--ink-dim); opacity:.6; text-transform:uppercase; letter-spacing:.06em; transition:opacity .15s ease; }
 .ga-team-topbar{ display:flex; align-items:center; justify-content:space-between; }
 .ga-team-pokeball{ width:20px; height:20px; border-radius:50%; background:linear-gradient(180deg,#eef3f6 0%,#eef3f6 48%,#1c2a33 48%,#1c2a33 52%,#ef4444 52%,#ef4444 100%); box-shadow:0 0 0 2px #0a1420; opacity:.85; position:relative; }
 .ga-team-pokeball::after{ content:''; position:absolute; inset:6px; border-radius:50%; background:#0a1420; box-shadow:0 0 0 2px #eef3f6; }
@@ -15836,6 +15838,27 @@ DT.gaPuxarDaCaixa = function(pid){
   logAction('equipe', 'Puxou '+(p.apelido||speciesByNum(p.num).name)+' da Caixa pra Equipe.');
   mutate();
 };
+/* Cap. leva desta sessão ("essa vaga livre tem que ser clicável e
+   chamar a box pra gente escolher um pokémon"): o card fantasma
+   (ver equipeScreenHTML) agora chama este popup em vez de ficar
+   `aria-hidden`/sem ação -- MESMO padrão simples de clicar direto no
+   card (sem botão à parte) já usado em escolherPokemonParaSlotPopupHTML
+   (Editor de Time), só que aqui só mostra a Caixa (a Equipe já está
+   cheia de quem já está na Equipe, não faz sentido oferecer de novo) e
+   já chama DT.gaPuxarDaCaixa de verdade ao escolher -- a MESMA função
+   que o botão "⬆️ Pra Equipe" da Caixa (mais abaixo na mesma tela) já
+   usa, então o resultado é idêntico, só o caminho pra chegar lá que é
+   novo. */
+DT.gaAbrirEscolherDaCaixa = function(){
+  if(!STATE || STATE.party.length>=6) return;
+  SESSION.escolherDaCaixaAberto = true;
+  render();
+};
+DT.gaFecharEscolherDaCaixa = function(){ SESSION.escolherDaCaixaAberto = false; render(); };
+DT.gaEscolherDaCaixaPra = function(pid){
+  SESSION.escolherDaCaixaAberto = false;
+  DT.gaPuxarDaCaixa(pid);
+};
 DT.gaMandarPraCaixa = function(pid){
   if(STATE.party.length<=1){ SESSION.error='A Equipe precisa de pelo menos 1 Pokémon.'; render(); return; }
   var p = STATE.party.filter(function(x){return x.id===pid;})[0]; if(!p) return;
@@ -16154,6 +16177,7 @@ function screenHTML(){
   if(SESSION.confirmRelease) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + confirmarLiberarPopupHTML(SESSION.confirmRelease);
   if(SESSION.editApelidoFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + editApelidoPopupHTML(SESSION.editApelidoFor);
   if(SESSION.editItemFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + itemSeguradoPopupHTML(SESSION.editItemFor);
+  if(SESSION.escolherDaCaixaAberto) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + escolherDaCaixaPopupHTML();
   if(SESSION.usarPedraFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + usarPedraPopupHTML(SESSION.usarPedraFor);
   if(SESSION.usarNectarFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + usarNectarPopupHTML(SESSION.usarNectarFor);
   if(SESSION.dexOpenNum) return wrap(hubScreenHTML() /* mantém o fundo, popup por cima */) + dexPopupHTML(SESSION.dexOpenNum);
@@ -16778,6 +16802,24 @@ function escolherPokemonParaSlotPopupHTML(){
     '<button class="ga-btn-sm" onclick="DT.gaCancelEscolherParaSlotTime()">← Voltar</button>'+
   '</div></div>';
 }
+/* Popup do card fantasma "Vaga livre" (ver DT.gaAbrirEscolherDaCaixa
+   acima) -- clique direto no card, mesmo estilo de
+   escolherPokemonParaSlotPopupHTML. */
+function escolherDaCaixaPopupHTML(){
+  return '<div class="ga-overlay" onclick="DT.gaFecharEscolherDaCaixa()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaFecharEscolherDaCaixa()">✕</button>'+
+    '<h2>📦 Escolher da Caixa</h2>'+
+    (STATE.box.length ? '<div class="ga-poke-grid">'+STATE.box.map(function(p){
+      var sp = speciesByNum(p.num);
+      return '<div class="ga-poke-card" onclick="DT.gaEscolherDaCaixaPra(\''+p.id+'\')" style="cursor:pointer;">'+
+        '<img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt="">'+
+        '<div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div>'+
+        '<div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(tiposEfetivos(p))+'</div>'+
+      '</div>';
+    }).join('')+'</div>' : '<p class="ga-hint">Sua Caixa está vazia -- capture mais Pokémon na 🌿 Área de Captura.</p>')+
+    '<button class="ga-btn-sm" onclick="DT.gaFecharEscolherDaCaixa()">← Voltar</button>'+
+  '</div></div>';
+}
 function equipeScreenHTML(){
   var timeAtivo = timeAtivoAgora();
   var out = timesBarHTML()+
@@ -16816,15 +16858,20 @@ function equipeScreenHTML(){
        da largura) -- em vez de mudar pra `auto-fill` (que deixaria um
        vão vazio invisível à direita, perdendo o "preenche a área"
        original), preenche as vagas que sobram (até 6) com um card
-       FANTASMA (mesmo tamanho de grid-cell, só visual, sem onclick) --
-       `auto-fit` então reparte o espaço entre os 6 juntos (reais +
-       fantasma) do mesmo jeito de sempre, então um card real nunca
-       fica maior que o "tamanho padrão de 1/6", sempre da esquerda
-       pra direita na ordem da Equipe. */
+       FANTASMA (mesmo tamanho de grid-cell) -- `auto-fit` então reparte
+       o espaço entre os 6 juntos (reais + fantasma) do mesmo jeito de
+       sempre, então um card real nunca fica maior que o "tamanho
+       padrão de 1/6", sempre da esquerda pra direita na ordem da
+       Equipe. Cap. leva seguinte ("essa vaga livre tem que ser
+       clicável e chamar a box pra gente escolher um pokémon"): o
+       fantasma ganhou onclick (DT.gaAbrirEscolherDaCaixa, ver popup
+       escolherDaCaixaPopupHTML) -- clicar nele abre a Caixa pra puxar
+       alguém pra essa vaga, mesma ação de sempre (DT.gaPuxarDaCaixa)
+       só com um caminho novo de chegar lá. */
     (function(){
       var ghosts = '';
       for(var g=0; g<Math.max(0, 6-STATE.party.length); g++){
-        ghosts += '<div class="ga-team-card ga-team-card-ghost" aria-hidden="true"><div class="ga-team-ghost-ic">➕</div><div class="ga-team-ghost-txt">Vaga livre</div></div>';
+        ghosts += '<div class="ga-team-card ga-team-card-ghost" role="button" tabindex="0" title="Escolher um Pokémon da Caixa pra essa vaga" onclick="DT.gaAbrirEscolherDaCaixa()" onkeydown="if(event.key===\'Enter\'||event.key===\' \')DT.gaAbrirEscolherDaCaixa()"><div class="ga-team-ghost-ic">➕</div><div class="ga-team-ghost-txt">Vaga livre</div></div>';
       }
       return ghosts;
     })()+
