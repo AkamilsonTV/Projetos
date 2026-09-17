@@ -481,6 +481,29 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-admin-battle-log-row{ font-size:.78rem; font-family:monospace; padding:2px 0 2px 14px; border-bottom:1px dashed var(--line); }
 .ga-admin-battle-log-row:last-child{ border-bottom:none; }
 
+/* Cap. leva desta sessão ("montar slots de time para até 5 times"):
+   barra com o botão que abre o menu em cascata (STATE.teamSlots,
+   5 posições fixas) -- ver equipeScreenHTML/timesBarHTML. */
+.ga-times-bar{ position:relative; margin-bottom:14px; }
+.ga-times-menu{ position:absolute; top:100%; left:0; margin-top:4px; background:var(--panel); border:1px solid var(--accent-dim); border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,.4); z-index:20; min-width:260px; overflow:hidden; }
+.ga-times-menu-item{ display:flex; align-items:center; gap:4px; padding:4px; border-bottom:1px solid var(--line); }
+.ga-times-menu-item:last-child{ border-bottom:none; }
+.ga-times-menu-nome{ flex-grow:1; text-align:left; background:transparent; border:none; color:var(--ink); padding:6px 8px; border-radius:6px; cursor:pointer; font-weight:600; }
+.ga-times-menu-nome:hover{ background:var(--bg2); }
+/* Grade de 6 espaços do editor de Time -- `.faltando` reaproveita o
+   MESMO espírito visual de `.ga-dex-tile img`/`.ga-apelido-lapis.
+   travado` (filter:grayscale) já usado no resto do jogo pra "existe
+   mas não posso mostrar colorido agora". */
+.ga-time-slots-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; margin:12px 0; }
+.ga-time-slot{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:150px; }
+.ga-time-slot img{ width:56px; height:56px; image-rendering:pixelated; }
+.ga-time-slot.vazio{ justify-content:center; cursor:pointer; border-style:dashed; opacity:.7; }
+.ga-time-slot.vazio:hover{ opacity:1; border-color:var(--accent-dim); }
+.ga-time-slot-plus{ font-size:1.8rem; line-height:1; color:var(--accent-dim); }
+.ga-time-slot.faltando{ opacity:.85; }
+.ga-time-slot.faltando img{ filter:grayscale(1) brightness(.7); }
+.ga-time-slot-nome{ font-weight:700; font-size:.85rem; }
+
 .ga-move-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; text-align:left; }
 .ga-move-row:last-child{ border-bottom:none; }
 .ga-move-atual{ min-width:170px; }
@@ -7938,7 +7961,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'' };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null };
 
 function freshState(trainerName){
   return {
@@ -7957,8 +7980,23 @@ function freshState(trainerName){
     party: [],
     box: [],
     battle: null,
-    actionLog: []
+    actionLog: [],
+    teamSlots: defaultTeamSlots()
   };
+}
+
+/* Cap. leva desta sessão ("montar slots de time para até 5 times"):
+   5 posições FIXAS (nunca menos, nunca mais) -- cada uma guarda um
+   nome (renomeável, ver DT.gaSetRenomearTime) e até 6 "membros"
+   (null = espaço vazio). Um membro é um SNAPSHOT
+   `{id, num, apelido}`, nunca o Pokémon inteiro -- assim, se ele for
+   solto/trocado depois, o Time ainda lembra QUEM era (nome/sprite
+   pra mostrar cinza) mesmo sem o objeto vivo existir mais em
+   STATE.party/STATE.box (ver DT.gaCarregarTime/encontrarPokemonPorId). */
+function defaultTeamSlots(){
+  return [0,1,2,3,4].map(function(i){
+    return { nome: 'Equipe '+(i+1), membros: [null,null,null,null,null,null] };
+  });
 }
 
 /* Migra um STATE salvo ANTES de um campo novo existir (mesmo espírito
@@ -8044,6 +8082,24 @@ function migrateState(){
     });
     STATE.vdZerado = true;
   }
+  /* Cap. leva desta sessão ("montar slots de time para até 5 times"):
+     conta sem o campo ainda nasce com os 5 slots vazios; conta que
+     já tem (mesmo que salva por uma versão anterior desta MESMA leva)
+     só corrige formato -- nunca reseta nome/membros já escolhidos. */
+  if(!Array.isArray(STATE.teamSlots) || STATE.teamSlots.length!==5) STATE.teamSlots = defaultTeamSlots();
+  STATE.teamSlots.forEach(function(t){
+    if(!t.nome) t.nome = 'Equipe';
+    if(!Array.isArray(t.membros)) t.membros = [];
+    while(t.membros.length<6) t.membros.push(null);
+    if(t.membros.length>6) t.membros.length = 6;
+  });
+}
+
+/* Acha um Pokémon "vivo" (na Equipe ou na Caixa) pelo id -- usado
+   pra resolver os membros salvos de um Time (ver DT.gaCarregarTime/
+   timeEditorPopupHTML) contra o que o jogador REALMENTE tem agora. */
+function encontrarPokemonPorId(pid){
+  return STATE.party.filter(function(p){ return p.id===pid; })[0] || STATE.box.filter(function(p){ return p.id===pid; })[0] || null;
 }
 
 /* Nome -> ID de documento: minúsculo, sem acento, só [a-z0-9-] --
@@ -11890,7 +11946,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'' };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null };
   render();
 };
 
@@ -15032,6 +15088,110 @@ DT.gaMandarPraCaixa = function(pid){
   mutate();
 };
 
+/* Cap. leva desta sessão ("Quero montar slots de time para até 5
+   times... Ao escolher entre os times, os pokémon tem que sair da
+   box e entrar no time"): DT.gaCarregarTime faz a troca de verdade
+   -- os membros salvos do Time entram na Equipe (venham de onde
+   vierem, Caixa ou já na própria Equipe) e quem estava na Equipe e
+   não faz parte deste Time volta pra Caixa. Nunca mexe em
+   STATE.teamSlots -- carregar um Time NUNCA salva nada nele (só
+   DT.gaSalvarTime faz isso, de propósito). */
+DT.gaToggleTimesMenu = function(){ SESSION.timesMenuOpen = !SESSION.timesMenuOpen; render(); };
+DT.gaCarregarTime = function(idx){
+  var slot = STATE.teamSlots[idx];
+  if(!slot) return;
+  var encontrados = [];
+  var faltando = [];
+  slot.membros.forEach(function(m){
+    if(!m) return;
+    var p = encontrarPokemonPorId(m.id);
+    if(p) encontrados.push(p);
+    else faltando.push(m);
+  });
+  /* Cap. leva desta sessão ("Caso esse pokémon não exista mais na
+     box, um popup de aviso"): se NENHUM membro sobrou, não dá pra
+     trocar (a Equipe nunca pode ficar vazia -- mesma trava de
+     DT.gaMandarPraCaixa/gaLiberar) -- avisa e nem mexe na Equipe
+     atual. */
+  if(!encontrados.length){
+    SESSION.error = 'O Time "'+slot.nome+'" não tem nenhum Pokémon disponível pra carregar agora (todos foram soltos/trocados). Edite o Time (🛠️) antes de carregar.';
+    SESSION.timesMenuOpen = false;
+    render();
+    return;
+  }
+  var idsNovos = encontrados.map(function(p){ return p.id; });
+  var restoDaEquipeAntiga = STATE.party.filter(function(p){ return idsNovos.indexOf(p.id)===-1; });
+  STATE.box = STATE.box.filter(function(p){ return idsNovos.indexOf(p.id)===-1; }).concat(restoDaEquipeAntiga);
+  STATE.party = encontrados;
+  SESSION.timesMenuOpen = false;
+  /* "E depois ele pode trocar com o pokémon que falta ficando preto
+     e branco" -- o aviso só INFORMA quem sumiu; o Time em si
+     continua com o espaço reservado pra eles (STATE.teamSlots não
+     muda aqui), pronto pra mostrar cinza e oferecer substituto no
+     editor (🛠️, ver timeEditorPopupHTML). */
+  SESSION.timeFaltandoAviso = faltando.length ? faltando : null;
+  logAction('equipe', 'Carregou o Time "'+slot.nome+'" ('+encontrados.length+' Pokémon)'+(faltando.length?', '+faltando.length+' não encontrado(s)':'')+'.');
+  mutate();
+};
+DT.gaFecharAvisoTimeFaltando = function(){ SESSION.timeFaltandoAviso = null; render(); };
+
+DT.gaAskRenomearTime = function(idx){ SESSION.timeRenomeando = idx; render(); };
+DT.gaCancelRenomearTime = function(){ SESSION.timeRenomeando = null; render(); };
+DT.gaSetRenomearTime = function(idx, el){
+  var slot = STATE.teamSlots[idx]; if(!slot) return;
+  var v = (el && el.value || '').trim().slice(0,20);
+  if(!v){ SESSION.error = 'Digite um nome antes de confirmar.'; render(); return; }
+  slot.nome = v;
+  SESSION.timeRenomeando = null;
+  logAction('equipe', 'Renomeou um Time pra "'+v+'".');
+  mutate();
+};
+
+/* Editor/"builder" de um Time -- rascunho em SESSION.timeEditBuffer
+   (6 espaços, cada um null ou {id,num,apelido}), NUNCA escreve em
+   STATE.teamSlots direto. "Coloque um botão de salvar o time para
+   que o time só seja salvo quando clicar ali": só DT.gaSalvarTime
+   grava de verdade -- fechar sem salvar (✕/Cancelar) descarta o
+   rascunho inteiro. */
+DT.gaAbrirEditorTime = function(idx){
+  var slot = STATE.teamSlots[idx]; if(!slot) return;
+  SESSION.timeEditando = idx;
+  SESSION.timeEditBuffer = slot.membros.map(function(m){ return m ? { id:m.id, num:m.num, apelido:m.apelido||'' } : null; });
+  SESSION.timeEscolhendoSlot = null;
+  SESSION.timesMenuOpen = false;
+  render();
+};
+DT.gaFecharEditorTime = function(){ SESSION.timeEditando = null; SESSION.timeEditBuffer = null; SESSION.timeEscolhendoSlot = null; render(); };
+DT.gaSalvarTime = function(){
+  if(SESSION.timeEditando==null || !SESSION.timeEditBuffer) return;
+  var slot = STATE.teamSlots[SESSION.timeEditando];
+  if(!slot) return;
+  slot.membros = SESSION.timeEditBuffer.slice();
+  logAction('equipe', 'Salvou o Time "'+slot.nome+'".');
+  SESSION.timeEditando = null;
+  SESSION.timeEditBuffer = null;
+  SESSION.timeEscolhendoSlot = null;
+  mutate();
+};
+DT.gaRemoverDoSlotTime = function(slotIdx){
+  if(!SESSION.timeEditBuffer) return;
+  SESSION.timeEditBuffer[slotIdx] = null;
+  render();
+};
+DT.gaAskEscolherParaSlotTime = function(slotIdx){
+  if(!SESSION.timeEditBuffer) return;
+  SESSION.timeEscolhendoSlot = slotIdx;
+  render();
+};
+DT.gaCancelEscolherParaSlotTime = function(){ SESSION.timeEscolhendoSlot = null; render(); };
+DT.gaEscolherParaSlotTime = function(pid){
+  if(SESSION.timeEscolhendoSlot==null || !SESSION.timeEditBuffer) return;
+  var p = encontrarPokemonPorId(pid); if(!p) return;
+  SESSION.timeEditBuffer[SESSION.timeEscolhendoSlot] = { id:p.id, num:p.num, apelido:p.apelido||'' };
+  SESSION.timeEscolhendoSlot = null;
+  render();
+};
+
 DT.gaIniciarMigracaoLocal = function(){ SESSION.migratingLocal = true; render(); };
 DT.gaCancelarMigracaoLocal = function(){ SESSION.migratingLocal = false; render(); };
 DT.gaDescartarLocalLegado = function(){ try{ localStorage.removeItem(LEGACY_LOCAL_KEY); }catch(e){} render(); };
@@ -15214,6 +15374,14 @@ function screenHTML(){
   if(SESSION.usarNectarFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + usarNectarPopupHTML(SESSION.usarNectarFor);
   if(SESSION.dexOpenNum) return wrap(hubScreenHTML() /* mantém o fundo, popup por cima */) + dexPopupHTML(SESSION.dexOpenNum);
   if(SESSION.movesOpenFor) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + movesPopupHTML(SESSION.movesOpenFor);
+  /* Cap. leva desta sessão (slots de Time): mesmo padrão dos popups
+     acima, sempre mantendo equipeScreenHTML() de fundo. O aviso de
+     "Pokémon não encontrado" vem ANTES do editor de propósito -- só
+     um popup de Time por vez, e o aviso é o mais "urgente" (acabou
+     de acontecer, ver DT.gaCarregarTime). */
+  if(SESSION.timeFaltandoAviso) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + timeFaltandoPopupHTML();
+  if(SESSION.timeRenomeando!=null) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + timeRenomearPopupHTML(SESSION.timeRenomeando);
+  if(SESSION.timeEditando!=null) return wrap(equipeScreenHTML() /* mantém o fundo, popup por cima */) + timeEditorPopupHTML();
   if(SESSION.leaderTeamOpenFor) return wrap(ginasiosScreenHTML() /* mantém o fundo, popup por cima */) + leaderTeamPopupHTML(SESSION.leaderTeamOpenFor);
   if(SESSION.pendingSequenciaConfirm) return wrap(capturaScreenHTML()) + pendingSequenciaConfirmPopupHTML();
   if(SESSION.pendingDiscrepancia || SESSION.pendingEnergia){
@@ -15669,8 +15837,133 @@ function caixaFiltrosHTML(){
       '</span>'+
     '</div>';
 }
+
+/* Cap. leva desta sessão ("montar slots de time para até 5 times...
+   Coloque um menu em cascata"): botão que abre uma listinha (menu em
+   cascata) com os 5 Times -- clicar no NOME carrega ele de verdade
+   (DT.gaCarregarTime), ✏️ renomeia, 🛠️ abre o editor/builder. */
+function timesBarHTML(){
+  var menu = !SESSION.timesMenuOpen ? '' : (
+    '<div class="ga-times-menu">'+
+      STATE.teamSlots.map(function(t, idx){
+        var preenchidos = t.membros.filter(function(m){ return m; }).length;
+        return '<div class="ga-times-menu-item">'+
+          '<button class="ga-times-menu-nome" onclick="DT.gaCarregarTime('+idx+')" title="Carregar esse Time (troca com a Equipe atual)">'+esc2(t.nome)+' <span class="ga-hint">('+preenchidos+'/6)</span></button>'+
+          '<button class="ga-btn-sm" title="Renomear" onclick="event.stopPropagation();DT.gaAskRenomearTime('+idx+')">✏️</button>'+
+          '<button class="ga-btn-sm" title="Editar Time" onclick="event.stopPropagation();DT.gaAbrirEditorTime('+idx+')">🛠️</button>'+
+        '</div>';
+      }).join('')+
+    '</div>'
+  );
+  return '<div class="ga-times-bar">'+
+    '<button class="ga-btn" onclick="DT.gaToggleTimesMenu()">🗂️ Times '+(SESSION.timesMenuOpen?'▲':'▼')+'</button>'+
+    menu+
+  '</div>';
+}
+/* "Caso esse pokémon não exista mais na box, um popup de aviso
+   informando qual ou quais pokémon não existem mais... com uma
+   mensagem de ok" -- dispara logo depois de DT.gaCarregarTime achar
+   membros salvos que sumiram (soltos/trocados). Só informa; o Time
+   em si já ficou com o espaço reservado (ver DT.gaCarregarTime). */
+function timeFaltandoPopupHTML(){
+  var lista = SESSION.timeFaltandoAviso||[];
+  if(!lista.length) return '';
+  return '<div class="ga-overlay" onclick="DT.gaFecharAvisoTimeFaltando()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<h2>⚠️ Pokémon não encontrado'+(lista.length>1?'s':'')+'</h2>'+
+    '<p class="ga-hint">Esse Time salvo tinha '+lista.length+' Pokémon que não estão mais disponíveis (provavelmente soltos ou usados numa Troca):</p>'+
+    '<ul style="text-align:left;">'+lista.map(function(m){ return '<li>'+esc2(m.apelido||speciesByNum(m.num).name)+'</li>'; }).join('')+'</ul>'+
+    '<p class="ga-hint">O espaço deles continua reservado no Time -- edite o Time (🛠️) pra escolher um substituto.</p>'+
+    '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharAvisoTimeFaltando()">OK</button>'+
+  '</div></div>';
+}
+function timeRenomearPopupHTML(idx){
+  var slot = STATE.teamSlots[idx];
+  if(!slot) return '';
+  return '<div class="ga-overlay" onclick="DT.gaCancelRenomearTime()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelRenomearTime()">✕</button>'+
+    '<h2>✏️ Renomear Time</h2>'+
+    '<div class="ga-field"><input type="text" id="gaTimeRenomearInput" maxlength="20" value="'+esc2(slot.nome)+'" placeholder="ex: Time de Ataque"></div>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaSetRenomearTime('+idx+',document.getElementById(\'gaTimeRenomearInput\'))">✔️ Confirmar</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaCancelRenomearTime()">Cancelar</button>'+
+    '</div>'+
+  '</div></div>';
+}
+/* Editor/"builder" do Time (🛠️) -- os 6 espaços do rascunho
+   (SESSION.timeEditBuffer). Cada espaço é vazio (clicável, "+"),
+   preenchido de verdade (sprite colorido normal) ou "faltando"
+   (sprite em preto-e-branco, `filter:grayscale` -- ver style.css --
+   só existe como snapshot porque o Pokémon de verdade sumiu, ver
+   DT.gaCarregarTime) -- "E depois ele pode trocar com o pokémon que
+   falta ficando preto e branco". Enquanto SESSION.timeEscolhendoSlot
+   estiver setado, troca o conteúdo pelo seletor (nunca 2 popups ao
+   mesmo tempo, mesmo espírito de 1 popup por vez do resto do jogo). */
+function timeEditorPopupHTML(){
+  if(SESSION.timeEditando==null || !SESSION.timeEditBuffer) return '';
+  var slot = STATE.teamSlots[SESSION.timeEditando];
+  if(!slot) return '';
+  if(SESSION.timeEscolhendoSlot!=null) return escolherPokemonParaSlotPopupHTML();
+  var slotsHTML = SESSION.timeEditBuffer.map(function(m, idx){
+    if(!m){
+      return '<div class="ga-time-slot vazio" onclick="DT.gaAskEscolherParaSlotTime('+idx+')"><span class="ga-time-slot-plus">+</span><span class="ga-hint">Vazio -- clique pra escolher</span></div>';
+    }
+    var live = encontrarPokemonPorId(m.id);
+    if(live){
+      var sp = speciesByNum(live.num);
+      return '<div class="ga-time-slot preenchido">'+
+        '<img src="'+spriteUrl(spriteNumEfetivo(live))+'" alt="">'+
+        '<div class="ga-time-slot-nome">'+esc2(live.apelido||sp.name)+'</div>'+
+        '<div class="ga-hint">Nv. '+live.level+'</div>'+
+        '<button class="ga-btn-sm" onclick="DT.gaAskEscolherParaSlotTime('+idx+')">🔁 Trocar</button>'+
+        '<button class="ga-btn-sm danger" onclick="DT.gaRemoverDoSlotTime('+idx+')">✕ Remover</button>'+
+      '</div>';
+    }
+    return '<div class="ga-time-slot faltando" title="Esse Pokémon não está mais na Equipe/Caixa">'+
+      '<img src="'+spriteUrl(m.num)+'" alt="">'+
+      '<div class="ga-time-slot-nome">'+esc2(m.apelido||speciesByNum(m.num).name)+'</div>'+
+      '<div class="ga-hint">Não encontrado</div>'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAskEscolherParaSlotTime('+idx+')">🔁 Escolher substituto</button>'+
+      '<button class="ga-btn-sm danger" onclick="DT.gaRemoverDoSlotTime('+idx+')">✕ Remover</button>'+
+    '</div>';
+  }).join('');
+  return '<div class="ga-overlay" onclick="DT.gaFecharEditorTime()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaFecharEditorTime()">✕</button>'+
+    '<h2>🛠️ Editar "'+esc2(slot.nome)+'"</h2>'+
+    '<p class="ga-hint">Escolha até 6 Pokémon pra esse Time. As mudanças só ficam valendo depois de clicar em "Salvar Time".</p>'+
+    '<div class="ga-time-slots-grid">'+slotsHTML+'</div>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaSalvarTime()">💾 Salvar Time</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaFecharEditorTime()">Cancelar</button>'+
+    '</div>'+
+  '</div></div>';
+}
+/* Lista pra preencher/trocar UM espaço do rascunho (Equipe + Caixa
+   juntas, é aqui que "os pokémon tem que sair da box e entrar no
+   time" acontece de fato -- ver DT.gaCarregarTime, que só roda
+   DEPOIS que o jogador já salvou o Time com esse Pokémon dentro).
+   Nunca deixa escolher um Pokémon já usado em OUTRO espaço deste
+   MESMO rascunho (dono não pode se repetir dentro do mesmo Time). */
+function escolherPokemonParaSlotPopupHTML(){
+  var slotIdx = SESSION.timeEscolhendoSlot;
+  var usadosOutros = SESSION.timeEditBuffer.filter(function(m, i){ return m && i!==slotIdx; }).map(function(m){ return m.id; });
+  var todos = STATE.party.concat(STATE.box).filter(function(p){ return usadosOutros.indexOf(p.id)===-1; });
+  return '<div class="ga-overlay" onclick="DT.gaCancelEscolherParaSlotTime()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaCancelEscolherParaSlotTime()">✕</button>'+
+    '<h2>Escolher Pokémon</h2>'+
+    (todos.length ? '<div class="ga-poke-grid">'+todos.map(function(p){
+      var sp = speciesByNum(p.num);
+      return '<div class="ga-poke-card" onclick="DT.gaEscolherParaSlotTime(\''+p.id+'\')" style="cursor:pointer;">'+
+        '<img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt="">'+
+        '<div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div>'+
+        '<div class="ga-poke-meta">Nv. '+p.level+'</div>'+
+      '</div>';
+    }).join('')+'</div>' : '<p class="ga-hint">Nenhum Pokémon disponível (todos já estão usados em outros espaços deste Time).</p>')+
+    '<button class="ga-btn-sm" onclick="DT.gaCancelEscolherParaSlotTime()">← Voltar</button>'+
+  '</div></div>';
+}
 function equipeScreenHTML(){
-  var out = '<div class="ga-card"><h2>🎒 Equipe ('+STATE.party.length+'/6)</h2>'+
+  var out = timesBarHTML()+
+    '<div class="ga-card"><h2>🎒 Equipe ('+STATE.party.length+'/6)</h2>'+
     (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início) -- é ele quem entra primeiro na Área de Captura, e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita -- arraste um card pra reordenar, ou use ⬆️/⬇️ no celular.</p>' : '')+
     '<div class="ga-poke-grid ga-poke-grid-equipe">'+
     STATE.party.map(function(p, i){
