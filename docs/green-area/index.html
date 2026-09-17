@@ -6,12 +6,31 @@
 <title>Green Área — Jornada Pokémon</title>
 <meta name="description" content="Protótipo: complete a Pokédex, capture Pokémon e vença os Mestres Especialistas em lutas automáticas.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🟢</text></svg>">
+<!-- Cap. leva desta sessão ("quero que fique baseado no protótipo"):
+     as 2 fontes usadas nos artboards do protótipo -- Chakra Petch pros
+     títulos/marca (visual "tech/RPG"), Manrope no corpo. Único recurso
+     externo do arquivo inteiro (o resto é 100% self-contained) -- o
+     jogo já depende de internet pra tudo (Firestore), então o custo
+     real é só 1 requisição a mais; se cair, cai pro fallback do
+     stack de sistema abaixo, nunca quebra a página. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
 <style>
+/* Cap. leva desta sessão ("Ué, o site continuou verde. Eu quero que
+   fique baseado no protótipo... Não mudou nada"): a leva anterior só
+   tinha aprofundado o MESMO verde-escuro de sempre (--bg/--panel com
+   tinta verde) -- pouco perceptível. Agora os tokens de base viram
+   NEUTROS (preto-azulado, igual o protótipo de verdade -- #0a0e13 é
+   o MESMO valor usado nos artboards), o verde vira só o ACCENT (como
+   era no protótipo: fundo neutro, verde só em destaque/botão/borda
+   ativa), e a tipografia ganha as 2 fontes do protótipo (Chakra Petch
+   pros títulos/marca, Manrope no corpo -- ver <link> logo abaixo e a
+   regra de body/h1/h2 mais adiante). */
 :root{
-  --bg:#090f0c; --bg2:#0e1712; --panel:#121e19; --panel2:#182a21;
-  --panel3:#1e3428;
-  --line:#25402f; --ink:#eef7f0; --ink-dim:#87a696; --accent:#3ddc84;
-  --accent-dim:#1fae63; --gold:#f2b84b; --pink:#f4699a;
+  --bg:#0a0e13; --bg2:#0d131a; --panel:#141c27; --panel2:#1a2431;
+  --panel3:#212c3a;
+  --line:#232d3d; --ink:#eef2f6; --ink-dim:#8b96a6; --accent:#34d399;
+  --accent-dim:#12b76a; --gold:#f2b84b; --pink:#f4699a;
   --danger:#f87171; --warn:#fbbf24; --radius:12px; --radius-lg:18px;
 }
 /* min-width:0 em tudo (Cap. leva desta sessão: "adaptado também para
@@ -22,10 +41,11 @@
    horizontalmente no celular. Com min-width:0 em tudo, cada elemento
    pode encolher/quebrar linha de verdade dentro do espaço disponível. */
 *{ box-sizing:border-box; min-width:0; }
-html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Segoe UI',system-ui,-apple-system,sans-serif; }
+html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif; }
 body{ min-height:100vh; }
 #app{ min-height:100vh; }
 h1,h2{ margin:0 0 8px; }
+h1,h2,.ga-brand{ font-family:'Chakra Petch','Manrope',system-ui,sans-serif; }
 h1{ font-size:1.6rem; } h2{ font-size:1.05rem; letter-spacing:.02em; }
 button{ font-family:inherit; cursor:pointer; }
 select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
