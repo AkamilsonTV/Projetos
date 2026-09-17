@@ -548,18 +548,19 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-overlay-card.wide{ max-width:900px; text-align:left; max-height:85vh; overflow-y:auto; }
 /* Cap. leva desta sessão ("o popup do fim de luta não pode tomar a
    tela toda... pode ser menor e vir pra frente... a rolagem ser
-   dentro dele, não na página toda"): variante menor só pro resultado
-   de combate (vitória/derrota da luta normal/Raid/Duelo/Caça em
-   Grupo) -- o `.ga-overlay-card` padrão (360px/85vh) é pensado pra
-   caber texto+alguns botões, mas uma vitória selvagem com várias
-   Pokébolas empilhadas conseguia esticar quase até o teto de 85vh,
-   dominando a tela inteira por trás do fundo escurecido. Teto BEM mais
-   baixo (55vh, nunca mais que 380px) deixa o fundo escurecido (e a
-   luta por trás dele) claramente visível ao redor do card -- lê como
-   "um card na frente", não "uma tela nova por cima" -- e a rolagem
-   continua só dentro do próprio card (`overflow-y:auto`, nunca a
-   página), mesmo se sobrar mais Pokébola do que cabe. */
-.ga-overlay-card.compact{ max-width:300px; max-height:min(55vh,380px); }
+   dentro dele, não na página toda" + depois "pode diminuir mais"):
+   variante menor só pro resultado de combate (vitória/derrota da luta
+   normal/Raid/Duelo/Caça em Grupo) -- o `.ga-overlay-card` padrão
+   (360px/85vh) é pensado pra caber texto+alguns botões, mas uma
+   vitória selvagem com várias Pokébolas empilhadas conseguia esticar
+   quase até o teto de 85vh, dominando a tela inteira por trás do
+   fundo escurecido. Teto BEM mais baixo (45vh, nunca mais que 320px)
+   deixa o fundo escurecido (e a luta por trás dele) claramente
+   visível ao redor do card -- lê como "um card na frente", não "uma
+   tela nova por cima" -- e a rolagem continua só dentro do próprio
+   card (`overflow-y:auto`, nunca a página), mesmo se sobrar mais
+   Pokébola do que cabe. */
+.ga-overlay-card.compact{ max-width:280px; max-height:min(45vh,320px); }
 .ga-admin-log{ display:flex; flex-direction:column; gap:4px; margin-top:6px; max-height:320px; overflow-y:auto; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px; }
 .ga-admin-log-row{ font-size:.82rem; border-bottom:1px solid var(--line); padding:4px 0; }
 .ga-admin-log-row:last-child{ border-bottom:none; }
@@ -14602,14 +14603,25 @@ function sequenciaFimScreenHTML(){
   var zona = zonaByStatus(cs.zonaId);
   var pendentes = elegiveisParaEvoluirAgora().filter(function(p){ return (SESSION.evolucaoSequenciaDecididos||[]).indexOf(p.id)===-1; });
   var aprenderPend = SESSION.pendingAprenderMovimentoSequencia;
-  var out = '<div class="ga-card"><h2>🔁 Sequência automática terminou — '+esc2(zona?zona.nome:'?')+'</h2>'+
+  /* Cap. leva desta sessão ("Aqui ainda tá errado não tá popup do
+     jeito certo... a rolagem seja dentro do popup não na página
+     toda"): esse resumo (relatório com 1 linha por luta, pode chegar
+     a dezenas de itens numa sequência grande) era um `.ga-card` solto
+     no fluxo normal da página -- crescia junto com o relatório e
+     fazia a PÁGINA INTEIRA rolar, não um popup de verdade. Agora usa
+     o MESMO `.ga-overlay`/`.ga-overlay-card.wide` das outras telas
+     com bastante conteúdo (Escolher da Caixa, ficha do Admin etc.) --
+     900px/85vh com rolagem PRÓPRIA (`overflow-y:auto` já embutido em
+     `.wide`), nunca a página. */
+  var out = '<div class="ga-overlay"><div class="ga-overlay-card wide">'+
+    '<h2>🔁 Sequência automática terminou — '+esc2(zona?zona.nome:'?')+'</h2>'+
     '<p class="ga-hint">'+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' -- parou sem Energia suficiente pra continuar':'')+'.</p>'+
     sequenciaRelatorioHTML(cs);
   if(pendentes.length || aprenderPend){
     out += '<p class="ga-hint">✨ Algum Pokémon pode evoluir (ou aprender um Movimento novo) agora -- decida no popup antes de fechar o resumo.</p>';
   }
   out += '<div class="ga-btn-row"><button class="ga-btn ga-btn-primary" onclick="DT.gaFecharResumoSequencia()">'+((pendentes.length||aprenderPend)?'✔️ Terminei, fechar resumo':'✔️ Fechar')+'</button></div>'+
-    '</div>';
+    '</div></div>';
   /* Pergunta de "aprender Movimento" (bônus de evolução, ver
      DT.gaEvoluirPosSequencia) tem PRIORIDADE sobre a próxima pergunta
      de evolução pendente -- um popup de cada vez, mesma disciplina do
