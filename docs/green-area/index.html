@@ -236,6 +236,16 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    Raids/Pokédex/Trocas. */
 .ga-team-card{ position:relative; background:linear-gradient(165deg,#132437 0%,#0d1c2b 45%,#081422 100%); border-radius:22px; box-shadow:0 16px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(120,200,220,.12); padding:14px 14px 16px; display:flex; flex-direction:column; gap:8px; overflow:hidden; }
 .ga-team-card.ativo{ box-shadow:0 16px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 0 2px var(--accent-dim); }
+/* Cap. leva desta sessão ("box fantasma dizendo que o espaço não está
+   ocupado"): mesma classe base `.ga-team-card` (garante o EXATO mesmo
+   tamanho de grid-cell dos cards reais, já que `auto-fit` reparte o
+   espaço entre TODOS os itens do grid igual, real ou fantasma) --
+   fundo/borda tracejada mais apagados, sem sombra/gradiente vivo, só
+   um ícone + texto centralizados, sem onclick (aria-hidden, puramente
+   visual). */
+.ga-team-card-ghost{ background:transparent; border:2px dashed rgba(255,255,255,.14); box-shadow:none; align-items:center; justify-content:center; min-height:220px; gap:6px; }
+.ga-team-ghost-ic{ font-size:1.8rem; opacity:.28; }
+.ga-team-ghost-txt{ font-size:.78rem; font-weight:700; color:var(--ink-dim); opacity:.6; text-transform:uppercase; letter-spacing:.06em; }
 .ga-team-topbar{ display:flex; align-items:center; justify-content:space-between; }
 .ga-team-pokeball{ width:20px; height:20px; border-radius:50%; background:linear-gradient(180deg,#eef3f6 0%,#eef3f6 48%,#1c2a33 48%,#1c2a33 52%,#ef4444 52%,#ef4444 100%); box-shadow:0 0 0 2px #0a1420; opacity:.85; position:relative; }
 .ga-team-pokeball::after{ content:''; position:absolute; inset:6px; border-radius:50%; background:#0a1420; box-shadow:0 0 0 2px #eef3f6; }
@@ -16797,6 +16807,27 @@ function equipeScreenHTML(){
          dentro; só a Equipe usa, a Caixa continua com pokeCardMini. */
       return pokeCardEquipeHTML(p, i, orderControls, dragAttrs);
     }).join('')+
+    /* Cap. leva desta sessão ("eu quero que ele tenha um tamanho
+       padrão como se fossem 6 ali... vá preenchendo da esquerda pra
+       direita... pode até colocar uma box fantasma"): com `auto-fit`
+       (ver comentário grande de `.ga-poke-grid-equipe` acima), um Time
+       com POUCOS Pokémon fazia os cards reais esticarem pra preencher
+       a linha inteira (1 Pokémon virava 1 card gigante ocupando 100%
+       da largura) -- em vez de mudar pra `auto-fill` (que deixaria um
+       vão vazio invisível à direita, perdendo o "preenche a área"
+       original), preenche as vagas que sobram (até 6) com um card
+       FANTASMA (mesmo tamanho de grid-cell, só visual, sem onclick) --
+       `auto-fit` então reparte o espaço entre os 6 juntos (reais +
+       fantasma) do mesmo jeito de sempre, então um card real nunca
+       fica maior que o "tamanho padrão de 1/6", sempre da esquerda
+       pra direita na ordem da Equipe. */
+    (function(){
+      var ghosts = '';
+      for(var g=0; g<Math.max(0, 6-STATE.party.length); g++){
+        ghosts += '<div class="ga-team-card ga-team-card-ghost" aria-hidden="true"><div class="ga-team-ghost-ic">➕</div><div class="ga-team-ghost-txt">Vaga livre</div></div>';
+      }
+      return ghosts;
+    })()+
     '</div></div>'+
     (STATE.box.length ? (function(){
       var lista = caixaFilteredList();
