@@ -209,20 +209,19 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    o botão sempre gruda no fundo do card, alinhado com os vizinhos da
    mesma linha nunca importa quanto texto tem acima. */
 .ga-poke-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
-/* Cap. leva desta sessão: "faça eles ficarem maiores de forma que os 6
-   juntos preencham a área... mantenha o alinhamento das coisas, de
-   forma a ficar mais organizado" -- só a Equipe (sempre <=6 Pokémon,
-   nunca uma lista longa que precisa rolar) usa `auto-fit` em vez do
-   `auto-fill` padrão do `.ga-poke-grid`: `auto-fit` COLAPSA as colunas
-   vazias e reparte o espaço sobrando entre os cards que existem de
-   verdade (era exatamente esse vão vazio à direita, com só 6 cards
-   numa tela larga, que sobrava com `auto-fill`, que sempre mantém
-   colunas fantasmas do tamanho mínimo mesmo sem card pra ocupá-las).
-   Cards maiores (sprite/padding) pra combinar com o espaço extra.
-   Nunca aplicado no `.ga-poke-grid` padrão (Caixa/Pokédex/Trocas/etc.)
-   -- lá a lista pode ter dezenas de itens, e esticar cada card
-   conforme um filtro deixa menos resultados ficaria estranho. */
-.ga-poke-grid-equipe{ grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; }
+/* Cap. leva desta sessão: "os cards tem que ser sempre do mesmo
+   tamanho, caso não caiba na tela ele não tem que diminuir, e sim
+   ativar uma rolagem lateral" -- antes (`auto-fit`/`minmax(170px,1fr)`)
+   os cards ESTICAVAM pra preencher a largura sobrando com poucos
+   Pokémon e ENCOLHIAM pra caber telas estreitas; agora é uma fileira
+   flex de largura fixa (`.ga-poke-grid-equipe-card-w`) que NUNCA muda
+   de tamanho -- quando os cards não cabem todos na largura da tela,
+   `overflow-x:auto` abre rolagem lateral em vez de encolher ou quebrar
+   linha. Só a Equipe/Equipe ativa (sempre <=6 Pokémon) usa essa
+   variante; `.ga-poke-grid` padrão (Caixa/Pokédex/Trocas/etc., listas
+   longas) continua o grid normal, sem rolagem lateral. */
+.ga-poke-grid-equipe{ display:flex; flex-wrap:nowrap; overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch; gap:14px; }
+.ga-poke-grid-equipe>*{ flex:0 0 200px; width:200px; }
 .ga-poke-grid-equipe .ga-poke-card{ padding:16px; }
 .ga-poke-grid-equipe .ga-poke-card img{ width:88px; height:88px; }
 .ga-poke-grid-equipe .ga-poke-name{ font-size:1rem; }
@@ -18363,14 +18362,24 @@ function dueloScreenHTML(){
     out += '<div class="ga-battle-prompt"><p class="ga-hint">⏳ Esperando '+esc2(outroNome)+' decidir se vai curar...</p></div>';
   }
 
-  if(d.status==='fim' || b.vencedor){
-    var euVenci = b.vencedor===meuLado;
-    out += '<div class="ga-battle-prompt"><h3>'+(euVenci?'🏆 Você venceu o Duelo!':'☠️ Você perdeu o Duelo.')+'</h3><p class="ga-hint">Todo mundo já saiu do Duelo com o PV cheio de novo (nenhum Pokémon fica ferido fora dele).</p><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharDuelo()">Voltar pro Centro Pokémon</button></div>';
-  } else {
+  if(!(d.status==='fim' || b.vencedor)){
     out += '<button class="ga-btn-sm danger" onclick="DT.gaDesistirDuelo(\''+d.id+'\')">🏳️ Desistir</button>';
   }
   out += '</div>';
+  if(d.status==='fim' || b.vencedor) out += dueloResultadoPopupHTML(b, meuLado);
   return out;
+}
+/* Popup de resultado do Duelo (mesmo pedido da tela de batalha normal
+   -- ver batalhaResultadoPopupHTML acima: resultado final vira o MESMO
+   overlay de tela cheia dos outros popups de prioridade, não mais um
+   card `.ga-battle-prompt` dentro da própria tela de luta). */
+function dueloResultadoPopupHTML(b, meuLado){
+  var euVenci = b.vencedor===meuLado;
+  return '<div class="ga-overlay"><div class="ga-overlay-card">'+
+    '<h2>'+(euVenci?'🏆 Você venceu o Duelo!':'☠️ Você perdeu o Duelo.')+'</h2>'+
+    '<p class="ga-hint">Todo mundo já saiu do Duelo com o PV cheio de novo (nenhum Pokémon fica ferido fora dele).</p>'+
+    '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharDuelo()">Voltar pro Centro Pokémon</button>'+
+  '</div></div>';
 }
 /* ---- Tela da Caça em Grupo (Cap. leva desta sessão) ---- */
 function cacadaGrupoScreenHTML(){
@@ -18489,14 +18498,25 @@ function cacadaBatalhaHTML(c){
     out += '<div class="ga-battle-prompt"><p class="ga-hint">⏳ Esperando '+esc2((c.membros[b.pendingHealFor]||{}).nome||'alguém')+' decidir se vai curar...</p></div>';
   }
 
-  if(c.status==='fim' || b.vencedor){
-    var euVenci = b.vencedor==='jogadores';
-    out += '<div class="ga-battle-prompt"><h3>'+(euVenci?'🏆 A Caça em Grupo foi vencida!':'☠️ O bando venceu a Caça.')+'</h3><p class="ga-hint">Todo mundo sai da Caça com o PV cheio de novo. '+(euVenci?'Recompensa de participação creditada no seu Treinador.':'')+'</p><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharCacada()">Voltar</button></div>';
-  } else {
+  if(!(c.status==='fim' || b.vencedor)){
     out += '<button class="ga-btn-sm danger" onclick="DT.gaDesistirCacada(\''+c.id+'\')">🏳️ Desistir</button>';
   }
   out += '</div>';
+  if(c.status==='fim' || b.vencedor) out += cacadaResultadoPopupHTML(b);
   return out;
+}
+/* Popup de resultado da Caça em Grupo (mesmo pedido da tela de batalha
+   normal e do Duelo -- ver batalhaResultadoPopupHTML/dueloResultadoPopupHTML
+   acima: resultado final vira o MESMO overlay de tela cheia dos outros
+   popups de prioridade, não mais um card `.ga-battle-prompt` dentro da
+   própria tela de luta). */
+function cacadaResultadoPopupHTML(b){
+  var euVenci = b.vencedor==='jogadores';
+  return '<div class="ga-overlay"><div class="ga-overlay-card">'+
+    '<h2>'+(euVenci?'🏆 A Caça em Grupo foi vencida!':'☠️ O bando venceu a Caça.')+'</h2>'+
+    '<p class="ga-hint">Todo mundo sai da Caça com o PV cheio de novo. '+(euVenci?'Recompensa de participação creditada no seu Treinador.':'')+'</p>'+
+    '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharCacada()">Voltar</button>'+
+  '</div></div>';
 }
 function battleScreenHTML(){
   var b = STATE.battle;
@@ -18535,27 +18555,6 @@ function battleScreenHTML(){
     out += '<div class="ga-battle-prompt"><p>💥 '+esc2(playerSp.name)+' desmaiou! Escolha o próximo:</p><div class="ga-poke-grid">'+
       vivos.map(function(p){ return pokeCardMini(p, '<div class="ga-poke-actions"><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaTrocarPokemon(\''+p.id+'\')">Ir!</button></div>'); }).join('')+
     '</div></div>';
-  } else if(b.finished){
-    out += '<div class="ga-battle-prompt">';
-    if(b.finished==='vitoria'){
-      out += '<p>🏆 Vitória!</p>';
-      if(b.kind==='wild' && !b.captureDone){
-        var bolasDisponiveis = POKEBALLS.filter(function(bl){ return (STATE.pokebolas[bl.key]||0)>0; });
-        out += '<div class="ga-btn-row">'+
-          (bolasDisponiveis.length
-            ? bolasDisponiveis.map(function(bl){
-                var pct = Math.round(catchChance(opp.num, bl.key)*100);
-                return '<button class="ga-btn ga-btn-primary" onclick="DT.gaJogarPokebola(\''+bl.key+'\')">'+itemIconHTML(bl)+' '+bl.nome+' ('+STATE.pokebolas[bl.key]+') -- '+pct+'%</button>';
-              }).join('')
-            : '<span class="ga-hint">Sem nenhuma bola na Mochila -- compre na 🏪 Loja.</span>')+
-          '<button class="ga-btn" onclick="DT.gaEncerrarBatalha()">Deixar ir embora</button></div>';
-      } else {
-        out += '<button class="ga-btn ga-btn-primary" onclick="DT.gaEncerrarBatalha()">Continuar</button>';
-      }
-    } else {
-      out += '<p>☠️ Você perdeu essa luta.</p><button class="ga-btn ga-btn-primary" onclick="DT.gaEncerrarBatalha()">Continuar</button>';
-    }
-    out += '</div>';
   }
   out += '</div>';
   /* Cap. leva desta sessão: "Quando o pokémon evoluir faça com que um
@@ -18568,9 +18567,42 @@ function battleScreenHTML(){
      (Energia/Luta difícil/Sequência) -- cobre a tela inteira por
      cima de tudo, então o jogador NUNCA perde a pergunta no meio do
      log de batalha rolando. */
+  if(b.finished) out += batalhaResultadoPopupHTML(b, opp);
   if(b.pendingEvolution) out += evolucaoPopupHTML(b.pendingEvolution);
   if(b.pendingAprenderMovimento) out += aprenderMovimentoPopupHTML(b.pendingAprenderMovimento);
   if(b.pendingTrocarGolpeEvolucao) out += trocarGolpeEvolucaoPopupHTML(b.pendingTrocarGolpeEvolucao);
+  return out;
+}
+/* Popup de resultado de batalha (Cap. leva desta sessão: "a tela de
+   combate, o resultado, tem que ser exibido em popup" -- vitória/
+   derrota SEMPRE aparecia como um card `.ga-battle-prompt` dentro da
+   própria tela de luta, igual o gatilho de cura/troca por desmaio;
+   agora usa o MESMO overlay de tela cheia dos outros popups de
+   prioridade (evolução etc.). Sem clique-fora-fecha: tem decisão real
+   aqui (Pokébola/Deixar ir embora numa vitória selvagem), então só
+   fecha pelos botões de verdade -- igual DT.gaJogarPokebola/
+   DT.gaEncerrarBatalha já faziam antes, comportamento inalterado. */
+function batalhaResultadoPopupHTML(b, opp){
+  var out = '<div class="ga-overlay"><div class="ga-overlay-card">';
+  if(b.finished==='vitoria'){
+    out += '<h2>🏆 Vitória!</h2>';
+    if(b.kind==='wild' && !b.captureDone){
+      var bolasDisponiveis = POKEBALLS.filter(function(bl){ return (STATE.pokebolas[bl.key]||0)>0; });
+      out += '<div class="ga-btn-row">'+
+        (bolasDisponiveis.length
+          ? bolasDisponiveis.map(function(bl){
+              var pct = Math.round(catchChance(opp.num, bl.key)*100);
+              return '<button class="ga-btn ga-btn-primary" onclick="DT.gaJogarPokebola(\''+bl.key+'\')">'+itemIconHTML(bl)+' '+bl.nome+' ('+STATE.pokebolas[bl.key]+') -- '+pct+'%</button>';
+            }).join('')
+          : '<span class="ga-hint">Sem nenhuma bola na Mochila -- compre na 🏪 Loja.</span>')+
+        '<button class="ga-btn" onclick="DT.gaEncerrarBatalha()">Deixar ir embora</button></div>';
+    } else {
+      out += '<button class="ga-btn ga-btn-primary" onclick="DT.gaEncerrarBatalha()">Continuar</button>';
+    }
+  } else {
+    out += '<h2>☠️ Você perdeu essa luta.</h2><button class="ga-btn ga-btn-primary" onclick="DT.gaEncerrarBatalha()">Continuar</button>';
+  }
+  out += '</div></div>';
   return out;
 }
 /* Popup de evolução (ver comentário acima) -- MESMA troca de
