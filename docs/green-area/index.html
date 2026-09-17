@@ -68,7 +68,12 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    sticky por causa de `overflow` num ancestral errado). No celular
    entra dentro de `.ga-mobtop` (também sticky), ver `.ga-game-clock-mob`
    mais abaixo. */
-.ga-game-clock{ font-size:.78rem; font-weight:700; color:var(--accent); background:var(--bg2); border:1px solid var(--accent-dim); border-radius:8px; padding:6px 10px; text-align:center; letter-spacing:.02em; }
+.ga-game-clock{ font-size:.78rem; font-weight:700; color:var(--accent); background:var(--bg2); border:1px solid var(--accent-dim); border-radius:8px; padding:6px 10px; letter-spacing:.02em; display:flex; flex-direction:column; gap:2px; }
+/* Cap. leva desta sessão ("tira esses traços da data e hora coloca um
+   embaixo do outro"): cada linha (dia/hora/período) empilhada, com o
+   ícone e o texto lado a lado -- antes era tudo numa linha só separado
+   por " -- ". */
+.ga-clock-row{ display:flex; align-items:center; gap:5px; }
 .ga-side-stats{ display:flex; flex-direction:column; gap:6px; font-size:.8rem; color:var(--ink-dim); background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
 .ga-nav{ display:flex; flex-direction:column; gap:3px; flex:1; }
 .ga-nav button{ background:transparent; border:1px solid transparent; color:var(--ink-dim); border-radius:8px; padding:9px 10px; font-size:.86rem; display:flex; align-items:center; gap:10px; text-align:left; width:100%; }
@@ -6223,6 +6228,21 @@ function relogioDoJogoTexto(){
   var tipo = horaAtualDoJogo();
   return 'Dia '+numeroDiaDoJogo()+' -- '+hh+':'+mm+':'+ss+' -- '+(tipo==='day'?'☀️ Dia':'🌙 Noite');
 }
+/* Cap. leva desta sessão ("tira esses traços da data e hora coloca um
+   embaixo do outro"): mesmas 3 informações de `relogioDoJogoTexto()`
+   (dia/hora/período), só que cada uma na sua própria linha com um
+   ícone fixo (📅/🕐) na frente em vez de " -- " separando tudo numa
+   linha só -- o ícone de período (☀️/🌙) já vem certo igual antes,
+   variando com `horaAtualDoJogo()`. */
+function relogioDoJogoHTML(){
+  var hh = String(horaDoJogoAcelerada()).padStart(2,'0');
+  var mm = String(minutoDoJogoAcelerado()).padStart(2,'0');
+  var ss = String(segundoDoJogoAcelerado()).padStart(2,'0');
+  var tipo = horaAtualDoJogo();
+  return '<div class="ga-clock-row">📅 Dia '+numeroDiaDoJogo()+'</div>'+
+    '<div class="ga-clock-row">🕐 '+hh+':'+mm+':'+ss+'</div>'+
+    '<div class="ga-clock-row">'+(tipo==='day'?'☀️ Dia':'🌙 Noite')+'</div>';
+}
 /* Cap. leva desta sessão: "Nos itens use os icones originais,
    pixelados... Todos os icones do jogo usa pixelado pra ficar legal":
    ícone OFICIAL de cada item (mesmo CDN público de sempre --
@@ -6956,7 +6976,8 @@ function raidsScreenHTML(){
   var ativas = raidsAtivas();
   var historico = raidsHistoricoUltimas3();
   var out = '<div class="ga-card"><h2>🏴 Raids Ativas</h2>'+
-    '<p class="ga-hint">Pokémon muito mais forte que o normal -- enfrente com seu time (você SEMPRE ataca primeiro, a Regra de Ouro da Raid), some dano no PV compartilhado dele junto com outros Treinadores, e ganhe recompensa de participação (XP/Pokédólares/itens) + uma chance de capturar quando ele cair, mesmo se você estiver offline na hora. Precisa de 1 🎟️ Raid Pass pra cada tentativa -- você tem <strong>'+(STATE.itens.raidpass||0)+'</strong> agora.</p>';
+    '<p class="ga-hint">Pokémon muito mais forte que o normal -- enfrente com seu time (você SEMPRE ataca primeiro, a Regra de Ouro da Raid), some dano no PV compartilhado dele junto com outros Treinadores, e ganhe recompensa de participação (XP/Pokédólares/itens) + uma chance de capturar quando ele cair, mesmo se você estiver offline na hora. Precisa de 1 🎟️ Raid Pass pra cada tentativa -- você tem <strong>'+(STATE.itens.raidpass||0)+'</strong> agora.</p>'+
+    ticketParaEnergiaWidgetHTML('raids');
   out += !ativas.length
     ? '<p class="ga-hint">Nenhuma Raid ativa agora -- volte mais tarde.</p>'
     : '<div class="ga-poke-grid ga-poke-grid-raid">'+ativas.map(function(r){
@@ -8880,9 +8901,9 @@ function energyTickLoop(){
      renderiza de verdade lá em cima quando Energia/Pokéticket mudam de
      valor -- o relógio muda de MINUTO em minuto, não precisa disso). */
   var elClockSide = document.getElementById('ga-game-clock-side');
-  if(elClockSide) elClockSide.textContent = relogioDoJogoTexto();
+  if(elClockSide) elClockSide.innerHTML = relogioDoJogoHTML();
   var elClockMob = document.getElementById('ga-game-clock-mob');
-  if(elClockMob) elClockMob.textContent = relogioDoJogoTexto();
+  if(elClockMob) elClockMob.innerHTML = relogioDoJogoHTML();
 }
 setInterval(energyTickLoop, 1000);
 
@@ -13147,6 +13168,7 @@ function processarDuelosAtivos(lista){
    ataca um Treinador vivo escolhido ao ACASO -- sem escolha manual de
    golpe/alvo (mesma IA por Papel de Combate da luta normal/Duelo). */
 var cacadasExecutandoLocal = {};
+var cacadasAutoCuraLocal = {};
 var CACADA_XP_POR_ZONA = 10, CACADA_POKEDOLAR_POR_ZONA = 200; // recompensa de participação por vitória, escalando com a Zona -- mesmo espírito flat de RAID_CONFIG_PADRAO.xpParticipacao/pokedolarParticipacao
 var CACADA_CUSTO_ENERGIA = 25; // Cap. leva desta sessão ("A caçada em grupo gasta 25 de energia por entrada") -- cobrado de CADA Treinador ao entrar (criar OU aceitar convite), igual um Raid Pass -- nunca reembolsado ao desistir.
 var CACADA_MAX_RODADAS_SEGUIDAS = 10; // Cap. leva desta sessão ("permita que possamos fazer mais de uma, até 10 por vez") -- ver DT.gaNovaCacadaMesmoGrupo.
@@ -13162,7 +13184,8 @@ DT.gaCriarCacada = function(zonaId){
   membros[SESSION.currentDocId] = { nome: STATE.trainerName, confirmado:true, party: cacadaPartySnapshot(), lider:null, desistiu:false, creditado:false };
   cacadasCol.doc(cacadaId).set({
     host: SESSION.currentDocId, hostNome: STATE.trainerName, zonaId: zonaId,
-    membros: membros, status:'lobby', grupos:null, membrosParticipantes:null, battle:null, rodadas:1, criadoEm: Date.now()
+    membros: membros, status:'lobby', grupos:null, membrosParticipantes:null, battle:null, rodadas:1, criadoEm: Date.now(),
+    ordemEntrada: [SESSION.currentDocId] // Cap. leva desta sessão ("ordem de captura sempre parte do líder para a ordem de entrada") -- host SEMPRE em 1º, depois cada convidado é anexado na hora que ACEITA (ver DT.gaAceitarCacada), nunca na hora que é convidado.
   }).then(function(){
     STATE.energy -= CACADA_CUSTO_ENERGIA;
     SESSION.screen='cacadagrupo'; SESSION.cacadaId=cacadaId; SESSION.error='';
@@ -13190,6 +13213,7 @@ DT.gaAceitarCacada = function(cacadaId){
   upd['membros.'+SESSION.currentDocId+'.confirmado'] = true;
   upd['membros.'+SESSION.currentDocId+'.party'] = cacadaPartySnapshot();
   upd['membros.'+SESSION.currentDocId+'.nome'] = STATE.trainerName;
+  upd.ordemEntrada = firebase.firestore.FieldValue.arrayUnion(SESSION.currentDocId); // Cap. leva desta sessão -- ordem de captura segue a ordem REAL de aceite do convite, nunca a ordem em que foi convidado
   cacadasCol.doc(cacadaId).update(upd).then(function(){
     STATE.energy -= CACADA_CUSTO_ENERGIA;
     SESSION.screen='cacadagrupo'; SESSION.cacadaId=cacadaId; SESSION.error='';
@@ -13225,7 +13249,7 @@ DT.gaNovaCacadaMesmoGrupo = function(cacadaId){
     var souEu = docId===SESSION.currentDocId;
     membrosReset[docId] = { nome: c.membros[docId].nome, confirmado: souEu, party: souEu?cacadaPartySnapshot():null, lider:null, desistiu:false, creditado:false };
   });
-  cacadasCol.doc(cacadaId).update({ status:'lobby', grupos:null, membrosParticipantes:null, battle:null, rodadas:(c.rodadas||1)+1, membros: membrosReset }).then(function(){
+  cacadasCol.doc(cacadaId).update({ status:'lobby', grupos:null, membrosParticipantes:null, battle:null, rodadas:(c.rodadas||1)+1, membros: membrosReset, ordemEntrada: [SESSION.currentDocId] }).then(function(){
     STATE.energy -= CACADA_CUSTO_ENERGIA;
     var zona = zonaByStatus(c.zonaId);
     logAction('cacadagrupo', 'Encarou outra Caça em Grupo com a mesma equipe na Zona '+(zona?zona.nome:c.zonaId)+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
@@ -13314,6 +13338,52 @@ DT.gaCacadaResponderCura = function(itemKey){
   b.pendingHealDecisao = { docId: SESSION.currentDocId, itemKey: itemKey||'', itemNome: it ? it.nome : '', curaPct: it ? it.curaPct : 0 };
   cacadasCol.doc(c.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui responder ('+erroFirestoreMsg(err)+').'; render(); });
   if(it) mutate(); // só precisa persistir o STATE local quando de fato gastou um item da Mochila
+};
+/* Cap. leva desta sessão ("Permita também usar aquele popup de captura
+   da luta individual... caso o pokémon não seja capturado ele não
+   foge, só foge depois que todos tentam 1 uma vez"): reusa o MESMO
+   catálogo/fórmula da captura individual (POKEBALLS/catchChance) pro
+   Alfa que selou a vitória (`c.battle.captura`, montado em
+   resolverRodadaCacada assim que `vencedor` vira 'jogadores'). Só o
+   jogador da vez (`captura.ordem[captura.vez]`) pode chamar isto --
+   ele mesmo desconta a PRÓPRIA Pokébola e, se capturar, entra pro
+   PRÓPRIO Time/Caixa (mesma regra de sempre: cada um só mexe no
+   PRÓPRIO save). Falhou -- ou não tinha bola nenhuma -- passa a vez
+   pro próximo da ordem; ninguém conseguiu depois de todo mundo tentar
+   = foge de vez (`fugiu:true`). */
+DT.gaCacadaTentarCaptura = function(cacadaId, ballKey){
+  var c = achaCacadaAtiva(cacadaId); if(!c || !c.battle || !c.battle.captura || c.battle.captura.feita) return;
+  var captura = c.battle.captura;
+  if(captura.ordem[captura.vez]!==SESSION.currentDocId) return;
+  var bola = POKEBALLS.filter(function(x){ return x.key===ballKey; })[0];
+  if(!bola || (STATE.pokebolas[ballKey]||0)<=0){ SESSION.error='Você não tem essa bola na Mochila.'; render(); return; }
+  STATE.pokebolas[ballKey]--;
+  var sucesso = Math.random() < catchChance(captura.num, ballKey);
+  var b = c.battle;
+  if(sucesso){
+    markCaught(captura.num);
+    var novo = spawnPoke(captura.num, captura.level);
+    if(STATE.party.length<6) STATE.party.push(novo); else STATE.box.push(novo);
+    b.log.push('🎯 '+esc2(STATE.trainerName)+' jogou '+bola.nome+'... capturou '+speciesByNum(captura.num).name+'!');
+    logAction('captura', 'Capturou '+speciesByNum(captura.num).name+' (Nv. '+captura.level+') com '+bola.nome+' na Caça em Grupo.');
+    captura.feita = true; captura.capturadoPor = SESSION.currentDocId;
+  } else {
+    b.log.push('💨 '+esc2(STATE.trainerName)+' jogou '+bola.nome+'... o Pokémon escapou.');
+    captura.vez++;
+    if(captura.vez>=captura.ordem.length){ captura.feita = true; captura.fugiu = true; b.log.push('💨 Ninguém conseguiu capturar -- o Pokémon fugiu.'); }
+  }
+  cacadasCol.doc(c.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui tentar a captura ('+erroFirestoreMsg(err)+').'; render(); });
+  mutate();
+};
+DT.gaCacadaPassarCaptura = function(cacadaId){
+  var c = achaCacadaAtiva(cacadaId); if(!c || !c.battle || !c.battle.captura || c.battle.captura.feita) return;
+  var captura = c.battle.captura;
+  if(captura.ordem[captura.vez]!==SESSION.currentDocId) return;
+  var b = c.battle;
+  b.log.push('➡️ '+esc2(STATE.trainerName)+' deixou passar a chance de capturar.');
+  captura.vez++;
+  if(captura.vez>=captura.ordem.length){ captura.feita = true; captura.fugiu = true; b.log.push('💨 Ninguém conseguiu capturar -- o Pokémon fugiu.'); }
+  cacadasCol.doc(c.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui passar a vez ('+erroFirestoreMsg(err)+').'; render(); });
 };
 /* Monta o battle de UMA onda (grupos[idxOnda]) -- se `battleAnterior`
    vier preenchido (avanço de onda dentro da MESMA Caça), os
@@ -13523,6 +13593,30 @@ function resolverRodadaCacada(c){
       }
     }
   } finally { STATE.battle = backupBattle; }
+  /* Cap. leva desta sessão ("Permita também usar aquele popup de
+     captura da luta individual... A ordem de captura sempre parte do
+     líder para a ordem de entrada"): assim que a Caça é VENCIDA (nunca
+     antes), monta a rodada de captura do Alfa do ÚLTIMO bando (o
+     "chefe" que selou a vitória) -- 1 tentativa por vez, na ordem
+     `c.ordemEntrada` (host sempre 1º, ver DT.gaCriarCacada/gaAceitarCacada),
+     pulando quem foi eliminado/desistiu durante a luta (não tem mais
+     Pokémon vivo pra "trazer o troféu"). Só inicializa 1 vez
+     (`!b.captura`) -- daqui pra frente quem avança a vez é
+     DT.gaCacadaTentarCaptura/gaCacadaPassarCaptura, chamado pelo
+     PRÓPRIO jogador da vez (mesmo padrão de DT.gaCacadaResponderCura --
+     o host já não escreve mais `battle` depois que `vencedor` existe,
+     ver processarCacadasAtivas, então não tem risco de 2 escritas
+     concorrentes aqui). */
+  if(b.vencedor==='jogadores' && !b.captura){
+    var ultimoGrupo = c.grupos[c.grupos.length-1];
+    var ordemBase = (c.ordemEntrada && c.ordemEntrada.length) ? c.ordemEntrada : Object.keys(c.membros);
+    var ordemCaptura = ordemBase.filter(function(docId){
+      return participantesIds.indexOf(docId)!==-1 && !(b.eliminados && b.eliminados[docId]);
+    });
+    if(ordemCaptura.length && ultimoGrupo){
+      b.captura = { num: ultimoGrupo.alfa.num, level: ultimoGrupo.alfa.level, ordem: ordemCaptura, vez: 0, feita:false, capturadoPor:null, fugiu:false };
+    }
+  }
   cacadasCol.doc(c.id).update({ battle: b }).catch(function(){});
 }
 /* Aplica o PRÓPRIO resultado (V/D + recompensa de participação) de UMA
@@ -13571,6 +13665,23 @@ function aplicarMeuResultadoCacada(c){
 function processarCacadasAtivas(lista){
   (lista||[]).forEach(function(c){
     if(!c || !c.id || !STATE) return;
+    /* Cap. leva desta sessão ("se o usuário não tiver item de cura, não
+       pergunte... só ignore e siga"): quem decide é SEMPRE o próprio
+       jogador perguntado (ver DT.gaCacadaResponderCura, mesmo motivo --
+       o host que roda resolverRodadaCacada NUNCA enxerga a Mochila de
+       outro Treinador). Então é o cliente do PRÓPRIO jogador perguntado
+       que confere `temItem` (mesmo padrão da luta normal, `GA_ITEMS.some`)
+       e, se não tiver nenhuma poção, responde recusa sozinho aqui --
+       nunca chega a desenhar o popup perguntando pra ele. */
+    if(c.status==='lutando' && c.battle && c.battle.pendingHealFor===SESSION.currentDocId && !c.battle.pendingHealDecisao && !cacadasAutoCuraLocal[c.id]){
+      var temItemCura = GA_ITEMS.some(function(it){ return (STATE.itens[it.key]||0)>0; });
+      if(!temItemCura){
+        cacadasAutoCuraLocal[c.id] = true;
+        var bAuto = c.battle;
+        bAuto.pendingHealDecisao = { docId: SESSION.currentDocId, itemKey:'', itemNome:'', curaPct:0 };
+        cacadasCol.doc(c.id).update({ battle: bAuto }).then(function(){ delete cacadasAutoCuraLocal[c.id]; }).catch(function(){ delete cacadasAutoCuraLocal[c.id]; });
+      }
+    }
     if(c.status==='lutando' && c.battle && !c.battle.vencedor && souHostCacada(c)) resolverRodadaCacada(c);
     if(c.battle && c.battle.vencedor && c.status!=='fim'){
       cacadasCol.doc(c.id).update({ status:'fim' }).catch(function(){});
@@ -16225,7 +16336,7 @@ function sidebarHTML(){
        página) -- `id` pra `energyTickLoop` atualizar o texto a cada
        segundo sem precisar re-renderizar a tela inteira (mesmo padrão
        já usado pro contador de Energia/Pokéticket). */
-    '<div class="ga-game-clock" id="ga-game-clock-side" title="Relógio ACELERADO do jogo (4h de jogo pra cada 1h real -- nunca a hora real de verdade) -- algumas evoluções só acontecem de Dia ou de Noite, e os Pokétickets somam a cada Dia do jogo novo">'+esc2(relogioDoJogoTexto())+'</div>'+
+    '<div class="ga-game-clock" id="ga-game-clock-side" title="Relógio ACELERADO do jogo (4h de jogo pra cada 1h real -- nunca a hora real de verdade) -- algumas evoluções só acontecem de Dia ou de Noite, e os Pokétickets somam a cada Dia do jogo novo">'+relogioDoJogoHTML()+'</div>'+
     '<div class="ga-side-stats">'+
       '<span title="'+esc2(TOOLTIPS.energia)+'">🔋 '+STATE.energy+'/1000</span>'+
       '<span title="'+esc2(TOOLTIPS.pokedolares)+'">💰 '+(STATE.pokedolares||0)+'</span>'+
@@ -16251,7 +16362,7 @@ function mobileTopbarHTML(){
     '<button class="ga-hamburger" onclick="DT.gaToggleSidebar()" aria-label="Abrir menu">☰</button>'+
     '<div class="ga-brand" onclick="DT.gaGoto(\'hub\')">🟢 GREEN ÁREA</div>'+
     '<span class="ga-mobtop-energia" title="'+esc2(TOOLTIPS.energia)+'">🔋 '+STATE.energy+'</span>'+
-    '<div class="ga-game-clock ga-game-clock-mob" id="ga-game-clock-mob" title="Relógio ACELERADO do jogo (4h de jogo pra cada 1h real) -- algumas evoluções só acontecem de Dia ou de Noite, Pokétickets somam a cada Dia do jogo novo">'+esc2(relogioDoJogoTexto())+'</div>'+
+    '<div class="ga-game-clock ga-game-clock-mob" id="ga-game-clock-mob" title="Relógio ACELERADO do jogo (4h de jogo pra cada 1h real) -- algumas evoluções só acontecem de Dia ou de Noite, Pokétickets somam a cada Dia do jogo novo">'+relogioDoJogoHTML()+'</div>'+
   '</div>';
 }
 /* Cap. leva desta sessão ("desenvolve uma versão otimizada pra
@@ -18534,7 +18645,9 @@ function cacadaGrupoScreenHTML(){
 }
 function cacadaListaHTML(){
   var minhas = SESSION.cacadasAtivas || [];
-  var out = '<div class="ga-card"><h2>🐺 Caça em Grupo</h2><p class="ga-hint">Junte até 5 Treinadores pra enfrentar um bando selvagem -- 1 Alfa e seus seguidores, mais fortes quanto mais gente entrar. Convide amigos (do Centro Pokémon), escolha quem vai liderar e acompanhe a chance de vitória antes de começar. A cada Rodada, cada Treinador luta com 1 Pokémon por vez, igual o Duelo PvP -- e dá pra usar poção se alguém ficar com PV baixo.</p></div>';
+  var out = '<div class="ga-card"><h2>🐺 Caça em Grupo</h2><p class="ga-hint">Junte até 5 Treinadores pra enfrentar um bando selvagem -- 1 Alfa e seus seguidores, mais fortes quanto mais gente entrar. Convide amigos (do Centro Pokémon), escolha quem vai liderar e acompanhe a chance de vitória antes de começar. A cada Rodada, cada Treinador luta com 1 Pokémon por vez, igual o Duelo PvP -- e dá pra usar poção se alguém ficar com PV baixo. Cada entrada (nova Caça ou "Encarar outra") custa '+CACADA_CUSTO_ENERGIA+' de Energia -- você tem <strong>'+STATE.energy+'/1000</strong> agora.</p>'+
+    ticketParaEnergiaWidgetHTML('cacada')+
+  '</div>';
   if(minhas.length){
     out += '<div class="ga-card"><h2>Suas Caças</h2><div class="ga-poke-grid">'+minhas.map(function(c){
       var meu = c.membros[SESSION.currentDocId];
@@ -18694,10 +18807,46 @@ function cacadaResultadoPopupHTML(c){
     minhaRecompensaTxt = '<p class="ga-hint">💰 Sua recompensa: +'+pokedolar+' Pokédólares, +'+xp+' XP.</p>';
   }
   var podeNovaRodada = souHost && rodadas<CACADA_MAX_RODADAS_SEGUIDAS;
+  /* Cap. leva desta sessão ("Permita também usar aquele popup de
+     captura da luta individual... A ordem de captura sempre parte do
+     líder para a ordem de entrada"): mesmo bloco de captura da luta
+     solo (POKEBALLS + % de chance), só que por turnos -- só o jogador
+     da vez (`captura.ordem[captura.vez]`) vê os botões de verdade, o
+     resto só acompanha em texto quem está tentando agora. */
+  var capturaHTML = '';
+  if(euVenci && b.captura){
+    var captura = b.captura;
+    var spCaptura = speciesByNum(captura.num);
+    if(!captura.feita){
+      var vezDocId = captura.ordem[captura.vez];
+      var nomeDaVez = (c.membros[vezDocId]||{}).nome || '???';
+      if(vezDocId===meuId){
+        var bolasDisp = POKEBALLS.filter(function(bl){ return (STATE.pokebolas[bl.key]||0)>0; });
+        capturaHTML = '<div class="ga-card"><h3 class="ga-subhead">🎯 Sua vez de tentar capturar '+esc2(spCaptura.name)+' (Nv. '+captura.level+')!</h3>'+
+          '<div class="ga-btn-row">'+
+          (bolasDisp.length
+            ? bolasDisp.map(function(bl){
+                var pct = Math.round(catchChance(captura.num, bl.key)*100);
+                return '<button class="ga-btn ga-btn-primary" onclick="DT.gaCacadaTentarCaptura(\''+c.id+'\',\''+bl.key+'\')">'+itemIconHTML(bl)+' '+bl.nome+' ('+STATE.pokebolas[bl.key]+') -- '+pct+'%</button>';
+              }).join('')
+            : '<span class="ga-hint">Sem nenhuma bola na Mochila -- compre na 🏪 Loja.</span>')+
+          '<button class="ga-btn-sm" onclick="DT.gaCacadaPassarCaptura(\''+c.id+'\')">Não tentar (passar a vez)</button>'+
+          '</div></div>';
+      } else {
+        capturaHTML = '<div class="ga-card"><p class="ga-hint">⏳ Esperando '+esc2(nomeDaVez)+' tentar capturar '+esc2(spCaptura.name)+'...</p></div>';
+      }
+    } else if(captura.capturadoPor){
+      var nomeCaptor = (c.membros[captura.capturadoPor]||{}).nome || '???';
+      capturaHTML = '<div class="ga-card"><p class="ga-hint">🎯 '+esc2(nomeCaptor)+(captura.capturadoPor===meuId?' (você)':'')+' capturou '+esc2(spCaptura.name)+'!</p></div>';
+    } else if(captura.fugiu){
+      capturaHTML = '<div class="ga-card"><p class="ga-hint">💨 Ninguém conseguiu capturar '+esc2(spCaptura.name)+' -- ele fugiu.</p></div>';
+    }
+  }
   return '<div class="ga-overlay"><div class="ga-overlay-card compact">'+
     '<h2>'+(euVenci?'🏆 A Caça em Grupo foi vencida!':'☠️ O bando venceu a Caça.')+'</h2>'+
     '<p class="ga-hint">Todo mundo sai da Caça com o PV cheio de novo. '+(euVenci?'Recompensa de participação creditada no seu Treinador.':'')+'</p>'+
     minhaRecompensaTxt+
+    capturaHTML+
     '<details class="ga-seq-relatorio-item"><summary>📋 Relatório da Caça -- Onda '+(b.grupoAtual+1)+'/'+totalOndas+' -- Rodada '+rodadas+'/'+CACADA_MAX_RODADAS_SEGUIDAS+'</summary>'+
       linhasTreinadores+
       '<div class="ga-battle-log">'+b.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>'+
