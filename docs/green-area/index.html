@@ -15440,13 +15440,21 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
     return '<button type="button" class="ga-team-role ga-team-role-'+papel+(ativo?' ativo':'')+'" title="'+esc2(TOOLTIPS.papelCombate)+'" aria-pressed="'+ativo+'" onclick="DT.gaSetPapelCombate(\''+poke.id+'\',\''+papel+'\')">'+PAPEL_COMBATE_LABEL[papel]+'</button>';
   }).join('');
   var podeCaixa = STATE.party.length>1;
+  var actionsExtras = (pedrasElegiveisPara(poke).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+poke.id+'\')">🪨 Usar Item</button>' : '')+
+    (giroElegivelPara(poke).length ? '<button class="ga-btn-sm" onclick="DT.gaVirarPokemon(\''+poke.id+'\')">🔄 Virar</button>' : '')+
+    (poke.num===741 ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarNectar(\''+poke.id+'\')">🌺 Trocar Estilo</button>' : '');
   var tiposObj = tiposEfetivos(poke);
   var tiposArr = [tiposObj.tipo1].concat(tiposObj.tipo2 ? [tiposObj.tipo2] : []);
   var tiposHTML = tiposArr.map(function(t){
     return '<span class="ga-team-type-pill" style="background:'+(TEAM_CARD_TYPE_COLOR[t]||'#8fb3a2')+';">'+esc2(t)+'</span>';
   }).join('');
   return '<div class="ga-team-card'+(i===0?' ativo':'')+'" '+(dragAttrs||'')+'>'+
-    '<div class="ga-team-topbar"><span class="ga-team-pokeball" aria-hidden="true"></span>'+
+    /* Cap. leva desta sessão ("Essa pokébola aqui, deixa só no
+       pokémon ativo. os demais deixa sem ela"): `visibility:hidden`
+       em vez de sumir o `<span>` de vez -- mantém o V/D sempre no
+       MESMO canto direito nos 6 cards (`justify-content:space-
+       between` precisa dos 2 lados preenchidos pra alinhar igual). */
+    '<div class="ga-team-topbar"><span class="ga-team-pokeball" aria-hidden="true"'+(i===0?'':' style="visibility:hidden;"')+'></span>'+
       '<div class="ga-team-vd" title="Vitórias / Derrotas desse Pokémon"><b class="v">'+(poke.vitorias||0)+'V</b><span class="sep">|</span><b class="d">'+(poke.derrotas||0)+'D</b></div>'+
     '</div>'+
     '<div class="ga-team-stage"><div class="ga-team-sprite-wrap"><img class="ga-team-sprite" src="'+spriteUrl(spriteNumEfetivo(poke))+'" loading="lazy" alt=""></div></div>'+
@@ -15470,12 +15478,14 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
     (orderControls||'')+
     (poke.num===999 ? '<div class="ga-hint" title="Moedas de Gimmighoul -- só acumula enquanto ele estiver na Equipe (nunca na Caixa); junte 999 pra evoluir em Gholdengo">🪙 '+(STATE.itens['moedas-gimmighoul']||0)+'/999</div>' : '')+
     (poke.num===808 ? '<div class="ga-hint" title="Doce de Meltan -- item de Mochila comprável na Loja; junte 400 pra evoluir em Melmetal no próximo level up">🍡 '+(STATE.itens['doce-meltan']||0)+'/400</div>' : '')+
-    '<div class="ga-poke-actions">'+
-      (i===0 ? '<p class="ga-hint">🎯 Ativo</p>' : '')+
-      (pedrasElegiveisPara(poke).length ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarPedra(\''+poke.id+'\')">🪨 Usar Item</button>' : '')+
-      (giroElegivelPara(poke).length ? '<button class="ga-btn-sm" onclick="DT.gaVirarPokemon(\''+poke.id+'\')">🔄 Virar</button>' : '')+
-      (poke.num===741 ? '<button class="ga-btn-sm" onclick="DT.gaAskUsarNectar(\''+poke.id+'\')">🌺 Trocar Estilo</button>' : '')+
-    '</div>'+
+    /* Cap. leva desta sessão ("aquele 'Ativo' lá de baixo pode tirar
+       pois tá tomando muito espaço, aí já mata aquele espaço"): a
+       Pokébola do topo (`.ga-team-pokeball`, acima) já marca quem é
+       o ativo -- esse texto virou redundante. `.ga-poke-actions` só
+       aparece quando tem alguma ação de verdade pra mostrar (pedra/
+       giro/néctar); vazio ela nem entra no HTML, sem sobrar o
+       padding-top dela à toa. */
+    (actionsExtras ? '<div class="ga-poke-actions">'+actionsExtras+'</div>' : '')+
   '</div>';
 }
 
