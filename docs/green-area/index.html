@@ -275,6 +275,20 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    origem SEMPRE, não importa a ordem no arquivo (mesma lição do bug
    de especificidade do card antigo com PNG de fundo). */
 .ga-team-nameplate .ga-raid-badge{ position:static; width:15px; height:15px; line-height:15px; font-size:10px; border-radius:3px; flex:0 0 auto; }
+/* Cap. leva desta sessão ("quero que ele tenha um A pixelado da mesma
+   forma do R pixelado para aparecer no mesmo local. Eles podem existir
+   ambos ali, só ir chegando pro lado"): badge de Alfa (Caça em Grupo),
+   MESMO estilo/local do `.ga-raid-badge` (canto oposto ao V:/D:), só
+   com cor dourada (`--gold`) pra distinguir. `.ga-badge-2nd` empurra
+   pro lado quando o R TAMBÉM está presente no mesmo card (os 2 cabem
+   juntos, lado a lado, nunca sobrepostos). No nameplate da Equipe
+   (`position:static`, dentro de um flex row) os 2 já ficam lado a lado
+   de graça, sem precisar de `.ga-badge-2nd` nenhum. */
+.ga-alfa-badge{ position:absolute; top:6px; left:6px; width:20px; height:20px; line-height:20px; font-size:12px; font-weight:700; text-align:center; background:var(--gold); color:#3a1e00; border-radius:0; z-index:2; }
+.ga-alfa-badge.ga-badge-2nd{ left:30px; }
+.ga-alfa-badge-dex{ position:absolute; top:2px; left:2px; }
+.ga-alfa-badge-dex.ga-badge-2nd{ left:26px; }
+.ga-team-nameplate .ga-alfa-badge{ position:static; width:15px; height:15px; line-height:15px; font-size:10px; border-radius:3px; flex:0 0 auto; }
 .ga-team-dexnum{ font-size:.66rem; font-weight:700; letter-spacing:.2px; color:#5ecdd6; opacity:.8; flex:0 0 auto; }
 .ga-team-nome{ font-size:.66rem; font-weight:800; letter-spacing:.2px; color:#5eead4; text-shadow:0 0 14px rgba(94,234,212,.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .ga-team-subrow{ display:flex; align-items:flex-start; justify-content:space-between; font-size:.68rem; font-weight:700; color:#dff2ee; gap:6px; }
@@ -8923,7 +8937,7 @@ function dexEntry(num){ return STATE.dex[num] || {seen:false, caught:false}; }
    (ex. capturadoBadgeHTML na Arena: mesmo um Admin merece ver se JÁ
    capturou aquele selvagem específico de verdade, não um "sim" fixo
    que tornaria o badge inútil). */
-function dexEntryView(num){ return SESSION.isAdmin ? {seen:true, caught:true, raidCaught: !!dexEntry(num).raidCaught} : dexEntry(num); }
+function dexEntryView(num){ return SESSION.isAdmin ? {seen:true, caught:true, raidCaught: !!dexEntry(num).raidCaught, alfaCaught: !!dexEntry(num).alfaCaught} : dexEntry(num); }
 function dexCountsView(){ return SESSION.isAdmin ? {seen:SPECIES_DEX.length, caught:SPECIES_DEX.length, total:SPECIES_DEX.length} : dexCounts(); }
 /* Cap. leva desta sessão: "Acrescentar a informação de pokémon
    capturado uma pokebola pixelada ao lado do pokémon que você estiver
@@ -8949,10 +8963,11 @@ function markSeen(num){ if(!STATE.dex[num]) STATE.dex[num] = {seen:true, caught:
    pelo menos 1 vez, o selo fica pra sempre na Pokédex dele, mesmo que
    solte esse Pokémon específico depois -- é um troféu de conquista,
    não um contador de estoque). */
-function markCaught(num, viaRaid){
+function markCaught(num, viaRaid, viaAlfa){
   if(!STATE.dex[num]) STATE.dex[num] = {seen:true, caught:false};
   STATE.dex[num].seen = true; STATE.dex[num].caught = true; STATE.dex[num].caughtAt = Date.now();
   if(viaRaid) STATE.dex[num].raidCaught = true;
+  if(viaAlfa) STATE.dex[num].alfaCaught = true; // Cap. leva desta sessão -- Alfa da Caça em Grupo, mesmo espírito de raidCaught (troféu que nunca some sozinho)
 }
 function dexCounts(){
   var seen=0, caught=0;
@@ -13339,18 +13354,35 @@ DT.gaCacadaResponderCura = function(itemKey){
   cacadasCol.doc(c.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui responder ('+erroFirestoreMsg(err)+').'; render(); });
   if(it) mutate(); // só precisa persistir o STATE local quando de fato gastou um item da Mochila
 };
-/* Cap. leva desta sessão ("Permita também usar aquele popup de captura
-   da luta individual... caso o pokémon não seja capturado ele não
-   foge, só foge depois que todos tentam 1 uma vez"): reusa o MESMO
-   catálogo/fórmula da captura individual (POKEBALLS/catchChance) pro
-   Alfa que selou a vitória (`c.battle.captura`, montado em
-   resolverRodadaCacada assim que `vencedor` vira 'jogadores'). Só o
-   jogador da vez (`captura.ordem[captura.vez]`) pode chamar isto --
-   ele mesmo desconta a PRÓPRIA Pokébola e, se capturar, entra pro
-   PRÓPRIO Time/Caixa (mesma regra de sempre: cada um só mexe no
-   PRÓPRIO save). Falhou -- ou não tinha bola nenhuma -- passa a vez
-   pro próximo da ordem; ninguém conseguiu depois de todo mundo tentar
-   = foge de vez (`fugiu:true`). */
+/* Promove a próxima criatura de `b.capturaFila` pra virar `b.captura`
+   ativa, reusando a MESMA ordem de Treinadores (sempre reinicia
+   `vez:0` -- a rodada de captura de CADA criatura é independente,
+   todo mundo tenta de novo do começo). Mesmo padrão de fila já usado
+   em `pendingTrocarGolpeEvolucaoQueue`/`avancarFilaEvolucao`. Chamada
+   só depois que a captura ATUAL já terminou (`feita:true`, seja
+   capturada ou fugida). */
+function avancarFilaCapturaCacada(b){
+  if(b.capturaFila && b.capturaFila.length){
+    var proximo = b.capturaFila.shift();
+    b.captura = Object.assign({ ordem: b.captura.ordem, vez:0, feita:false, capturadoPor:null, fugiu:false }, proximo);
+  }
+}
+/* Cap. leva desta sessão ("A captura não é só pro alfa, é pra os
+   demais também. todos eles entram na contagem no fim da luta" +
+   leva anterior, "Permita também usar aquele popup de captura da luta
+   individual... caso o pokémon não seja capturado ele não foge, só
+   foge depois que todos tentam 1 uma vez"): reusa o MESMO catálogo/
+   fórmula da captura individual (POKEBALLS/catchChance) pra CADA
+   criatura que a Caça enfrentou (`c.battle.captura`, a ativa da fila
+   `c.battle.capturaFila`, montada em resolverRodadaCacada assim que
+   `vencedor` vira 'jogadores'). Só o jogador da vez
+   (`captura.ordem[captura.vez]`) pode chamar isto -- ele mesmo
+   desconta a PRÓPRIA Pokébola e, se capturar, entra pro PRÓPRIO Time/
+   Caixa (mesma regra de sempre: cada um só mexe no PRÓPRIO save).
+   Falhou -- ou não tinha bola nenhuma -- passa a vez pro próximo da
+   ordem; ninguém conseguiu depois de todo mundo tentar = foge de vez
+   (`fugiu:true`) -- nos 2 casos, assim que aquela criatura termina, a
+   PRÓXIMA da fila é promovida automaticamente. */
 DT.gaCacadaTentarCaptura = function(cacadaId, ballKey){
   var c = achaCacadaAtiva(cacadaId); if(!c || !c.battle || !c.battle.captura || c.battle.captura.feita) return;
   var captura = c.battle.captura;
@@ -13361,8 +13393,9 @@ DT.gaCacadaTentarCaptura = function(cacadaId, ballKey){
   var sucesso = Math.random() < catchChance(captura.num, ballKey);
   var b = c.battle;
   if(sucesso){
-    markCaught(captura.num);
+    markCaught(captura.num, false, captura.alfa);
     var novo = spawnPoke(captura.num, captura.level);
+    if(captura.alfa) novo.deAlfa = true; // Cap. leva desta sessão -- badge "A" pixelado (mesmo padrão do "R" de Raid), só pro Alfa, nunca pro resto do bando
     if(STATE.party.length<6) STATE.party.push(novo); else STATE.box.push(novo);
     b.log.push('🎯 '+esc2(STATE.trainerName)+' jogou '+bola.nome+'... capturou '+speciesByNum(captura.num).name+'!');
     logAction('captura', 'Capturou '+speciesByNum(captura.num).name+' (Nv. '+captura.level+') com '+bola.nome+' na Caça em Grupo.');
@@ -13372,6 +13405,7 @@ DT.gaCacadaTentarCaptura = function(cacadaId, ballKey){
     captura.vez++;
     if(captura.vez>=captura.ordem.length){ captura.feita = true; captura.fugiu = true; b.log.push('💨 Ninguém conseguiu capturar -- o Pokémon fugiu.'); }
   }
+  if(captura.feita) avancarFilaCapturaCacada(b);
   cacadasCol.doc(c.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui tentar a captura ('+erroFirestoreMsg(err)+').'; render(); });
   mutate();
 };
@@ -13383,6 +13417,7 @@ DT.gaCacadaPassarCaptura = function(cacadaId){
   b.log.push('➡️ '+esc2(STATE.trainerName)+' deixou passar a chance de capturar.');
   captura.vez++;
   if(captura.vez>=captura.ordem.length){ captura.feita = true; captura.fugiu = true; b.log.push('💨 Ninguém conseguiu capturar -- o Pokémon fugiu.'); }
+  if(captura.feita) avancarFilaCapturaCacada(b);
   cacadasCol.doc(c.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui passar a vez ('+erroFirestoreMsg(err)+').'; render(); });
 };
 /* Monta o battle de UMA onda (grupos[idxOnda]) -- se `battleAnterior`
@@ -13593,28 +13628,39 @@ function resolverRodadaCacada(c){
       }
     }
   } finally { STATE.battle = backupBattle; }
-  /* Cap. leva desta sessão ("Permita também usar aquele popup de
-     captura da luta individual... A ordem de captura sempre parte do
-     líder para a ordem de entrada"): assim que a Caça é VENCIDA (nunca
-     antes), monta a rodada de captura do Alfa do ÚLTIMO bando (o
-     "chefe" que selou a vitória) -- 1 tentativa por vez, na ordem
-     `c.ordemEntrada` (host sempre 1º, ver DT.gaCriarCacada/gaAceitarCacada),
-     pulando quem foi eliminado/desistiu durante a luta (não tem mais
-     Pokémon vivo pra "trazer o troféu"). Só inicializa 1 vez
-     (`!b.captura`) -- daqui pra frente quem avança a vez é
+  /* Cap. leva desta sessão ("A captura não é só pro alfa, é pra os
+     demais também. todos eles entram na contagem no fim da luta"):
+     assim que a Caça é VENCIDA (nunca antes), monta a FILA de captura
+     com TODO MUNDO que a Caça enfrentou -- todos os Alfas E todos os
+     bandos de TODAS as ondas (`c.grupos` inteiro, não só a última --
+     só chega aqui vencedor se TODAS as ondas já caíram, então cada uma
+     já foi derrotada de verdade). 1 criatura de cada vez, 1 tentativa
+     por Treinador vivo por vez, na ordem `c.ordemEntrada` (host sempre
+     1º, ver DT.gaCriarCacada/gaAceitarCacada), pulando quem foi
+     eliminado/desistiu durante a luta. `b.captura` é a rodada ATIVA;
+     `b.capturaFila` guarda o resto esperando (mesmo padrão de fila já
+     usado em `pendingTrocarGolpeEvolucaoQueue` -- 1º vira ativo, resto
+     espera, promovido 1 de cada vez). Só inicializa 1 vez (`!b.captura
+     && !b.capturaFila`) -- daqui pra frente quem avança é
      DT.gaCacadaTentarCaptura/gaCacadaPassarCaptura, chamado pelo
      PRÓPRIO jogador da vez (mesmo padrão de DT.gaCacadaResponderCura --
      o host já não escreve mais `battle` depois que `vencedor` existe,
      ver processarCacadasAtivas, então não tem risco de 2 escritas
      concorrentes aqui). */
-  if(b.vencedor==='jogadores' && !b.captura){
-    var ultimoGrupo = c.grupos[c.grupos.length-1];
+  if(b.vencedor==='jogadores' && !b.captura && !b.capturaFila){
+    var todosCapturaveis = [];
+    (c.grupos||[]).forEach(function(g){
+      todosCapturaveis.push({ num: g.alfa.num, level: g.alfa.level, alfa: true });
+      (g.bando||[]).forEach(function(m){ todosCapturaveis.push({ num: m.num, level: m.level, alfa: false }); });
+    });
     var ordemBase = (c.ordemEntrada && c.ordemEntrada.length) ? c.ordemEntrada : Object.keys(c.membros);
     var ordemCaptura = ordemBase.filter(function(docId){
       return participantesIds.indexOf(docId)!==-1 && !(b.eliminados && b.eliminados[docId]);
     });
-    if(ordemCaptura.length && ultimoGrupo){
-      b.captura = { num: ultimoGrupo.alfa.num, level: ultimoGrupo.alfa.level, ordem: ordemCaptura, vez: 0, feita:false, capturadoPor:null, fugiu:false };
+    if(ordemCaptura.length && todosCapturaveis.length){
+      var primeiroCapturavel = todosCapturaveis.shift();
+      b.captura = Object.assign({ ordem: ordemCaptura, vez: 0, feita:false, capturadoPor:null, fugiu:false }, primeiroCapturavel);
+      b.capturaFila = todosCapturaveis;
     }
   }
   cacadasCol.doc(c.id).update({ battle: b }).catch(function(){});
@@ -16582,6 +16628,7 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
        nenhum pra aplicar `image-rendering:pixelated`, então o
        quadrado inteiro já nasce sem serrilhado por design). */
     (poke.deRaid ? '<div class="ga-raid-badge" title="Capturado numa Raid">R</div>' : '')+
+    (poke.deAlfa ? '<div class="ga-alfa-badge'+(poke.deRaid?' ga-badge-2nd':'')+'" title="Capturado de um Alfa (Caça em Grupo)">A</div>' : '')+
     '<img src="'+spriteUrl(spriteNumEfetivo(poke))+'" loading="lazy" alt="">'+
     '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+lapis+estrela+'</div>'+
     /* Cap. leva desta sessão ("Nos cards de pokémon adicione
@@ -16703,6 +16750,7 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
     '</div>'+
     '<div class="ga-team-nameplate">'+
       (poke.deRaid ? '<span class="ga-raid-badge" title="Capturado numa Raid">R</span>' : '')+
+      (poke.deAlfa ? '<span class="ga-alfa-badge" title="Capturado de um Alfa (Caça em Grupo)">A</span>' : '')+
       '<span class="ga-team-dexnum">#'+String(poke.num).padStart(4,'0')+'</span>'+
       '<span class="ga-team-nome">'+esc2((poke.apelido||sp.name).toUpperCase())+'</span>'+
       lapis+estrela+
@@ -17370,8 +17418,9 @@ function dexScreenHTML(){
   var grid = lista.map(function(sp){
     var d = dexEntryView(sp.num);
     var cls = d.caught ? 'caught' : (d.seen ? 'seen' : 'unseen');
-    return '<div class="ga-dex-tile '+cls+'" onclick="DT.gaOpenDex('+sp.num+')" title="'+(d.caught?esc2(sp.name):(d.seen?'Visto':'?'))+(d.raidCaught?' -- capturado numa Raid':'')+'">'+
+    return '<div class="ga-dex-tile '+cls+'" onclick="DT.gaOpenDex('+sp.num+')" title="'+(d.caught?esc2(sp.name):(d.seen?'Visto':'?'))+(d.raidCaught?' -- capturado numa Raid':'')+(d.alfaCaught?' -- capturado de um Alfa':'')+'">'+
       (d.raidCaught ? '<div class="ga-raid-badge ga-raid-badge-dex" title="Capturado numa Raid">R</div>' : '')+
+      (d.alfaCaught ? '<div class="ga-alfa-badge ga-alfa-badge-dex'+(d.raidCaught?' ga-badge-2nd':'')+'" title="Capturado de um Alfa (Caça em Grupo)">A</div>' : '')+
       '<img src="'+spriteUrl(sp.num)+'" loading="lazy" alt="">'+
       '<span class="ga-dex-num">#'+String(sp.num).padStart(4,'0')+'</span>'+
     '</div>';
@@ -17570,6 +17619,7 @@ function dexPopupHTML(num){
   var out = '<div class="ga-overlay" onclick="DT.gaCloseDex()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCloseDex()">✕</button>'+
     (d.raidCaught ? '<div class="ga-raid-badge ga-raid-badge-dex" title="Capturado numa Raid">R</div>' : '')+
+    (d.alfaCaught ? '<div class="ga-alfa-badge ga-alfa-badge-dex'+(d.raidCaught?' ga-badge-2nd':'')+'" title="Capturado de um Alfa (Caça em Grupo)">A</div>' : '')+
     '<img class="ga-dex-popup-img '+(caught?'':'silhouette')+'" src="'+spriteUrl(spriteNum)+'" alt="">'+
     '<h2>#'+String(num).padStart(4,'0')+' — '+(seen ? esc2(sp.name)+(formaAtiva?' ('+esc2(formaAtiva.nome)+')':'') : '???')+'</h2>';
   if(!seen){
@@ -18807,22 +18857,25 @@ function cacadaResultadoPopupHTML(c){
     minhaRecompensaTxt = '<p class="ga-hint">💰 Sua recompensa: +'+pokedolar+' Pokédólares, +'+xp+' XP.</p>';
   }
   var podeNovaRodada = souHost && rodadas<CACADA_MAX_RODADAS_SEGUIDAS;
-  /* Cap. leva desta sessão ("Permita também usar aquele popup de
-     captura da luta individual... A ordem de captura sempre parte do
-     líder para a ordem de entrada"): mesmo bloco de captura da luta
-     solo (POKEBALLS + % de chance), só que por turnos -- só o jogador
-     da vez (`captura.ordem[captura.vez]`) vê os botões de verdade, o
-     resto só acompanha em texto quem está tentando agora. */
+  /* Cap. leva desta sessão ("A captura não é só pro alfa, é pra os
+     demais também. todos eles entram na contagem no fim da luta"):
+     mesmo bloco de captura da luta solo (POKEBALLS + % de chance), só
+     que por turnos E por uma FILA inteira (todo mundo que a Caça
+     enfrentou, não só o Alfa) -- só o jogador da vez
+     (`captura.ordem[captura.vez]`) vê os botões de verdade, o resto só
+     acompanha em texto quem está tentando agora. Mostra quantos ainda
+     faltam (`b.capturaFila.length`) pra dar noção de quanto falta. */
   var capturaHTML = '';
   if(euVenci && b.captura){
     var captura = b.captura;
     var spCaptura = speciesByNum(captura.num);
+    var faltamHTML = (b.capturaFila && b.capturaFila.length) ? ' <span class="ga-hint">(+'+b.capturaFila.length+' esperando depois deste)</span>' : '';
     if(!captura.feita){
       var vezDocId = captura.ordem[captura.vez];
       var nomeDaVez = (c.membros[vezDocId]||{}).nome || '???';
       if(vezDocId===meuId){
         var bolasDisp = POKEBALLS.filter(function(bl){ return (STATE.pokebolas[bl.key]||0)>0; });
-        capturaHTML = '<div class="ga-card"><h3 class="ga-subhead">🎯 Sua vez de tentar capturar '+esc2(spCaptura.name)+' (Nv. '+captura.level+')!</h3>'+
+        capturaHTML = '<div class="ga-card"><h3 class="ga-subhead">🎯 Sua vez de tentar capturar '+(captura.alfa?'o 👑 Alfa ':'')+esc2(spCaptura.name)+' (Nv. '+captura.level+')!'+faltamHTML+'</h3>'+
           '<div class="ga-btn-row">'+
           (bolasDisp.length
             ? bolasDisp.map(function(bl){
@@ -18833,13 +18886,13 @@ function cacadaResultadoPopupHTML(c){
           '<button class="ga-btn-sm" onclick="DT.gaCacadaPassarCaptura(\''+c.id+'\')">Não tentar (passar a vez)</button>'+
           '</div></div>';
       } else {
-        capturaHTML = '<div class="ga-card"><p class="ga-hint">⏳ Esperando '+esc2(nomeDaVez)+' tentar capturar '+esc2(spCaptura.name)+'...</p></div>';
+        capturaHTML = '<div class="ga-card"><p class="ga-hint">⏳ Esperando '+esc2(nomeDaVez)+' tentar capturar '+(captura.alfa?'o 👑 Alfa ':'')+esc2(spCaptura.name)+'...'+faltamHTML+'</p></div>';
       }
     } else if(captura.capturadoPor){
       var nomeCaptor = (c.membros[captura.capturadoPor]||{}).nome || '???';
-      capturaHTML = '<div class="ga-card"><p class="ga-hint">🎯 '+esc2(nomeCaptor)+(captura.capturadoPor===meuId?' (você)':'')+' capturou '+esc2(spCaptura.name)+'!</p></div>';
+      capturaHTML = '<div class="ga-card"><p class="ga-hint">🎯 '+esc2(nomeCaptor)+(captura.capturadoPor===meuId?' (você)':'')+' capturou '+esc2(spCaptura.name)+'!'+faltamHTML+'</p></div>';
     } else if(captura.fugiu){
-      capturaHTML = '<div class="ga-card"><p class="ga-hint">💨 Ninguém conseguiu capturar '+esc2(spCaptura.name)+' -- ele fugiu.</p></div>';
+      capturaHTML = '<div class="ga-card"><p class="ga-hint">💨 Ninguém conseguiu capturar '+esc2(spCaptura.name)+' -- ele fugiu.'+faltamHTML+'</p></div>';
     }
   }
   return '<div class="ga-overlay"><div class="ga-overlay-card compact">'+
