@@ -275,16 +275,12 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-team-roles{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 .ga-team-role{ border:none; border-radius:12px; padding:8px 4px; cursor:pointer; font-size:.68rem; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); box-shadow:0 3px 8px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.2); transition:box-shadow .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
 .ga-team-role:hover{ transform:translateY(-1px); }
-.ga-team-role-ataque{ background:linear-gradient(150deg,#38bdf8,#2563eb); }
-.ga-team-role-defesa{ background:linear-gradient(150deg,#4ade80,#059669); }
-.ga-team-role-suporte{ background:linear-gradient(150deg,#fbbf24,#f97316); }
-.ga-team-role-controle{ background:linear-gradient(150deg,#22d3ee,#7c3aed); }
+.ga-team-role-ataque,.ga-team-role-defesa,.ga-team-role-suporte,.ga-team-role-controle{ background:linear-gradient(150deg,#38bdf8,#2563eb); }
 .ga-team-role.ativo{ box-shadow:0 0 0 2px #fff, 0 0 0 4px #facc15, 0 0 14px 3px rgba(250,204,21,.55); transform:translateY(-1px) scale(1.02); }
 .ga-team-itemcaixa{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 .ga-team-item,.ga-team-caixa{ border:none; border-radius:11px; padding:7px 4px; cursor:pointer; font-size:.68rem; font-weight:800; color:#0d1c2b; box-shadow:0 3px 8px rgba(0,0,0,.25); transition:filter .15s ease, transform .15s ease; -webkit-tap-highlight-color:transparent; }
 .ga-team-item:hover,.ga-team-caixa:hover{ filter:brightness(1.1); transform:translateY(-1px); }
-.ga-team-item{ background:linear-gradient(135deg,#a78bfa,#22d3ee); }
-.ga-team-caixa{ background:linear-gradient(135deg,#fde047,#f59e0b); }
+.ga-team-item,.ga-team-caixa{ background:linear-gradient(135deg,#a78bfa,#22d3ee); }
 .ga-team-caixa.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
 /* Setas de reordenar: `.ga-order-controls` (style.css raiz) nasce
    `position:absolute` pro canto do card antigo -- aqui viram uma
@@ -321,6 +317,8 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-raid-form-flex{ display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
 .ga-raid-form-flex .ga-raid-form-fields{ flex:2 1 320px; }
 .ga-raid-preview{ flex:1 1 220px; background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
+.ga-cacada-chance-bar{ height:14px; border-radius:999px; background:var(--panel3); overflow:hidden; margin:8px 0; }
+.ga-cacada-chance-fill{ height:100%; border-radius:999px; transition:width .3s ease; }
 .ga-raid-preview img{ width:72px; height:72px; display:block; margin:0 auto 6px; image-rendering:pixelated; }
 .ga-raid-preview ul{ list-style:none; padding:0; margin:6px 0; text-align:left; display:inline-block; }
 /* Cap. leva desta sessão ("Na box, quero que seja rolado só o que tem
@@ -587,6 +585,12 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-battle-side{ text-align:center; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; min-width:150px; }
 .ga-battle-side img{ width:72px; height:72px; image-rendering:pixelated; }
 .ga-battle-vs{ font-weight:800; color:var(--ink-dim); }
+.ga-cacada-field{ justify-content:center; }
+.ga-cacada-mini{ min-width:120px; padding:8px; }
+.ga-cacada-mini img{ width:56px; height:56px; }
+.ga-cacada-mini div{ font-size:.72rem; }
+.ga-cacada-alfa{ border-color:var(--gold); box-shadow:0 0 0 1px var(--gold); }
+.ga-cacada-eliminado{ opacity:.35; filter:grayscale(1); }
 /* Cap. leva desta sessão: "Acrescentar a informação de pokémon
    capturado uma pokebola pixelada ao lado do pokémon que você estiver
    lutando contra" -- seletor MAIS específico que `.ga-battle-side img`
@@ -4122,6 +4126,35 @@ var ABILITIES_DEX = [
 /* ---- EVOLUTIONS_DEX (extraído de docs/pokemon-rpg/site/diario-de-treinador.html) ---- */
 var EVOLUTIONS_DEX = {"1":[{"to":2,"level":16}],"2":[{"to":3,"level":32}],"4":[{"to":5,"level":16}],"5":[{"to":6,"level":36}],"7":[{"to":8,"level":16}],"8":[{"to":9,"level":36}],"10":[{"to":11,"level":7}],"11":[{"to":12,"level":10}],"13":[{"to":14,"level":7}],"14":[{"to":15,"level":10}],"16":[{"to":17,"level":18}],"17":[{"to":18,"level":36}],"19":[{"to":20,"level":20}],"21":[{"to":22,"level":20}],"23":[{"to":24,"level":22}],"25":[{"to":26,"level":null,"trigger":"use-item","item":"thunder-stone"}],"27":[{"to":28,"level":22}],"29":[{"to":30,"level":16}],"30":[{"to":31,"level":null,"trigger":"use-item","item":"moon-stone"}],"32":[{"to":33,"level":16}],"33":[{"to":34,"level":null,"trigger":"use-item","item":"moon-stone"}],"35":[{"to":36,"level":null,"trigger":"use-item","item":"moon-stone"}],"37":[{"to":38,"level":null,"trigger":"use-item","item":"fire-stone"}],"39":[{"to":40,"level":null,"trigger":"use-item","item":"moon-stone"}],"41":[{"to":42,"level":22}],"42":[{"to":169,"level":null,"trigger":"level-up","minHappiness":160}],"43":[{"to":44,"level":21}],"44":[{"to":45,"level":null,"trigger":"use-item","item":"leaf-stone"},{"to":182,"level":null,"trigger":"use-item","item":"sun-stone"}],"46":[{"to":47,"level":24}],"48":[{"to":49,"level":31}],"50":[{"to":51,"level":26}],"52":[{"to":53,"level":28},{"to":863,"level":28}],"54":[{"to":55,"level":33}],"56":[{"to":57,"level":28}],"57":[{"to":979,"level":null,"trigger":"use-move"}],"58":[{"to":59,"level":null,"trigger":"use-item","item":"fire-stone"}],"60":[{"to":61,"level":25}],"61":[{"to":62,"level":null,"trigger":"use-item","item":"water-stone"},{"to":186,"level":null,"trigger":"trade"}],"63":[{"to":64,"level":16}],"64":[{"to":65,"level":null,"trigger":"trade"}],"66":[{"to":67,"level":28}],"67":[{"to":68,"level":null,"trigger":"trade"}],"69":[{"to":70,"level":21}],"70":[{"to":71,"level":null,"trigger":"use-item","item":"leaf-stone"}],"72":[{"to":73,"level":30}],"74":[{"to":75,"level":25}],"75":[{"to":76,"level":null,"trigger":"trade"}],"77":[{"to":78,"level":40}],"79":[{"to":80,"level":37},{"to":199,"level":null,"trigger":"trade"}],"81":[{"to":82,"level":30}],"82":[{"to":462,"level":null}],"83":[{"to":865,"level":null,"trigger":"three-critical-hits"}],"84":[{"to":85,"level":31}],"86":[{"to":87,"level":34}],"88":[{"to":89,"level":38}],"90":[{"to":91,"level":null,"trigger":"use-item","item":"water-stone"}],"92":[{"to":93,"level":25}],"93":[{"to":94,"level":null,"trigger":"trade"}],"95":[{"to":208,"level":null,"trigger":"trade"}],"96":[{"to":97,"level":26}],"98":[{"to":99,"level":28}],"100":[{"to":101,"level":30}],"102":[{"to":103,"level":null,"trigger":"use-item","item":"leaf-stone"}],"104":[{"to":105,"level":28}],"108":[{"to":463,"level":null,"trigger":"level-up"}],"109":[{"to":110,"level":35}],"111":[{"to":112,"level":42}],"112":[{"to":464,"level":null,"trigger":"trade"}],"113":[{"to":242,"level":null,"trigger":"level-up","minHappiness":160}],"114":[{"to":465,"level":null,"trigger":"level-up"}],"116":[{"to":117,"level":32}],"117":[{"to":230,"level":null,"trigger":"trade"}],"118":[{"to":119,"level":33}],"120":[{"to":121,"level":null,"trigger":"use-item","item":"water-stone"}],"122":[{"to":866,"level":42}],"123":[{"to":212,"level":null,"trigger":"trade"},{"to":900,"level":null,"trigger":"use-item","item":"black-augurite"}],"125":[{"to":466,"level":null,"trigger":"trade"}],"126":[{"to":467,"level":null,"trigger":"trade"}],"129":[{"to":130,"level":20}],"133":[{"to":134,"level":null,"trigger":"use-item","item":"water-stone"},{"to":135,"level":null,"trigger":"use-item","item":"thunder-stone"},{"to":136,"level":null,"trigger":"use-item","item":"fire-stone"},{"to":196,"level":null,"trigger":"level-up","minHappiness":160,"timeOfDay":"day"},{"to":197,"level":null,"trigger":"level-up","minHappiness":160,"timeOfDay":"night"},{"to":470,"level":null},{"to":471,"level":null},{"to":700,"level":null,"trigger":"level-up"}],"137":[{"to":233,"level":null,"trigger":"trade"}],"138":[{"to":139,"level":40}],"140":[{"to":141,"level":40}],"147":[{"to":148,"level":30}],"148":[{"to":149,"level":55}],"152":[{"to":153,"level":16}],"153":[{"to":154,"level":32}],"155":[{"to":156,"level":14}],"156":[{"to":157,"level":36}],"158":[{"to":159,"level":18}],"159":[{"to":160,"level":30}],"161":[{"to":162,"level":15}],"163":[{"to":164,"level":20}],"165":[{"to":166,"level":18}],"167":[{"to":168,"level":22}],"170":[{"to":171,"level":27}],"172":[{"to":25,"level":null,"trigger":"level-up","minHappiness":220}],"173":[{"to":35,"level":null,"trigger":"level-up","minHappiness":160}],"174":[{"to":39,"level":null,"trigger":"level-up","minHappiness":160}],"175":[{"to":176,"level":null,"trigger":"level-up","minHappiness":160}],"176":[{"to":468,"level":null,"trigger":"use-item","item":"shiny-stone"}],"177":[{"to":178,"level":25}],"179":[{"to":180,"level":15}],"180":[{"to":181,"level":30}],"183":[{"to":184,"level":18}],"187":[{"to":188,"level":18}],"188":[{"to":189,"level":27}],"190":[{"to":424,"level":null,"trigger":"level-up"}],"191":[{"to":192,"level":null,"trigger":"use-item","item":"sun-stone"}],"193":[{"to":469,"level":null,"trigger":"level-up"}],"194":[{"to":195,"level":20},{"to":980,"level":20}],"198":[{"to":430,"level":null,"trigger":"use-item","item":"dusk-stone"}],"200":[{"to":429,"level":null,"trigger":"use-item","item":"dusk-stone"}],"203":[{"to":981,"level":null,"trigger":"level-up"}],"204":[{"to":205,"level":31}],"206":[{"to":982,"level":null,"trigger":"level-up"}],"207":[{"to":472,"level":null,"trigger":"level-up","timeOfDay":"night"}],"209":[{"to":210,"level":23}],"211":[{"to":904,"level":null,"trigger":"strong-style-move"}],"215":[{"to":461,"level":null,"trigger":"level-up","timeOfDay":"night"},{"to":903,"level":null,"trigger":"level-up","timeOfDay":"day"}],"216":[{"to":217,"level":30}],"217":[{"to":901,"level":null,"trigger":"use-item","item":"peat-block","timeOfDay":"full-moon"}],"218":[{"to":219,"level":38}],"220":[{"to":221,"level":33}],"221":[{"to":473,"level":null,"trigger":"level-up"}],"222":[{"to":864,"level":38}],"223":[{"to":224,"level":25}],"228":[{"to":229,"level":24}],"231":[{"to":232,"level":25}],"233":[{"to":474,"level":null,"trigger":"trade"}],"234":[{"to":899,"level":null,"trigger":"agile-style-move"}],"236":[{"to":106,"level":20},{"to":107,"level":20},{"to":237,"level":20}],"238":[{"to":124,"level":30}],"239":[{"to":125,"level":30}],"240":[{"to":126,"level":30}],"246":[{"to":247,"level":30}],"247":[{"to":248,"level":55}],"252":[{"to":253,"level":16}],"253":[{"to":254,"level":36}],"255":[{"to":256,"level":16}],"256":[{"to":257,"level":36}],"258":[{"to":259,"level":16}],"259":[{"to":260,"level":36}],"261":[{"to":262,"level":18}],"263":[{"to":264,"level":20}],"264":[{"to":862,"level":35,"trigger":"level-up","timeOfDay":"night"}],"265":[{"to":266,"level":7},{"to":268,"level":7}],"266":[{"to":267,"level":10}],"268":[{"to":269,"level":10}],"270":[{"to":271,"level":14}],"271":[{"to":272,"level":null,"trigger":"use-item","item":"water-stone"}],"273":[{"to":274,"level":14}],"274":[{"to":275,"level":null,"trigger":"use-item","item":"leaf-stone"}],"276":[{"to":277,"level":22}],"278":[{"to":279,"level":25}],"280":[{"to":281,"level":20}],"281":[{"to":282,"level":30},{"to":475,"level":null,"trigger":"use-item","item":"dawn-stone"}],"283":[{"to":284,"level":22}],"285":[{"to":286,"level":23}],"287":[{"to":288,"level":18}],"288":[{"to":289,"level":36}],"290":[{"to":291,"level":20},{"to":292,"level":null,"trigger":"shed"}],"293":[{"to":294,"level":20}],"294":[{"to":295,"level":40}],"296":[{"to":297,"level":24}],"298":[{"to":183,"level":null,"trigger":"level-up","minHappiness":160}],"299":[{"to":476,"level":null}],"300":[{"to":301,"level":null,"trigger":"use-item","item":"moon-stone"}],"304":[{"to":305,"level":32}],"305":[{"to":306,"level":42}],"307":[{"to":308,"level":37}],"309":[{"to":310,"level":26}],"315":[{"to":407,"level":null,"trigger":"use-item","item":"shiny-stone"}],"316":[{"to":317,"level":26}],"318":[{"to":319,"level":30}],"320":[{"to":321,"level":40}],"322":[{"to":323,"level":33}],"325":[{"to":326,"level":32}],"328":[{"to":329,"level":35}],"329":[{"to":330,"level":45}],"331":[{"to":332,"level":32}],"333":[{"to":334,"level":35}],"339":[{"to":340,"level":30}],"341":[{"to":342,"level":30}],"343":[{"to":344,"level":36}],"345":[{"to":346,"level":40}],"347":[{"to":348,"level":40}],"349":[{"to":350,"level":null,"trigger":"level-up"}],"353":[{"to":354,"level":37}],"355":[{"to":356,"level":37}],"356":[{"to":477,"level":null,"trigger":"trade"}],"360":[{"to":202,"level":15}],"361":[{"to":362,"level":42},{"to":478,"level":null,"trigger":"use-item","item":"dawn-stone"}],"363":[{"to":364,"level":32}],"364":[{"to":365,"level":44}],"366":[{"to":367,"level":null,"trigger":"trade"},{"to":368,"level":null,"trigger":"trade"}],"371":[{"to":372,"level":30}],"372":[{"to":373,"level":50}],"374":[{"to":375,"level":20}],"375":[{"to":376,"level":45}],"387":[{"to":388,"level":18}],"388":[{"to":389,"level":32}],"390":[{"to":391,"level":14}],"391":[{"to":392,"level":36}],"393":[{"to":394,"level":16}],"394":[{"to":395,"level":36}],"396":[{"to":397,"level":14}],"397":[{"to":398,"level":34}],"399":[{"to":400,"level":15}],"401":[{"to":402,"level":10}],"403":[{"to":404,"level":15}],"404":[{"to":405,"level":30}],"406":[{"to":315,"level":null,"trigger":"level-up","minHappiness":160,"timeOfDay":"day"}],"408":[{"to":409,"level":30}],"410":[{"to":411,"level":30}],"412":[{"to":413,"level":20},{"to":414,"level":20}],"415":[{"to":416,"level":21}],"418":[{"to":419,"level":26}],"420":[{"to":421,"level":25}],"422":[{"to":423,"level":30}],"425":[{"to":426,"level":28}],"427":[{"to":428,"level":null,"trigger":"level-up","minHappiness":160}],"431":[{"to":432,"level":38}],"433":[{"to":358,"level":null,"trigger":"level-up","minHappiness":220,"timeOfDay":"night"}],"434":[{"to":435,"level":34}],"436":[{"to":437,"level":33}],"438":[{"to":185,"level":null,"trigger":"level-up"}],"439":[{"to":122,"level":null,"trigger":"level-up"}],"440":[{"to":113,"level":null,"trigger":"level-up","timeOfDay":"day"}],"443":[{"to":444,"level":24}],"444":[{"to":445,"level":48}],"446":[{"to":143,"level":null,"trigger":"level-up","minHappiness":160}],"447":[{"to":448,"level":null,"trigger":"level-up","minHappiness":160,"timeOfDay":"day"}],"449":[{"to":450,"level":34}],"451":[{"to":452,"level":40}],"453":[{"to":454,"level":37}],"456":[{"to":457,"level":31}],"458":[{"to":226,"level":null}],"459":[{"to":460,"level":40}],"495":[{"to":496,"level":17}],"496":[{"to":497,"level":36}],"498":[{"to":499,"level":17}],"499":[{"to":500,"level":36}],"501":[{"to":502,"level":17}],"502":[{"to":503,"level":36}],"504":[{"to":505,"level":20}],"506":[{"to":507,"level":16}],"507":[{"to":508,"level":32}],"509":[{"to":510,"level":20}],"511":[{"to":512,"level":null,"trigger":"use-item","item":"leaf-stone"}],"513":[{"to":514,"level":null,"trigger":"use-item","item":"fire-stone"}],"515":[{"to":516,"level":null,"trigger":"use-item","item":"water-stone"}],"517":[{"to":518,"level":null,"trigger":"use-item","item":"moon-stone"}],"519":[{"to":520,"level":21}],"520":[{"to":521,"level":32}],"522":[{"to":523,"level":27}],"524":[{"to":525,"level":25}],"525":[{"to":526,"level":null,"trigger":"trade"}],"527":[{"to":528,"level":null,"trigger":"level-up","minHappiness":160}],"529":[{"to":530,"level":31}],"532":[{"to":533,"level":25}],"533":[{"to":534,"level":null,"trigger":"trade"}],"535":[{"to":536,"level":25}],"536":[{"to":537,"level":36}],"540":[{"to":541,"level":20}],"541":[{"to":542,"level":null,"trigger":"level-up","minHappiness":220}],"543":[{"to":544,"level":22}],"544":[{"to":545,"level":30}],"546":[{"to":547,"level":null,"trigger":"use-item","item":"sun-stone"}],"548":[{"to":549,"level":null,"trigger":"use-item","item":"sun-stone"}],"550":[{"to":902,"level":null,"trigger":"recoil-damage"}],"551":[{"to":552,"level":29}],"552":[{"to":553,"level":40}],"554":[{"to":555,"level":35}],"557":[{"to":558,"level":34}],"559":[{"to":560,"level":39}],"562":[{"to":563,"level":34},{"to":867,"level":null,"trigger":"take-damage"}],"564":[{"to":565,"level":37}],"566":[{"to":567,"level":37}],"568":[{"to":569,"level":36}],"570":[{"to":571,"level":30}],"572":[{"to":573,"level":null,"trigger":"use-item","item":"shiny-stone"}],"574":[{"to":575,"level":32}],"575":[{"to":576,"level":41}],"577":[{"to":578,"level":32}],"578":[{"to":579,"level":41}],"580":[{"to":581,"level":35}],"582":[{"to":583,"level":35}],"583":[{"to":584,"level":47}],"585":[{"to":586,"level":34}],"588":[{"to":589,"level":null,"trigger":"trade","tradeSpeciesId":616}],"590":[{"to":591,"level":39}],"592":[{"to":593,"level":40}],"595":[{"to":596,"level":36}],"597":[{"to":598,"level":40}],"599":[{"to":600,"level":38}],"600":[{"to":601,"level":49}],"602":[{"to":603,"level":39}],"603":[{"to":604,"level":null,"trigger":"use-item","item":"thunder-stone"}],"605":[{"to":606,"level":42}],"607":[{"to":608,"level":41}],"608":[{"to":609,"level":null,"trigger":"use-item","item":"dusk-stone"}],"610":[{"to":611,"level":38}],"611":[{"to":612,"level":48}],"613":[{"to":614,"level":37}],"616":[{"to":617,"level":null,"trigger":"trade","tradeSpeciesId":588}],"619":[{"to":620,"level":50}],"622":[{"to":623,"level":43}],"624":[{"to":625,"level":52}],"625":[{"to":983,"level":null,"trigger":"three-defeated-bisharp"}],"627":[{"to":628,"level":54}],"629":[{"to":630,"level":54}],"633":[{"to":634,"level":50}],"634":[{"to":635,"level":64}],"636":[{"to":637,"level":59}],"650":[{"to":651,"level":16}],"651":[{"to":652,"level":36}],"653":[{"to":654,"level":16}],"654":[{"to":655,"level":36}],"656":[{"to":657,"level":16}],"657":[{"to":658,"level":36}],"659":[{"to":660,"level":20}],"661":[{"to":662,"level":17}],"662":[{"to":663,"level":35}],"664":[{"to":665,"level":9}],"665":[{"to":666,"level":12}],"667":[{"to":668,"level":35}],"669":[{"to":670,"level":19}],"670":[{"to":671,"level":null,"trigger":"use-item","item":"shiny-stone"}],"672":[{"to":673,"level":32}],"674":[{"to":675,"level":32}],"677":[{"to":678,"level":25}],"679":[{"to":680,"level":35}],"680":[{"to":681,"level":null,"trigger":"use-item","item":"dusk-stone"}],"682":[{"to":683,"level":null,"trigger":"trade"}],"684":[{"to":685,"level":null,"trigger":"trade"}],"686":[{"to":687,"level":30}],"688":[{"to":689,"level":39}],"690":[{"to":691,"level":48}],"692":[{"to":693,"level":37}],"694":[{"to":695,"level":null,"trigger":"use-item","item":"sun-stone"}],"696":[{"to":697,"level":39,"trigger":"level-up","timeOfDay":"day"}],"698":[{"to":699,"level":39,"trigger":"level-up","timeOfDay":"night"}],"704":[{"to":705,"level":40}],"705":[{"to":706,"level":50}],"708":[{"to":709,"level":null,"trigger":"trade"}],"710":[{"to":711,"level":null,"trigger":"trade"}],"712":[{"to":713,"level":37}],"714":[{"to":715,"level":48}],"722":[{"to":723,"level":17}],"723":[{"to":724,"level":34}],"725":[{"to":726,"level":17}],"726":[{"to":727,"level":34}],"728":[{"to":729,"level":17}],"729":[{"to":730,"level":34}],"731":[{"to":732,"level":14}],"732":[{"to":733,"level":28}],"734":[{"to":735,"level":20,"trigger":"level-up","timeOfDay":"day"}],"736":[{"to":737,"level":20}],"737":[{"to":738,"level":null}],"739":[{"to":740,"level":null}],"742":[{"to":743,"level":25}],"744":[{"to":745,"level":25,"trigger":"level-up","timeOfDay":"day"},{"to":745,"level":25,"trigger":"level-up","timeOfDay":"night"}],"747":[{"to":748,"level":38}],"749":[{"to":750,"level":30}],"751":[{"to":752,"level":22}],"753":[{"to":754,"level":34,"trigger":"level-up","timeOfDay":"day"}],"755":[{"to":756,"level":24}],"757":[{"to":758,"level":33}],"759":[{"to":760,"level":27}],"761":[{"to":762,"level":18}],"762":[{"to":763,"level":null,"trigger":"level-up"}],"767":[{"to":768,"level":30}],"769":[{"to":770,"level":42}],"772":[{"to":773,"level":null,"trigger":"level-up","minHappiness":160}],"782":[{"to":783,"level":35}],"783":[{"to":784,"level":45}],"789":[{"to":790,"level":43}],"790":[{"to":791,"level":53},{"to":792,"level":53}],"803":[{"to":804,"level":null,"trigger":"level-up"}],"808":[{"to":809,"level":null}],"810":[{"to":811,"level":16}],"811":[{"to":812,"level":35}],"813":[{"to":814,"level":16}],"814":[{"to":815,"level":35}],"816":[{"to":817,"level":16}],"817":[{"to":818,"level":35}],"819":[{"to":820,"level":24}],"821":[{"to":822,"level":18}],"822":[{"to":823,"level":38}],"824":[{"to":825,"level":10}],"825":[{"to":826,"level":30}],"827":[{"to":828,"level":18}],"829":[{"to":830,"level":20}],"831":[{"to":832,"level":24}],"833":[{"to":834,"level":22}],"835":[{"to":836,"level":25}],"837":[{"to":838,"level":18}],"838":[{"to":839,"level":34}],"840":[{"to":841,"level":null,"trigger":"use-item","item":"tart-apple"},{"to":842,"level":null,"trigger":"use-item","item":"sweet-apple"},{"to":1011,"level":null,"trigger":"use-item","item":"syrupy-apple"}],"843":[{"to":844,"level":36}],"846":[{"to":847,"level":26}],"848":[{"to":849,"level":30}],"850":[{"to":851,"level":28}],"852":[{"to":853,"level":null,"trigger":"level-up"}],"854":[{"to":855,"level":null,"trigger":"use-item","item":"cracked-pot"}],"856":[{"to":857,"level":32}],"857":[{"to":858,"level":42}],"859":[{"to":860,"level":32}],"860":[{"to":861,"level":42}],"868":[{"to":869,"level":null,"trigger":"spin"}],"872":[{"to":873,"level":null,"trigger":"level-up","minHappiness":160,"timeOfDay":"night"}],"878":[{"to":879,"level":34}],"884":[{"to":1018,"level":null,"trigger":"use-item","item":"metal-alloy"}],"885":[{"to":886,"level":50}],"886":[{"to":887,"level":60}],"891":[{"to":892,"level":null,"trigger":"tower-of-darkness"}],"906":[{"to":907,"level":16}],"907":[{"to":908,"level":36}],"909":[{"to":910,"level":16}],"910":[{"to":911,"level":36}],"912":[{"to":913,"level":16}],"913":[{"to":914,"level":36}],"915":[{"to":916,"level":18}],"917":[{"to":918,"level":15}],"919":[{"to":920,"level":24}],"921":[{"to":922,"level":18}],"922":[{"to":923,"level":null}],"924":[{"to":925,"level":25,"trigger":"other"}],"926":[{"to":927,"level":26}],"928":[{"to":929,"level":25}],"929":[{"to":930,"level":35}],"932":[{"to":933,"level":24}],"933":[{"to":934,"level":38}],"935":[{"to":936,"level":null,"trigger":"use-item","item":"auspicious-armor"},{"to":937,"level":null,"trigger":"use-item","item":"malicious-armor"}],"938":[{"to":939,"level":null,"trigger":"use-item","item":"thunder-stone"}],"940":[{"to":941,"level":25}],"942":[{"to":943,"level":30}],"944":[{"to":945,"level":28}],"946":[{"to":947,"level":null}],"948":[{"to":949,"level":30}],"951":[{"to":952,"level":null,"trigger":"use-item","item":"fire-stone"}],"953":[{"to":954,"level":null}],"955":[{"to":956,"level":35}],"957":[{"to":958,"level":24}],"958":[{"to":959,"level":38}],"960":[{"to":961,"level":26}],"963":[{"to":964,"level":38}],"965":[{"to":966,"level":40}],"969":[{"to":970,"level":35}],"971":[{"to":972,"level":30,"trigger":"level-up","timeOfDay":"night"}],"974":[{"to":975,"level":null,"trigger":"use-item","item":"ice-stone"}],"996":[{"to":997,"level":35}],"997":[{"to":998,"level":54}],"999":[{"to":1000,"level":null,"trigger":"gimmighoul-coins"}],"1011":[{"to":1019,"level":null,"trigger":"level-up"}],"1012":[{"to":1013,"level":null,"trigger":"use-item","item":"unremarkable-teacup"}]};
 
+/* Cap. leva desta sessão (Caça em Grupo): EVOLUTIONS_DEX só tem edges
+   PRA FRENTE (num -> [{to,...}]) -- pra montar o bando de um Alfa
+   ("podem ser do mesmo tipo do alfa ou pré-evoluções") precisamos do
+   caminho INVERSO, que não existia em lugar nenhum do arquivo. Varre
+   TODAS as chaves procurando edges cujo `.to` bate com o alvo,
+   recursivo (`visitados` evita loop infinito em qualquer ciclo
+   anômalo dos dados) pra cobrir linhas de 3 estágios (devolve AVÔ e
+   PAI, não só o pai direto). Nunca inventa nada -- só espelha
+   EVOLUTIONS_DEX de trás pra frente. */
+function preEvolucoesDe(num, visitados){
+  visitados = visitados || {};
+  if(visitados[num]) return [];
+  visitados[num] = true;
+  var diretas = [];
+  Object.keys(EVOLUTIONS_DEX).forEach(function(k){
+    var kn = Number(k);
+    (EVOLUTIONS_DEX[k]||[]).forEach(function(edge){
+      if(edge.to===num && diretas.indexOf(kn)===-1) diretas.push(kn);
+    });
+  });
+  var todas = diretas.slice();
+  diretas.forEach(function(kn){
+    preEvolucoesDe(kn, visitados).forEach(function(avo){
+      if(todas.indexOf(avo)===-1) todas.push(avo);
+    });
+  });
+  return todas;
+}
+
 /* ---- LEGENDARY_NUMS (extraído de docs/pokemon-rpg/site/diario-de-treinador.html) ---- */
 var LEGENDARY_NUMS = [144,145,146,150,151,243,244,245,249,250,251,377,378,379,380,381,382,383,384,385,386,480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,638,639,640,641,642,643,644,645,646,647,648,649,716,717,718,719,720,721,772,773,785,786,787,788,789,790,791,792,800,801,802,807,808,809,888,889,890,891,892,893,894,895,896,897,898,905,1001,1002,1003,1004,1007,1008,1014,1015,1016,1017,1024,1025];
 
@@ -7566,10 +7599,21 @@ function checaBagaDePV(battler, b){
    ajuste a configuração -- ver DT.gaAdminIniciarRaid), garantindo que
    o PV Máximo batido aqui SEMPRE bate com o `hpMax` guardado no
    documento da Raid. */
+/* Cap. leva desta sessão (Caça em Grupo): mesma convenção de "campo
+   opcional, sem efeito se ausente" que raidStatMult/raidHpMult já
+   usavam -- alfaStatMult/alfaHpMult (Alfa do bando) e bandoStatMult/
+   bandoHpMult (seguidores) são preenchidos só por
+   buildBattlerCacadaInimigo, então qualquer outro battler do jogo
+   continua batendo com o valor de sempre. */
 function effStat(poke, stat){
   var v = officialStat(poke.num, poke.level, stat, poke.natureza, poke.forma);
-  if(stat==='hp'){ if(poke.raidHpMult) v = Math.round(v*poke.raidHpMult); }
-  else if(poke.raidStatMult){ v = Math.round(v*poke.raidStatMult); }
+  if(stat==='hp'){
+    var hpMult = poke.raidHpMult || poke.alfaHpMult || poke.bandoHpMult;
+    if(hpMult) v = Math.round(v*hpMult);
+  } else {
+    var statMult = poke.raidStatMult || poke.alfaStatMult || poke.bandoStatMult;
+    if(statMult) v = Math.round(v*statMult);
+  }
   return v;
 }
 function gaHpMax(poke){ return effStat(poke, 'hp'); }
@@ -7588,7 +7632,8 @@ function gaHpMax(poke){ return effStat(poke, 'hp'); }
    pra cura/barra/display continuam na escala normal (inflada) -- só a
    FRAÇÃO usada pra calcular dano por porcentagem muda. */
 function gaHpMaxDanoPercentual(poke){
-  if(poke && poke.raidHpMult) return officialStat(poke.num, poke.level, 'hp', poke.natureza, poke.forma);
+  var hpMult = poke && (poke.raidHpMult || poke.alfaHpMult || poke.bandoHpMult);
+  if(hpMult) return officialStat(poke.num, poke.level, 'hp', poke.natureza, poke.forma);
   return gaHpMax(poke);
 }
 /* Cap. leva desta sessão ("QUALQUER tipo de % que é sofrida pelo boss
@@ -7603,7 +7648,8 @@ function gaHpMaxDanoPercentual(poke){
 function gaStatSemRaidBuff(poke, statKey){
   if(!poke) return 0;
   if(statKey==='hp') return gaHpMaxDanoPercentual(poke);
-  if(poke.raidStatMult) return officialStat(poke.num, poke.level, statKey, poke.natureza, poke.forma);
+  var statMult = poke.raidStatMult || poke.alfaStatMult || poke.bandoStatMult;
+  if(statMult) return officialStat(poke.num, poke.level, statKey, poke.natureza, poke.forma);
   return effStat(poke, statKey);
 }
 /* Cap. leva desta sessão (mecânicas oficiais que faltavam -- Bulbapedia,
@@ -7955,6 +8001,12 @@ var trocasCol = null;
    mais abaixo pra o desenho completo (quem escreve o quê, quem resolve
    as Rodadas, como cada lado credita o PRÓPRIO V/D no final). */
 var duelosCol = null;
+/* Cap. leva desta sessão (Caça em Grupo): MESMO espírito exato de
+   duelosCol acima, só que até 5 lados em vez de 2 --
+   `green_area_cacadas_grupo/{id}` -- 1 documento por caçada (lobby +
+   luta), id aleatório via uid(). Ver o comentário grande perto de
+   DT.gaCriarCacada mais abaixo pro desenho completo. */
+var cacadasCol = null;
 /* Cap. leva desta sessão ("Cria uma função no admin que me permita
    mudar o dia e que ele seja sempre continuo a partir do dia que eu
    setar"): 1 documento SÓ (`green_area_config/relogio`, mesmo espírito
@@ -7994,6 +8046,7 @@ var unsubscribeRaidRecompensas = null;
 var GA_RAID_CONFIG = null; // override do Admin (merge com RAID_CONFIG_PADRAO, ver raidConfigAtual())
 var GA_RAIDS_TODAS = []; // cache local de TODOS os docs de green_area_raids (ativas + históricas) -- nunca escrito de volta
 var unsubscribeDuelos = null;
+var unsubscribeCacadas = null;
 var unsubscribeChat = null;
 var unsubscribeInbox = null;
 var unsubscribeAmizades = null;
@@ -8557,6 +8610,33 @@ function attachSocialListeners(docId){
     }
     render();
   }, function(err){ SESSION.error = 'Não consegui ver seus Duelos ('+erroFirestoreMsg(err)+').'; render(); });
+
+  /* Cap. leva desta sessão (Caça em Grupo): MESMO padrão exato do
+     listener de Duelos acima, generalizado pra `membros` ser uma
+     LISTA (até 5 docId) em vez de só `a`/`b` -- escuta
+     `green_area_cacadas_grupo` inteira, filtra no cliente pelas
+     caçadas em que o PRÓPRIO docId aparece em `membros` (convidado OU
+     já dentro). `processarCacadasAtivas` faz o trabalho de fundo
+     (iniciar a luta quando o host manda, resolver Rodada a Rodada --
+     só o host --, creditar V/D/recompensa no final, limpar o
+     documento). */
+  if(unsubscribeCacadas) unsubscribeCacadas();
+  unsubscribeCacadas = cacadasCol.onSnapshot(function(snap){
+    var minhas = [];
+    snap.forEach(function(d){
+      var data = d.data();
+      if(!data || !data.membros || Object.keys(data.membros).indexOf(docId)===-1) return;
+      data.id = d.id;
+      minhas.push(data);
+    });
+    SESSION.cacadasAtivas = minhas;
+    processarCacadasAtivas(minhas);
+    if(SESSION.cacadaId && !minhas.some(function(c){ return c.id===SESSION.cacadaId; })){
+      if(SESSION.screen==='cacadagrupo'){ SESSION.notice = 'Essa Caça em Grupo não está mais disponível.'; SESSION.screen = 'centro'; }
+      SESSION.cacadaId = null;
+    }
+    render();
+  }, function(err){ SESSION.error = 'Não consegui ver suas Caças em Grupo ('+erroFirestoreMsg(err)+').'; render(); });
 }
 
 function bootApp(){
@@ -8571,6 +8651,7 @@ function bootApp(){
     dmCol = db.collection('green_area_dm');
     trocasCol = db.collection('green_area_trocas');
     duelosCol = db.collection('green_area_duelos');
+    cacadasCol = db.collection('green_area_cacadas_grupo');
     configCol = db.collection('green_area_config');
     raidsCol = db.collection('green_area_raids');
     raidChatCol = db.collection('green_area_raid_chat');
@@ -8912,6 +8993,22 @@ function buildBattlerRaid(raid){
     moves: pickMovesForLevel(raid.num, raid.level), natureza: rollNatureForSpecies(),
     habilidade: raid.habilidadeForcada || rollAbilityForSpecies(raid.num), // Cap. leva desta sessão (Console de Raid) -- Admin pode travar a Habilidade do boss (ex: Own Tempo no Rockruff), senão sorteia normal
     raidStatMult: raid.statMultUsado, raidHpMult: raid.hpMultUsado });
+}
+/* Cap. leva desta sessão (Caça em Grupo): battler de UM inimigo do
+   bando (Alfa ou seguidor) -- `keySuffix` inclui o id da Caça + o
+   índice da onda + a posição no bando, pra 2 inimigos da MESMA
+   Espécie/Nível dentro do mesmo bando nunca compartilharem `b.hp[key]`
+   por engano (diferente de Raid, aqui pode ter vários repetidos ao
+   mesmo tempo). Papel de Combate fica de fora de propósito -- sem
+   `papelCombate` explícito, pickMoveByRole já cai pro default 'ataque'
+   sozinho (ver ROLES_COMBATE.indexOf(papel)===-1). */
+function buildBattlerCacadaInimigo(num, level, tipo, keySuffix, numJogadores){
+  var b = initBattlerExtras({ key:'cg_'+keySuffix, side:'cacadagrupo', num:num, level:level,
+    moves: pickMovesForLevel(num, level), natureza: rollNatureForSpecies(), habilidade: rollAbilityForSpecies(num) });
+  var mult = cacadaMultiplicadores(numJogadores);
+  if(tipo==='alfa'){ b.alfaStatMult = mult.alfa; b.alfaHpMult = mult.alfa; b.ehAlfa = true; }
+  else { b.bandoStatMult = mult.bando; b.bandoHpMult = mult.bando; }
+  return b;
 }
 
 function startBattle(kind, opts, skipDiscrepancia){
@@ -10477,6 +10574,22 @@ function applyRaidBossWillpowerCure(bossB, b){
   if(!bossB || bossB.side!=='raid' || b.hp[bossB.key]===undefined || b.hp[bossB.key]<=0 || !bossB.status) return;
   b.log.push('💪 '+displayName(bossB)+' curou '+STATUS_LABELS_PT[bossB.status]+', com sua força de vontade.');
   bossB.status = null; bossB.statusTurns = 0;
+}
+/* Cap. leva desta sessão (Caça em Grupo): MESMA regra/mensagem de
+   applyRaidBossWillpowerCure acima ("a cada 3 turnos, se tiver
+   condição, cura"), generalizada pra TODOS os inimigos vivos do bando
+   de uma vez (Raid só tinha 1 boss; aqui pode ter vários) -- chamada 1x
+   por Rodada de verdade concluída em resolverRodadaCacada, nunca em
+   Rodada abandonada cedo por desmaio (mesmo cuidado do contador
+   `raidRoundCount` original). */
+function applyCacadaInimigosWillpowerCure(b){
+  b.raidRoundCount = (b.raidRoundCount||0)+1;
+  if(b.raidRoundCount%3!==0) return;
+  (b.inimigos||[]).forEach(function(inimigoB){
+    if(!inimigoB || b.hp[inimigoB.key]===undefined || b.hp[inimigoB.key]<=0 || !inimigoB.status) return;
+    b.log.push('💪 '+displayName(inimigoB)+' curou '+STATUS_LABELS_PT[inimigoB.status]+', com sua força de vontade.');
+    inimigoB.status = null; inimigoB.statusTurns = 0;
+  });
 }
 /* Itens Segurados passivos de FIM de Rodada: Restos (cura 1/16 do PV
    Máximo) e Lama Negra (cura 1/16 em Tipo Venenoso, mas TIRA 1/8 de
@@ -12919,6 +13032,431 @@ function processarDuelosAtivos(lista){
     }
   });
 }
+
+/* ============================================================
+   CAÇA EM GRUPO -- núcleo (Cap. leva desta sessão). MESMA arquitetura
+   do Duelo PvP acima (1 documento Firestore por caçada, o HOST resolve
+   1 Rodada por vez e escreve `battle` inteiro de volta, todo mundo só
+   lê via onSnapshot), generalizada de 2 lados fixos (A/B) pra até 5
+   Treinadores + 1 bando com vários inimigos simultâneos.
+
+   MODELO DE DADOS (`green_area_cacadas_grupo/{id}`):
+     { host, hostNome, zonaId,
+       membros: { [docId]: {nome, confirmado, party:null|snapshot,
+         lider:null|partyId, desistiu, eliminadoNoLobby, creditado} },
+       status: 'lobby'|'lutando'|'fim',
+       grupos: null|[{alfa:{num,level}, bando:[{num,level},...]}, ...]
+         (rolado 1x em DT.gaIniciarCacada via rolarGruposCacada, nunca
+         muda depois -- 1 entrada por ONDA, lutada uma de cada vez),
+       membrosParticipantes: [docId,...] (congelado no início -- quem
+         entrou de verdade, nunca muda mesmo se alguém for eliminado no
+         meio da luta -- é isso que mantém o multiplicador Alfa/Bando
+         fixo do início ao fim, ver cacadaMultiplicadores),
+       battle: null|{ grupoAtual, ativos:{docId:battler}, hp:{},
+         inimigos:[battler,...] (só da onda ATUAL), log, roundGuard,
+         raidRoundCount (reiniciado a cada onda nova -- ver
+         applyCacadaInimigosWillpowerCure), faintedPorTreinador:
+         {docId:[partyId,...]}, eliminados:{docId:true} (sem mais
+         ninguém vivo na Equipe OU desistiu -- fora da luta, mas o
+         resto do grupo continua), healedThisFaint, pendingHealFor:
+         null|docId, pendingHealDecisao, vencedor:null|'jogadores'|
+         'inimigos' } }
+
+   Convite: igual Duelo, mas generalizado pra mapa em vez de A/B fixo
+   -- `membros.<docId>` gravado direto pelo HOST (dot-path, atômico,
+   nunca precisa ler-modificar-escrever o mapa inteiro), visível pro
+   convidado pelo MESMO listener de coleção inteira (attachSocialListeners,
+   filtra client-side por `Object.keys(membros).indexOf(meuId)!==-1`).
+
+   Simplificações documentadas (mesmo espírito do Duelo -- "os 2 lados
+   usam side:'player' igual, sem como saber o lado adversário de
+   verdade"): sem Clima/Terreno/Semente Maligna residual (Leech Seed
+   como golpe ainda funciona, só o dreno de FIM de Rodada fica de fora
+   -- exigiria rastrear par usuário/alvo fixo, que não existe aqui,
+   onde o alvo muda a cada Rodada). Alvo automático: o lado dos
+   Treinadores sempre foca o inimigo vivo com MENOR % de PV; o bando
+   ataca um Treinador vivo escolhido ao ACASO -- sem escolha manual de
+   golpe/alvo (mesma IA por Papel de Combate da luta normal/Duelo). */
+var cacadasExecutandoLocal = {};
+var cacadasApagandoLocal = {};
+var CACADA_XP_POR_ZONA = 10, CACADA_POKEDOLAR_POR_ZONA = 200; // recompensa de participação por vitória, escalando com a Zona -- mesmo espírito flat de RAID_CONFIG_PADRAO.xpParticipacao/pokedolarParticipacao
+function cacadaPartySnapshot(){ return JSON.parse(JSON.stringify(STATE.party)); }
+function achaCacadaAtiva(id){ return (SESSION.cacadasAtivas||[]).filter(function(c){ return c.id===id; })[0] || null; }
+function souHostCacada(c){ return !!c && c.host===SESSION.currentDocId; }
+DT.gaCriarCacada = function(zonaId){
+  if(!STATE) return;
+  var zona = zonaByStatus(zonaId); if(!zona) return;
+  var cacadaId = uid();
+  var membros = {};
+  membros[SESSION.currentDocId] = { nome: STATE.trainerName, confirmado:true, party: cacadaPartySnapshot(), lider:null, desistiu:false, creditado:false };
+  cacadasCol.doc(cacadaId).set({
+    host: SESSION.currentDocId, hostNome: STATE.trainerName, zonaId: zonaId,
+    membros: membros, status:'lobby', grupos:null, membrosParticipantes:null, battle:null, criadoEm: Date.now()
+  }).then(function(){
+    SESSION.screen='cacadagrupo'; SESSION.cacadaId=cacadaId; SESSION.error='';
+    logAction('cacadagrupo', 'Criou uma Caça em Grupo na Zona '+zona.nome+'.');
+    render();
+  }).catch(function(err){ SESSION.error='Não consegui criar a Caça em Grupo ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaAbrirCacada = function(id){ SESSION.screen='cacadagrupo'; SESSION.cacadaId=id; SESSION.error=''; SESSION.sidebarOpen=false; render(); };
+DT.gaFecharCacada = function(){ SESSION.screen='centro'; SESSION.cacadaId=null; render(); };
+DT.gaConvidarCacada = function(cacadaId, outroDocId){
+  var c = achaCacadaAtiva(cacadaId); if(!c || !STATE || !souHostCacada(c)) return;
+  if(c.status!=='lobby'){ SESSION.error='Só dá pra convidar enquanto a Caça ainda está no lobby.'; render(); return; }
+  if(Object.keys(c.membros||{}).length>=5){ SESSION.error='A Caça em Grupo já está com 5 Treinadores (o máximo).'; render(); return; }
+  if(c.membros[outroDocId]) return;
+  var amigo = (SESSION.amigos||[]).filter(function(a){ return a.outro===outroDocId; })[0];
+  if(!amigo){ SESSION.error='Só dá pra convidar quem já é seu amigo.'; render(); return; }
+  var upd = {};
+  upd['membros.'+outroDocId] = { nome: amigo.outroNome, confirmado:false, party:null, lider:null, desistiu:false, creditado:false };
+  cacadasCol.doc(cacadaId).update(upd).catch(function(err){ SESSION.error='Não consegui convidar ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaAceitarCacada = function(cacadaId){
+  var c = achaCacadaAtiva(cacadaId); if(!c || !STATE || !c.membros[SESSION.currentDocId]) return;
+  var upd = {};
+  upd['membros.'+SESSION.currentDocId+'.confirmado'] = true;
+  upd['membros.'+SESSION.currentDocId+'.party'] = cacadaPartySnapshot();
+  upd['membros.'+SESSION.currentDocId+'.nome'] = STATE.trainerName;
+  cacadasCol.doc(cacadaId).update(upd).then(function(){
+    SESSION.screen='cacadagrupo'; SESSION.cacadaId=cacadaId; SESSION.error='';
+    logAction('cacadagrupo', 'Entrou na Caça em Grupo de '+c.hostNome+'.');
+    render();
+  }).catch(function(err){ SESSION.error='Não consegui entrar na Caça ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaRecusarCacada = function(cacadaId){
+  var c = achaCacadaAtiva(cacadaId); if(!c) return;
+  var upd = {}; upd['membros.'+SESSION.currentDocId] = firebase.firestore.FieldValue.delete();
+  cacadasCol.doc(cacadaId).update(upd).then(function(){
+    if(SESSION.cacadaId===cacadaId){ SESSION.cacadaId=null; SESSION.screen='centro'; }
+    render();
+  }).catch(function(err){ SESSION.error='Não consegui recusar ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaEscolherLiderCacada = function(cacadaId, pid){
+  var c = achaCacadaAtiva(cacadaId); if(!c || !STATE) return;
+  var meu = c.membros[SESSION.currentDocId]; if(!meu || !meu.confirmado || !meu.party) return;
+  if(!meu.party.some(function(p){ return p.id===pid; })) return;
+  var upd = {}; upd['membros.'+SESSION.currentDocId+'.lider'] = pid;
+  cacadasCol.doc(cacadaId).update(upd).catch(function(err){ SESSION.error='Não consegui escolher quem lidera ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaIniciarCacada = function(cacadaId){
+  var c = achaCacadaAtiva(cacadaId); if(!c || !STATE || !souHostCacada(c) || c.status!=='lobby') return;
+  var confirmados = Object.keys(c.membros).filter(function(k){ return c.membros[k].confirmado; });
+  if(confirmados.length<2){ SESSION.error='Precisa de pelo menos 2 Treinadores confirmados pra iniciar a Caça.'; render(); return; }
+  if(!confirmados.every(function(k){ return c.membros[k].lider; })){ SESSION.error='Todo mundo confirmado precisa escolher quem vai liderar primeiro.'; render(); return; }
+  var zona = zonaByStatus(c.zonaId); if(!zona) return;
+  var grupos = rolarGruposCacada(zona, confirmados.length);
+  var cComGrupos = Object.assign({}, c, { grupos: grupos });
+  var battle = montarBattleCacadaOnda(cComGrupos, confirmados, grupos, 0, null);
+  cacadasCol.doc(cacadaId).update({ status:'lutando', grupos: grupos, membrosParticipantes: confirmados, battle: battle }).catch(function(err){ SESSION.error='Não consegui iniciar a Caça ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaDesistirCacada = function(cacadaId){
+  var c = achaCacadaAtiva(cacadaId); if(!c) return;
+  if(c.status==='lobby'){
+    if(souHostCacada(c)){
+      cacadasCol.doc(cacadaId).delete().then(function(){ if(SESSION.cacadaId===cacadaId){ SESSION.cacadaId=null; SESSION.screen='centro'; } render(); }).catch(function(err){ SESSION.error='Não consegui cancelar ('+erroFirestoreMsg(err)+').'; render(); });
+    } else {
+      DT.gaRecusarCacada(cacadaId);
+    }
+    return;
+  }
+  if(!c.battle || c.battle.vencedor) return;
+  var b = c.battle;
+  var meuAtivo = b.ativos[SESSION.currentDocId];
+  if(meuAtivo) b.hp[meuAtivo.key] = 0; // a próxima Rodada resolvida pelo host já trata como desmaio/eliminação
+  var upd = {}; upd['membros.'+SESSION.currentDocId+'.desistiu'] = true; upd.battle = b;
+  cacadasCol.doc(cacadaId).update(upd).catch(function(err){ SESSION.error='Não consegui desistir ('+erroFirestoreMsg(err)+').'; render(); });
+};
+DT.gaCacadaResponderCura = function(usar){
+  var c = achaCacadaAtiva(SESSION.cacadaId); if(!c || !c.battle || !c.battle.pendingHealFor) return;
+  if(c.battle.pendingHealFor!==SESSION.currentDocId) return;
+  var b = c.battle;
+  b.pendingHealDecisao = { docId: SESSION.currentDocId, usar: !!usar };
+  cacadasCol.doc(c.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui responder ('+erroFirestoreMsg(err)+').'; render(); });
+};
+/* Monta o battle de UMA onda (grupos[idxOnda]) -- se `battleAnterior`
+   vier preenchido (avanço de onda dentro da MESMA Caça), os
+   Treinadores mantêm PV/Condição atual (gauntlet -- só a poção manual
+   alivia entre ondas, documentado no pedido: "não cura automaticamente
+   entre ondas"), só os inimigos nascem novos. Treinador já `eliminado`
+   na onda anterior não volta -- fora da luta pro resto da Caça. */
+function montarBattleCacadaOnda(c, participantesIds, grupos, idxOnda, battleAnterior){
+  var onda = grupos[idxOnda];
+  var ativos = {}, hp = battleAnterior ? Object.assign({}, battleAnterior.hp) : {};
+  participantesIds.forEach(function(docId){
+    if(battleAnterior && battleAnterior.eliminados && battleAnterior.eliminados[docId]) return;
+    if(battleAnterior && battleAnterior.ativos[docId]){ ativos[docId] = battleAnterior.ativos[docId]; return; }
+    var membro = c.membros[docId];
+    var p = (membro.party||[]).filter(function(x){ return x.id===membro.lider; })[0];
+    if(!p) return;
+    ativos[docId] = buildBattlerFromParty(p);
+    if(hp[ativos[docId].key]===undefined) hp[ativos[docId].key] = gaHpMax(ativos[docId]);
+  });
+  var inimigos = [];
+  var alfaB = buildBattlerCacadaInimigo(onda.alfa.num, onda.alfa.level, 'alfa', c.id+'_'+idxOnda+'_alfa', participantesIds.length);
+  hp[alfaB.key] = gaHpMax(alfaB);
+  inimigos.push(alfaB);
+  onda.bando.forEach(function(m, i){
+    var bB = buildBattlerCacadaInimigo(m.num, m.level, 'bando', c.id+'_'+idxOnda+'_b'+i, participantesIds.length);
+    hp[bB.key] = gaHpMax(bB);
+    inimigos.push(bB);
+  });
+  return {
+    grupoAtual: idxOnda, ativos: ativos, hp: hp, inimigos: inimigos,
+    log: (battleAnterior ? battleAnterior.log.slice(-15) : []).concat(['🐺 Onda '+(idxOnda+1)+'/'+grupos.length+' começou! '+displayName(alfaB)+' (Alfa) e o bando entraram na luta.']),
+    roundGuard: battleAnterior ? battleAnterior.roundGuard : 0,
+    raidRoundCount: 0,
+    faintedPorTreinador: battleAnterior ? battleAnterior.faintedPorTreinador : {},
+    eliminados: battleAnterior ? battleAnterior.eliminados : {},
+    healedThisFaint: {}, pendingHealFor: null, pendingHealDecisao: null, vencedor: null
+  };
+}
+function cacadaVivosTreinadores(b){
+  return Object.keys(b.ativos).filter(function(docId){ return !(b.eliminados && b.eliminados[docId]) && b.hp[b.ativos[docId].key]>0; });
+}
+function cacadaVivosInimigos(b){ return (b.inimigos||[]).filter(function(inim){ return b.hp[inim.key]>0; }); }
+function cacadaAlvoInimigo(b){
+  var vivos = cacadaVivosInimigos(b);
+  if(!vivos.length) return null;
+  var menor = vivos[0], menorPct = b.hp[menor.key]/gaHpMax(menor);
+  vivos.forEach(function(inim){ var pct = b.hp[inim.key]/gaHpMax(inim); if(pct<menorPct){ menor=inim; menorPct=pct; } });
+  return menor;
+}
+function cacadaAlvoTreinador(b){
+  var vivos = cacadaVivosTreinadores(b);
+  if(!vivos.length) return null;
+  return b.ativos[vivos[Math.floor(Math.random()*vivos.length)]];
+}
+/* Desmaio de UM Treinador -- mesmo espírito de duelResolveFaint, mas
+   por docId (não lado A/B fixo) e olhando c.membros[docId].party (o
+   snapshot congelado de quando ele confirmou). Devolve true quando ELE
+   foi eliminado da Caça (sem mais ninguém vivo na própria Equipe) --
+   o resto do grupo continua lutando normalmente. */
+function cacadaResolveFaintTreinador(c, b, docId){
+  var membro = c.membros[docId];
+  var atual = b.ativos[docId];
+  b.log.push('💥 '+displayName(atual)+' ('+esc2(membro.nome)+') desmaiou!');
+  b.faintedPorTreinador = b.faintedPorTreinador || {};
+  b.faintedPorTreinador[docId] = b.faintedPorTreinador[docId] || [];
+  if(b.faintedPorTreinador[docId].indexOf(atual.partyId)===-1) b.faintedPorTreinador[docId].push(atual.partyId);
+  var proximo = (membro.party||[]).filter(function(p){ var k='p_'+p.id; return b.hp[k]===undefined || b.hp[k]>0; })[0];
+  if(proximo){
+    b.ativos[docId] = buildBattlerFromParty(proximo);
+    if(b.hp[b.ativos[docId].key]===undefined) b.hp[b.ativos[docId].key] = gaHpMax(b.ativos[docId]);
+    b.log.push('🔄 '+esc2(membro.nome)+' mandou '+displayName(b.ativos[docId])+'!');
+    return false;
+  }
+  b.eliminados = b.eliminados || {};
+  b.eliminados[docId] = true;
+  b.log.push('☠️ '+esc2(membro.nome)+' não tem mais ninguém pra lutar e foi eliminado da Caça.');
+  return true;
+}
+/* O "coração" da Caça -- SÓ o host chama isto (evita 2 escritas
+   concorrentes no mesmo documento). Resolve exatamente 1 Rodada por
+   chamada (mesmo motivo do Duelo: a luta aparece se desenrolando AO
+   VIVO pra todo mundo, Rodada a Rodada). Reusa os MESMOS primitivos de
+   sempre (resolveGaTurn/decidirMovimentoDoTurno/applyEndOfTurnStatus/
+   applyAbilityEndOfTurn/applyHeldItemEndOfTurn), trocando STATE.battle
+   pelo sub-objeto `battle` da Caça só enquanto dura a chamada (mesmo
+   truque de "contexto emprestado" do Duelo). */
+function resolverRodadaCacada(c){
+  var b = c.battle; if(!b || b.vencedor) return;
+  var participantesIds = c.membrosParticipantes || Object.keys(c.membros);
+  if(b.pendingHealFor){
+    if(!b.pendingHealDecisao || b.pendingHealDecisao.docId!==b.pendingHealFor) return;
+    var alvoCura = b.ativos[b.pendingHealFor];
+    if(b.pendingHealDecisao.usar){
+      var maxHpCura = gaHpMax(alvoCura);
+      var cura = Math.max(1, Math.round(maxHpCura*DUELO_CURA_PCT));
+      var antesCura = b.hp[alvoCura.key];
+      b.hp[alvoCura.key] = Math.min(maxHpCura, b.hp[alvoCura.key]+cura);
+      b.log.push('💊 '+displayName(alvoCura)+' usou uma poção -- recuperou '+(b.hp[alvoCura.key]-antesCura)+' PV.');
+    } else {
+      b.log.push('➡️ '+displayName(alvoCura)+' seguiu sem curar.');
+    }
+    b.pendingHealFor = null; b.pendingHealDecisao = null;
+    cacadasCol.doc(c.id).update({ battle: b }).catch(function(){});
+    return;
+  }
+  b.roundGuard = (b.roundGuard||0)+1;
+  if(b.roundGuard>800){
+    b.vencedor = cacadaVivosTreinadores(b).length>=cacadaVivosInimigos(b).length ? 'jogadores' : 'inimigos';
+    b.log.push('⏱️ A Caça se arrastou demais -- resultado forçado.');
+    cacadasCol.doc(c.id).update({ battle: b }).catch(function(){});
+    return;
+  }
+  if(!cacadaVivosTreinadores(b).length){
+    b.vencedor = 'inimigos';
+    b.log.push('☠️ Todo mundo foi eliminado -- o bando venceu a Caça.');
+    cacadasCol.doc(c.id).update({ battle: b }).catch(function(){});
+    return;
+  }
+  var participantes = cacadaVivosTreinadores(b).map(function(docId){ return b.ativos[docId]; });
+  var inimigosVivos = cacadaVivosInimigos(b);
+  var todosBatalhadores = participantes.concat(inimigosVivos);
+  var moves = {};
+  todosBatalhadores.forEach(function(bt){ moves[bt.key] = decidirMovimentoDoTurno(bt); });
+  function prio(bt){ return officialMoveData(moves[bt.key]).priority||0; }
+  function vel(bt){ return effStatWithStage(bt,'spe') * (bt.status==='paralisia'?0.5:1); }
+  function quickClaw(bt){ return temItemSegurado(bt,'garra-rapida') && Math.random()<0.2; }
+  var ordem = todosBatalhadores.slice().sort(function(x,y){
+    var qx = quickClaw(x), qy = quickClaw(y);
+    if(qx!==qy) return qx ? -1 : 1;
+    var px = prio(x), py = prio(y);
+    if(px!==py) return py-px;
+    var vx = vel(x), vy = vel(y);
+    if(vx!==vy) return vy-vx;
+    return Math.random()<0.5 ? -1 : 1;
+  });
+  todosBatalhadores.forEach(function(bt){ bt.lastHitTaken = null; });
+  var backupBattle = STATE.battle;
+  STATE.battle = b;
+  var pausou = false;
+  try{
+    for(var i=0;i<ordem.length && !pausou;i++){
+      var user = ordem[i];
+      if(b.hp[user.key]<=0) continue;
+      var souInimigo = user.side==='cacadagrupo';
+      var target = souInimigo ? cacadaAlvoTreinador(b) : cacadaAlvoInimigo(b);
+      if(!target) continue;
+      if(user.flinch){ b.log.push('😨 '+displayName(user)+' hesitou e não conseguiu agir.'); user.flinch=false; continue; }
+      resolveGaTurn(user, target, moves[user.key]);
+      if(b.hp[target.key]<=0){
+        if(target.side==='cacadagrupo'){
+          if(!cacadaVivosInimigos(b).length){
+            if(b.grupoAtual+1 < c.grupos.length){ b = montarBattleCacadaOnda(c, participantesIds, c.grupos, b.grupoAtual+1, b); }
+            else { b.vencedor = 'jogadores'; b.log.push('🏆 Último bando derrotado -- a Caça em Grupo foi vencida!'); }
+            pausou = true;
+          }
+        } else {
+          var quemDocId = Object.keys(b.ativos).filter(function(k){ return b.ativos[k].key===target.key; })[0];
+          if(quemDocId){
+            var eliminado = cacadaResolveFaintTreinador(c, b, quemDocId);
+            if(eliminado && !cacadaVivosTreinadores(b).length){ b.vencedor='inimigos'; b.log.push('☠️ Todo mundo foi eliminado -- o bando venceu a Caça.'); }
+          }
+          pausou = true;
+        }
+      } else if(target.side!=='cacadagrupo'){
+        var hpPct = b.hp[target.key] / gaHpMax(target);
+        if(hpPct<=HEAL_TRIGGER_PCT && hpPct>0){
+          var quemDocId2 = Object.keys(b.ativos).filter(function(k){ return b.ativos[k].key===target.key; })[0];
+          var chave = target.key+':'+Math.ceil(hpPct*100);
+          b.healedThisFaint = b.healedThisFaint || {};
+          if(quemDocId2 && !b.healedThisFaint[chave]){ b.healedThisFaint[chave]=true; b.pendingHealFor = quemDocId2; pausou = true; }
+        }
+      }
+    }
+    if(!pausou && !b.vencedor){
+      var vivos1 = cacadaVivosTreinadores(b).map(function(k){return b.ativos[k];}).concat(cacadaVivosInimigos(b));
+      vivos1.forEach(function(bt){ applyEndOfTurnStatus(bt, b); });
+      Object.keys(b.ativos).forEach(function(docId){
+        if(b.eliminados && b.eliminados[docId]) return;
+        var bt = b.ativos[docId];
+        if(bt && b.hp[bt.key]<=0){
+          var elim = cacadaResolveFaintTreinador(c,b,docId);
+          if(elim && !cacadaVivosTreinadores(b).length) b.vencedor='inimigos';
+        }
+      });
+      var ondaLimpa1 = !b.vencedor && !cacadaVivosInimigos(b).length;
+      if(ondaLimpa1){
+        if(b.grupoAtual+1 < c.grupos.length){ b = montarBattleCacadaOnda(c, participantesIds, c.grupos, b.grupoAtual+1, b); }
+        else { b.vencedor='jogadores'; b.log.push('🏆 Último bando derrotado -- a Caça em Grupo foi vencida!'); }
+      }
+      if(!b.vencedor && !ondaLimpa1){
+        var vivos2 = cacadaVivosTreinadores(b).map(function(k){return b.ativos[k];}).concat(cacadaVivosInimigos(b));
+        vivos2.forEach(function(bt){ applyAbilityEndOfTurn(bt, b); });
+        vivos2.forEach(function(bt){ applyHeldItemEndOfTurn(bt, b); });
+        Object.keys(b.ativos).forEach(function(docId){
+          if(b.eliminados && b.eliminados[docId]) return;
+          var bt = b.ativos[docId];
+          if(bt && b.hp[bt.key]<=0){
+            var elim2 = cacadaResolveFaintTreinador(c,b,docId);
+            if(elim2 && !cacadaVivosTreinadores(b).length) b.vencedor='inimigos';
+          }
+        });
+        if(!b.vencedor && !cacadaVivosInimigos(b).length){
+          if(b.grupoAtual+1 < c.grupos.length){ b = montarBattleCacadaOnda(c, participantesIds, c.grupos, b.grupoAtual+1, b); }
+          else { b.vencedor='jogadores'; b.log.push('🏆 Último bando derrotado -- a Caça em Grupo foi vencida!'); }
+        }
+        if(!b.vencedor) applyCacadaInimigosWillpowerCure(b);
+      }
+    }
+  } finally { STATE.battle = backupBattle; }
+  cacadasCol.doc(c.id).update({ battle: b }).catch(function(){});
+}
+/* Aplica o PRÓPRIO resultado (V/D + recompensa de participação) de UMA
+   Caça já terminada -- MESMO espírito de aplicarMeuResultadoDuelo/
+   aplicarMinhaParteDaTroca (cada lado só mexe no PRÓPRIO save, nunca
+   no de outro). Recompensa de vitória (Pokédólares/XP, flat por Zona --
+   mesmo espírito de RAID_CONFIG_PADRAO.xpParticipacao) vai pra quem
+   NÃO desistiu, mesmo que tenha sido eliminado lutando (participou de
+   verdade); vitória/derrota individual do Pokémon segue a MESMA regra
+   já usada em todo o resto do jogo (vitória só pro Pokémon que
+   terminou vivo no time vencedor, derrota pra cada um que desmaiou). */
+function aplicarMeuResultadoCacada(c){
+  var meuId = SESSION.currentDocId;
+  var b = c.battle;
+  var meuMembro = c.membros[meuId];
+  var fainted = (b.faintedPorTreinador && b.faintedPorTreinador[meuId]) || [];
+  fainted.forEach(function(pid){
+    var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
+    if(p){ p.derrotas = (p.derrotas||0)+1; gainFelicidade(p, FELICIDADE_POR_DESMAIO); }
+  });
+  var vitoria = b.vencedor==='jogadores';
+  var meuAtivo = b.ativos[meuId];
+  var meuVivo = meuAtivo && b.hp[meuAtivo.key]>0;
+  if(vitoria && meuVivo){
+    var pFin = STATE.party.filter(function(x){return x.id===meuAtivo.partyId;})[0] || STATE.box.filter(function(x){return x.id===meuAtivo.partyId;})[0];
+    if(pFin){ pFin.vitorias = (pFin.vitorias||0)+1; gainFelicidade(pFin, FELICIDADE_POR_VITORIA); }
+  }
+  var recompensaTxt = '';
+  if(vitoria && meuMembro && !meuMembro.desistiu){
+    var zona = zonaByStatus(c.zonaId);
+    var idx = zona ? Math.max(0, ZONAS.indexOf(zona)) : 0;
+    var xp = CACADA_XP_POR_ZONA*(idx+1), pokedolar = CACADA_POKEDOLAR_POR_ZONA*(idx+1);
+    STATE.pokedolares = (STATE.pokedolares||0)+pokedolar;
+    var pLead = meuAtivo ? STATE.party.filter(function(x){return x.id===meuAtivo.partyId;})[0] : null;
+    if(pLead) grantXpSemPausarEvolucao(pLead, xp);
+    recompensaTxt = ' -- +'+pokedolar+' Pokédólares'+(pLead?', +'+xp+' XP':'');
+  }
+  logAction('cacadagrupo', 'Caça em Grupo na Zona '+((zonaByStatus(c.zonaId)||{}).nome||c.zonaId)+' terminou: '+(vitoria?'🏆 vitória':'☠️ derrota')+recompensaTxt+'.', b.log);
+  mutate();
+  var upd = {}; upd['membros.'+meuId+'.creditado'] = true;
+  return cacadasCol.doc(c.id).update(upd).catch(function(err){ SESSION.error='Não consegui aplicar o resultado da Caça ('+erroFirestoreMsg(err)+').'; render(); });
+}
+/* Ganchado no MESMO relógio de fundo do Duelo (ver duelTick/
+   backgroundTick) -- só o HOST de fato resolve alguma coisa
+   (resolverRodadaCacada já confere `c.host` de novo por segurança). */
+function processarCacadasAtivas(lista){
+  (lista||[]).forEach(function(c){
+    if(!c || !c.id || !STATE) return;
+    if(c.status==='lutando' && c.battle && !c.battle.vencedor && souHostCacada(c)) resolverRodadaCacada(c);
+    if(c.battle && c.battle.vencedor && c.status!=='fim'){
+      cacadasCol.doc(c.id).update({ status:'fim' }).catch(function(){});
+    }
+    if(c.status==='fim'){
+      var todosCreditaram = Object.keys(c.membros||{}).every(function(k){ return c.membros[k].creditado; });
+      if(todosCreditaram){
+        if(!cacadasApagandoLocal[c.id]){
+          cacadasApagandoLocal[c.id] = true;
+          cacadasCol.doc(c.id).delete().catch(function(){}).then(function(){ delete cacadasApagandoLocal[c.id]; });
+        }
+        return;
+      }
+      var meu = c.membros[SESSION.currentDocId];
+      if(meu && !meu.creditado && c.battle && c.battle.vencedor && !cacadasExecutandoLocal[c.id]){
+        cacadasExecutandoLocal[c.id] = true;
+        aplicarMeuResultadoCacada(c).then(function(){ delete cacadasExecutandoLocal[c.id]; }).catch(function(){ delete cacadasExecutandoLocal[c.id]; });
+      }
+    }
+  });
+}
+function cacadaTick(){
+  if(!STATE || !SESSION.cacadasAtivas) return;
+  SESSION.cacadasAtivas.forEach(function(c){
+    if(souHostCacada(c) && c.status==='lutando' && c.battle && !c.battle.vencedor) resolverRodadaCacada(c);
+  });
+}
+
 /* Ganchado no MESMO relógio de fundo da sequência automática de
    captura (ver startCaptureSequenceTicker mais abaixo) -- só o
    desafiante de fato faz alguma coisa aqui (resolverRodadaDuelo já
@@ -13182,6 +13720,124 @@ function rollEliteTeam(zona){
     time.push({num:sp.num, level:level});
   }
   return time;
+}
+
+/* ============================================================
+   CAÇA EM GRUPO (Cap. leva desta sessão -- "até 5 Treinadores...
+   convidar seus amigos pra caçarem juntos... adversários mais fortes
+   a depender do tipo de caçada e quantas pessoas estiverem... Alfa e
+   seguidores... esquema de níveis igual temos na área de captura").
+   Reaproveita ZONAS/wildPoolForZona tal como já existem -- "tipo de
+   caçada" = a Zona escolhida (mesmo esquema de dificuldade da Área de
+   Captura, documentado assim porque criar um eixo de dificuldade
+   paralelo duplicaria o que já existe sem necessidade). */
+/* Multiplicador por quantidade de jogadores (Cap. exemplos do pedido:
+   2j->Alfa 4x/Bando 3x, 3j->5x/4x -- confirma a progressão
+   Alfa=jogadores+2, Bando=jogadores+1; jogadores=1 cai pro "3x/2x"
+   citado como a regra geral, mas Caça em Grupo nunca inicia com menos
+   de 2 -- ver DT.gaIniciarCacada). Diferente de Raid (que infla só o
+   PV MUITO mais que os outros Atributos pra 1 boss único aguentar
+   vários atacantes), aqui o multiplicador vale IGUAL pra todos os
+   Atributos incluindo PV -- a "aguentação" já vem de ter vários
+   inimigos no bando, não de 1 só com PV gigante. */
+function cacadaMultiplicadores(numJogadores){
+  var n = clampInt(numJogadores||2, 1, 5);
+  return { alfa: n+2, bando: n+1 };
+}
+/* Composição de onda(s) por quantidade de jogadores, exatamente como
+   descrito no pedido: 2j->1 grupo (Alfa+3 no bando), 3j->1 grupo
+   (Alfa+5), 4j->2 grupos (Alfa+7 cada), 5j->4 grupos (Alfa+10 cada).
+   Cada grupo é uma ONDA lutada separadamente, uma de cada vez (ver
+   resolverRodadaCacada/grupoAtual) -- "cada grupo pode ter um alpha ou
+   pokémons diferentes" = cada onda sorteia o PRÓPRIO Alfa (pode
+   repetir por acaso, nunca forçado a ser diferente). Bando = mesma
+   Espécie do Alfa OU uma pré-evolução dela (preEvolucoesDe) -- sem
+   pré-evolução cadastrada, cai pra mais um do próprio Alfa (nunca fica
+   sem bando). Nível de cada membro (Alfa incluso) sorteado dentro da
+   faixa da Zona, mesmo padrão de rollRivalTeam/rollEliteTeam. */
+var CACADA_COMPOSICAO = {
+  2: { grupos:1, bando:3 },
+  3: { grupos:1, bando:5 },
+  4: { grupos:2, bando:7 },
+  5: { grupos:4, bando:10 }
+};
+function rollNivelZona(zona){ return zona.min + Math.floor(Math.random()*(zona.max-zona.min+1)); }
+function rolarGruposCacada(zona, numJogadores){
+  var comp = CACADA_COMPOSICAO[clampInt(numJogadores||2, 2, 5)] || CACADA_COMPOSICAO[2];
+  var poolAlfa = wildPoolForZona(zona);
+  if(!poolAlfa.length) poolAlfa = trainerPoolForZona(zona);
+  var grupos = [];
+  for(var g=0; g<comp.grupos; g++){
+    var spAlfa = poolAlfa[Math.floor(Math.random()*poolAlfa.length)];
+    var alfa = { num: spAlfa.num, level: rollNivelZona(zona) };
+    var poolBando = [spAlfa.num].concat(preEvolucoesDe(spAlfa.num));
+    var bando = [];
+    for(var i=0;i<comp.bando;i++){
+      var numBando = poolBando[Math.floor(Math.random()*poolBando.length)];
+      bando.push({ num: numBando, level: rollNivelZona(zona) });
+    }
+    grupos.push({ alfa: alfa, bando: bando, derrotado:false });
+  }
+  return grupos;
+}
+/* Calculadora de chance de vitória (Cap. "quando eles mudarem essa
+   barra de porcentagem possa alterar e eles verem o que podem fazer")
+   -- ESTIMATIVA por fórmula, não uma simulação de combate de verdade
+   (mesmo espírito de `chanceEstim` em raidPreviewPanelHTML ~6754,
+   recalculada a cada render() -- já dispara sozinho a cada mudança de
+   líder/item/Papel porque essas ações já chamam render()/mutate(),
+   sem precisar de nenhum binding novo). Soma um "poder" = os 6
+   Atributos oficiais do líder escolhido de cada Treinador confirmado
+   (bônus de +15% se o item segurado tiver efeito real de combate, ver
+   HELD_ITEMS) contra o poder estimado do PRÓXIMO bando (Alfa+seguidores
+   no Nível médio da Zona, escalado pelos MESMOS multiplicadores que a
+   luta de verdade vai usar) -- só a onda ATUAL entra na conta, porque
+   é o confronto imediato que decide se o grupo sequer sobrevive pra
+   ver a próxima. */
+function statTotal6(num, level, natureza, forma){
+  return ['hp','atk','def','spa','spd','spe'].reduce(function(s, st){ return s + officialStat(num, level, st, natureza, forma); }, 0);
+}
+function cacadaPoderTreinadores(c){
+  var total = 0, contou = 0;
+  Object.keys(c.membros||{}).forEach(function(docId){
+    var m = c.membros[docId];
+    if(!m.confirmado || !m.party || !m.lider) return;
+    var p = m.party.filter(function(x){ return x.id===m.lider; })[0];
+    if(!p) return;
+    var poder = statTotal6(p.num, p.level, p.natureza, p.forma);
+    if(p.itemSegurado && HELD_ITEMS.some(function(it){ return it.key===p.itemSegurado; })) poder *= 1.15;
+    total += poder; contou++;
+  });
+  return { total: total, contou: contou };
+}
+function cacadaPoderInimigosEstimado(zona, numJogadores){
+  var comp = CACADA_COMPOSICAO[clampInt(numJogadores||2, 2, 5)] || CACADA_COMPOSICAO[2];
+  var mult = cacadaMultiplicadores(numJogadores);
+  var pool = wildPoolForZona(zona); if(!pool.length) pool = trainerPoolForZona(zona);
+  if(!pool.length) return 0;
+  var nivelMedio = Math.round((zona.min+zona.max)/2);
+  var somaPool = pool.reduce(function(s, sp){ return s + statTotal6(sp.num, nivelMedio, 'Hardy', null); }, 0);
+  var mediaPool = somaPool/pool.length;
+  return mediaPool*mult.alfa + mediaPool*mult.bando*comp.bando;
+}
+function cacadaChanceVitoriaPct(c){
+  var zona = zonaByStatus(c.zonaId); if(!zona) return null;
+  var confirmados = Object.keys(c.membros||{}).filter(function(k){ return c.membros[k].confirmado; });
+  var pj = cacadaPoderTreinadores(c);
+  if(!pj.contou || confirmados.length<2) return null;
+  var pi = cacadaPoderInimigosEstimado(zona, confirmados.length);
+  if(pi<=0) return 50;
+  var razao = (pj.total - pi) / pi;
+  return clampInt(Math.round(50 + 40*Math.tanh(razao)), 5, 95);
+}
+function cacadaChanceVitoriaHTML(c){
+  var pct = cacadaChanceVitoriaPct(c);
+  if(pct===null) return '<div class="ga-raid-preview"><h3 class="ga-subhead">🎯 Chance de vitória</h3><p class="ga-hint">Precisa de pelo menos 2 Treinadores confirmados, cada um com o líder escolhido, pra estimar.</p></div>';
+  var cor = pct>=60 ? 'var(--accent)' : (pct>=40 ? 'var(--gold)' : 'var(--danger)');
+  return '<div class="ga-raid-preview"><h3 class="ga-subhead">🎯 Chance de vitória estimada</h3>'+
+    '<div class="ga-cacada-chance-bar"><div class="ga-cacada-chance-fill" style="width:'+pct+'%;background:'+cor+';"></div></div>'+
+    '<p class="ga-hint">~'+pct+'% -- soma o Atributo efetivo (e o bônus de item segurado) de quem cada um escolheu pra liderar contra o bando estimado da Zona. É uma ESTIMATIVA por fórmula, não uma simulação de combate de verdade -- mude quem lidera, o item segurado ou o Papel de Combate pra ver a barra reagir.</p>'+
+  '</div>';
 }
 
 /* Cap. leva desta sessão: "Libere o acesso para todas as zonas com
@@ -13708,6 +14364,7 @@ function catchUpCaptureSequence(){
 function backgroundTick(){
   if(STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick();
   duelTick();
+  cacadaTick();
 }
 function startCaptureSequenceTicker(){
   var suportaWorker = typeof Worker!=='undefined' && typeof Blob!=='undefined' && typeof URL!=='undefined' && !!URL.createObjectURL;
@@ -15356,7 +16013,7 @@ var TOOLTIPS = {
    -- fechada por padrão, abre com o botão ☰ na barrinha de topo
    compacta que só aparece nessa largura (ver mobileTopbarHTML +
    SESSION.sidebarOpen/DT.gaToggleSidebar). */
-var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','moves:🗡️:Movimentos','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','raids:🏴:Raids Ativas','mochila:🧳:Mochila','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
+var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','moves:🗡️:Movimentos','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','raids:🏴:Raids Ativas','cacadagrupo:🐺:Caça em Grupo','mochila:🧳:Mochila','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
 function navListHTML(){
   /* Cap. leva desta sessão (Centro Pokémon): entrada própria (não
      genérica via NAV_ITENS/gaGoto -- precisa carregar o diretório e
@@ -15517,6 +16174,7 @@ function screenHTML(){
     case 'captura': return wrap(capturaScreenHTML());
     case 'ginasios': return wrap(ginasiosScreenHTML());
     case 'raids': return wrap(raidsScreenHTML());
+    case 'cacadagrupo': return wrap(cacadaGrupoScreenHTML());
     case 'mochila': return wrap(mochilaScreenHTML());
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
@@ -17628,6 +18286,132 @@ function dueloScreenHTML(){
     out += '<div class="ga-battle-prompt"><h3>'+(euVenci?'🏆 Você venceu o Duelo!':'☠️ Você perdeu o Duelo.')+'</h3><p class="ga-hint">Todo mundo já saiu do Duelo com o PV cheio de novo (nenhum Pokémon fica ferido fora dele).</p><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharDuelo()">Voltar pro Centro Pokémon</button></div>';
   } else {
     out += '<button class="ga-btn-sm danger" onclick="DT.gaDesistirDuelo(\''+d.id+'\')">🏳️ Desistir</button>';
+  }
+  out += '</div>';
+  return out;
+}
+/* ---- Tela da Caça em Grupo (Cap. leva desta sessão) ---- */
+function cacadaGrupoScreenHTML(){
+  if(SESSION.cacadaId){
+    var c = achaCacadaAtiva(SESSION.cacadaId);
+    if(!c) return '<div class="ga-card"><h2>🐺 Caça em Grupo</h2><p class="ga-hint">Essa Caça não está mais disponível.</p><button class="ga-btn-sm" onclick="DT.gaFecharCacada()">Voltar</button></div>';
+    if(c.status==='lutando' || c.status==='fim') return cacadaBatalhaHTML(c);
+    return cacadaLobbyHTML(c);
+  }
+  return cacadaListaHTML();
+}
+function cacadaListaHTML(){
+  var minhas = SESSION.cacadasAtivas || [];
+  var out = '<div class="ga-card"><h2>🐺 Caça em Grupo</h2><p class="ga-hint">Junte até 5 Treinadores pra enfrentar um bando selvagem -- 1 Alfa e seus seguidores, mais fortes quanto mais gente entrar. Convide amigos (do Centro Pokémon), escolha quem vai liderar e acompanhe a chance de vitória antes de começar. A cada Rodada, cada Treinador luta com 1 Pokémon por vez, igual o Duelo PvP -- e dá pra usar poção se alguém ficar com PV baixo.</p></div>';
+  if(minhas.length){
+    out += '<div class="ga-card"><h2>Suas Caças</h2><div class="ga-poke-grid">'+minhas.map(function(c){
+      var meu = c.membros[SESSION.currentDocId];
+      var zona = zonaByStatus(c.zonaId);
+      var statusTxt = c.status==='lutando' ? '⚔️ Em luta' : (c.status==='fim' ? '🏁 Terminada' : (meu && meu.confirmado ? '⏳ No lobby' : '✉️ Convite recebido'));
+      return '<div class="ga-poke-card"><div class="ga-poke-name">'+esc2(c.hostNome)+'</div><div class="ga-poke-meta">Zona '+esc2(zona?zona.nome:c.zonaId)+' -- '+statusTxt+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirCacada(\''+c.id+'\')">Abrir</button></div>';
+    }).join('')+'</div></div>';
+  }
+  out += '<div class="ga-card"><h2>Criar nova Caça</h2><div class="ga-field"><label>Zona (o mesmo esquema de níveis da Área de Captura)</label><select id="gaCacadaZonaSel">'+
+    ZONAS.map(function(z){ return '<option value="'+z.id+'">'+esc2(z.nome)+' (Nv. '+z.min+'-'+z.max+')</option>'; }).join('')+
+    '</select></div><button class="ga-btn ga-btn-primary" onclick="DT.gaCriarCacada(document.getElementById(\'gaCacadaZonaSel\').value)">🐺 Criar Caça</button></div>';
+  return out;
+}
+function cacadaMembroCardHTML(c, docId){
+  var m = c.membros[docId];
+  var souEu = docId===SESSION.currentDocId;
+  var liderNome = '';
+  if(m.lider && m.party){
+    var p = m.party.filter(function(x){ return x.id===m.lider; })[0];
+    if(p) liderNome = esc2(p.apelido || speciesByNum(p.num).name)+' Nv.'+p.level;
+  }
+  return '<div class="ga-poke-card"><div class="ga-poke-name">'+(docId===c.host?'👑 ':'')+esc2(m.nome)+(souEu?' (você)':'')+'</div>'+
+    '<div class="ga-poke-meta">'+(!m.confirmado ? '✉️ Convite pendente' : (liderNome ? '🎯 '+liderNome : '⏳ Escolhendo líder...'))+'</div></div>';
+}
+function cacadaLobbyHTML(c){
+  var meuId = SESSION.currentDocId;
+  var meu = c.membros[meuId];
+  var zona = zonaByStatus(c.zonaId);
+  var souHost = souHostCacada(c);
+  var out = '<div class="ga-card"><h2>🐺 Caça em Grupo de '+esc2(c.hostNome)+'</h2><p class="ga-hint">Zona '+esc2(zona?zona.nome:c.zonaId)+' (Nv. '+(zona?zona.min:'?')+'-'+(zona?zona.max:'?')+').</p>';
+  if(!meu){
+    out += '<p class="ga-hint">Você não faz mais parte dessa Caça.</p><button class="ga-btn-sm" onclick="DT.gaFecharCacada()">Voltar</button></div>';
+    return out;
+  }
+  if(!meu.confirmado){
+    out += '<div class="ga-btn-row"><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAceitarCacada(\''+c.id+'\')">✔️ Entrar na Caça</button><button class="ga-btn-sm" onclick="DT.gaRecusarCacada(\''+c.id+'\')">✕ Recusar</button></div></div>';
+    return out;
+  }
+  out += '</div>';
+  out += '<div class="ga-card"><h2>Treinadores ('+Object.keys(c.membros).length+'/5)</h2><div class="ga-poke-grid">'+
+    Object.keys(c.membros).map(function(docId){ return cacadaMembroCardHTML(c, docId); }).join('')+
+  '</div>';
+  if(souHost && Object.keys(c.membros).length<5){
+    var amigosDisponiveis = (SESSION.amigos||[]).filter(function(a){ return !c.membros[a.outro]; });
+    if(amigosDisponiveis.length){
+      out += '<div class="ga-field"><label>Convidar amigo</label><select id="gaCacadaConviteSel">'+
+        amigosDisponiveis.map(function(a){ return '<option value="'+esc2(a.outro)+'">'+esc2(a.outroNome)+'</option>'; }).join('')+
+        '</select></div><button class="ga-btn-sm" onclick="DT.gaConvidarCacada(\''+c.id+'\', document.getElementById(\'gaCacadaConviteSel\').value)">✉️ Convidar</button>';
+    } else {
+      out += '<p class="ga-hint">Sem amigos disponíveis pra convidar (todos já estão na Caça, ou você ainda não tem amigos -- adicione no Centro Pokémon).</p>';
+    }
+  }
+  out += '</div>';
+  if(!meu.lider){
+    out += '<div class="ga-card"><h2>Escolha quem vai liderar</h2><div class="ga-poke-grid">'+(meu.party||[]).map(function(p){
+      var sp = speciesByNum(p.num);
+      return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(tiposEfetivos(p))+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherLiderCacada(\''+c.id+'\',\''+p.id+'\')">Escolher</button></div>';
+    }).join('')+'</div></div>';
+  }
+  out += cacadaChanceVitoriaHTML(c);
+  out += '<div class="ga-card ga-btn-row">';
+  if(souHost) out += '<button class="ga-btn ga-btn-primary" onclick="DT.gaIniciarCacada(\''+c.id+'\')">🐺 Iniciar Caça</button>';
+  out += '<button class="ga-btn-sm danger" onclick="DT.gaDesistirCacada(\''+c.id+'\')">'+(souHost?'✕ Cancelar Caça':'🏳️ Sair')+'</button>';
+  out += '</div>';
+  return out;
+}
+function cacadaBatalhaCardHTML(nome, battler, hpAtual, ehAlfa, eliminado){
+  var sp = speciesByNum(battler.num);
+  return '<div class="ga-battle-side ga-cacada-mini'+(ehAlfa?' ga-cacada-alfa':'')+(eliminado?' ga-cacada-eliminado':'')+'"><img src="'+spriteUrl(spriteNumEfetivo(battler))+'" alt="">'+
+    '<div>'+(ehAlfa?'👑 ':'')+esc2(nome)+'</div>'+
+    hpBarHTML(Math.max(0,hpAtual), gaHpMax(battler))+
+  '</div>';
+}
+function cacadaBatalhaHTML(c){
+  var meuId = SESSION.currentDocId;
+  var b = c.battle;
+  if(!b) return '<div class="ga-card"><h2>🐺 Caça em Grupo</h2><p class="ga-hint">Preparando a Caça...</p></div>';
+  var totalOndas = (c.grupos||[]).length;
+  var out = '<div class="ga-card ga-battle"><h2>🐺 Caça em Grupo -- Onda '+(b.grupoAtual+1)+'/'+totalOndas+'</h2>'+
+    '<div class="ga-battle-field ga-cacada-field">'+
+      b.inimigos.map(function(inim){ return cacadaBatalhaCardHTML(displayName(inim), inim, b.hp[inim.key], !!inim.ehAlfa, false); }).join('')+
+    '</div>'+
+    '<div class="ga-battle-vs">VS</div>'+
+    '<div class="ga-battle-field ga-cacada-field">'+
+      Object.keys(c.membros).map(function(docId){
+        var m = c.membros[docId];
+        var ativo = b.ativos[docId];
+        var eliminado = !!(b.eliminados && b.eliminados[docId]);
+        if(!ativo) return '<div class="ga-battle-side ga-cacada-mini ga-cacada-eliminado"><div>'+esc2(m.nome)+'</div><div class="ga-hint">Eliminado</div></div>';
+        return cacadaBatalhaCardHTML(esc2(m.nome)+(docId===meuId?' (você)':'')+' -- '+displayName(ativo), ativo, b.hp[ativo.key], false, eliminado);
+      }).join('')+
+    '</div>'+
+    '<div class="ga-battle-log">'+b.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>';
+
+  if(b.pendingHealFor===meuId && !b.pendingHealDecisao){
+    var alvoCura = b.ativos[meuId];
+    out += '<div class="ga-battle-prompt"><p>💊 '+esc2(displayName(alvoCura))+' está com PV baixo! Usar uma poção agora (recupera '+Math.round(DUELO_CURA_PCT*100)+'% do PV Máximo, não gasta item da Mochila)?</p><div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaCacadaResponderCura(true)">💊 Usar</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaCacadaResponderCura(false)">➡️ Não usar</button>'+
+    '</div></div>';
+  } else if(b.pendingHealFor){
+    out += '<div class="ga-battle-prompt"><p class="ga-hint">⏳ Esperando '+esc2((c.membros[b.pendingHealFor]||{}).nome||'alguém')+' decidir se vai curar...</p></div>';
+  }
+
+  if(c.status==='fim' || b.vencedor){
+    var euVenci = b.vencedor==='jogadores';
+    out += '<div class="ga-battle-prompt"><h3>'+(euVenci?'🏆 A Caça em Grupo foi vencida!':'☠️ O bando venceu a Caça.')+'</h3><p class="ga-hint">Todo mundo sai da Caça com o PV cheio de novo. '+(euVenci?'Recompensa de participação creditada no seu Treinador.':'')+'</p><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharCacada()">Voltar</button></div>';
+  } else {
+    out += '<button class="ga-btn-sm danger" onclick="DT.gaDesistirCacada(\''+c.id+'\')">🏳️ Desistir</button>';
   }
   out += '</div>';
   return out;
