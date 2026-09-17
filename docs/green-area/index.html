@@ -546,6 +546,20 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
    e texto alinhado à esquerda (log/grade nunca ficam bons
    centralizados). */
 .ga-overlay-card.wide{ max-width:900px; text-align:left; max-height:85vh; overflow-y:auto; }
+/* Cap. leva desta sessão ("o popup do fim de luta não pode tomar a
+   tela toda... pode ser menor e vir pra frente... a rolagem ser
+   dentro dele, não na página toda"): variante menor só pro resultado
+   de combate (vitória/derrota da luta normal/Raid/Duelo/Caça em
+   Grupo) -- o `.ga-overlay-card` padrão (360px/85vh) é pensado pra
+   caber texto+alguns botões, mas uma vitória selvagem com várias
+   Pokébolas empilhadas conseguia esticar quase até o teto de 85vh,
+   dominando a tela inteira por trás do fundo escurecido. Teto BEM mais
+   baixo (55vh, nunca mais que 380px) deixa o fundo escurecido (e a
+   luta por trás dele) claramente visível ao redor do card -- lê como
+   "um card na frente", não "uma tela nova por cima" -- e a rolagem
+   continua só dentro do próprio card (`overflow-y:auto`, nunca a
+   página), mesmo se sobrar mais Pokébola do que cabe. */
+.ga-overlay-card.compact{ max-width:300px; max-height:min(55vh,380px); }
 .ga-admin-log{ display:flex; flex-direction:column; gap:4px; margin-top:6px; max-height:320px; overflow-y:auto; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px; }
 .ga-admin-log-row{ font-size:.82rem; border-bottom:1px solid var(--line); padding:4px 0; }
 .ga-admin-log-row:last-child{ border-bottom:none; }
@@ -13104,24 +13118,27 @@ function processarDuelosAtivos(lista){
    ataca um Treinador vivo escolhido ao ACASO -- sem escolha manual de
    golpe/alvo (mesma IA por Papel de Combate da luta normal/Duelo). */
 var cacadasExecutandoLocal = {};
-var cacadasApagandoLocal = {};
 var CACADA_XP_POR_ZONA = 10, CACADA_POKEDOLAR_POR_ZONA = 200; // recompensa de participação por vitória, escalando com a Zona -- mesmo espírito flat de RAID_CONFIG_PADRAO.xpParticipacao/pokedolarParticipacao
+var CACADA_CUSTO_ENERGIA = 25; // Cap. leva desta sessão ("A caçada em grupo gasta 25 de energia por entrada") -- cobrado de CADA Treinador ao entrar (criar OU aceitar convite), igual um Raid Pass -- nunca reembolsado ao desistir.
+var CACADA_MAX_RODADAS_SEGUIDAS = 10; // Cap. leva desta sessão ("permita que possamos fazer mais de uma, até 10 por vez") -- ver DT.gaNovaCacadaMesmoGrupo.
 function cacadaPartySnapshot(){ return JSON.parse(JSON.stringify(STATE.party)); }
 function achaCacadaAtiva(id){ return (SESSION.cacadasAtivas||[]).filter(function(c){ return c.id===id; })[0] || null; }
 function souHostCacada(c){ return !!c && c.host===SESSION.currentDocId; }
 DT.gaCriarCacada = function(zonaId){
   if(!STATE) return;
   var zona = zonaByStatus(zonaId); if(!zona) return;
+  if((STATE.energy||0)<CACADA_CUSTO_ENERGIA){ SESSION.error='Energia insuficiente -- entrar numa Caça em Grupo custa '+CACADA_CUSTO_ENERGIA+' e você tem '+(STATE.energy||0)+'.'; render(); return; }
   var cacadaId = uid();
   var membros = {};
   membros[SESSION.currentDocId] = { nome: STATE.trainerName, confirmado:true, party: cacadaPartySnapshot(), lider:null, desistiu:false, creditado:false };
   cacadasCol.doc(cacadaId).set({
     host: SESSION.currentDocId, hostNome: STATE.trainerName, zonaId: zonaId,
-    membros: membros, status:'lobby', grupos:null, membrosParticipantes:null, battle:null, criadoEm: Date.now()
+    membros: membros, status:'lobby', grupos:null, membrosParticipantes:null, battle:null, rodadas:1, criadoEm: Date.now()
   }).then(function(){
+    STATE.energy -= CACADA_CUSTO_ENERGIA;
     SESSION.screen='cacadagrupo'; SESSION.cacadaId=cacadaId; SESSION.error='';
-    logAction('cacadagrupo', 'Criou uma Caça em Grupo na Zona '+zona.nome+'.');
-    render();
+    logAction('cacadagrupo', 'Criou uma Caça em Grupo na Zona '+zona.nome+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
+    mutate();
   }).catch(function(err){ SESSION.error='Não consegui criar a Caça em Grupo ('+erroFirestoreMsg(err)+').'; render(); });
 };
 DT.gaAbrirCacada = function(id){ SESSION.screen='cacadagrupo'; SESSION.cacadaId=id; SESSION.error=''; SESSION.sidebarOpen=false; render(); };
@@ -13139,14 +13156,16 @@ DT.gaConvidarCacada = function(cacadaId, outroDocId){
 };
 DT.gaAceitarCacada = function(cacadaId){
   var c = achaCacadaAtiva(cacadaId); if(!c || !STATE || !c.membros[SESSION.currentDocId]) return;
+  if((STATE.energy||0)<CACADA_CUSTO_ENERGIA){ SESSION.error='Energia insuficiente -- entrar numa Caça em Grupo custa '+CACADA_CUSTO_ENERGIA+' e você tem '+(STATE.energy||0)+'.'; render(); return; }
   var upd = {};
   upd['membros.'+SESSION.currentDocId+'.confirmado'] = true;
   upd['membros.'+SESSION.currentDocId+'.party'] = cacadaPartySnapshot();
   upd['membros.'+SESSION.currentDocId+'.nome'] = STATE.trainerName;
   cacadasCol.doc(cacadaId).update(upd).then(function(){
+    STATE.energy -= CACADA_CUSTO_ENERGIA;
     SESSION.screen='cacadagrupo'; SESSION.cacadaId=cacadaId; SESSION.error='';
-    logAction('cacadagrupo', 'Entrou na Caça em Grupo de '+c.hostNome+'.');
-    render();
+    logAction('cacadagrupo', 'Entrou na Caça em Grupo de '+c.hostNome+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
+    mutate();
   }).catch(function(err){ SESSION.error='Não consegui entrar na Caça ('+erroFirestoreMsg(err)+').'; render(); });
 };
 DT.gaRecusarCacada = function(cacadaId){
@@ -13156,6 +13175,50 @@ DT.gaRecusarCacada = function(cacadaId){
     if(SESSION.cacadaId===cacadaId){ SESSION.cacadaId=null; SESSION.screen='centro'; }
     render();
   }).catch(function(err){ SESSION.error='Não consegui recusar ('+erroFirestoreMsg(err)+').'; render(); });
+};
+/* Cap. leva desta sessão ("permita que possamos fazer mais de uma, no
+   caso até 10 por vez" -- respondido "repetir com o mesmo grupo",
+   sem precisar recriar o lobby/reconvidar todo mundo de novo): só o
+   host decide encarar outra Caça, só depois que a anterior já
+   terminou (`status==='fim'`) e só até `CACADA_MAX_RODADAS_SEGUIDAS`
+   seguidas -- reseta o MESMO documento pro estado de lobby de novo
+   (mesmo `cacadaId`, ninguém precisa ser reconvidado), com o host já
+   auto-confirmado (paga a PRÓPRIA Energia igual `gaCriarCacada`) e
+   todo mundo mais voltando pro estado "convite pendente" -- cada um
+   confirma nave (e paga a PRÓPRIA Energia) de novo pelo MESMO
+   `DT.gaAceitarCacada` de sempre, sem duplicar lógica nenhuma. */
+DT.gaNovaCacadaMesmoGrupo = function(cacadaId){
+  var c = achaCacadaAtiva(cacadaId); if(!c || !STATE || !souHostCacada(c) || c.status!=='fim') return;
+  if((c.rodadas||1)>=CACADA_MAX_RODADAS_SEGUIDAS){ SESSION.error='Essa Caça já chegou no limite de '+CACADA_MAX_RODADAS_SEGUIDAS+' rodadas seguidas -- crie uma nova pra continuar com o grupo.'; render(); return; }
+  if((STATE.energy||0)<CACADA_CUSTO_ENERGIA){ SESSION.error='Energia insuficiente -- entrar numa Caça em Grupo custa '+CACADA_CUSTO_ENERGIA+' e você tem '+(STATE.energy||0)+'.'; render(); return; }
+  var membrosReset = {};
+  Object.keys(c.membros).forEach(function(docId){
+    var souEu = docId===SESSION.currentDocId;
+    membrosReset[docId] = { nome: c.membros[docId].nome, confirmado: souEu, party: souEu?cacadaPartySnapshot():null, lider:null, desistiu:false, creditado:false };
+  });
+  cacadasCol.doc(cacadaId).update({ status:'lobby', grupos:null, membrosParticipantes:null, battle:null, rodadas:(c.rodadas||1)+1, membros: membrosReset }).then(function(){
+    STATE.energy -= CACADA_CUSTO_ENERGIA;
+    var zona = zonaByStatus(c.zonaId);
+    logAction('cacadagrupo', 'Encarou outra Caça em Grupo com a mesma equipe na Zona '+(zona?zona.nome:c.zonaId)+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
+    mutate();
+  }).catch(function(err){ SESSION.error='Não consegui começar outra Caça ('+erroFirestoreMsg(err)+').'; render(); });
+};
+/* Encerra de vez uma Caça já terminada (host apaga o documento pra
+   todo mundo; quem não é host só sai da lista de membros dela) --
+   antes disso o doc NUNCA se apagava sozinho ao terminar (ver
+   processarCacadasAtivas), de propósito, pra dar tempo do host
+   decidir "encarar outra" (DT.gaNovaCacadaMesmoGrupo acima) sem
+   perder o grupo já montado. */
+DT.gaEncerrarCacadaFinalizada = function(cacadaId){
+  var c = achaCacadaAtiva(cacadaId); if(!c || c.status!=='fim') return;
+  if(souHostCacada(c)){
+    cacadasCol.doc(cacadaId).delete().then(function(){
+      if(SESSION.cacadaId===cacadaId){ SESSION.cacadaId=null; SESSION.screen='centro'; }
+      render();
+    }).catch(function(err){ SESSION.error='Não consegui encerrar a Caça ('+erroFirestoreMsg(err)+').'; render(); });
+  } else {
+    DT.gaRecusarCacada(cacadaId);
+  }
 };
 DT.gaEscolherLiderCacada = function(cacadaId, pid){
   var c = achaCacadaAtiva(cacadaId); if(!c || !STATE) return;
@@ -13192,12 +13255,36 @@ DT.gaDesistirCacada = function(cacadaId){
   var upd = {}; upd['membros.'+SESSION.currentDocId+'.desistiu'] = true; upd.battle = b;
   cacadasCol.doc(cacadaId).update(upd).catch(function(err){ SESSION.error='Não consegui desistir ('+erroFirestoreMsg(err)+').'; render(); });
 };
-DT.gaCacadaResponderCura = function(usar){
+/* Cap. leva desta sessão ("A poção usada na luta em grupo TEM que ser
+   da mochila. Ele vai abrir o menu de poção mostrando os itens de
+   cura que o usuário tem"): diferente do Duelo (que continua com a
+   cura de % fixa, sem gastar item de verdade -- simplificação
+   documentada e mantida lá), a Caça em Grupo agora usa o MESMO
+   catálogo/fluxo da luta normal (`GA_ITEMS`/`DT.gaUsarItemCura`) --
+   `itemKey` em vez de booleano, vazio/nulo = recusou. Quem decide é
+   SEMPRE o próprio jogador (`SESSION.currentDocId===pendingHealFor`,
+   já garantido acima), e é ELE quem desconta o item do PRÓPRIO
+   `STATE.itens` na hora (mesma regra de sempre: cada um aplica a
+   PRÓPRIA parte no PRÓPRIO save, nunca no de outro -- ver Duelo/Troca
+   ao vivo) -- o host (quem chama `resolverRodadaCacada`) nunca
+   enxerga a Mochila de outro jogador, então o `curaPct` do item
+   escolhido viaja DENTRO do `pendingHealDecisao` compartilhado pra
+   quem resolve a Rodada saber quanto curar sem precisar ler Mochila
+   nenhuma. */
+DT.gaCacadaResponderCura = function(itemKey){
   var c = achaCacadaAtiva(SESSION.cacadaId); if(!c || !c.battle || !c.battle.pendingHealFor) return;
   if(c.battle.pendingHealFor!==SESSION.currentDocId) return;
   var b = c.battle;
-  b.pendingHealDecisao = { docId: SESSION.currentDocId, usar: !!usar };
+  var it = itemKey ? itemByKey(itemKey) : null;
+  // Rede de segurança (mesmo padrão de DT.gaUsarItemCura): item inválido/sem estoque conta como recusa, nunca trava a luta.
+  if(itemKey && (!it || (STATE.itens[itemKey]||0)<=0)){ it = null; itemKey = ''; }
+  if(it){
+    STATE.itens[itemKey]--;
+    logAction('item', 'Usou '+it.nome+' na Caça em Grupo (+'+Math.round(it.curaPct*100)+'% do PV Máximo).');
+  }
+  b.pendingHealDecisao = { docId: SESSION.currentDocId, itemKey: itemKey||'', itemNome: it ? it.nome : '', curaPct: it ? it.curaPct : 0 };
   cacadasCol.doc(c.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui responder ('+erroFirestoreMsg(err)+').'; render(); });
+  if(it) mutate(); // só precisa persistir o STATE local quando de fato gastou um item da Mochila
 };
 /* Monta o battle de UMA onda (grupos[idxOnda]) -- se `battleAnterior`
    vier preenchido (avanço de onda dentro da MESMA Caça), os
@@ -13290,12 +13377,12 @@ function resolverRodadaCacada(c){
   if(b.pendingHealFor){
     if(!b.pendingHealDecisao || b.pendingHealDecisao.docId!==b.pendingHealFor) return;
     var alvoCura = b.ativos[b.pendingHealFor];
-    if(b.pendingHealDecisao.usar){
+    if(b.pendingHealDecisao.curaPct>0){
       var maxHpCura = gaHpMax(alvoCura);
-      var cura = Math.max(1, Math.round(maxHpCura*DUELO_CURA_PCT));
+      var cura = Math.max(1, Math.round(maxHpCura*b.pendingHealDecisao.curaPct));
       var antesCura = b.hp[alvoCura.key];
       b.hp[alvoCura.key] = Math.min(maxHpCura, b.hp[alvoCura.key]+cura);
-      b.log.push('💊 '+displayName(alvoCura)+' usou uma poção -- recuperou '+(b.hp[alvoCura.key]-antesCura)+' PV.');
+      b.log.push('💊 '+displayName(alvoCura)+' usou '+(b.pendingHealDecisao.itemNome||'uma poção')+' -- recuperou '+(b.hp[alvoCura.key]-antesCura)+' PV.');
     } else {
       b.log.push('➡️ '+displayName(alvoCura)+' seguiu sem curar.');
     }
@@ -13460,14 +13547,14 @@ function processarCacadasAtivas(lista){
       cacadasCol.doc(c.id).update({ status:'fim' }).catch(function(){});
     }
     if(c.status==='fim'){
-      var todosCreditaram = Object.keys(c.membros||{}).every(function(k){ return c.membros[k].creditado; });
-      if(todosCreditaram){
-        if(!cacadasApagandoLocal[c.id]){
-          cacadasApagandoLocal[c.id] = true;
-          cacadasCol.doc(c.id).delete().catch(function(){}).then(function(){ delete cacadasApagandoLocal[c.id]; });
-        }
-        return;
-      }
+      /* Cap. leva desta sessão ("permita que possamos fazer mais de
+         uma [Caça], até 10 por vez... repetir com o mesmo grupo"): o
+         doc NÃO se apaga mais sozinho assim que todo mundo credita --
+         fica parado em `status:'fim'` esperando o host decidir entre
+         `DT.gaNovaCacadaMesmoGrupo` (encara outra com o MESMO grupo,
+         sem reconvidar ninguém) ou `DT.gaEncerrarCacadaFinalizada`
+         (apaga de vez). Só o crédito de recompensa continua automático
+         aqui embaixo. */
       var meu = c.membros[SESSION.currentDocId];
       if(meu && !meu.creditado && c.battle && c.battle.vencedor && !cacadasExecutandoLocal[c.id]){
         cacadasExecutandoLocal[c.id] = true;
@@ -18389,7 +18476,7 @@ function dueloScreenHTML(){
    card `.ga-battle-prompt` dentro da própria tela de luta). */
 function dueloResultadoPopupHTML(b, meuLado){
   var euVenci = b.vencedor===meuLado;
-  return '<div class="ga-overlay"><div class="ga-overlay-card">'+
+  return '<div class="ga-overlay"><div class="ga-overlay-card compact">'+
     '<h2>'+(euVenci?'🏆 Você venceu o Duelo!':'☠️ Você perdeu o Duelo.')+'</h2>'+
     '<p class="ga-hint">Todo mundo já saiu do Duelo com o PV cheio de novo (nenhum Pokémon fica ferido fora dele).</p>'+
     '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharDuelo()">Voltar pro Centro Pokémon</button>'+
@@ -18461,12 +18548,22 @@ function cacadaLobbyHTML(c){
     }
   }
   out += '</div>';
-  if(!meu.lider){
-    out += '<div class="ga-card"><h2>Escolha quem vai liderar</h2><div class="ga-poke-grid">'+(meu.party||[]).map(function(p){
-      var sp = speciesByNum(p.num);
-      return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(tiposEfetivos(p))+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherLiderCacada(\''+c.id+'\',\''+p.id+'\')">Escolher</button></div>';
-    }).join('')+'</div></div>';
-  }
+  /* Cap. leva desta sessão ("permita mudar quem lidera, após
+     aceitar"): antes só aparecia enquanto `meu.lider` estivesse vazio
+     (escolha única, sem volta); agora sempre aparece -- o card do
+     líder atual ganha `.ativo` (mesmo destaque visual usado em Equipe/
+     Área de Captura) e vira "Liderando" em vez de "Escolher", mas
+     `DT.gaEscolherLiderCacada` já era idempotente (só sobrescreve o
+     dot-path `lider` no Firestore), então trocar pra outro Pokémon a
+     qualquer momento antes de `DT.gaIniciarCacada` já funcionava de
+     graça, só faltava a UI deixar. */
+  out += '<div class="ga-card"><h2>'+(meu.lider?'Troque quem vai liderar':'Escolha quem vai liderar')+'</h2><div class="ga-poke-grid">'+(meu.party||[]).map(function(p){
+    var sp = speciesByNum(p.num);
+    var ehLider = meu.lider===p.id;
+    return '<div class="ga-poke-card'+(ehLider?' ativo':'')+'"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(tiposEfetivos(p))+'</div>'+
+      (ehLider ? '<p class="ga-hint">🎯 Liderando</p>' : '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherLiderCacada(\''+c.id+'\',\''+p.id+'\')">Escolher</button>')+
+    '</div>';
+  }).join('')+'</div></div>';
   out += cacadaChanceVitoriaHTML(c);
   out += '<div class="ga-card ga-btn-row">';
   if(souHost) out += '<button class="ga-btn ga-btn-primary" onclick="DT.gaIniciarCacada(\''+c.id+'\')">🐺 Iniciar Caça</button>';
@@ -18504,9 +18601,12 @@ function cacadaBatalhaHTML(c){
 
   if(b.pendingHealFor===meuId && !b.pendingHealDecisao){
     var alvoCura = b.ativos[meuId];
-    out += '<div class="ga-battle-prompt"><p>💊 '+esc2(displayName(alvoCura))+' está com PV baixo! Usar uma poção agora (recupera '+Math.round(DUELO_CURA_PCT*100)+'% do PV Máximo, não gasta item da Mochila)?</p><div class="ga-btn-row">'+
-      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaCacadaResponderCura(true)">💊 Usar</button>'+
-      '<button class="ga-btn-sm" onclick="DT.gaCacadaResponderCura(false)">➡️ Não usar</button>'+
+    var pocoesDisponiveisCacada = GA_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0; });
+    out += '<div class="ga-battle-prompt"><p>💊 '+esc2(displayName(alvoCura))+' está com PV baixo! Usar uma poção da Mochila agora?</p><div class="ga-btn-row">'+
+      (pocoesDisponiveisCacada.length
+        ? pocoesDisponiveisCacada.map(function(it){ return '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaCacadaResponderCura(\''+it.key+'\')">'+itemIconHTML(it)+' '+it.nome+' ('+STATE.itens[it.key]+')</button>'; }).join('')
+        : '<span class="ga-hint">Sem nenhuma poção na Mochila -- compre na 🏪 Loja.</span>')+
+      '<button class="ga-btn-sm" onclick="DT.gaCacadaResponderCura(\'\')">➡️ Não usar</button>'+
     '</div></div>';
   } else if(b.pendingHealFor){
     out += '<div class="ga-battle-prompt"><p class="ga-hint">⏳ Esperando '+esc2((c.membros[b.pendingHealFor]||{}).nome||'alguém')+' decidir se vai curar...</p></div>';
@@ -18516,20 +18616,57 @@ function cacadaBatalhaHTML(c){
     out += '<button class="ga-btn-sm danger" onclick="DT.gaDesistirCacada(\''+c.id+'\')">🏳️ Desistir</button>';
   }
   out += '</div>';
-  if(c.status==='fim' || b.vencedor) out += cacadaResultadoPopupHTML(b);
+  if(c.status==='fim' || b.vencedor) out += cacadaResultadoPopupHTML(c);
   return out;
 }
 /* Popup de resultado da Caça em Grupo (mesmo pedido da tela de batalha
    normal e do Duelo -- ver batalhaResultadoPopupHTML/dueloResultadoPopupHTML
    acima: resultado final vira o MESMO overlay de tela cheia dos outros
    popups de prioridade, não mais um card `.ga-battle-prompt` dentro da
-   própria tela de luta). */
-function cacadaResultadoPopupHTML(b){
+   própria tela de luta).
+   Cap. leva desta sessão ("no final me dê o relatório do combate
+   também" + "permita que possamos fazer mais de uma, até 10 por vez"):
+   ganhou um `<details>` com o status de cada Treinador (sobreviveu/
+   eliminado/desistiu) + o log inteiro da Caça (reaproveita
+   `.ga-seq-relatorio-item`, mesmo componente do relatório da sequência
+   automática de captura) e um botão pro HOST encarar outra Caça com o
+   MESMO grupo (`DT.gaNovaCacadaMesmoGrupo`) sem precisar recriar o
+   lobby, até `CACADA_MAX_RODADAS_SEGUIDAS` seguidas. */
+function cacadaResultadoPopupHTML(c){
+  var b = c.battle;
   var euVenci = b.vencedor==='jogadores';
-  return '<div class="ga-overlay"><div class="ga-overlay-card">'+
+  var meuId = SESSION.currentDocId;
+  var zona = zonaByStatus(c.zonaId);
+  var totalOndas = (c.grupos||[]).length;
+  var souHost = souHostCacada(c);
+  var rodadas = c.rodadas||1;
+  var linhasTreinadores = '<div class="ga-admin-list">'+Object.keys(c.membros).map(function(docId){
+    var m = c.membros[docId];
+    var eliminado = !!(b.eliminados && b.eliminados[docId]);
+    var statusTxt = m.desistiu ? '🏳️ Desistiu' : (eliminado ? '☠️ Eliminado' : '✅ Sobreviveu');
+    return '<div class="ga-admin-row"><div class="ga-admin-info"><strong>'+esc2(m.nome)+(docId===meuId?' (você)':'')+'</strong><div class="ga-hint">'+statusTxt+'</div></div></div>';
+  }).join('')+'</div>';
+  var meuMembro = c.membros[meuId];
+  var minhaRecompensaTxt = '';
+  if(euVenci && meuMembro && !meuMembro.desistiu){
+    var idx = zona ? Math.max(0, ZONAS.indexOf(zona)) : 0;
+    var xp = CACADA_XP_POR_ZONA*(idx+1), pokedolar = CACADA_POKEDOLAR_POR_ZONA*(idx+1);
+    minhaRecompensaTxt = '<p class="ga-hint">💰 Sua recompensa: +'+pokedolar+' Pokédólares, +'+xp+' XP.</p>';
+  }
+  var podeNovaRodada = souHost && rodadas<CACADA_MAX_RODADAS_SEGUIDAS;
+  return '<div class="ga-overlay"><div class="ga-overlay-card compact">'+
     '<h2>'+(euVenci?'🏆 A Caça em Grupo foi vencida!':'☠️ O bando venceu a Caça.')+'</h2>'+
     '<p class="ga-hint">Todo mundo sai da Caça com o PV cheio de novo. '+(euVenci?'Recompensa de participação creditada no seu Treinador.':'')+'</p>'+
-    '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaFecharCacada()">Voltar</button>'+
+    minhaRecompensaTxt+
+    '<details class="ga-seq-relatorio-item"><summary>📋 Relatório da Caça -- Onda '+(b.grupoAtual+1)+'/'+totalOndas+' -- Rodada '+rodadas+'/'+CACADA_MAX_RODADAS_SEGUIDAS+'</summary>'+
+      linhasTreinadores+
+      '<div class="ga-battle-log">'+b.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>'+
+    '</details>'+
+    '<div class="ga-btn-row" style="justify-content:center;margin-top:10px;">'+
+      (podeNovaRodada ? '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaNovaCacadaMesmoGrupo(\''+c.id+'\')">🐺 Encarar outra ('+CACADA_CUSTO_ENERGIA+' Energia)</button>' : '')+
+      '<button class="ga-btn-sm" onclick="DT.gaFecharCacada()">Voltar</button>'+
+      '<button class="ga-btn-sm danger" onclick="DT.gaEncerrarCacadaFinalizada(\''+c.id+'\')">'+(souHost?'Encerrar Caça':'Sair da Caça')+'</button>'+
+    '</div>'+
   '</div></div>';
 }
 function battleScreenHTML(){
@@ -18597,7 +18734,7 @@ function battleScreenHTML(){
    fecha pelos botões de verdade -- igual DT.gaJogarPokebola/
    DT.gaEncerrarBatalha já faziam antes, comportamento inalterado. */
 function batalhaResultadoPopupHTML(b, opp){
-  var out = '<div class="ga-overlay"><div class="ga-overlay-card">';
+  var out = '<div class="ga-overlay"><div class="ga-overlay-card compact">';
   if(b.finished==='vitoria'){
     out += '<h2>🏆 Vitória!</h2>';
     if(b.kind==='wild' && !b.captureDone){
