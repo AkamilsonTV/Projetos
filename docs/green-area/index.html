@@ -194,13 +194,24 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-team-type-pill{ padding:2px 10px; border-radius:999px; font-size:.66rem; font-weight:800; color:#0d1c2b; letter-spacing:.2px; box-shadow:0 2px 5px rgba(0,0,0,.25); }
 .ga-team-felic{ font-size:.72rem; font-weight:700; color:#ff9bb0; margin-left:4px; }
 .ga-team-nameplate{ display:flex; align-items:center; justify-content:center; gap:6px; background:#041019; border:1px solid rgba(94,234,212,.28); border-radius:10px; padding:6px 10px; box-shadow:inset 0 1px 4px rgba(0,0,0,.5); }
-.ga-team-raid-badge{ position:static; width:15px; height:15px; line-height:15px; font-size:10px; border-radius:3px; flex:0 0 auto; }
+/* `.ga-raid-badge` (style.css raiz) é `position:absolute` pra encaixar
+   no canto de `.ga-poke-card` -- aqui dentro da placa do nome precisa
+   virar inline; seletor composto (2 classes) pra ganhar da regra de
+   origem SEMPRE, não importa a ordem no arquivo (mesma lição do bug
+   de especificidade do card antigo com PNG de fundo). */
+.ga-team-nameplate .ga-raid-badge{ position:static; width:15px; height:15px; line-height:15px; font-size:10px; border-radius:3px; flex:0 0 auto; }
 .ga-team-dexnum{ font-size:.66rem; font-weight:700; letter-spacing:.2px; color:#5ecdd6; opacity:.8; flex:0 0 auto; }
 .ga-team-nome{ font-size:.92rem; font-weight:800; letter-spacing:.5px; color:#5eead4; text-shadow:0 0 14px rgba(94,234,212,.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ga-team-subrow{ display:flex; align-items:flex-start; justify-content:space-between; font-size:.68rem; font-weight:700; color:#dff2ee; gap:6px; }
 .ga-team-subrow span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ga-team-subrow span:last-child{ text-align:right; }
-.ga-team-nivel{ text-align:center; font-size:.7rem; font-weight:700; color:rgba(207,232,255,.75); }
+/* Exp (esquerda, acima do 1º Movimento) + Nível (direita, acima do
+   2º) -- no Nível máximo (`.maxed`) some o Exp e o Nível sozinho
+   centraliza, ocupando a linha inteira. */
+.ga-team-xprow{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.ga-team-xprow.maxed{ justify-content:center; }
+.ga-team-exp{ font-size:.68rem; font-weight:700; color:rgba(207,232,255,.75); }
+.ga-team-nivel-inline{ font-size:.7rem; font-weight:700; color:rgba(207,232,255,.75); }
 .ga-team-moves{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 .ga-team-move{ position:relative; border:none; border-radius:11px; padding:0; height:34px; cursor:pointer; overflow:hidden; -webkit-tap-highlight-color:transparent; }
 .ga-team-move-fill{ position:absolute; inset:0; opacity:.85; }
@@ -219,7 +230,13 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-team-item{ background:linear-gradient(135deg,#a78bfa,#22d3ee); }
 .ga-team-caixa{ background:linear-gradient(135deg,#fde047,#f59e0b); }
 .ga-team-caixa.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
-.ga-team-progress{ text-align:center; }
+/* Setas de reordenar: `.ga-order-controls` (style.css raiz) nasce
+   `position:absolute` pro canto do card antigo -- aqui viram uma
+   linha centralizada embaixo de Item/Caixa, dentro do fluxo normal
+   (o `gap` do `.ga-team-card` já separa ela do resto, sem precisar
+   colar em nada). Seletor composto pra sempre vencer a regra de
+   origem, mesma razão do `.ga-team-nameplate .ga-raid-badge` acima. */
+.ga-team-card .ga-order-controls{ position:static; display:flex; flex-direction:row; justify-content:center; gap:10px; }
 /* Cap. leva desta sessão ("O card da Raid e do histórico de raid pode
    ficar maior, de forma que ele fique melhor distribuído em largura
    no site. Pode ser do tamanho do card da equipe e centralizado"):
@@ -15398,7 +15415,10 @@ var TEAM_CARD_TYPE_COLOR = {
 };
 function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
   var sp = speciesByNum(poke.num);
-  var progresso = poke.level>=NIVEL_MAX ? 'Nível máximo' : ((poke.xpNivel||0)+'/'+xpParaProximoNivel(poke.level)+' XP pro próximo Nível');
+  var maxed = poke.level>=NIVEL_MAX;
+  var xpRowHTML = maxed
+    ? '<div class="ga-team-xprow maxed"><span class="ga-team-nivel-inline">Nv. '+poke.level+'</span></div>'
+    : '<div class="ga-team-xprow"><span class="ga-team-exp">Exp: '+(poke.xpNivel||0)+'/'+xpParaProximoNivel(poke.level)+'</span><span class="ga-team-nivel-inline">Nv. '+poke.level+'</span></div>';
   var lapis = poke.apelido
     ? ' <span class="ga-apelido-lapis travado" title="Apelido já definido -- travado por enquanto">✏️</span>'
     : ' <span class="ga-apelido-lapis" title="Definir apelido (só uma vez)" onclick="event.stopPropagation();DT.gaAskApelido(\''+poke.id+'\')">✏️</span>';
@@ -15426,7 +15446,6 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
     return '<span class="ga-team-type-pill" style="background:'+(TEAM_CARD_TYPE_COLOR[t]||'#8fb3a2')+';">'+esc2(t)+'</span>';
   }).join('');
   return '<div class="ga-team-card'+(i===0?' ativo':'')+'" '+(dragAttrs||'')+'>'+
-    (orderControls||'')+
     '<div class="ga-team-topbar"><span class="ga-team-pokeball" aria-hidden="true"></span>'+
       '<div class="ga-team-vd" title="Vitórias / Derrotas desse Pokémon"><b class="v">'+(poke.vitorias||0)+'V</b><span class="sep">|</span><b class="d">'+(poke.derrotas||0)+'D</b></div>'+
     '</div>'+
@@ -15435,20 +15454,20 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
       '<span class="ga-team-felic" title="Felicidade -- sobe com Nível/vitória, desce ao desmaiar; algumas evoluções dependem dela">❤️ '+(poke.felicidade!=null?poke.felicidade:FELICIDADE_INICIAL)+'/'+FELICIDADE_MAX+'</span>'+
     '</div>'+
     '<div class="ga-team-nameplate">'+
-      (poke.deRaid ? '<span class="ga-raid-badge ga-team-raid-badge" title="Capturado numa Raid">R</span>' : '')+
+      (poke.deRaid ? '<span class="ga-raid-badge" title="Capturado numa Raid">R</span>' : '')+
       '<span class="ga-team-dexnum">#'+String(poke.num).padStart(4,'0')+'</span>'+
       '<span class="ga-team-nome">'+esc2((poke.apelido||sp.name).toUpperCase())+'</span>'+
       lapis+estrela+
     '</div>'+
     '<div class="ga-team-subrow"><span class="ga-team-habilidade">'+esc2(poke.habilidade||'—')+'</span><span class="ga-team-natureza">'+esc2(poke.natureza||'—')+'</span></div>'+
-    '<div class="ga-team-nivel">Nv. '+poke.level+'</div>'+
+    xpRowHTML+
     '<div class="ga-team-moves">'+movesHTML+'</div>'+
     '<div class="ga-team-roles">'+rolesHTML+'</div>'+
     '<div class="ga-team-itemcaixa">'+
       '<button type="button" class="ga-team-item" onclick="DT.gaAskItemSegurado(\''+poke.id+'\')" title="'+(poke.itemSegurado?'Item: '+esc2(heldItemByKey(poke.itemSegurado).nome):'Nenhum item segurado')+'">🎒 Item'+(poke.itemSegurado?': '+esc2(heldItemByKey(poke.itemSegurado).nome):'')+'</button>'+
       '<button type="button" class="ga-team-caixa'+(podeCaixa?'':' disabled')+'" '+(podeCaixa?'onclick="DT.gaMandarPraCaixa(\''+poke.id+'\')"':'')+' title="'+(podeCaixa?'Mandar pra Caixa':'Não dá pra mandar o único Pokémon da Equipe pra Caixa')+'">📦 Caixa</button>'+
     '</div>'+
-    '<div class="ga-hint ga-team-progress">'+progresso+'</div>'+
+    (orderControls||'')+
     (poke.num===999 ? '<div class="ga-hint" title="Moedas de Gimmighoul -- só acumula enquanto ele estiver na Equipe (nunca na Caixa); junte 999 pra evoluir em Gholdengo">🪙 '+(STATE.itens['moedas-gimmighoul']||0)+'/999</div>' : '')+
     (poke.num===808 ? '<div class="ga-hint" title="Doce de Meltan -- item de Mochila comprável na Loja; junte 400 pra evoluir em Melmetal no próximo level up">🍡 '+(STATE.itens['doce-meltan']||0)+'/400</div>' : '')+
     '<div class="ga-poke-actions">'+
