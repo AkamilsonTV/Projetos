@@ -86,6 +86,18 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-nav-badge{ background:var(--danger); color:#fff; font-size:.68rem; font-weight:800; border-radius:999px; padding:1px 6px; margin-left:auto; }
 .ga-nav-sair{ background:transparent; border:1px solid var(--line); color:var(--ink-dim); border-radius:8px; padding:9px 10px; font-size:.86rem; }
 .ga-nav-sair:hover{ border-color:var(--danger); color:#fecaca; }
+/* Cap. leva desta sessão ("Crie menus que vão abrir no meio da tela ao
+   clicar na aba principal"): grade de botões dentro do popup de grupo
+   de navegação (`navGrupoPopupHTML`) -- mesmo espírito visual dos
+   botões de menu lateral (`.ga-nav button`), só que maiores/em grade
+   pra caber bem no meio da tela em vez de empilhados numa coluna
+   estreita. */
+.ga-navgroup-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:14px; }
+.ga-navgroup-item{ background:var(--bg2); border:1px solid var(--line); color:var(--ink); border-radius:10px; padding:14px 12px; font-size:.92rem; font-weight:600; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; }
+.ga-navgroup-item:hover{ border-color:var(--accent-dim); background:var(--panel2); }
+.ga-navgroup-item.ativo{ border-color:var(--accent-dim); background:var(--accent-dim); color:#04170c; }
+.ga-navgroup-item .ga-nav-ic{ font-size:1.6rem; }
+.ga-navgroup-item .ga-nav-badge{ margin-left:0; }
 .ga-sidebar-backdrop{ display:none; }
 
 /* Cap. leva desta sessão: "a parte lateral esquerda deve aparecer o
@@ -8160,7 +8172,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null };
 
 function freshState(trainerName){
   return {
@@ -8708,7 +8720,7 @@ function attachSocialListeners(docId){
     SESSION.cacadasAtivas = minhas;
     processarCacadasAtivas(minhas);
     if(SESSION.cacadaId && !minhas.some(function(c){ return c.id===SESSION.cacadaId; })){
-      if(SESSION.screen==='cacadagrupo'){ SESSION.notice = 'Essa Caça em Grupo não está mais disponível.'; SESSION.screen = 'centro'; }
+      if(SESSION.screen==='cacadagrupo'){ SESSION.notice = 'Essa Caçada em Grupo não está mais disponível.'; SESSION.screen = 'centro'; }
       SESSION.cacadaId = null;
     }
     render();
@@ -9100,7 +9112,7 @@ function startBattle(kind, opts, skipDiscrepancia){
   if(kind==='wild'){
     oppTeam = [buildBattlerWild(opts.wildNum, opts.wildLevel, opts.wildForma)];
     custoEnergia = custoEnergiaZona(opts.zonaIdx);
-    label = 'Área de Captura';
+    label = 'Caçada Solo';
   } else if(kind==='rival'){
     oppTeam = opts.rivalTeam.map(function(slot,i){ return buildBattlerTrainer(slot.num, slot.level, 'rival_'+i); });
     custoEnergia = custoEnergiaZona(opts.zonaIdx);
@@ -12253,7 +12265,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null };
   render();
 };
 
@@ -13193,7 +13205,7 @@ function souHostCacada(c){ return !!c && c.host===SESSION.currentDocId; }
 DT.gaCriarCacada = function(zonaId){
   if(!STATE) return;
   var zona = zonaByStatus(zonaId); if(!zona) return;
-  if((STATE.energy||0)<CACADA_CUSTO_ENERGIA){ SESSION.error='Energia insuficiente -- entrar numa Caça em Grupo custa '+CACADA_CUSTO_ENERGIA+' e você tem '+(STATE.energy||0)+'.'; render(); return; }
+  if((STATE.energy||0)<CACADA_CUSTO_ENERGIA){ SESSION.error='Energia insuficiente -- entrar numa Caçada em Grupo custa '+CACADA_CUSTO_ENERGIA+' e você tem '+(STATE.energy||0)+'.'; render(); return; }
   var cacadaId = uid();
   var membros = {};
   membros[SESSION.currentDocId] = { nome: STATE.trainerName, confirmado:true, party: cacadaPartySnapshot(), lider:null, desistiu:false, creditado:false };
@@ -13204,16 +13216,16 @@ DT.gaCriarCacada = function(zonaId){
   }).then(function(){
     STATE.energy -= CACADA_CUSTO_ENERGIA;
     SESSION.screen='cacadagrupo'; SESSION.cacadaId=cacadaId; SESSION.error='';
-    logAction('cacadagrupo', 'Criou uma Caça em Grupo na Zona '+zona.nome+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
+    logAction('cacadagrupo', 'Criou uma Caçada em Grupo na Zona '+zona.nome+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
     mutate();
-  }).catch(function(err){ SESSION.error='Não consegui criar a Caça em Grupo ('+erroFirestoreMsg(err)+').'; render(); });
+  }).catch(function(err){ SESSION.error='Não consegui criar a Caçada em Grupo ('+erroFirestoreMsg(err)+').'; render(); });
 };
 DT.gaAbrirCacada = function(id){ SESSION.screen='cacadagrupo'; SESSION.cacadaId=id; SESSION.error=''; SESSION.sidebarOpen=false; render(); };
 DT.gaFecharCacada = function(){ SESSION.screen='centro'; SESSION.cacadaId=null; render(); };
 DT.gaConvidarCacada = function(cacadaId, outroDocId){
   var c = achaCacadaAtiva(cacadaId); if(!c || !STATE || !souHostCacada(c)) return;
   if(c.status!=='lobby'){ SESSION.error='Só dá pra convidar enquanto a Caça ainda está no lobby.'; render(); return; }
-  if(Object.keys(c.membros||{}).length>=5){ SESSION.error='A Caça em Grupo já está com 5 Treinadores (o máximo).'; render(); return; }
+  if(Object.keys(c.membros||{}).length>=5){ SESSION.error='A Caçada em Grupo já está com 5 Treinadores (o máximo).'; render(); return; }
   if(c.membros[outroDocId]) return;
   var amigo = (SESSION.amigos||[]).filter(function(a){ return a.outro===outroDocId; })[0];
   if(!amigo){ SESSION.error='Só dá pra convidar quem já é seu amigo.'; render(); return; }
@@ -13223,7 +13235,7 @@ DT.gaConvidarCacada = function(cacadaId, outroDocId){
 };
 DT.gaAceitarCacada = function(cacadaId){
   var c = achaCacadaAtiva(cacadaId); if(!c || !STATE || !c.membros[SESSION.currentDocId]) return;
-  if((STATE.energy||0)<CACADA_CUSTO_ENERGIA){ SESSION.error='Energia insuficiente -- entrar numa Caça em Grupo custa '+CACADA_CUSTO_ENERGIA+' e você tem '+(STATE.energy||0)+'.'; render(); return; }
+  if((STATE.energy||0)<CACADA_CUSTO_ENERGIA){ SESSION.error='Energia insuficiente -- entrar numa Caçada em Grupo custa '+CACADA_CUSTO_ENERGIA+' e você tem '+(STATE.energy||0)+'.'; render(); return; }
   var upd = {};
   upd['membros.'+SESSION.currentDocId+'.confirmado'] = true;
   upd['membros.'+SESSION.currentDocId+'.party'] = cacadaPartySnapshot();
@@ -13232,7 +13244,7 @@ DT.gaAceitarCacada = function(cacadaId){
   cacadasCol.doc(cacadaId).update(upd).then(function(){
     STATE.energy -= CACADA_CUSTO_ENERGIA;
     SESSION.screen='cacadagrupo'; SESSION.cacadaId=cacadaId; SESSION.error='';
-    logAction('cacadagrupo', 'Entrou na Caça em Grupo de '+c.hostNome+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
+    logAction('cacadagrupo', 'Entrou na Caçada em Grupo de '+c.hostNome+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
     mutate();
   }).catch(function(err){ SESSION.error='Não consegui entrar na Caça ('+erroFirestoreMsg(err)+').'; render(); });
 };
@@ -13258,7 +13270,7 @@ DT.gaRecusarCacada = function(cacadaId){
 DT.gaNovaCacadaMesmoGrupo = function(cacadaId){
   var c = achaCacadaAtiva(cacadaId); if(!c || !STATE || !souHostCacada(c) || c.status!=='fim') return;
   if((c.rodadas||1)>=CACADA_MAX_RODADAS_SEGUIDAS){ SESSION.error='Essa Caça já chegou no limite de '+CACADA_MAX_RODADAS_SEGUIDAS+' rodadas seguidas -- crie uma nova pra continuar com o grupo.'; render(); return; }
-  if((STATE.energy||0)<CACADA_CUSTO_ENERGIA){ SESSION.error='Energia insuficiente -- entrar numa Caça em Grupo custa '+CACADA_CUSTO_ENERGIA+' e você tem '+(STATE.energy||0)+'.'; render(); return; }
+  if((STATE.energy||0)<CACADA_CUSTO_ENERGIA){ SESSION.error='Energia insuficiente -- entrar numa Caçada em Grupo custa '+CACADA_CUSTO_ENERGIA+' e você tem '+(STATE.energy||0)+'.'; render(); return; }
   var membrosReset = {};
   Object.keys(c.membros).forEach(function(docId){
     var souEu = docId===SESSION.currentDocId;
@@ -13267,7 +13279,7 @@ DT.gaNovaCacadaMesmoGrupo = function(cacadaId){
   cacadasCol.doc(cacadaId).update({ status:'lobby', grupos:null, membrosParticipantes:null, battle:null, rodadas:(c.rodadas||1)+1, membros: membrosReset, ordemEntrada: [SESSION.currentDocId] }).then(function(){
     STATE.energy -= CACADA_CUSTO_ENERGIA;
     var zona = zonaByStatus(c.zonaId);
-    logAction('cacadagrupo', 'Encarou outra Caça em Grupo com a mesma equipe na Zona '+(zona?zona.nome:c.zonaId)+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
+    logAction('cacadagrupo', 'Encarou outra Caçada em Grupo com a mesma equipe na Zona '+(zona?zona.nome:c.zonaId)+' ('+CACADA_CUSTO_ENERGIA+' de Energia).');
     mutate();
   }).catch(function(err){ SESSION.error='Não consegui começar outra Caça ('+erroFirestoreMsg(err)+').'; render(); });
 };
@@ -13348,7 +13360,7 @@ DT.gaCacadaResponderCura = function(itemKey){
   if(itemKey && (!it || (STATE.itens[itemKey]||0)<=0)){ it = null; itemKey = ''; }
   if(it){
     STATE.itens[itemKey]--;
-    logAction('item', 'Usou '+it.nome+' na Caça em Grupo (+'+Math.round(it.curaPct*100)+'% do PV Máximo).');
+    logAction('item', 'Usou '+it.nome+' na Caçada em Grupo (+'+Math.round(it.curaPct*100)+'% do PV Máximo).');
   }
   b.pendingHealDecisao = { docId: SESSION.currentDocId, itemKey: itemKey||'', itemNome: it ? it.nome : '', curaPct: it ? it.curaPct : 0 };
   cacadasCol.doc(c.id).update({ battle: b }).catch(function(err){ SESSION.error='Não consegui responder ('+erroFirestoreMsg(err)+').'; render(); });
@@ -13398,7 +13410,7 @@ DT.gaCacadaTentarCaptura = function(cacadaId, ballKey){
     if(captura.alfa) novo.deAlfa = true; // Cap. leva desta sessão -- badge "A" pixelado (mesmo padrão do "R" de Raid), só pro Alfa, nunca pro resto do bando
     if(STATE.party.length<6) STATE.party.push(novo); else STATE.box.push(novo);
     b.log.push('🎯 '+esc2(STATE.trainerName)+' jogou '+bola.nome+'... capturou '+speciesByNum(captura.num).name+'!');
-    logAction('captura', 'Capturou '+speciesByNum(captura.num).name+' (Nv. '+captura.level+') com '+bola.nome+' na Caça em Grupo.');
+    logAction('captura', 'Capturou '+speciesByNum(captura.num).name+' (Nv. '+captura.level+') com '+bola.nome+' na Caçada em Grupo.');
     captura.feita = true; captura.capturadoPor = SESSION.currentDocId;
   } else {
     b.log.push('💨 '+esc2(STATE.trainerName)+' jogou '+bola.nome+'... o Pokémon escapou.');
@@ -13571,7 +13583,7 @@ function resolverRodadaCacada(c){
         if(target.side==='cacadagrupo'){
           if(!cacadaVivosInimigos(b).length){
             if(b.grupoAtual+1 < c.grupos.length){ b = montarBattleCacadaOnda(c, participantesIds, c.grupos, b.grupoAtual+1, b); }
-            else { b.vencedor = 'jogadores'; b.log.push('🏆 Último bando derrotado -- a Caça em Grupo foi vencida!'); }
+            else { b.vencedor = 'jogadores'; b.log.push('🏆 Último bando derrotado -- a Caçada em Grupo foi vencida!'); }
             pausou = true;
           }
         } else {
@@ -13606,7 +13618,7 @@ function resolverRodadaCacada(c){
       var ondaLimpa1 = !b.vencedor && !cacadaVivosInimigos(b).length;
       if(ondaLimpa1){
         if(b.grupoAtual+1 < c.grupos.length){ b = montarBattleCacadaOnda(c, participantesIds, c.grupos, b.grupoAtual+1, b); }
-        else { b.vencedor='jogadores'; b.log.push('🏆 Último bando derrotado -- a Caça em Grupo foi vencida!'); }
+        else { b.vencedor='jogadores'; b.log.push('🏆 Último bando derrotado -- a Caçada em Grupo foi vencida!'); }
       }
       if(!b.vencedor && !ondaLimpa1){
         var vivos2 = cacadaVivosTreinadores(b).map(function(k){return b.ativos[k];}).concat(cacadaVivosInimigos(b));
@@ -13622,7 +13634,7 @@ function resolverRodadaCacada(c){
         });
         if(!b.vencedor && !cacadaVivosInimigos(b).length){
           if(b.grupoAtual+1 < c.grupos.length){ b = montarBattleCacadaOnda(c, participantesIds, c.grupos, b.grupoAtual+1, b); }
-          else { b.vencedor='jogadores'; b.log.push('🏆 Último bando derrotado -- a Caça em Grupo foi vencida!'); }
+          else { b.vencedor='jogadores'; b.log.push('🏆 Último bando derrotado -- a Caçada em Grupo foi vencida!'); }
         }
         if(!b.vencedor) applyCacadaInimigosWillpowerCure(b);
       }
@@ -13721,7 +13733,7 @@ function aplicarMeuResultadoCacada(c){
       }
     }
   }
-  logAction('cacadagrupo', 'Caça em Grupo na Zona '+((zonaByStatus(c.zonaId)||{}).nome||c.zonaId)+' terminou: '+(vitoria?'🏆 vitória':'☠️ derrota')+recompensaTxt+'.', b.log);
+  logAction('cacadagrupo', 'Caçada em Grupo na Zona '+((zonaByStatus(c.zonaId)||{}).nome||c.zonaId)+' terminou: '+(vitoria?'🏆 vitória':'☠️ derrota')+recompensaTxt+'.', b.log);
   mutate();
   var upd = {}; upd['membros.'+meuId+'.creditado'] = true;
   return cacadasCol.doc(c.id).update(upd).catch(function(err){ SESSION.error='Não consegui aplicar o resultado da Caça ('+erroFirestoreMsg(err)+').'; render(); });
@@ -14219,7 +14231,7 @@ function sequenciaAtivaBloqueando(){
   return !!(STATE.captureSequence && !STATE.captureSequence.finished);
 }
 DT.gaEntrarCaptura = function(leadId, zonaId){
-  if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar (o progresso aparece aqui mesmo, na Área de Captura).'; render(); return; }
+  if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar (o progresso aparece aqui mesmo, na Caçada Solo).'; render(); return; }
   iniciarLutaDeZona(leadId, zonaId, false);
 };
 
@@ -15231,7 +15243,7 @@ DT.gaGoto = function(screen){
     SESSION.raidRoomId = null; SESSION.raidChat = [];
   }
   if(screen==='raids') GA_RAIDS_TODAS.forEach(raidExpirarSeNecessario); // oportunista, mesmo espírito do trim de chat/presença
-  SESSION.screen = screen; SESSION.error=''; SESSION.sidebarOpen=false; render();
+  SESSION.screen = screen; SESSION.error=''; SESSION.sidebarOpen=false; SESSION.navGroupOpen=null; render();
 };
 DT.gaDismiss = function(){ SESSION.error=''; SESSION.notice=''; render(); };
 DT.gaOpenDex = function(num){ SESSION.dexOpenNum = num; SESSION.dexFormaAtiva = null; render(); };
@@ -16365,29 +16377,78 @@ var TOOLTIPS = {
    -- fechada por padrão, abre com o botão ☰ na barrinha de topo
    compacta que só aparece nessa largura (ver mobileTopbarHTML +
    SESSION.sidebarOpen/DT.gaToggleSidebar). */
-var NAV_ITENS = ['hub:🏠:Início','equipe:🎒:Equipe','dex:📕:Pokédex','moves:🗡️:Movimentos','captura:🌿:Área de Captura','ginasios:🎖️:Mestres','raids:🏴:Raids Ativas','cacadagrupo:🐺:Caça em Grupo','mochila:🧳:Mochila','loja:🏪:Loja','wiki:📖:Wiki','debug:🛠️:Testes'];
+/* Cap. leva desta sessão ("Vamos criar grupos nessas partes pra
+   facilitar... Crie menus que vão abrir no meio da tela ao clicar na
+   aba principal com o acesso pra cada local"): a barra lateral tinha
+   14 itens soltos numa lista só -- agora quase tudo mora dentro de 4
+   grupos temáticos (Social/Batalhas/Informação/Jogador); clicar no
+   grupo na lateral NÃO navega direto, abre um popup no meio da tela
+   (`navGrupoPopupHTML`, mesmo `.ga-overlay` de sempre) com um botão
+   pra cada item de dentro. `especial:true` marca o item Centro
+   Pokémon, que precisa do caminho de carregamento próprio
+   (`DT.gaAbrirCentro`, mesmo antes de virar grupo) em vez do
+   `DT.gaGoto` genérico -- ver `DT.gaGotoDoGrupo`. Início/Loja/Testes
+   (e Admin) ficam de fora dos grupos, direto na lateral -- o pedido
+   não citou eles, então continuam como atalho de 1 clique só. */
+var NAV_GRUPOS = [
+  { id:'social', ic:'👥', nome:'Social', itens:[
+      { id:'centro', ic:'🏥', nome:'Centro Pokémon', especial:true },
+      { id:'mensagens', ic:'💬', nome:'Mensagens' }
+    ] },
+  { id:'batalhas', ic:'⚔️', nome:'Batalhas', itens:[
+      { id:'captura', ic:'🌿', nome:'Caçada Solo' },
+      { id:'cacadagrupo', ic:'🐺', nome:'Caçada em Grupo' },
+      { id:'raids', ic:'🏴', nome:'Raids Ativas' },
+      { id:'ginasios', ic:'🎖️', nome:'Mestres' }
+    ] },
+  { id:'info', ic:'📚', nome:'Informação', itens:[
+      { id:'moves', ic:'🗡️', nome:'Movimentos' },
+      { id:'dex', ic:'📕', nome:'Pokédex' },
+      { id:'wiki', ic:'📖', nome:'Wiki' }
+    ] },
+  { id:'jogador', ic:'🎒', nome:'Jogador', itens:[
+      { id:'equipe', ic:'🎒', nome:'Equipe' },
+      { id:'mochila', ic:'🧳', nome:'Mochila' }
+    ] }
+];
+function navGrupoBadge(grupoId){
+  // só o grupo Social tem selo (mesmos 2 contadores que já existiam soltos antes)
+  if(grupoId!=='social') return 0;
+  return (SESSION.pedidosAmizade||[]).length + dmTotalNaoLidas();
+}
 function navListHTML(){
-  /* Cap. leva desta sessão (Centro Pokémon): entrada própria (não
-     genérica via NAV_ITENS/gaGoto -- precisa carregar o diretório e
-     ligar o chat, mesmo caminho especial que o Admin já usa) --
-     mostra um selo com a quantidade de pedidos de amizade pendentes
-     (SESSION.pedidosAmizade vem do listener sempre ligado desde o
-     login, então esse número já aparece aqui mesmo de LONGE do
-     Centro Pokémon, exatamente como uma notificação de verdade). */
+  var out = '<button class="'+(SESSION.screen==='hub'?'active':'')+'" onclick="DT.gaGoto(\'hub\')"><span class="ga-nav-ic">🏠</span>Início</button>';
+  out += NAV_GRUPOS.map(function(g){
+    /* "ativo" também acende quando a tela atual é de DENTRO do grupo
+       (mesmo com o popup fechado) -- assim o jogador sempre vê onde
+       está, igual os itens soltos de sempre. */
+    var ativo = SESSION.navGroupOpen===g.id || g.itens.some(function(it){ return SESSION.screen===it.id; });
+    var badge = navGrupoBadge(g.id);
+    return '<button class="'+(ativo?'active':'')+'" onclick="DT.gaAbrirGrupoNav(\''+g.id+'\')"><span class="ga-nav-ic">'+g.ic+'</span>'+g.nome+(badge>0?' <span class="ga-nav-badge">'+badge+'</span>':'')+'</button>';
+  }).join('');
+  out += '<button class="'+(SESSION.screen==='loja'?'active':'')+'" onclick="DT.gaGoto(\'loja\')"><span class="ga-nav-ic">🏪</span>Loja</button>';
+  out += '<button class="'+(SESSION.screen==='debug'?'active':'')+'" onclick="DT.gaGoto(\'debug\')"><span class="ga-nav-ic">🛠️</span>Testes</button>';
+  out += (SESSION.isAdmin ? '<button class="'+(SESSION.screen==='admin'?'active':'')+'" onclick="DT.gaAdminAbrirPainel()"><span class="ga-nav-ic">🛡️</span>Admin</button>' : '');
+  return out;
+}
+/* Popup central do grupo clicado -- mesmo `.ga-overlay`/`.ga-overlay-card`
+   de todos os outros popups do jogo, fecha clicando fora (backdrop)
+   igual à maioria (não é uma decisão bloqueante, é só navegação). */
+function navGrupoPopupHTML(){
+  if(!SESSION.navGroupOpen) return '';
+  var grupo = NAV_GRUPOS.filter(function(g){ return g.id===SESSION.navGroupOpen; })[0];
+  if(!grupo) return '';
   var qtdPedidos = (SESSION.pedidosAmizade||[]).length;
-  /* Cap. leva desta sessão -- Fase 2: mesmo selo do Centro Pokémon
-     acima, agora pras mensagens privadas não lidas -- soma de TODAS
-     as conversas, atualizado ao vivo desde o login (ver
-     attachSocialListeners), então acende de QUALQUER tela, não só
-     dentro de 💬 Mensagens ("acessível de qualquer área"). */
   var qtdDm = dmTotalNaoLidas();
-  return NAV_ITENS.map(function(item){
-    var kv = item.split(':');
-    return '<button class="'+(SESSION.screen===kv[0]?'active':'')+'" onclick="DT.gaGoto(\''+kv[0]+'\')"><span class="ga-nav-ic">'+kv[1]+'</span>'+kv[2]+'</button>';
-  }).join('')+
-  '<button class="'+(SESSION.screen==='centro'?'active':'')+'" onclick="DT.gaAbrirCentro()"><span class="ga-nav-ic">🏥</span>Centro Pokémon'+(qtdPedidos>0?' <span class="ga-nav-badge">'+qtdPedidos+'</span>':'')+'</button>'+
-  '<button class="'+(SESSION.screen==='mensagens'?'active':'')+'" onclick="DT.gaGoto(\'mensagens\')"><span class="ga-nav-ic">💬</span>Mensagens'+(qtdDm>0?' <span class="ga-nav-badge">'+qtdDm+'</span>':'')+'</button>'+
-  (SESSION.isAdmin ? '<button class="'+(SESSION.screen==='admin'?'active':'')+'" onclick="DT.gaAdminAbrirPainel()"><span class="ga-nav-ic">🛡️</span>Admin</button>' : '');
+  return '<div class="ga-overlay" onclick="DT.gaFecharGrupoNav()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaFecharGrupoNav()">✕</button>'+
+    '<h2>'+grupo.ic+' '+esc2(grupo.nome)+'</h2>'+
+    '<div class="ga-navgroup-grid">'+grupo.itens.map(function(item){
+      var badge = item.id==='centro' ? qtdPedidos : (item.id==='mensagens' ? qtdDm : 0);
+      return '<button class="ga-navgroup-item'+(SESSION.screen===item.id?' ativo':'')+'" onclick="DT.gaGotoDoGrupo(\''+item.id+'\')"><span class="ga-nav-ic">'+item.ic+'</span>'+esc2(item.nome)+(badge>0?' <span class="ga-nav-badge">'+badge+'</span>':'')+'</button>';
+    }).join('')+
+    '</div>'+
+  '</div></div>';
 }
 function sidebarHTML(){
   if(!STATE || !STATE.trainerName) return '';
@@ -16454,12 +16515,24 @@ function mobileTabbarHTML(){
   return '<nav class="ga-tabbar">'+
     item(SESSION.screen==='hub','🏠','Início',"DT.gaGoto('hub')")+
     item(SESSION.screen==='equipe','🎒','Equipe',"DT.gaGoto('equipe')")+
-    item(SESSION.screen==='captura','🌿','Captura',"DT.gaGoto('captura')")+
+    item(SESSION.screen==='captura','🌿','Caçada',"DT.gaGoto('captura')")+
     item(SESSION.screen==='centro','🏥','Centro',"DT.gaAbrirCentro()",qtdPedidos)+
     item(SESSION.sidebarOpen,'☰','Mais',"DT.gaToggleSidebar()",qtdDm)+
   '</nav>';
 }
 DT.gaToggleSidebar = function(){ SESSION.sidebarOpen = !SESSION.sidebarOpen; render(); };
+/* Cap. leva desta sessão (grupos de navegação): clicar de novo no
+   MESMO grupo já aberto fecha o popup (toggle), clicar num grupo
+   diferente troca direto pro outro (sem precisar fechar primeiro). */
+DT.gaAbrirGrupoNav = function(grupoId){ SESSION.navGroupOpen = (SESSION.navGroupOpen===grupoId) ? null : grupoId; render(); };
+DT.gaFecharGrupoNav = function(){ SESSION.navGroupOpen = null; render(); };
+/* Item de dentro do popup: fecha o popup e navega -- Centro Pokémon
+   precisa do caminho especial de sempre (`DT.gaAbrirCentro`, carrega o
+   diretório + liga o chat), todo o resto usa o `DT.gaGoto` genérico. */
+DT.gaGotoDoGrupo = function(screenId){
+  SESSION.navGroupOpen = null;
+  if(screenId==='centro') DT.gaAbrirCentro(); else DT.gaGoto(screenId);
+};
 function bannersHTML(){
   var out = '';
   if(SESSION.error) out += '<div class="ga-banner err">⚠️ '+esc2(SESSION.error)+' <button onclick="DT.gaDismiss()">fechar</button></div>';
@@ -16543,7 +16616,7 @@ function screenHTML(){
 function wrap(bodyHTML){
   return '<div class="ga-shell">'+sidebarHTML()+
     '<div class="ga-main">'+mobileTopbarHTML()+'<div class="ga-body">'+bannersHTML()+bodyHTML+'</div></div>'+
-  '</div>'+mobileTabbarHTML();
+  '</div>'+mobileTabbarHTML()+navGrupoPopupHTML();
 }
 
 /* Tela de login/criação de conta (Firestore, Nome+PIN) -- substitui
@@ -16649,7 +16722,7 @@ function pokeCardMini(poke, actionsHTML, extraClass, extraAttrs, apelidoEditavel
        nenhum pra aplicar `image-rendering:pixelated`, então o
        quadrado inteiro já nasce sem serrilhado por design). */
     (poke.deRaid ? '<div class="ga-raid-badge" title="Capturado numa Raid">R</div>' : '')+
-    (poke.deAlfa ? '<div class="ga-alfa-badge'+(poke.deRaid?' ga-badge-2nd':'')+'" title="Capturado de um Alfa (Caça em Grupo)">A</div>' : '')+
+    (poke.deAlfa ? '<div class="ga-alfa-badge'+(poke.deRaid?' ga-badge-2nd':'')+'" title="Capturado de um Alfa (Caçada em Grupo)">A</div>' : '')+
     '<img src="'+spriteUrl(spriteNumEfetivo(poke))+'" loading="lazy" alt="">'+
     '<div class="ga-poke-name">'+esc2(poke.apelido||sp.name)+lapis+estrela+'</div>'+
     /* Cap. leva desta sessão ("Nos cards de pokémon adicione
@@ -16771,7 +16844,7 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
     '</div>'+
     '<div class="ga-team-nameplate">'+
       (poke.deRaid ? '<span class="ga-raid-badge" title="Capturado numa Raid">R</span>' : '')+
-      (poke.deAlfa ? '<span class="ga-alfa-badge" title="Capturado de um Alfa (Caça em Grupo)">A</span>' : '')+
+      (poke.deAlfa ? '<span class="ga-alfa-badge" title="Capturado de um Alfa (Caçada em Grupo)">A</span>' : '')+
       '<span class="ga-team-dexnum">#'+String(poke.num).padStart(4,'0')+'</span>'+
       '<span class="ga-team-nome">'+esc2((poke.apelido||sp.name).toUpperCase())+'</span>'+
       lapis+estrela+
@@ -16808,9 +16881,9 @@ function hubScreenHTML(){
       '<div class="ga-hub-hero-info">'+
         '<div class="ga-hub-hero-kicker">Bem-vindo de volta</div>'+
         '<h1>'+esc2(STATE.trainerName)+', sua jornada continua</h1>'+
-        '<p class="ga-hub-hero-sub">'+STATE.badges.length+' Insígnia(s) · '+counts.caught+'/'+counts.total+' na Pokédex. Sua Equipe está pronta -- parta direto pra Área de Captura ou dê uma olhada em quem te acompanha.</p>'+
+        '<p class="ga-hub-hero-sub">'+STATE.badges.length+' Insígnia(s) · '+counts.caught+'/'+counts.total+' na Pokédex. Sua Equipe está pronta -- parta direto pra Caçada Solo ou dê uma olhada em quem te acompanha.</p>'+
         '<div class="ga-hub-hero-cta">'+
-          '<button class="ga-btn ga-btn-primary" onclick="DT.gaGoto(\'captura\')">🌿 Área de Captura</button>'+
+          '<button class="ga-btn ga-btn-primary" onclick="DT.gaGoto(\'captura\')">🌿 Caçada Solo</button>'+
           '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')">🎒 Ver Equipe</button>'+
         '</div>'+
       '</div>'+
@@ -16848,7 +16921,7 @@ function hubScreenHTML(){
         '<div class="ga-badges">'+GYM_LEADERS.map(function(l){ return '<img class="ga-badge-icon'+(STATE.badges.indexOf(l.id)!==-1?' on':'')+'" title="'+esc2(l.nome)+' ('+esc2(l.insignia)+')" src="'+spriteUrl(gymAceNum(l))+'" alt="'+esc2(l.insignia)+'" loading="lazy">'; }).join('')+'</div></div>'+
     '</div>'+
     '<div class="ga-quicknav">'+
-      '<button class="ga-btn" onclick="DT.gaGoto(\'captura\')"><span class="ga-quicknav-ic">🌿</span>Área de Captura</button>'+
+      '<button class="ga-btn" onclick="DT.gaGoto(\'captura\')"><span class="ga-quicknav-ic">🌿</span>Caçada Solo</button>'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'ginasios\')"><span class="ga-quicknav-ic">🎖️</span>Mestres Especialistas</button>'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')"><span class="ga-quicknav-ic">🎒</span>Sua Equipe</button>'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'dex\')"><span class="ga-quicknav-ic">📕</span>Pokédex</button>'+
@@ -17136,7 +17209,7 @@ function escolherDaCaixaPopupHTML(){
         '<div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div>'+
         '<div class="ga-poke-meta">Nv. '+p.level+' · '+typeTagsHTML(tiposEfetivos(p))+'</div>'+
       '</div>';
-    }).join('')+'</div>' : '<p class="ga-hint">Sua Caixa está vazia -- capture mais Pokémon na 🌿 Área de Captura.</p>')+
+    }).join('')+'</div>' : '<p class="ga-hint">Sua Caixa está vazia -- capture mais Pokémon na 🌿 Caçada Solo.</p>')+
     '<button class="ga-btn-sm" onclick="DT.gaFecharEscolherDaCaixa()">← Voltar</button>'+
   '</div></div>';
 }
@@ -17144,7 +17217,7 @@ function equipeScreenHTML(){
   var timeAtivo = timeAtivoAgora();
   var out = timesBarHTML()+
     '<div class="ga-card"><h2>🎒 '+(timeAtivo ? esc2(timeAtivo.nome) : 'Equipe')+' ('+STATE.party.length+'/6)</h2>'+
-    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início) -- é ele quem entra primeiro na Área de Captura, e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita -- arraste um card pra reordenar, ou use ⬅️/➡️ no celular.</p>' : '')+
+    (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início) -- é ele quem entra primeiro na Caçada Solo, e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita -- arraste um card pra reordenar, ou use ⬅️/➡️ no celular.</p>' : '')+
     '<div class="ga-poke-grid ga-poke-grid-equipe">'+
     STATE.party.map(function(p, i){
       /* `.ga-order-controls` é posicionado absoluto (ver style.css)
@@ -17441,7 +17514,7 @@ function dexScreenHTML(){
     var cls = d.caught ? 'caught' : (d.seen ? 'seen' : 'unseen');
     return '<div class="ga-dex-tile '+cls+'" onclick="DT.gaOpenDex('+sp.num+')" title="'+(d.caught?esc2(sp.name):(d.seen?'Visto':'?'))+(d.raidCaught?' -- capturado numa Raid':'')+(d.alfaCaught?' -- capturado de um Alfa':'')+'">'+
       (d.raidCaught ? '<div class="ga-raid-badge ga-raid-badge-dex" title="Capturado numa Raid">R</div>' : '')+
-      (d.alfaCaught ? '<div class="ga-alfa-badge ga-alfa-badge-dex'+(d.raidCaught?' ga-badge-2nd':'')+'" title="Capturado de um Alfa (Caça em Grupo)">A</div>' : '')+
+      (d.alfaCaught ? '<div class="ga-alfa-badge ga-alfa-badge-dex'+(d.raidCaught?' ga-badge-2nd':'')+'" title="Capturado de um Alfa (Caçada em Grupo)">A</div>' : '')+
       '<img src="'+spriteUrl(sp.num)+'" loading="lazy" alt="">'+
       '<span class="ga-dex-num">#'+String(sp.num).padStart(4,'0')+'</span>'+
     '</div>';
@@ -17640,7 +17713,7 @@ function dexPopupHTML(num){
   var out = '<div class="ga-overlay" onclick="DT.gaCloseDex()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCloseDex()">✕</button>'+
     (d.raidCaught ? '<div class="ga-raid-badge ga-raid-badge-dex" title="Capturado numa Raid">R</div>' : '')+
-    (d.alfaCaught ? '<div class="ga-alfa-badge ga-alfa-badge-dex'+(d.raidCaught?' ga-badge-2nd':'')+'" title="Capturado de um Alfa (Caça em Grupo)">A</div>' : '')+
+    (d.alfaCaught ? '<div class="ga-alfa-badge ga-alfa-badge-dex'+(d.raidCaught?' ga-badge-2nd':'')+'" title="Capturado de um Alfa (Caçada em Grupo)">A</div>' : '')+
     '<img class="ga-dex-popup-img '+(caught?'':'silhouette')+'" src="'+spriteUrl(spriteNum)+'" alt="">'+
     '<h2>#'+String(num).padStart(4,'0')+' — '+(seen ? esc2(sp.name)+(formaAtiva?' ('+esc2(formaAtiva.nome)+')':'') : '???')+'</h2>';
   if(!seen){
@@ -17703,7 +17776,7 @@ function capturaScreenHTML(){
   var leadSp = speciesByNum(lead.num);
   var leadNome = lead.apelido || leadSp.name;
 
-  var out = '<div class="ga-card"><h2>🌿 Área de Captura</h2>'+
+  var out = '<div class="ga-card"><h2>🌿 Caçada Solo</h2>'+
     '<p class="ga-hint">Todas as Zonas ficam abertas pra qualquer Pokémon da Equipe, mesmo bem acima do Nível dele (a responsabilidade de entrar numa Zona forte demais é do Treinador). Quanto mais alta a Zona, maior a chance de cair num Treinador aleatório em vez de um selvagem (selvagem forte fica mais raro na natureza) -- Treinador paga mais Pokédólares, mas não dá pra capturar o Pokémon dele. Só nas Zonas Elite/Lendário existe também uma chance rara de cair num Treinador de Elite (roster de 6, força de Mestre) -- o único encontro comum que também pode largar Pokéticket.</p>'+
     '<div class="ga-hint">🔋 '+STATE.energy+'/1000 de Energia · 🎫 '+(STATE.poketickets||0)+' Pokéticket(s)</div>'+
     /* Cap. leva desta sessão: "Se eu atualizar e voltar pra área de
@@ -18335,7 +18408,7 @@ function wikiScreenHTML(){
     '<p class="ga-hint">Como cada mecânica do jogo funciona, tudo num lugar só. Os mesmos avisos também aparecem passando o mouse em cima das estatísticas no topo da tela.</p>';
 
   out += wikiSecao('🔋 Energia', '<p>'+esc2(TOOLTIPS.energia).replace(/\n/g,'<br>')+'</p>'+
-    '<p class="ga-hint">Custo por luta: dentro da Área de Captura (selvagem, Treinador aleatório de Zona OU Treinador de Elite -- os 3 tipos que aparecem lá), o custo é FIXO por Zona, nunca pelo Nível de quem aparece -- 5 × (posição da Zona, começando em 1): Aprendiz=5, Iniciante=10, Novato=15, Competente=20, Habilidoso=25, Avançado=30, Experiente=35, Veterano=40, Elite=45, Lendário=50. Desafiar um Mestre Especialista custa 300, fixo, igual pros 8 (não varia com o Nível do Ace dele). Sem Energia (e sem Pokétickets suficientes pra completar), a luta é recusada -- ou, se os Pokétickets bastarem, um popup pergunta se você quer usá-los pra completar e entrar mesmo assim.</p>');
+    '<p class="ga-hint">Custo por luta: dentro da Caçada Solo (selvagem, Treinador aleatório de Zona OU Treinador de Elite -- os 3 tipos que aparecem lá), o custo é FIXO por Zona, nunca pelo Nível de quem aparece -- 5 × (posição da Zona, começando em 1): Aprendiz=5, Iniciante=10, Novato=15, Competente=20, Habilidoso=25, Avançado=30, Experiente=35, Veterano=40, Elite=45, Lendário=50. Desafiar um Mestre Especialista custa 300, fixo, igual pros 8 (não varia com o Nível do Ace dele). Sem Energia (e sem Pokétickets suficientes pra completar), a luta é recusada -- ou, se os Pokétickets bastarem, um popup pergunta se você quer usá-los pra completar e entrar mesmo assim.</p>');
 
   out += wikiSecao('🌿 Zonas de Captura', '<p>10 Zonas nomeadas, uma por Faixa de 10 Níveis (Aprendiz 1-10 até Lendário 91-100). Qualquer Pokémon da Equipe pode liderar em qualquer Zona -- não existe mais trava de Nível mínimo, a responsabilidade de entrar numa Zona forte demais é sua.</p>'+
     '<p>Quem aparece selvagem em cada Zona é calculado pelo <code>nivelTipico</code> da Espécie (Estágio de evolução + Atributos Base) -- formas iniciais aparecem cedo, evoluções finais tarde. Lendário/Mítico nunca aparece selvagem. A chance de cair num Treinador aleatório em vez de selvagem cresce +8 pontos percentuais por Zona, começando em 15% na Aprendiz (23% na Iniciante, 31% na Novato... 79% na Elite) até 87% na última Zona, a Lendária -- ou 100% na hora, em qualquer Zona, se a base selvagem dela esgotar de vez.</p>'+
@@ -18383,10 +18456,10 @@ function wikiScreenHTML(){
      ganha), sem entrar em fórmula/porcentagem interna que não muda a
      forma de jogar (ex.: sem citar `passDropChance`/multiplicadores
      exatos de Raid -- só "existe uma chance, aumenta com mais gente"). */
-  out += wikiSecao('🏴 Raids', '<p>De vez em quando, um Pokémon muito mais forte que o normal aparece como Raid. Pra tentar, você precisa de 1 🎟️ Raid Pass -- a única forma de conseguir é uma chance de encontrar um depois de VENCER uma luta selvagem normal (na Área de Captura ou numa Caça em Grupo), e só enquanto existir alguma Raid ativa no momento (sem Raid ativa, ninguém encontra Raid Pass).</p>'+
+  out += wikiSecao('🏴 Raids', '<p>De vez em quando, um Pokémon muito mais forte que o normal aparece como Raid. Pra tentar, você precisa de 1 🎟️ Raid Pass -- a única forma de conseguir é uma chance de encontrar um depois de VENCER uma luta selvagem normal (na Caçada Solo ou numa Caçada em Grupo), e só enquanto existir alguma Raid ativa no momento (sem Raid ativa, ninguém encontra Raid Pass).</p>'+
     '<p>Na Raid você SEMPRE ataca primeiro (a Regra de Ouro), e o dano que você causa soma no PV COMPARTILHADO do boss junto com todos os outros Treinadores tentando -- mesmo os que estão offline no momento. Quando o PV do boss chega a zero, todo mundo que participou ganha recompensa de participação (Pokédólares/XP/itens) e a chance de tentar capturá-lo.</p>');
 
-  out += wikiSecao('🐺 Caça em Grupo', '<p>Até 5 Treinadores se juntam pra enfrentar um bando selvagem -- 1 Alfa e seus seguidores, mais fortes quanto mais gente participa. Escolha uma Zona (o mesmo esquema de Níveis da Área de Captura), convide amigos pelo 🏥 Centro Pokémon e cada um escolhe qual Pokémon do próprio Time vai liderar (dá pra trocar de ideia quantas vezes quiser antes de começar). Entrar custa Energia, igual qualquer luta.</p>'+
+  out += wikiSecao('🐺 Caçada em Grupo', '<p>Até 5 Treinadores se juntam pra enfrentar um bando selvagem -- 1 Alfa e seus seguidores, mais fortes quanto mais gente participa. Escolha uma Zona (o mesmo esquema de Níveis da Caçada Solo), convide amigos pelo 🏥 Centro Pokémon e cada um escolhe qual Pokémon do próprio Time vai liderar (dá pra trocar de ideia quantas vezes quiser antes de começar). Entrar custa Energia, igual qualquer luta.</p>'+
     '<p>A luta acontece sozinha (mesma Inteligência Artificial por Papel de Combate de sempre) -- cada Treinador enfrenta o bando com 1 Pokémon por vez, trocando pro próximo quando desmaia. Se o PV ficar baixo, um popup pergunta se você quer usar uma poção da SUA PRÓPRIA Mochila (se você não tiver nenhuma, o jogo nem pergunta -- a luta só continua).</p>'+
     '<p>Vencendo, cada Treinador ganha recompensa de participação (Pokédólares/XP) e, se houver alguma Raid ativa no momento, também uma chance de encontrar um 🎟️ Raid Pass -- quanto mais gente na Caça, maior essa chance. Depois disso, dá pra tentar capturar TODO MUNDO que a Caça enfrentou (o Alfa e o bando inteiro), um de cada vez, na ordem de quem criou a Caça primeiro e depois de quem foi entrando -- um Pokémon capturado do Alfa ganha um selo dourado "A" especial no card dele. O mesmo grupo pode encarar outra Caça na hora, sem precisar montar tudo de novo, até 10 vezes seguidas.</p>');
 
@@ -18394,7 +18467,7 @@ function wikiScreenHTML(){
 
   out += wikiSecao('🔄 Troca ao vivo', '<p>Pelo 🏥 Centro Pokémon, monte uma oferta com Pokémon, itens e/ou Pokédólares pra trocar com um amigo -- a troca só acontece de verdade quando os 2 lados confirmarem a MESMA oferta ao mesmo tempo.</p>');
 
-  out += wikiSecao('🏥 Centro Pokémon', '<p>Ponto de encontro entre Treinadores -- peça amizade, converse no chat público (visível pra todo mundo que está com essa tela aberta) ou mande mensagem privada pra um amigo, e dali desafie um Duelo PvP, comece uma Troca ao vivo ou convide pra uma Caça em Grupo. A lista de "Treinadores aqui agora" só mostra quem está com essa tela aberta no momento, igual um lugar de verdade.</p>');
+  out += wikiSecao('🏥 Centro Pokémon', '<p>Ponto de encontro entre Treinadores -- peça amizade, converse no chat público (visível pra todo mundo que está com essa tela aberta) ou mande mensagem privada pra um amigo, e dali desafie um Duelo PvP, comece uma Troca ao vivo ou convide pra uma Caçada em Grupo. A lista de "Treinadores aqui agora" só mostra quem está com essa tela aberta no momento, igual um lugar de verdade.</p>');
 
   out += '</div>';
   return out;
@@ -18730,7 +18803,7 @@ function dueloResultadoPopupHTML(b, meuLado){
 function cacadaGrupoScreenHTML(){
   if(SESSION.cacadaId){
     var c = achaCacadaAtiva(SESSION.cacadaId);
-    if(!c) return '<div class="ga-card"><h2>🐺 Caça em Grupo</h2><p class="ga-hint">Essa Caça não está mais disponível.</p><button class="ga-btn-sm" onclick="DT.gaFecharCacada()">Voltar</button></div>';
+    if(!c) return '<div class="ga-card"><h2>🐺 Caçada em Grupo</h2><p class="ga-hint">Essa Caça não está mais disponível.</p><button class="ga-btn-sm" onclick="DT.gaFecharCacada()">Voltar</button></div>';
     if(c.status==='lutando' || c.status==='fim') return cacadaBatalhaHTML(c);
     return cacadaLobbyHTML(c);
   }
@@ -18738,7 +18811,7 @@ function cacadaGrupoScreenHTML(){
 }
 function cacadaListaHTML(){
   var minhas = SESSION.cacadasAtivas || [];
-  var out = '<div class="ga-card"><h2>🐺 Caça em Grupo</h2><p class="ga-hint">Junte até 5 Treinadores pra enfrentar um bando selvagem -- 1 Alfa e seus seguidores, mais fortes quanto mais gente entrar. Convide amigos (do Centro Pokémon), escolha quem vai liderar e acompanhe a chance de vitória antes de começar. A cada Rodada, cada Treinador luta com 1 Pokémon por vez, igual o Duelo PvP -- e dá pra usar poção se alguém ficar com PV baixo. Cada entrada (nova Caça ou "Encarar outra") custa '+CACADA_CUSTO_ENERGIA+' de Energia -- você tem <strong>'+STATE.energy+'/1000</strong> agora.</p>'+
+  var out = '<div class="ga-card"><h2>🐺 Caçada em Grupo</h2><p class="ga-hint">Junte até 5 Treinadores pra enfrentar um bando selvagem -- 1 Alfa e seus seguidores, mais fortes quanto mais gente entrar. Convide amigos (do Centro Pokémon), escolha quem vai liderar e acompanhe a chance de vitória antes de começar. A cada Rodada, cada Treinador luta com 1 Pokémon por vez, igual o Duelo PvP -- e dá pra usar poção se alguém ficar com PV baixo. Cada entrada (nova Caça ou "Encarar outra") custa '+CACADA_CUSTO_ENERGIA+' de Energia -- você tem <strong>'+STATE.energy+'/1000</strong> agora.</p>'+
     ticketParaEnergiaWidgetHTML('cacada')+
   '</div>';
   if(minhas.length){
@@ -18749,7 +18822,7 @@ function cacadaListaHTML(){
       return '<div class="ga-poke-card"><div class="ga-poke-name">'+esc2(c.hostNome)+'</div><div class="ga-poke-meta">Zona '+esc2(zona?zona.nome:c.zonaId)+' -- '+statusTxt+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirCacada(\''+c.id+'\')">Abrir</button></div>';
     }).join('')+'</div></div>';
   }
-  out += '<div class="ga-card"><h2>Criar nova Caça</h2><div class="ga-field"><label>Zona (o mesmo esquema de níveis da Área de Captura)</label><select id="gaCacadaZonaSel">'+
+  out += '<div class="ga-card"><h2>Criar nova Caça</h2><div class="ga-field"><label>Zona (o mesmo esquema de níveis da Caçada Solo)</label><select id="gaCacadaZonaSel">'+
     ZONAS.map(function(z){ return '<option value="'+z.id+'">'+esc2(z.nome)+' (Nv. '+z.min+'-'+z.max+')</option>'; }).join('')+
     '</select></div><button class="ga-btn ga-btn-primary" onclick="DT.gaCriarCacada(document.getElementById(\'gaCacadaZonaSel\').value)">🐺 Criar Caça</button></div>';
   return out;
@@ -18770,7 +18843,7 @@ function cacadaLobbyHTML(c){
   var meu = c.membros[meuId];
   var zona = zonaByStatus(c.zonaId);
   var souHost = souHostCacada(c);
-  var out = '<div class="ga-card"><h2>🐺 Caça em Grupo de '+esc2(c.hostNome)+'</h2><p class="ga-hint">Zona '+esc2(zona?zona.nome:c.zonaId)+' (Nv. '+(zona?zona.min:'?')+'-'+(zona?zona.max:'?')+').</p>';
+  var out = '<div class="ga-card"><h2>🐺 Caçada em Grupo de '+esc2(c.hostNome)+'</h2><p class="ga-hint">Zona '+esc2(zona?zona.nome:c.zonaId)+' (Nv. '+(zona?zona.min:'?')+'-'+(zona?zona.max:'?')+').</p>';
   if(!meu){
     out += '<p class="ga-hint">Você não faz mais parte dessa Caça.</p><button class="ga-btn-sm" onclick="DT.gaFecharCacada()">Voltar</button></div>';
     return out;
@@ -18827,9 +18900,9 @@ function cacadaBatalhaCardHTML(nome, battler, hpAtual, ehAlfa, eliminado){
 function cacadaBatalhaHTML(c){
   var meuId = SESSION.currentDocId;
   var b = c.battle;
-  if(!b) return '<div class="ga-card"><h2>🐺 Caça em Grupo</h2><p class="ga-hint">Preparando a Caça...</p></div>';
+  if(!b) return '<div class="ga-card"><h2>🐺 Caçada em Grupo</h2><p class="ga-hint">Preparando a Caça...</p></div>';
   var totalOndas = (c.grupos||[]).length;
-  var out = '<div class="ga-card ga-battle"><h2>🐺 Caça em Grupo -- Onda '+(b.grupoAtual+1)+'/'+totalOndas+'</h2>'+
+  var out = '<div class="ga-card ga-battle"><h2>🐺 Caçada em Grupo -- Onda '+(b.grupoAtual+1)+'/'+totalOndas+'</h2>'+
     '<div class="ga-battle-field ga-cacada-field">'+
       b.inimigos.map(function(inim){ return cacadaBatalhaCardHTML(displayName(inim), inim, b.hp[inim.key], !!inim.ehAlfa, false); }).join('')+
     '</div>'+
@@ -18939,7 +19012,7 @@ function cacadaResultadoPopupHTML(c){
     }
   }
   return '<div class="ga-overlay"><div class="ga-overlay-card compact">'+
-    '<h2>'+(euVenci?'🏆 A Caça em Grupo foi vencida!':'☠️ O bando venceu a Caça.')+'</h2>'+
+    '<h2>'+(euVenci?'🏆 A Caçada em Grupo foi vencida!':'☠️ O bando venceu a Caça.')+'</h2>'+
     '<p class="ga-hint">Todo mundo sai da Caça com o PV cheio de novo. '+(euVenci?'Recompensa de participação creditada no seu Treinador.':'')+'</p>'+
     minhaRecompensaTxt+
     capturaHTML+
