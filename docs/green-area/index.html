@@ -9667,13 +9667,13 @@ function runBattleUntilPause(){
        turnos -- é efeito de CAMPO (não de um battler só), então roda
        DEPOIS do residual de Status de cada um, na mesma "FIM de
        Rodada", com o mesmo cuidado de checar desmaio antes de seguir. */
-    applyWeatherResidual(atkB, defB, b);
+    applyWeatherResidual([atkB, defB], b);
     if(b.hp[atkB.key]<=0){ if(resolveFaintAfterDamage(atkB, null, b)) return; continue; }
     if(b.hp[defB.key]<=0){ if(resolveFaintAfterDamage(defB, null, b)) return; continue; }
 
     /* Cap. Terreno: cura de Terreno de Grama + conta regressiva --
        mesmo tratamento do Clima acima, os dois convivem sem conflito. */
-    applyTerrainResidual(atkB, defB, b);
+    applyTerrainResidual([atkB, defB], b);
     if(b.hp[atkB.key]<=0){ if(resolveFaintAfterDamage(atkB, null, b)) return; continue; }
     if(b.hp[defB.key]<=0){ if(resolveFaintAfterDamage(defB, null, b)) return; continue; }
 
@@ -10623,12 +10623,16 @@ function setWeather(tipo){
 }
 /* Chip-dano de FIM de Rodada por Areia/Granizo (Cap. oficial) + conta
    regressiva dos turnos restantes -- chamado 1x por Rodada (depois
-   dos 2 battlers agirem e do dano residual de Status de cada um),
-   nunca por battler (é um efeito de CAMPO, não individual). Reverte
-   pra Neutro sozinho quando os turnos acabam. */
-function applyWeatherResidual(atkB, defB, b){
+   de todos os battlers agirem e do dano residual de Status de cada
+   um), nunca por battler (é um efeito de CAMPO, não individual).
+   Reverte pra Neutro sozinho quando os turnos acabam. `battlers` é uma
+   lista (2 na luta normal/Duelo, N na Caça em Grupo) -- generalizado
+   nesta leva ("Clima e terreno... funcionamento normal... em todos os
+   tipos de combate") pra caber tanto no 1v1 clássico quanto no N-vs-N
+   da Caça, sem duplicar a lógica de chip/cura em outra função. */
+function applyWeatherResidual(battlers, b){
   var w = weatherTipo();
-  [atkB, defB].forEach(function(battler){
+  battlers.forEach(function(battler){
     if(!battler || b.hp[battler.key]===undefined || b.hp[battler.key]<=0) return;
     // Cap. Habilidades Rain Dish (sob Chuva) / Ice Body (sob Granizo):
     // curam 1/16 do PV Máximo no FIM da Rodada.
@@ -10796,11 +10800,13 @@ function setTerrain(tipo){
 }
 /* Cura de FIM de Rodada do Terreno de Grama (1/16 do PV Máximo, só
    quem está no chão) + conta regressiva -- mesmo padrão de
-   applyWeatherResidual, chamado 1x por Rodada pros 2 battlers. */
-function applyTerrainResidual(atkB, defB, b){
+   applyWeatherResidual, chamado 1x por Rodada pra TODOS os battlers
+   vivos passados em `battlers` (lista, mesma generalização desta
+   leva). */
+function applyTerrainResidual(battlers, b){
   var t = terrainTipo();
   if(t==='grama'){
-    [atkB, defB].forEach(function(battler){
+    battlers.forEach(function(battler){
       if(!battler || b.hp[battler.key]===undefined || b.hp[battler.key]<=0) return;
       if(!noChao(battler)) return;
       var maxHp = gaHpMax(battler);
@@ -13040,12 +13046,12 @@ function resolverRodadaDuelo(d){
         else if(b.hp[bB.key]<=0){ duelResolveFaint(d,'b'); pausou=true; }
       }
       if(!pausou){
-        applyWeatherResidual(aB,bB,b);
+        applyWeatherResidual([aB,bB],b);
         if(b.hp[aB.key]<=0){ duelResolveFaint(d,'a'); pausou=true; }
         else if(b.hp[bB.key]<=0){ duelResolveFaint(d,'b'); pausou=true; }
       }
       if(!pausou){
-        applyTerrainResidual(aB,bB,b);
+        applyTerrainResidual([aB,bB],b);
         if(b.hp[aB.key]<=0){ duelResolveFaint(d,'a'); pausou=true; }
         else if(b.hp[bB.key]<=0){ duelResolveFaint(d,'b'); pausou=true; }
       }
@@ -13175,7 +13181,10 @@ function processarDuelosAtivos(lista){
          applyCacadaInimigosWillpowerCure), faintedPorTreinador:
          {docId:[partyId,...]}, eliminados:{docId:true} (sem mais
          ninguém vivo na Equipe OU desistiu -- fora da luta, mas o
-         resto do grupo continua), healedThisFaint, pendingHealFor:
+         resto do grupo continua), weather:{tipo,turnsLeft},
+         terrain:{tipo,turnsLeft} (Cap. leva desta sessão -- mesmo
+         padrão de STATE.battle.weather/terrain, sobrevive à troca de
+         onda em montarBattleCacadaOnda), healedThisFaint, pendingHealFor:
          null|docId, pendingHealDecisao, vencedor:null|'jogadores'|
          'inimigos' } }
 
@@ -13187,10 +13196,16 @@ function processarDuelosAtivos(lista){
 
    Simplificações documentadas (mesmo espírito do Duelo -- "os 2 lados
    usam side:'player' igual, sem como saber o lado adversário de
-   verdade"): sem Clima/Terreno/Semente Maligna residual (Leech Seed
-   como golpe ainda funciona, só o dreno de FIM de Rodada fica de fora
-   -- exigiria rastrear par usuário/alvo fixo, que não existe aqui,
-   onde o alvo muda a cada Rodada). Alvo automático: o lado dos
+   verdade"): sem Semente Maligna residual (Leech Seed como golpe ainda
+   funciona, só o dreno de FIM de Rodada fica de fora -- exigiria
+   rastrear par usuário/alvo fixo, que não existe aqui, onde o alvo
+   muda a cada Rodada). Clima/Terreno RODAM normal (Cap. leva desta
+   sessão "Clima e terreno... funcionamento normal... em todos os
+   tipos de combate") -- é efeito de CAMPO, não par usuário/alvo, então
+   não tem esse problema; applyWeatherResidual/applyTerrainResidual
+   agora recebem uma LISTA de battlers em vez de 2 fixos, exatamente
+   pra caber no N-vs-N daqui (ver resolverRodadaCacada). Alvo
+   automático: o lado dos
    Treinadores sempre foca o inimigo vivo com MENOR % de PV; o bando
    ataca um Treinador vivo escolhido ao ACASO -- sem escolha manual de
    golpe/alvo (mesma IA por Papel de Combate da luta normal/Duelo). */
@@ -13466,6 +13481,13 @@ function montarBattleCacadaOnda(c, participantesIds, grupos, idxOnda, battleAnte
     raidRoundCount: 0,
     faintedPorTreinador: battleAnterior ? battleAnterior.faintedPorTreinador : {},
     eliminados: battleAnterior ? battleAnterior.eliminados : {},
+    // Cap. leva desta sessão ("Clima e terreno... funcionamento normal... em
+    // todos os tipos de combate"): Clima/Terreno agora existem na Caça em
+    // Grupo também -- SOBREVIVEM à troca de onda (mesmo Clima/Terreno que
+    // estava ativo continua valendo pro bando seguinte, exatamente como o
+    // resto do campo -- roundGuard/eliminados/etc -- já persiste entre ondas).
+    weather: battleAnterior ? battleAnterior.weather : { tipo:'neutro', turnsLeft:null },
+    terrain: battleAnterior ? battleAnterior.terrain : { tipo:'neutro', turnsLeft:null },
     healedThisFaint: {}, pendingHealFor: null, pendingHealDecisao: null, vencedor: null
   };
 }
@@ -13615,6 +13637,28 @@ function resolverRodadaCacada(c){
           if(elim && !cacadaVivosTreinadores(b).length) b.vencedor='inimigos';
         }
       });
+      /* Cap. leva desta sessão ("Clima e terreno... funcionamento normal
+         que está na caçada solo... em todos os tipos de combate"): MESMA
+         ordem de FIM de Rodada da luta normal/Duelo -- Clima/Terreno rodam
+         DEPOIS do residual de Status de cada um (acima), 1x por Rodada,
+         sobre a lista de vivos RECALCULADA agora (o faint-check acima pode
+         ter trocado quem está ativo por Treinador pro próximo da Equipe).
+         Chip-dano de Areia/Granizo pode nocautear um inimigo aqui sem
+         nenhum tratamento especial -- diferente de Treinador (que troca de
+         Pokémon), cacadaVivosInimigos já ignora quem zerou o PV sozinho. */
+      if(!b.vencedor){
+        var vivosClima1 = cacadaVivosTreinadores(b).map(function(k){return b.ativos[k];}).concat(cacadaVivosInimigos(b));
+        applyWeatherResidual(vivosClima1, b);
+        applyTerrainResidual(vivosClima1, b);
+        Object.keys(b.ativos).forEach(function(docId){
+          if(b.eliminados && b.eliminados[docId]) return;
+          var btClima = b.ativos[docId];
+          if(btClima && b.hp[btClima.key]<=0){
+            var elimClima = cacadaResolveFaintTreinador(c,b,docId);
+            if(elimClima && !cacadaVivosTreinadores(b).length) b.vencedor='inimigos';
+          }
+        });
+      }
       var ondaLimpa1 = !b.vencedor && !cacadaVivosInimigos(b).length;
       if(ondaLimpa1){
         if(b.grupoAtual+1 < c.grupos.length){ b = montarBattleCacadaOnda(c, participantesIds, c.grupos, b.grupoAtual+1, b); }
@@ -18775,7 +18819,11 @@ function dueloScreenHTML(){
   var meuAtivo = souA ? b.ativoA : b.ativoB, outroAtivo = souA ? b.ativoB : b.ativoA;
   var meuSp = speciesByNum(meuAtivo.num), outroSp = speciesByNum(outroAtivo.num);
   var meuLado = souA?'a':'b';
+  var wDuelo = b.weather || { tipo:'neutro', turnsLeft:null };
+  var terrDuelo = b.terrain || { tipo:'neutro', turnsLeft:null };
   var out = '<div class="ga-card ga-battle"><h2>⚔️ Duelo com '+esc2(outroNome)+'</h2>'+
+    (wDuelo.tipo!=='neutro' ? '<div class="ga-weather-badge">'+WEATHER_ICONS[wDuelo.tipo]+' '+esc2(WEATHER_LABELS[wDuelo.tipo])+(wDuelo.turnsLeft!=null?' ('+wDuelo.turnsLeft+' turno'+(wDuelo.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
+    (terrDuelo.tipo!=='neutro' ? '<div class="ga-weather-badge">'+TERRAIN_ICONS[terrDuelo.tipo]+' '+esc2(TERRAIN_LABELS[terrDuelo.tipo])+(terrDuelo.turnsLeft!=null?' ('+terrDuelo.turnsLeft+' turno'+(terrDuelo.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
     '<div class="ga-battle-field">'+
       '<div class="ga-battle-side"><img src="'+spriteUrl(outroAtivo.num)+'" alt=""><div>'+esc2(outroAtivo.apelido||outroSp.name)+' Nv.'+outroAtivo.level+'</div>'+hpBarHTML(b.hp[outroAtivo.key],gaHpMax(outroAtivo))+'</div>'+
       '<div class="ga-battle-vs">VS</div>'+
@@ -18914,7 +18962,11 @@ function cacadaBatalhaHTML(c){
   var b = c.battle;
   if(!b) return '<div class="ga-card"><h2>🐺 Caçada em Grupo</h2><p class="ga-hint">Preparando a Caça...</p></div>';
   var totalOndas = (c.grupos||[]).length;
+  var wCacada = b.weather || { tipo:'neutro', turnsLeft:null };
+  var terrCacada = b.terrain || { tipo:'neutro', turnsLeft:null };
   var out = '<div class="ga-card ga-battle"><h2>🐺 Caçada em Grupo -- Onda '+(b.grupoAtual+1)+'/'+totalOndas+'</h2>'+
+    (wCacada.tipo!=='neutro' ? '<div class="ga-weather-badge">'+WEATHER_ICONS[wCacada.tipo]+' '+esc2(WEATHER_LABELS[wCacada.tipo])+(wCacada.turnsLeft!=null?' ('+wCacada.turnsLeft+' turno'+(wCacada.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
+    (terrCacada.tipo!=='neutro' ? '<div class="ga-weather-badge">'+TERRAIN_ICONS[terrCacada.tipo]+' '+esc2(TERRAIN_LABELS[terrCacada.tipo])+(terrCacada.turnsLeft!=null?' ('+terrCacada.turnsLeft+' turno'+(terrCacada.turnsLeft===1?'':'s')+')':'')+'</div>' : '')+
     '<div class="ga-battle-field ga-cacada-field">'+
       b.inimigos.map(function(inim){ return cacadaBatalhaCardHTML(displayName(inim), inim, b.hp[inim.key], !!inim.ehAlfa, false); }).join('')+
     '</div>'+
