@@ -16416,17 +16416,29 @@ function navGrupoBadge(grupoId){
   if(grupoId!=='social') return 0;
   return (SESSION.pedidosAmizade||[]).length + dmTotalNaoLidas();
 }
+function navGrupoBtnHTML(grupoId){
+  var g = NAV_GRUPOS.filter(function(x){ return x.id===grupoId; })[0];
+  if(!g) return '';
+  /* "ativo" também acende quando a tela atual é de DENTRO do grupo
+     (mesmo com o popup fechado) -- assim o jogador sempre vê onde
+     está, igual os itens soltos de sempre. */
+  var ativo = SESSION.navGroupOpen===g.id || g.itens.some(function(it){ return SESSION.screen===it.id; });
+  var badge = navGrupoBadge(g.id);
+  return '<button class="'+(ativo?'active':'')+'" onclick="DT.gaAbrirGrupoNav(\''+g.id+'\')"><span class="ga-nav-ic">'+g.ic+'</span>'+g.nome+(badge>0?' <span class="ga-nav-badge">'+badge+'</span>':'')+'</button>';
+}
+/* Cap. leva desta sessão ("Só reorganiza a ordem: Inicio/Jogador/
+   Social/Batalhas/Loja/Informação"): a ORDEM na lateral segue esse
+   pedido exato -- Loja (item solto) entra ENTRE Batalhas e Informação,
+   então não dá pra só mapear `NAV_GRUPOS` em sequência e jogar Loja no
+   fim; `navGrupoBtnHTML` busca cada grupo pelo id na ordem certa. A
+   ordem de `NAV_GRUPOS` em si (usada pelo popup central) não muda. */
 function navListHTML(){
   var out = '<button class="'+(SESSION.screen==='hub'?'active':'')+'" onclick="DT.gaGoto(\'hub\')"><span class="ga-nav-ic">🏠</span>Início</button>';
-  out += NAV_GRUPOS.map(function(g){
-    /* "ativo" também acende quando a tela atual é de DENTRO do grupo
-       (mesmo com o popup fechado) -- assim o jogador sempre vê onde
-       está, igual os itens soltos de sempre. */
-    var ativo = SESSION.navGroupOpen===g.id || g.itens.some(function(it){ return SESSION.screen===it.id; });
-    var badge = navGrupoBadge(g.id);
-    return '<button class="'+(ativo?'active':'')+'" onclick="DT.gaAbrirGrupoNav(\''+g.id+'\')"><span class="ga-nav-ic">'+g.ic+'</span>'+g.nome+(badge>0?' <span class="ga-nav-badge">'+badge+'</span>':'')+'</button>';
-  }).join('');
+  out += navGrupoBtnHTML('jogador');
+  out += navGrupoBtnHTML('social');
+  out += navGrupoBtnHTML('batalhas');
   out += '<button class="'+(SESSION.screen==='loja'?'active':'')+'" onclick="DT.gaGoto(\'loja\')"><span class="ga-nav-ic">🏪</span>Loja</button>';
+  out += navGrupoBtnHTML('info');
   out += '<button class="'+(SESSION.screen==='debug'?'active':'')+'" onclick="DT.gaGoto(\'debug\')"><span class="ga-nav-ic">🛠️</span>Testes</button>';
   out += (SESSION.isAdmin ? '<button class="'+(SESSION.screen==='admin'?'active':'')+'" onclick="DT.gaAdminAbrirPainel()"><span class="ga-nav-ic">🛡️</span>Admin</button>' : '');
   return out;
