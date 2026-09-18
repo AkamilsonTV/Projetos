@@ -13699,6 +13699,27 @@ function aplicarMeuResultadoCacada(c){
     var pLead = meuAtivo ? STATE.party.filter(function(x){return x.id===meuAtivo.partyId;})[0] : null;
     if(pLead) grantXpSemPausarEvolucao(pLead, xp);
     recompensaTxt = ' -- +'+pokedolar+' Pokédólares'+(pLead?', +'+xp+' XP':'');
+    /* Cap. leva desta sessão ("Colocar chance de bilhete de raid nas
+       lutas em grupo também. Aumentando 1% a cada membro. A base vai
+       ser o padrão da caçada solo... só pode dropar quando tiver raid
+       ativa"): MESMO gatilho/gate da luta selvagem solo
+       (`raidConfigAtual().passDropChance`, só com Raid ativa -- ver
+       finishBattle), só que a chance sobe 1% por Treinador que
+       participou da Caça (`c.membrosParticipantes`, o time CONGELADO
+       na hora que a Caça começou -- não conta quem só ficou no lobby
+       sem confirmar). Cada Treinador rola a PRÓPRIA chance
+       independente e, se cair, ganha 1 Raid Pass no PRÓPRIO Mochila --
+       mesma regra de sempre (cada um aplica a própria parte no próprio
+       save, nunca no de outro). */
+    if(raidsAtivas().length>0){
+      var numMembrosCacada = (c.membrosParticipantes||Object.keys(c.membros)).length;
+      var cfgPassCacada = raidConfigAtual();
+      var chancePassCacada = Math.min(1, cfgPassCacada.passDropChance + 0.01*numMembrosCacada);
+      if(Math.random()<chancePassCacada){
+        STATE.itens.raidpass = (STATE.itens.raidpass||0)+1;
+        recompensaTxt += ', +1 🎟️ Raid Pass';
+      }
+    }
   }
   logAction('cacadagrupo', 'Caça em Grupo na Zona '+((zonaByStatus(c.zonaId)||{}).nome||c.zonaId)+' terminou: '+(vitoria?'🏆 vitória':'☠️ derrota')+recompensaTxt+'.', b.log);
   mutate();
@@ -18352,6 +18373,28 @@ function wikiScreenHTML(){
 
   out += wikiSecao('📕 Pokédex', '<p>'+esc2(TOOLTIPS.pokedex).replace(/\n/g,'<br>')+'</p>'+
     '<p>Clique num Pokémon já visto em batalha (mesmo sem capturar) pra ver Área onde encontrar, Movimentos possíveis, Habilidades possíveis, Lore (em português) e o Cry original em áudio.</p>');
+
+  /* Cap. leva desta sessão ("Da uma atualizada na Wiki também... só
+     com informações pertinentes a jogador... tutorial bem
+     simplificado... Algumas coisas podem ficar ocultas"): a Wiki não
+     acompanhava várias levas de sistemas novos (Raids, Caça em Grupo,
+     Duelo, Troca, Centro Pokémon) -- as 5 seções abaixo cobrem o
+     essencial de cada uma pro JOGADOR (o que é, como entrar, o que
+     ganha), sem entrar em fórmula/porcentagem interna que não muda a
+     forma de jogar (ex.: sem citar `passDropChance`/multiplicadores
+     exatos de Raid -- só "existe uma chance, aumenta com mais gente"). */
+  out += wikiSecao('🏴 Raids', '<p>De vez em quando, um Pokémon muito mais forte que o normal aparece como Raid. Pra tentar, você precisa de 1 🎟️ Raid Pass -- a única forma de conseguir é uma chance de encontrar um depois de VENCER uma luta selvagem normal (na Área de Captura ou numa Caça em Grupo), e só enquanto existir alguma Raid ativa no momento (sem Raid ativa, ninguém encontra Raid Pass).</p>'+
+    '<p>Na Raid você SEMPRE ataca primeiro (a Regra de Ouro), e o dano que você causa soma no PV COMPARTILHADO do boss junto com todos os outros Treinadores tentando -- mesmo os que estão offline no momento. Quando o PV do boss chega a zero, todo mundo que participou ganha recompensa de participação (Pokédólares/XP/itens) e a chance de tentar capturá-lo.</p>');
+
+  out += wikiSecao('🐺 Caça em Grupo', '<p>Até 5 Treinadores se juntam pra enfrentar um bando selvagem -- 1 Alfa e seus seguidores, mais fortes quanto mais gente participa. Escolha uma Zona (o mesmo esquema de Níveis da Área de Captura), convide amigos pelo 🏥 Centro Pokémon e cada um escolhe qual Pokémon do próprio Time vai liderar (dá pra trocar de ideia quantas vezes quiser antes de começar). Entrar custa Energia, igual qualquer luta.</p>'+
+    '<p>A luta acontece sozinha (mesma Inteligência Artificial por Papel de Combate de sempre) -- cada Treinador enfrenta o bando com 1 Pokémon por vez, trocando pro próximo quando desmaia. Se o PV ficar baixo, um popup pergunta se você quer usar uma poção da SUA PRÓPRIA Mochila (se você não tiver nenhuma, o jogo nem pergunta -- a luta só continua).</p>'+
+    '<p>Vencendo, cada Treinador ganha recompensa de participação (Pokédólares/XP) e, se houver alguma Raid ativa no momento, também uma chance de encontrar um 🎟️ Raid Pass -- quanto mais gente na Caça, maior essa chance. Depois disso, dá pra tentar capturar TODO MUNDO que a Caça enfrentou (o Alfa e o bando inteiro), um de cada vez, na ordem de quem criou a Caça primeiro e depois de quem foi entrando -- um Pokémon capturado do Alfa ganha um selo dourado "A" especial no card dele. O mesmo grupo pode encarar outra Caça na hora, sem precisar montar tudo de novo, até 10 vezes seguidas.</p>');
+
+  out += wikiSecao('⚔️ Duelo PvP', '<p>Desafie um amigo (pelo 🏥 Centro Pokémon) pra um duelo direto, 1 Treinador contra o outro -- a luta é automática, mesma Inteligência Artificial por Papel de Combate de sempre. Não gasta Energia nem Pokébola nenhuma; só conta pro Histórico de Vitórias/Derrotas de cada Pokémon. Ficou com PV baixo? Dá pra usar uma cura de emergência no meio da luta.</p>');
+
+  out += wikiSecao('🔄 Troca ao vivo', '<p>Pelo 🏥 Centro Pokémon, monte uma oferta com Pokémon, itens e/ou Pokédólares pra trocar com um amigo -- a troca só acontece de verdade quando os 2 lados confirmarem a MESMA oferta ao mesmo tempo.</p>');
+
+  out += wikiSecao('🏥 Centro Pokémon', '<p>Ponto de encontro entre Treinadores -- peça amizade, converse no chat público (visível pra todo mundo que está com essa tela aberta) ou mande mensagem privada pra um amigo, e dali desafie um Duelo PvP, comece uma Troca ao vivo ou convide pra uma Caça em Grupo. A lista de "Treinadores aqui agora" só mostra quem está com essa tela aberta no momento, igual um lugar de verdade.</p>');
 
   out += '</div>';
   return out;
