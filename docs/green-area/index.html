@@ -733,6 +733,56 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
   .ga-order-controls .ga-btn-sm{ min-width:48px; min-height:48px; padding:0; display:flex; align-items:center; justify-content:center; font-size:1.35rem; }
 }
 
+/* Cap. leva desta sessão ("Baseado no nosso game, rota a rota com
+   spots de pokémon igual o original... aparecendo só pro admin"):
+   tela nova de Kanto -- mapa em grade (mesma técnica do protótipo
+   aprovado em Artifact) + painel de detalhe ao lado, reusando os
+   componentes visuais que já existem (.ga-card/.ga-hint/.ga-btn-sm/
+   .ga-poke-grid) pra ficar no MESMO estilo do resto do site. */
+.ga-linklike{ background:none; border:none; padding:0; color:var(--accent); font-size:inherit; font-weight:600; text-decoration:underline; text-underline-offset:2px; }
+.ga-linklike:hover{ color:var(--accent-dim); }
+.ga-kanto-stage{ display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; align-items:start; margin-top:14px; }
+@media (max-width:860px){ .ga-kanto-stage{ grid-template-columns:1fr; } }
+.ga-kanto-mapawrap{ background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:16px; overflow-x:auto; }
+.ga-kanto-mapa{ position:relative; margin:0 auto; }
+.ga-kanto-tile{ position:absolute; border-radius:3px; background:#111a22; }
+.ga-kanto-tile.alt{ background:#141f28; }
+.ga-kanto-tile.trilha{ background:#4a4230; }
+.ga-kanto-tile.agua-rota{ background:#173654; }
+.ga-kanto-tile.agua{ background:#122c47; background-image:radial-gradient(circle,#1c4066 30%,transparent 32%); background-size:10px 10px; }
+.ga-kanto-tile.floresta{ background:#132417; background-image:radial-gradient(circle,#1c3320 32%,transparent 34%); background-size:8px 8px; }
+.ga-kanto-pin-local{ position:absolute; transform:translate(-50%,-50%); width:38px; height:38px; border-radius:9px; border:2px solid var(--line); background:var(--panel3); display:flex; align-items:center; justify-content:center; font-size:1rem; padding:0; z-index:2; }
+.ga-kanto-pin-local:hover{ transform:translate(-50%,-50%) scale(1.1); }
+.ga-kanto-pin-local.ativo{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(52,211,153,.28); }
+.ga-kanto-pin-local.gym{ border-color:var(--gold); }
+.ga-kanto-pin-local.start{ border-color:var(--accent-dim); }
+.ga-kanto-pin-local.cave,.ga-kanto-pin-local.forest{ border-color:#7c8a72; }
+.ga-kanto-pin-local.water{ border-color:#5f9fd8; }
+.ga-kanto-pin-local.landmark{ border-color:var(--pink); }
+.ga-kanto-pin-local.league{ border-color:var(--gold); background:#241a08; }
+.ga-kanto-pin-local.tem-area::after{ content:''; position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:var(--accent); border:1px solid var(--bg2); }
+.ga-kanto-pin-rota{ position:absolute; transform:translate(-50%,-50%); min-width:18px; height:18px; padding:0 3px; border-radius:5px; background:rgba(10,14,19,.85); border:1.5px solid #6b6142; color:#d8cba3; font-size:.56rem; font-weight:800; display:flex; align-items:center; justify-content:center; z-index:1; white-space:nowrap; }
+.ga-kanto-pin-rota:hover{ border-color:var(--accent); color:var(--accent); }
+.ga-kanto-pin-rota.ativo{ border-color:var(--accent); color:var(--accent); background:var(--panel2); box-shadow:0 0 0 2px rgba(52,211,153,.28); }
+.ga-kanto-pin-rota.agua{ border-color:#3f79b0; color:#bcdcf7; }
+.ga-kanto-pin-rota.tem-area{ box-shadow:0 0 0 2px rgba(52,211,153,.35); }
+.ga-kanto-legenda{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; font-size:.74rem; color:var(--ink-dim); }
+.ga-kanto-legenda span{ display:inline-flex; align-items:center; gap:6px; }
+.ga-kanto-legenda i{ display:inline-block; width:14px; height:14px; border-radius:4px; }
+.ga-kanto-legenda i.campo{ background:#111a22; border:1px solid var(--line); }
+.ga-kanto-legenda i.trilha{ background:#4a4230; }
+.ga-kanto-legenda i.agua{ background:#173654; }
+.ga-kanto-legenda i.floresta{ background:#132417; }
+.ga-kanto-legenda i.gymring{ background:transparent; border:2px solid var(--gold); border-radius:5px; }
+.ga-kanto-legenda i.areapin{ background:var(--accent); }
+.ga-kanto-info{ position:sticky; top:16px; min-height:200px; }
+.ga-kanto-info-empty{ color:var(--ink-dim); font-size:.86rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:26px 6px; }
+.ga-kanto-info-empty span{ font-size:1.7rem; }
+.ga-kanto-info-head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.ga-kanto-info-ic{ width:38px; height:38px; border-radius:10px; background:var(--panel3); display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex:0 0 auto; }
+.ga-kanto-gymbadge{ display:inline-flex; align-items:center; gap:5px; font-size:.76rem; font-weight:700; padding:4px 10px; border-radius:999px; color:#0d1c2b; background:var(--gold); margin-bottom:8px; }
+.ga-kanto-areas{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+.ga-kanto-lider{ margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
 
 </style>
 </head>
@@ -8172,7 +8222,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null };
 
 function freshState(trainerName){
   return {
@@ -12271,7 +12321,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null };
   render();
 };
 
@@ -14266,6 +14316,369 @@ function iniciarLutaDeZona(leadId, zonaId, skipDiscrepancia){
   var forma = rollFormaDeEncontro(sp.num);
   startBattle('wild', { leadPartyId: leadId, wildNum: sp.num, wildLevel: level, wildForma: forma, zonaIdx: idx }, skipDiscrepancia);
 }
+
+/* ============================================================
+   Kanto -- protótipo de mapa navegável com captura por ROTA de
+   verdade (Cap. leva desta sessão: "Baseado no nosso game, rota a
+   rota com spots de pokémon igual o original... Pode aplicar no
+   site aparecendo só pro admin numa aba Kanto"). Só Admin enxerga
+   (ver navListHTML/screenHTML) -- é uma prévia pra testar o conceito
+   antes de decidir levar pro jogo todo (por isso só Kanto, do jeito
+   que foi pedido: "só de Kanto por enquanto"). Reusa 100% do motor
+   de luta/captura que já existe (`startBattle('wild', ...)`, mesmo
+   fluxo de captura/XP/Pokédólar de sempre) -- só troca DE ONDE a
+   Espécie/Nível vêm: em vez de `wildPoolForZona` (Zona abstrata por
+   Nível, sem geografia nenhuma), cada Rota/local tem seu PRÓPRIO
+   elenco fixo (`areas`), do jeito que os jogos originais faziam de
+   verdade. Layout/posições do mapa reaproveitam o protótipo visual
+   já aprovado (Artifact separado, mesma malha de Rotas/locais) --
+   Kanto tem 25 locais e 27 rotas/atalhos, mas só quem TEM grama,
+   água ou caverna de verdade ganhou `areas` (cidade nenhuma tem
+   Pokémon selvagem parado dentro dela -- isso também é fiel ao
+   original: Pontte Pepita/S.S. Anne só têm treinador, por exemplo).
+   Onde um trecho tem mais de 1 tipo de encontro (água E pesca, por
+   exemplo), a `areas` list tem mais de 1 entrada -- cada uma vira um
+   botão próprio na tela ("se tiver mais de um local ali, colocar
+   mais de uma opção"). Espécie/Nível por local são uma aproximação
+   de memória dos jogos originais (Red/Blue/FireRed/LeafGreen), não
+   um dump exato de dados -- documentado aqui pra ninguém achar que é
+   100% oficial. */
+var KANTO_MAP = {
+  cols:13, rows:12,
+  locs:[
+    {id:'pallet', nome:'Vila Pallet', col:2,row:10, kind:'start', icon:'🏠', desc:'Onde a jornada começa: um vilarejo de poucas casas, com o laboratório do Professor logo na entrada.'},
+    {id:'viridian', nome:'Cidade Viridian', col:2,row:7, kind:'gym', gymType:'Terra', desc:'Última cidade antes da Liga -- o Ginásio mais escondido de Kanto, só abre depois de zerar o resto.'},
+    {id:'pewter', nome:'Cidade Pewter', col:2,row:1, kind:'gym', gymType:'Pedra', desc:'Cidade de pedra encostada no Monte Moon, primeira parada de quem sai de Pallet.'},
+    {id:'cerulean', nome:'Cidade Cerulean', col:8,row:1, kind:'gym', gymType:'Água', desc:'Cercada de riachos -- sede do Ginásio de Água, com Nugget Bridge e a Caverna Cerúlea por perto.'},
+    {id:'vermilion', nome:'Cidade Vermilion', col:7,row:8, kind:'gym', gymType:'Elétrico', desc:'Porto badalado, com o Ginásio Elétrico, a Caverna Diglett e um navio enorme atracado no cais.'},
+    {id:'lavender', nome:'Vila Lavender', col:11,row:4, kind:'start', icon:'👻', desc:'Vila pequena vivendo à sombra da Torre Pokémon, onde ninguém entra sem um bom motivo.'},
+    {id:'celadon', nome:'Cidade Celadon', col:4,row:4, kind:'gym', gymType:'Grama', desc:'A maior cidade de Kanto, com o shopping mais famoso da região e o Ginásio de Grama.'},
+    {id:'fuchsia', nome:'Cidade Fuchsia', col:4,row:10, kind:'gym', gymType:'Venenoso', desc:'Lar de uma zona de safári só dela e do Ginásio Venenoso.'},
+    {id:'saffron', nome:'Cidade Saffron', col:7,row:4, kind:'gym', gymType:'Psíquico', desc:'Bem no meio do mapa -- cidade grande, movimentada, com o Ginásio Psíquico no centro.'},
+    {id:'cinnabar', nome:'Ilha Cinnabar', col:0,row:10, kind:'gym', gymType:'Fogo', island:true, desc:'Ilha vulcânica isolada, com o Ginásio de Fogo e uma mansão abandonada cheia de histórias.'},
+    {id:'viridianforest', nome:'Floresta Viridian', col:2,row:4, kind:'forest', icon:'🌲', desc:'Floresta densa entre Viridian e Pewter, cheia de Pokémon do tipo Inseto.',
+      areas:[{id:'grama', nome:'Grama da Floresta', metodo:'grama', nivelMin:3, nivelMax:9, encontros:[{num:10,peso:3},{num:11,peso:2},{num:13,peso:3},{num:14,peso:2},{num:25,peso:1}]}]},
+    {id:'mtmoon', nome:'Monte Moon', col:5,row:1, kind:'cave', icon:'⛰️', desc:'Caverna famosa por fósseis raros -- dizem que balança de vez em quando.',
+      areas:[{id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:7, nivelMax:11, encontros:[{num:41,peso:4},{num:46,peso:3},{num:74,peso:3},{num:35,peso:1}]}]},
+    {id:'rocktunnel', nome:'Túnel da Rocha', col:10,row:3, kind:'cave', icon:'🕳️', desc:'Escuro de verdade lá dentro -- sem enxergar direito, é fácil se perder.',
+      areas:[{id:'cave', nome:'Dentro do túnel', metodo:'cave', nivelMin:13, nivelMax:17, encontros:[{num:41,peso:4},{num:74,peso:3},{num:66,peso:3}]}]},
+    {id:'seafoam', nome:'Ilhas Seafoam', col:2,row:11, kind:'water', icon:'🌊', desc:'Duas ilhas geladas cercadas de água funda, ligando Fuchsia a Cinnabar.',
+      areas:[
+        {id:'cave', nome:'Galerias de gelo', metodo:'cave', nivelMin:22, nivelMax:26, encontros:[{num:41,peso:3},{num:86,peso:3},{num:79,peso:2}]},
+        {id:'agua', nome:'Água ao redor', metodo:'agua', nivelMin:24, nivelMax:30, encontros:[{num:72,peso:3},{num:87,peso:1}]}
+      ]},
+    {id:'indigo', nome:'Planalto Índigo', col:0,row:1, kind:'league', icon:'🏆', desc:'A Liga Pokémon em pessoa -- só chega até aqui quem já tem as 8 Insígnias de Kanto. Só treinadores fortes, nenhum Pokémon selvagem.'},
+    {id:'victoryroad', nome:'Estrada da Vitória', col:0,row:4, kind:'cave', icon:'🕳️', desc:'Última caverna antes da Liga -- cheia de treinadores fortes e quebra-cabeças de pedra.',
+      areas:[{id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:27, nivelMax:31, encontros:[{num:66,peso:3},{num:74,peso:3},{num:41,peso:2},{num:95,peso:2}]}]},
+    {id:'digletts', nome:'Caverna Diglett', col:9,row:8, kind:'cave', icon:'🕳️', desc:'Túnel cavado por uma legião de Diglett -- atalho famoso saindo de Vermilion.',
+      areas:[{id:'cave', nome:'Dentro do túnel', metodo:'cave', nivelMin:15, nivelMax:19, encontros:[{num:50,peso:5},{num:51,peso:1}]}]},
+    {id:'ceruleancave', nome:'Caverna Cerúlea', col:6,row:0, kind:'cave', icon:'🕳️', desc:'Caverna isolada ao norte de Cerulean, só liberada depois que a Liga é vencida. Pokémon bem mais fortes que o normal.',
+      areas:[{id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:46, nivelMax:55, encontros:[{num:67,peso:3},{num:47,peso:2},{num:82,peso:2},{num:105,peso:2},{num:132,peso:1}]}]},
+    {id:'pontenugget', nome:'Ponte Pepita', col:8,row:0, kind:'route-junction', icon:'🌉', desc:'Ponte cheia de treinadores enfileirados, todos querendo batalhar. Só gente, nenhum Pokémon selvagem por aqui.'},
+    {id:'billshouse', nome:'Casa do Bill', col:9,row:0, kind:'landmark', icon:'🏠', desc:'Casa isolada de um pesquisador excêntrico, no fim da estrada. Sem grama nenhuma por perto.'},
+    {id:'mansion', nome:'Mansão Pokémon', col:0,row:11, kind:'landmark', icon:'🏚️', desc:'Prédio abandonado em Cinnabar, com diários antigos sobre experimentos estranhos.',
+      areas:[{id:'cave', nome:'Corredores da mansão', metodo:'cave', nivelMin:30, nivelMax:34, encontros:[{num:88,peso:4},{num:109,peso:4},{num:58,peso:1},{num:132,peso:1}]}]},
+    {id:'powerplant', nome:'Usina Elétrica', col:11,row:3, kind:'landmark', icon:'⚡', desc:'Usina desativada tomada por Pokémon elétricos -- algo grande dorme lá dentro.',
+      areas:[{id:'cave', nome:'Dentro da usina', metodo:'cave', nivelMin:18, nivelMax:22, encontros:[{num:100,peso:3},{num:81,peso:3},{num:101,peso:1}]}]},
+    {id:'safarizone', nome:'Zona Safari', col:5,row:10, kind:'landmark', icon:'🎋', desc:'Área cercada com espécies raras -- aqui você captura sem lutar de verdade, só com bolinhas de isca.',
+      areas:[{id:'safari', nome:'Dentro da Zona Safari', metodo:'safari', nivelMin:22, nivelMax:28, encontros:[{num:29,peso:2},{num:32,peso:2},{num:46,peso:2},{num:48,peso:2},{num:102,peso:2},{num:111,peso:2},{num:113,peso:1},{num:123,peso:1},{num:127,peso:1},{num:128,peso:1},{num:115,peso:1}]}]},
+    {id:'ssanne', nome:'S.S. Anne', col:7,row:9, kind:'landmark', icon:'🚢', desc:'Navio de cruzeiro enorme, atracado no cais de Vermilion, cheio de treinadores a bordo. Sem Pokémon selvagem, só gente pra batalhar.'},
+    {id:'snorlaxspot', nome:'Trecho do Snorlax', col:5,row:8, kind:'route-junction', icon:'😴', desc:'Um Snorlax gigante dorme bem no meio do caminho -- ninguém passa sem acordar ele primeiro.',
+      areas:[{id:'especial', nome:'Acordar o Snorlax', metodo:'especial', nivelMin:30, nivelMax:30, encontros:[{num:143,peso:1}]}]}
+  ],
+  routes:[
+    {id:'r1', from:'pallet', to:'viridian', nome:'Rota 1', desc:'Estrada tranquila de grama baixa entre a vila inicial e a primeira cidade de verdade.',
+      areas:[{id:'grama', nome:'Grama baixa', metodo:'grama', nivelMin:2, nivelMax:4, encontros:[{num:19,peso:5},{num:16,peso:5}]}]},
+    {id:'r2a', from:'viridian', to:'viridianforest', nome:'Rota 2', desc:'Começo da longa Rota 2, logo na entrada da Floresta Viridian.',
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:2, nivelMax:5, encontros:[{num:19,peso:3},{num:16,peso:3},{num:10,peso:2},{num:13,peso:2}]}]},
+    {id:'r2b', from:'viridianforest', to:'pewter', nome:'Rota 2', desc:'Trecho final da Rota 2, saindo da floresta direto pra Pewter.',
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:3, nivelMax:5, encontros:[{num:10,peso:3},{num:13,peso:3},{num:16,peso:2}]}]},
+    {id:'r3', from:'pewter', to:'mtmoon', nome:'Rota 3', desc:'Sobe a montanha até a boca do Monte Moon.',
+      areas:[{id:'grama', nome:'Grama da subida', metodo:'grama', nivelMin:6, nivelMax:8, encontros:[{num:19,peso:3},{num:21,peso:3},{num:32,peso:2},{num:29,peso:2},{num:56,peso:2}]}]},
+    {id:'r4', from:'mtmoon', to:'cerulean', nome:'Rota 4', desc:'Desce do Monte Moon direto pro centro de Cerulean.',
+      areas:[{id:'grama', nome:'Grama da descida', metodo:'grama', nivelMin:6, nivelMax:8, encontros:[{num:19,peso:5},{num:21,peso:5}]}]},
+    {id:'r5', from:'cerulean', to:'saffron', nome:'Rota 5', desc:'Passagem Subterrânea ligando Cerulean ao norte de Saffron.',
+      areas:[{id:'grama', nome:'Grama da passagem', metodo:'grama', nivelMin:8, nivelMax:12, encontros:[{num:39,peso:3},{num:52,peso:3},{num:69,peso:3}]}]},
+    {id:'r6', from:'saffron', to:'vermilion', nome:'Rota 6', desc:'Passagem Subterrânea descendo de Saffron até o porto de Vermilion.',
+      areas:[{id:'grama', nome:'Grama da passagem', metodo:'grama', nivelMin:10, nivelMax:13, encontros:[{num:52,peso:3},{num:58,peso:2},{num:69,peso:3}]}]},
+    {id:'r7', from:'saffron', to:'celadon', nome:'Rota 7', desc:'Passagem Subterrânea curta ligando Saffron a Celadon.',
+      areas:[{id:'grama', nome:'Grama da passagem', metodo:'grama', nivelMin:11, nivelMax:14, encontros:[{num:56,peso:3},{num:52,peso:3}]}]},
+    {id:'r8', from:'saffron', to:'lavender', nome:'Rota 8', desc:'Liga Saffron a Lavender, passando perto da sede da Equipe Rocket.',
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:12, nivelMax:15, encontros:[{num:19,peso:3},{num:23,peso:3},{num:27,peso:3}]}]},
+    {id:'r9', from:'cerulean', to:'rocktunnel', nome:'Rota 9', desc:'Sai de Cerulean rumo à boca oeste do Túnel da Rocha.',
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:8, nivelMax:11, encontros:[{num:23,peso:3},{num:27,peso:3},{num:21,peso:2},{num:56,peso:2}]}]},
+    {id:'r10', from:'rocktunnel', to:'lavender', nome:'Rota 10', desc:'Saída leste do Túnel da Rocha, descendo até Lavender.',
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:13, nivelMax:16, encontros:[{num:19,peso:3},{num:20,peso:2},{num:100,peso:2}]}]},
+    {id:'r10b', from:'rocktunnel', to:'powerplant', nome:'Rota 10 (ramal)', desc:'Desvio curto da Rota 10 até a Usina Elétrica abandonada.'},
+    {id:'r11', from:'vermilion', to:'snorlaxspot', nome:'Rota 11', desc:'Sai do porto de Vermilion rumo ao interior, cheia de treinadores marinheiros.',
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:11, nivelMax:14, encontros:[{num:23,peso:3},{num:96,peso:3},{num:21,peso:3}]}]},
+    {id:'r1215', from:'snorlaxspot', to:'fuchsia', nome:'Rota 12-15', desc:'Trecho longo (fusão das Rotas 12 a 15) até Fuchsia, com direito a labirinto de grama.',
+      areas:[{id:'grama', nome:'Grama do labirinto', metodo:'grama', nivelMin:13, nivelMax:18, encontros:[{num:43,peso:3},{num:69,peso:3},{num:48,peso:3},{num:19,peso:2},{num:16,peso:2}]}]},
+    {id:'r16', from:'celadon', to:'fuchsia', nome:'Rota 16', desc:'Estrada de ciclismo ligando Celadon ao sul do mapa.',
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:16, nivelMax:20, encontros:[{num:84,peso:4},{num:19,peso:3},{num:20,peso:2}]}]},
+    {id:'r19', from:'fuchsia', to:'seafoam', nome:'Rota 19', water:true, desc:'Trecho de água nadando pra fora de Fuchsia, rumo às ilhas geladas.',
+      areas:[
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:15, nivelMax:25, encontros:[{num:72,peso:5}]},
+        {id:'pesca', nome:'Pescando na água', metodo:'pesca', nivelMin:5, nivelMax:20, chanceFisgar:0.65, encontros:[{num:129,peso:5},{num:118,peso:2}]}
+      ]},
+    {id:'r20', from:'seafoam', to:'cinnabar', nome:'Rota 20', water:true, desc:'Água funda entre as Ilhas Seafoam e o vulcão de Cinnabar.',
+      areas:[
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:20, nivelMax:30, encontros:[{num:72,peso:5}]},
+        {id:'pesca', nome:'Pescando na água', metodo:'pesca', nivelMin:10, nivelMax:25, chanceFisgar:0.65, encontros:[{num:129,peso:4},{num:118,peso:2},{num:119,peso:1}]}
+      ]},
+    {id:'r21', from:'cinnabar', to:'pallet', nome:'Rota 21', water:true, desc:'Volta de barco/nado de Cinnabar até Pallet, fechando o loop sul.',
+      areas:[
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:15, nivelMax:25, encontros:[{num:72,peso:5}]},
+        {id:'pesca', nome:'Pescando na água', metodo:'pesca', nivelMin:5, nivelMax:20, chanceFisgar:0.65, encontros:[{num:129,peso:5},{num:118,peso:2}]}
+      ]},
+    {id:'r22', from:'viridian', to:'victoryroad', nome:'Rota 22', desc:'Saída oeste de Viridian, onde o rival costuma aparecer pra batalhar.',
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:3, nivelMax:5, encontros:[{num:19,peso:3},{num:32,peso:2},{num:29,peso:2},{num:56,peso:2}]}]},
+    {id:'r23', from:'victoryroad', to:'indigo', nome:'Rota 23', desc:'Trecho final antes do Planalto Índigo, cheio de treinadores fortes. Sem grama, só batalhas.'},
+    {id:'r24', from:'cerulean', to:'pontenugget', nome:'Rota 24', desc:'Sobe de Cerulean até a badalada Ponte Pepita, um corredor só de treinadores.'},
+    {id:'r25', from:'pontenugget', to:'billshouse', nome:'Rota 25', desc:'Trecho curto da Ponte Pepita até a casa isolada do Bill.',
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:12, nivelMax:16, encontros:[{num:43,peso:3},{num:69,peso:3},{num:63,peso:2},{num:48,peso:2}]}]},
+    {id:'spurcave', from:'cerulean', to:'ceruleancave', nome:'Caverna Cerúlea', desc:'Caminho até a caverna mais forte de Kanto, só liberado pós-Liga.'},
+    {id:'spurmansion', from:'cinnabar', to:'mansion', nome:'Mansão Pokémon', desc:'Entrada da mansão abandonada, logo ao lado do Ginásio de Fogo.'},
+    {id:'spursafari', from:'fuchsia', to:'safarizone', nome:'Zona Safari', desc:'Portão de entrada da Zona Safari, ao lado de Fuchsia.'},
+    {id:'spuranne', from:'vermilion', to:'ssanne', nome:'S.S. Anne', desc:'Rampa de embarque do navio, logo no cais de Vermilion.'},
+    {id:'spurdiglett', from:'vermilion', to:'digletts', nome:'Caverna Diglett', desc:'Entrada do túnel cavado pelos Diglett, saindo de Vermilion.'}
+  ]
+};
+var KANTO_METODO_ICON = { grama:'🌿', agua:'💧', pesca:'🎣', cave:'🕳️', especial:'✨', safari:'🎋' };
+var KANTO_METODO_LABEL = { grama:'Grama selvagem', agua:'Nadando na água', pesca:'Pesca', cave:'Dentro da área', especial:'Encontro especial', safari:'Zona Safari' };
+function kantoLocsById(){
+  if(!KANTO_MAP._locsById){
+    KANTO_MAP._locsById = {};
+    KANTO_MAP.locs.forEach(function(l){ KANTO_MAP._locsById[l.id] = l; });
+  }
+  return KANTO_MAP._locsById;
+}
+function kantoOwnerById(ownerType, ownerId){
+  if(ownerType==='loc') return kantoLocsById()[ownerId] || null;
+  return KANTO_MAP.routes.filter(function(r){ return r.id===ownerId; })[0] || null;
+}
+function kantoAreaById(ownerType, ownerId, areaId){
+  var owner = kantoOwnerById(ownerType, ownerId);
+  if(!owner || !owner.areas) return null;
+  return owner.areas.filter(function(a){ return a.id===areaId; })[0] || null;
+}
+/* Sorteia 1 Espécie do elenco fixo da área, por peso -- mesmo
+   espírito de wildPoolForZona, só que a lista já vem pronta (fiel à
+   Rota/local) em vez de filtrada por nivelTipico. */
+function kantoRolarEncontro(area){
+  var total = area.encontros.reduce(function(s,e){ return s+(e.peso||1); }, 0);
+  var r = Math.random()*total;
+  for(var i=0;i<area.encontros.length;i++){
+    r -= (area.encontros[i].peso||1);
+    if(r<=0) return area.encontros[i];
+  }
+  return area.encontros[area.encontros.length-1];
+}
+/* zonaIdx só serve pro custo de Energia (custoEnergiaZona) e pro
+   aviso de luta discrepante -- calculado a partir do Nível médio da
+   área, nas mesmas faixas de 10 em 10 que ZONAS já usa (Zona 0 =
+   Nível 1-10, Zona 1 = 11-20 etc.), sem precisar de Zona de verdade. */
+function kantoZonaIdxDaArea(area){
+  var media = Math.round((area.nivelMin+area.nivelMax)/2);
+  return clampInt(Math.floor((media-1)/10), 0, ZONAS.length-1);
+}
+DT.gaKantoSelecionar = function(tipo, id){
+  if(!SESSION.isAdmin) return;
+  SESSION.kantoSelecionado = { tipo:tipo, id:id };
+  SESSION.kantoEscolhendoArea = null;
+  render();
+};
+DT.gaKantoEscolherArea = function(ownerType, ownerId, areaId){
+  if(!SESSION.isAdmin) return;
+  var area = kantoAreaById(ownerType, ownerId, areaId);
+  if(!area) return;
+  if(area.metodo==='pesca'){
+    if(Math.random() < (area.chanceFisgar||0.6)){
+      SESSION.notice = '🎣 Fisgou alguma coisa! Escolha quem vai lutar.';
+      SESSION.kantoEscolhendoArea = { ownerType:ownerType, ownerId:ownerId, areaId:areaId };
+    } else {
+      SESSION.notice = '🎣 Não fisgou nada dessa vez -- tente de novo.';
+      SESSION.kantoEscolhendoArea = null;
+    }
+    render();
+    return;
+  }
+  SESSION.kantoEscolhendoArea = { ownerType:ownerType, ownerId:ownerId, areaId:areaId };
+  render();
+};
+DT.gaKantoCancelarArea = function(){
+  SESSION.kantoEscolhendoArea = null;
+  render();
+};
+DT.gaKantoIniciarCaptura = function(leadId){
+  if(!SESSION.isAdmin || !SESSION.kantoEscolhendoArea) return;
+  var escolha = SESSION.kantoEscolhendoArea;
+  var area = kantoAreaById(escolha.ownerType, escolha.ownerId, escolha.areaId);
+  if(!area){ SESSION.kantoEscolhendoArea = null; render(); return; }
+  var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
+  if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar a luta.'; render(); return; }
+  var encontro = kantoRolarEncontro(area);
+  var level = area.nivelMin + Math.floor(Math.random()*(area.nivelMax-area.nivelMin+1));
+  var zonaIdx = kantoZonaIdxDaArea(area);
+  markSeen(encontro.num);
+  var forma = rollFormaDeEncontro(encontro.num);
+  SESSION.kantoEscolhendoArea = null;
+  startBattle('wild', { leadPartyId: leadId, wildNum: encontro.num, wildLevel: level, wildForma: forma, zonaIdx: zonaIdx }, false);
+};
+
+function kantoRoutesTouching(locId){
+  return KANTO_MAP.routes.filter(function(r){ return r.from===locId || r.to===locId; });
+}
+function kantoOwnerIcon(owner){
+  if(owner.kind==='gym') return GA_GYM_ICON_KANTO[owner.gymType] || '🎖️';
+  return owner.icon || '📍';
+}
+/* TEAM_CARD_TYPE_COLOR (mais abaixo no arquivo) só tem COR por Tipo,
+   nunca ícone -- mapa pequeno só com os 8 Tipos que os Ginásios de
+   Kanto realmente usam, pro emoji do pino/badge. A COR do badge
+   reusa TEAM_CARD_TYPE_COLOR de verdade (chamado de dentro de uma
+   função, sempre depois do arquivo inteiro já ter carregado -- ordem
+   de declaração de `var` no arquivo não importa aqui). */
+var GA_GYM_ICON_KANTO = { 'Pedra':'🪨','Água':'💧','Elétrico':'⚡','Grama':'🌿','Venenoso':'☠️','Psíquico':'🔮','Fogo':'🔥','Terra':'🌍' };
+function kantoAreaBotaoHTML(ownerType, ownerId, area){
+  var ativo = SESSION.kantoEscolhendoArea && SESSION.kantoEscolhendoArea.ownerType===ownerType && SESSION.kantoEscolhendoArea.ownerId===ownerId && SESSION.kantoEscolhendoArea.areaId===area.id;
+  var faixa = area.nivelMin===area.nivelMax ? ('Nv. '+area.nivelMin) : ('Nv. '+area.nivelMin+'-'+area.nivelMax);
+  var out = '<button type="button" class="ga-btn-sm'+(ativo?' ga-btn-primary':'')+'" onclick="DT.gaKantoEscolherArea(\''+ownerType+'\',\''+ownerId+'\',\''+area.id+'\')">'+
+    (KANTO_METODO_ICON[area.metodo]||'📍')+' '+esc2(area.nome)+' ('+faixa+')'+
+    (area.metodo==='pesca' ? ' 🎣' : '')+
+  '</button>';
+  return out;
+}
+function kantoAreasListaHTML(ownerType, ownerId, owner){
+  if(!owner.areas || !owner.areas.length){
+    return '<p class="ga-hint">Sem Pokémon selvagem aqui -- '+(owner.kind==='gym'||owner.kind==='start'?'é só cidade, ninguém encontra nada na calçada':'só treinadores por aqui')+'.</p>';
+  }
+  var out = '<div class="ga-kanto-areas">'+owner.areas.map(function(a){ return kantoAreaBotaoHTML(ownerType, ownerId, a); }).join('')+'</div>';
+  var esc = SESSION.kantoEscolhendoArea;
+  if(esc && esc.ownerType===ownerType && esc.ownerId===ownerId){
+    var lead = kantoAreaById(esc.ownerType, esc.ownerId, esc.areaId);
+    out += '<div class="ga-kanto-lider"><p class="ga-hint">Escolha quem vai liderar essa luta:</p><div class="ga-poke-grid">'+
+      STATE.party.map(function(p){
+        var sp = speciesByNum(p.num);
+        return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarCaptura(\''+p.id+'\')">Escolher</button></div>';
+      }).join('')+
+      '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button></div>';
+  }
+  return out;
+}
+function kantoInfoPainelHTML(){
+  if(!SESSION.kantoSelecionado){
+    return '<div class="ga-kanto-info-empty">🧭<p>Clique numa cidade, caverna OU numa rota no mapa pra ver os detalhes e capturar aqui.</p></div>';
+  }
+  var sel = SESSION.kantoSelecionado;
+  if(sel.tipo==='loc'){
+    var loc = kantoLocsById()[sel.id];
+    if(!loc) return '';
+    var badge = loc.kind==='gym' ? '<span class="ga-kanto-gymbadge" style="background:'+(TEAM_CARD_TYPE_COLOR[loc.gymType]||'#8fb3a2')+';">'+(GA_GYM_ICON_KANTO[loc.gymType]||'')+' Tipo '+esc2(loc.gymType)+'</span>' : '';
+    var touching = kantoRoutesTouching(loc.id);
+    var conecta = touching.length ? '<div class="ga-hint">Rotas conectadas: '+touching.map(function(r){ return '<button type="button" class="ga-linklike" onclick="DT.gaKantoSelecionar(\'route\',\''+r.id+'\')">'+(r.water?'🌊':'🛤️')+' '+esc2(r.nome)+'</button>'; }).join(', ')+'</div>' : '';
+    return '<div class="ga-kanto-info-head"><span class="ga-kanto-info-ic">'+kantoOwnerIcon(loc)+'</span><div><h3>'+esc2(loc.nome)+'</h3></div></div>'+badge+
+      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoAreasListaHTML('loc', loc.id, loc)+conecta;
+  }
+  var route = KANTO_MAP.routes.filter(function(r){ return r.id===sel.id; })[0];
+  if(!route) return '';
+  var byId = kantoLocsById();
+  var a = byId[route.from], b = byId[route.to];
+  var pontas = [a,b].filter(Boolean).map(function(l){ return '<button type="button" class="ga-linklike" onclick="DT.gaKantoSelecionar(\'loc\',\''+l.id+'\')">'+kantoOwnerIcon(l)+' '+esc2(l.nome)+'</button>'; }).join(' ↔ ');
+  return '<div class="ga-kanto-info-head"><span class="ga-kanto-info-ic">'+(route.water?'🌊':'🛤️')+'</span><div><h3>'+esc2(route.nome)+'</h3></div></div>'+
+    '<p class="ga-hint">'+esc2(route.desc)+'</p>'+kantoAreasListaHTML('route', route.id, route)+
+    '<div class="ga-hint">Liga: '+pontas+'</div>';
+}
+/* Mapa em grade -- mesma técnica do protótipo aprovado em Artifact
+   (tiles de terreno + pinos posicionados por px), só que gerado
+   direto como string HTML (padrão de todo o resto do site, nunca um
+   script solto novo). Cidades/masmorras = pino grande; rota = pino
+   pequeno, mesmo clicável. */
+function kantoMapaHTML(){
+  var CELL = 26, GAP = 2, STEP = CELL+GAP;
+  var byId = kantoLocsById();
+  var cells = {};
+  function key(c,r){ return c+','+r; }
+  for(var r=0;r<KANTO_MAP.rows;r++) for(var c=0;c<KANTO_MAP.cols;c++) cells[key(c,r)] = { terreno:'campo', alt:(c+r)%2===0 };
+  KANTO_MAP.locs.forEach(function(loc){
+    if(loc.kind==='water' || loc.island){
+      for(var dr=-1;dr<=1;dr++) for(var dc=-1;dc<=1;dc++){
+        var cc=loc.col+dc, rr=loc.row+dr;
+        if(cc<0||rr<0||cc>=KANTO_MAP.cols||rr>=KANTO_MAP.rows) continue;
+        var k=key(cc,rr);
+        if(cells[k] && cells[k].terreno==='campo') cells[k].terreno='agua';
+      }
+    }
+    if(loc.kind==='forest'){ var k2=key(loc.col,loc.row); if(cells[k2]) cells[k2].terreno='floresta'; }
+  });
+  function pathCells(p1,p2){
+    var out=[];
+    if(p1[1]===p2[1]){ var c0=Math.min(p1[0],p2[0]),c1=Math.max(p1[0],p2[0]); for(var c=c0;c<=c1;c++) out.push([c,p1[1]]); }
+    else if(p1[0]===p2[0]){ var r0=Math.min(p1[1],p2[1]),r1=Math.max(p1[1],p2[1]); for(var r=r0;r<=r1;r++) out.push([p1[0],r]); }
+    else {
+      var cc0=Math.min(p1[0],p2[0]),cc1=Math.max(p1[0],p2[0]); for(var cc=cc0;cc<=cc1;cc++) out.push([cc,p1[1]]);
+      var rr0=Math.min(p1[1],p2[1]),rr1=Math.max(p1[1],p2[1]); for(var rr=rr0;rr<=rr1;rr++) out.push([p2[0],rr]);
+    }
+    return out;
+  }
+  var pinCell = {}, usados = {};
+  KANTO_MAP.routes.forEach(function(route){
+    var a=byId[route.from], b=byId[route.to]; if(!a||!b) return;
+    var pts = pathCells([a.col,a.row],[b.col,b.row]);
+    pts.forEach(function(p){
+      var k=key(p[0],p[1]); if(!cells[k]) return;
+      if(cells[k].terreno==='campo'||cells[k].terreno==='floresta') cells[k].terreno = route.water?'agua-rota':'trilha';
+    });
+    var mid = pts[Math.floor(pts.length/2)];
+    var mk = key(mid[0],mid[1]);
+    if(!usados[mk]){ pinCell[route.id]=mid; usados[mk]=true; } else { pinCell[route.id]=pts[0]; }
+  });
+  var out = '<div class="ga-kanto-mapa" style="width:'+(KANTO_MAP.cols*STEP)+'px;height:'+(KANTO_MAP.rows*STEP)+'px;">';
+  for(var rr2=0; rr2<KANTO_MAP.rows; rr2++){
+    for(var cc2=0; cc2<KANTO_MAP.cols; cc2++){
+      var cd = cells[key(cc2,rr2)];
+      var cls = 'ga-kanto-tile '+cd.terreno+(cd.alt&&cd.terreno==='campo'?' alt':'');
+      out += '<div class="'+cls+'" style="left:'+(cc2*STEP)+'px;top:'+(rr2*STEP)+'px;width:'+CELL+'px;height:'+CELL+'px;"></div>';
+    }
+  }
+  KANTO_MAP.routes.forEach(function(route){
+    var mid = pinCell[route.id]; if(!mid) return;
+    var sel = SESSION.kantoSelecionado;
+    var ativo = sel && sel.tipo==='route' && sel.id===route.id;
+    var curto = route.nome.replace(/^Rota /,'');
+    if(curto.length>3) curto = (route.water?'🌊':'🛤️');
+    out += '<button type="button" class="ga-kanto-pin-rota'+(route.water?' agua':'')+(ativo?' ativo':'')+(route.areas&&route.areas.length?' tem-area':'')+'" style="left:'+((mid[0]+0.5)*STEP)+'px;top:'+((mid[1]+0.5)*STEP)+'px;" title="'+esc2(route.nome)+'" onclick="DT.gaKantoSelecionar(\'route\',\''+route.id+'\')">'+esc2(curto)+'</button>';
+  });
+  KANTO_MAP.locs.forEach(function(loc){
+    var sel = SESSION.kantoSelecionado;
+    var ativo = sel && sel.tipo==='loc' && sel.id===loc.id;
+    var classeTipo = loc.kind==='gym' ? 'gym' : (loc.kind==='route-junction' ? 'landmark' : loc.kind);
+    out += '<button type="button" class="ga-kanto-pin-local '+classeTipo+(ativo?' ativo':'')+(loc.areas&&loc.areas.length?' tem-area':'')+'" style="left:'+((loc.col+0.5)*STEP)+'px;top:'+((loc.row+0.5)*STEP)+'px;" title="'+esc2(loc.nome)+'" onclick="DT.gaKantoSelecionar(\'loc\',\''+loc.id+'\')">'+kantoOwnerIcon(loc)+'</button>';
+  });
+  out += '</div>';
+  return out;
+}
+function kantoScreenHTML(){
+  var gyms = KANTO_MAP.locs.filter(function(l){ return l.kind==='gym'; }).length;
+  var comArea = KANTO_MAP.locs.filter(function(l){ return l.areas&&l.areas.length; }).length + KANTO_MAP.routes.filter(function(r){ return r.areas&&r.areas.length; }).length;
+  return '<div class="ga-card"><h2>🗾 Kanto -- protótipo de captura por rota</h2>'+
+    '<p class="ga-hint">Só Admin vê essa aba. Cada cidade/rota/caverna do mapa tem seu PRÓPRIO elenco de Pokémon selvagem, igual os jogos originais -- clique num ponto pra ver quem aparece lá e testar a captura (usa o mesmo motor de luta de sempre). '+KANTO_MAP.locs.length+' locais, '+KANTO_MAP.routes.length+' rotas/atalhos, '+comArea+' com Pokémon selvagem, '+gyms+' Ginásios.</p>'+
+    '<div class="ga-kanto-stage">'+
+      '<div class="ga-kanto-mapawrap">'+kantoMapaHTML()+
+        '<div class="ga-kanto-legenda">'+
+          '<span><i class="campo"></i> Campo</span>'+
+          '<span><i class="trilha"></i> Rota</span>'+
+          '<span><i class="agua"></i> Água</span>'+
+          '<span><i class="floresta"></i> Floresta/Caverna</span>'+
+          '<span><i class="gymring"></i> Ginásio</span>'+
+          '<span><i class="areapin"></i> Tem Pokémon selvagem</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="ga-card ga-kanto-info">'+kantoInfoPainelHTML()+'</div>'+
+    '</div>'+
+  '</div>';
+}
+
 /* Cap. leva desta sessão: enquanto uma sequência automática (ver
    STATE.captureSequence mais abaixo) está rodando, NENHUMA luta nova
    pode começar por fora dela -- senão o tick da sequência (que roda
@@ -16485,6 +16898,7 @@ function navListHTML(){
   out += navGrupoBtnHTML('info');
   out += '<button class="'+(SESSION.screen==='debug'?'active':'')+'" onclick="DT.gaGoto(\'debug\')"><span class="ga-nav-ic">🛠️</span>Testes</button>';
   out += (SESSION.isAdmin ? '<button class="'+(SESSION.screen==='admin'?'active':'')+'" onclick="DT.gaAdminAbrirPainel()"><span class="ga-nav-ic">🛡️</span>Admin</button>' : '');
+  out += (SESSION.isAdmin ? '<button class="'+(SESSION.screen==='kanto'?'active':'')+'" onclick="DT.gaGoto(\'kanto\')"><span class="ga-nav-ic">🗾</span>Kanto</button>' : '');
   return out;
 }
 /* Popup central do grupo clicado -- mesmo `.ga-overlay`/`.ga-overlay-card`
@@ -16661,6 +17075,7 @@ function screenHTML(){
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
+    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
