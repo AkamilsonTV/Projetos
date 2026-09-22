@@ -8242,6 +8242,13 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
    DevTools, só evita que qualquer Treinador comum tropece no painel
    por acidente. */
 var ADMIN_DOC_IDS = ['marcus'];
+/* Cap. leva desta sessão ("coloca uma opção pra eu dar admin pra quem
+   eu quiser, jogador a jogador"): além do bootstrap fixo acima, uma
+   conta também é Admin se `isAdminGranted` estiver marcado no PRÓPRIO
+   documento dela (ver DT.gaAdminPromover/gaAdminRebaixar) -- função
+   pura só pra não duplicar essa conta (usada em attachSaveListener,
+   reavaliada a CADA snapshot, e testável isolada). */
+function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
 var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoMercadoAberto:false };
@@ -8607,6 +8614,17 @@ function attachSaveListener(docId){
     if(!doc.exists){ SESSION.error='Sua conta sumiu do banco de dados -- tente entrar de novo.'; DT.gaSair(); return; }
     var data = doc.data();
     if(data.banido){ SESSION.error='Esta conta foi banida.'; DT.gaSair(); return; }
+    /* Cap. leva desta sessão ("coloca uma opção pra eu dar admin pra
+       quem eu quiser, jogador a jogador"): `isAdminGranted` é um campo
+       NOVO no próprio documento da conta (mesmo padrão de `banido`),
+       ligado/desligado pelo Painel Admin (DT.gaAdminPromover/
+       gaAdminRebaixar) -- reavaliado a CADA snapshot (mesmo listener
+       ao vivo de sempre), então quem ganha Admin de outra aba vê o
+       menu Admin aparecer sozinho, sem precisar relogar (igual
+       `banido` já fazia pro caminho inverso). `ADMIN_DOC_IDS`
+       continua valendo por cima -- bootstrap fixo no código, pra
+       nunca ninguém ficar de fora do próprio Painel Admin por engano. */
+    SESSION.isAdmin = contaEhAdmin(docId, data);
     // Cap. leva desta sessão ("banco de dados mais responsivo" -- ver
     // comentário grande perto de `localStateVersion`): ignora eco da
     // PRÓPRIA escrita (ou mais velho) -- só aceita snapshot vindo de
@@ -13942,7 +13960,7 @@ DT.gaAdminAbrirPainel = function(){
     var contas = [];
     snap.forEach(function(doc){
       var d = doc.data();
-      contas.push({ docId: doc.id, nome: d.nameLower, banido: !!d.banido, state: d.state||{} });
+      contas.push({ docId: doc.id, nome: d.nameLower, banido: !!d.banido, isAdminGranted: !!d.isAdminGranted, state: d.state||{} });
     });
     contas.sort(function(a,b){ return a.docId<b.docId ? -1 : (a.docId>b.docId ? 1 : 0); });
     SESSION.adminContas = contas;
@@ -13965,6 +13983,28 @@ DT.gaAdminDesbanir = function(docId){
     logAction('admin', 'Desbaniu a conta "'+docId+'".'); mutate();
     DT.gaAdminAbrirPainel();
   }).catch(function(){ SESSION.error='Não consegui desbanir essa conta.'; render(); });
+};
+/* Cap. leva desta sessão ("coloca uma opção pra eu dar admin pra quem
+   eu quiser, jogador a jogador"): MESMO padrão de Banir/Desbanir --
+   `isAdminGranted` no próprio documento da conta (não em
+   ADMIN_DOC_IDS, que continua sendo só o bootstrap fixo no código).
+   `attachSaveListener`/onSnapshot reavalia `SESSION.isAdmin` a CADA
+   mudança nesse campo, então quem ganha Admin vê o menu aparecer
+   sozinho (mesmo se já estiver logado noutra aba), sem precisar
+   relogar. Contas de ADMIN_DOC_IDS não aparecem com o botão de
+   rebaixar (ver adminScreenHTML) -- tirar o campo delas não mudaria
+   nada mesmo, continuam Admin pelo bootstrap. */
+DT.gaAdminPromover = function(docId){
+  savesCol.doc(docId).update({isAdminGranted:true}).then(function(){
+    logAction('admin', 'Deu Admin pra conta "'+docId+'".'); mutate();
+    DT.gaAdminAbrirPainel();
+  }).catch(function(){ SESSION.error='Não consegui dar Admin pra essa conta.'; render(); });
+};
+DT.gaAdminRebaixar = function(docId){
+  savesCol.doc(docId).update({isAdminGranted:false}).then(function(){
+    logAction('admin', 'Tirou o Admin da conta "'+docId+'".'); mutate();
+    DT.gaAdminAbrirPainel();
+  }).catch(function(){ SESSION.error='Não consegui tirar o Admin dessa conta.'; render(); });
 };
 DT.gaAdminExcluir = function(docId){
   if(SESSION.adminConfirmExcluir!==docId){ SESSION.adminConfirmExcluir = docId; render(); return; }
@@ -19050,7 +19090,7 @@ function adminScreenHTML(){
   var out = diaOverrideAdminCardHTML();
   out += raidAdminCardHTML();
   out += '<div class="ga-card"><h2>🛡️ Painel Admin</h2>'+
-    '<p class="ga-hint">Acesso restrito — ver, banir/desbanir e excluir qualquer conta de Treinador. Trava só no cliente (mesmo modelo do resto do jogo), não é segurança de verdade.</p>';
+    '<p class="ga-hint">Acesso restrito — ver, dar/tirar Admin, banir/desbanir e excluir qualquer conta de Treinador. Trava só no cliente (mesmo modelo do resto do jogo), não é segurança de verdade.</p>';
   if(SESSION.adminLoading){ out += '<p>Carregando contas...</p></div>'; return out; }
   var contas = SESSION.adminContas || [];
   out += '<p class="ga-hint">'+contas.length+' conta(s) no total.</p>';
@@ -19058,12 +19098,17 @@ function adminScreenHTML(){
   out += contas.map(function(c){
     var s = c.state || {};
     var maiorNivel = (s.party||[]).reduce(function(m,p){ return Math.max(m, p.level||0); }, 0);
+    var adminFixo = ADMIN_DOC_IDS.indexOf(c.docId)!==-1;
     return '<div class="ga-admin-row'+(c.banido?' banido':'')+'">'+
       '<div class="ga-admin-info"><strong>'+esc2(s.trainerName||c.docId)+'</strong> ('+esc2(c.docId)+')'+
+        (adminFixo ? ' <span class="ga-kanto-gymbadge" title="Admin fixo no código -- não dá pra tirar por aqui">📌 Admin fixo</span>' : (c.isAdminGranted ? ' <span class="ga-kanto-gymbadge" title="Ganhou Admin pelo Painel">👑 Admin</span>' : ''))+
         '<div class="ga-hint">Maior Nível: '+maiorNivel+' · Insígnias: '+((s.badges||[]).length)+' · Energia: '+(s.energy||0)+' · 💰 '+(s.pokedolares||0)+(c.banido?' · 🚫 BANIDO':'')+'</div>'+
       '</div>'+
       '<div class="ga-btn-row">'+
         '<button class="ga-btn-sm" onclick="DT.gaAdminVerFicha(\''+c.docId+'\')">👁️ Ver Ficha + Log</button>'+
+        (adminFixo ? '' : (c.isAdminGranted
+          ? '<button class="ga-btn-sm danger" onclick="DT.gaAdminRebaixar(\''+c.docId+'\')">Tirar Admin</button>'
+          : '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaAdminPromover(\''+c.docId+'\')">👑 Dar Admin</button>'))+
         (c.banido
           ? '<button class="ga-btn-sm" onclick="DT.gaAdminDesbanir(\''+c.docId+'\')">Desbanir</button>'
           : '<button class="ga-btn-sm danger" onclick="DT.gaAdminBanir(\''+c.docId+'\')">Banir</button>')+
