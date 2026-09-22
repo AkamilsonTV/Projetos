@@ -8222,7 +8222,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null };
 
 function freshState(trainerName){
   return {
@@ -12321,7 +12321,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null };
   render();
 };
 
@@ -14346,97 +14346,151 @@ function iniciarLutaDeZona(leadId, zonaId, skipDiscrepancia){
 var KANTO_MAP = {
   cols:13, rows:12,
   locs:[
-    {id:'pallet', nome:'Vila Pallet', col:2,row:10, kind:'start', icon:'🏠', desc:'Onde a jornada começa: um vilarejo de poucas casas, com o laboratório do Professor logo na entrada.'},
-    {id:'viridian', nome:'Cidade Viridian', col:2,row:7, kind:'gym', gymType:'Terra', desc:'Última cidade antes da Liga -- o Ginásio mais escondido de Kanto, só abre depois de zerar o resto.'},
-    {id:'pewter', nome:'Cidade Pewter', col:2,row:1, kind:'gym', gymType:'Pedra', desc:'Cidade de pedra encostada no Monte Moon, primeira parada de quem sai de Pallet.'},
-    {id:'cerulean', nome:'Cidade Cerulean', col:8,row:1, kind:'gym', gymType:'Água', desc:'Cercada de riachos -- sede do Ginásio de Água, com Nugget Bridge e a Caverna Cerúlea por perto.'},
-    {id:'vermilion', nome:'Cidade Vermilion', col:7,row:8, kind:'gym', gymType:'Elétrico', desc:'Porto badalado, com o Ginásio Elétrico, a Caverna Diglett e um navio enorme atracado no cais.'},
+    {id:'pallet', nome:'Vila Pallet', col:2,row:10, kind:'start', icon:'🏠', desc:'Onde a jornada começa: um vilarejo de poucas casas, com o laboratório do Professor logo na entrada.',
+      areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:165,peso:3},{num:167,peso:3},{num:204,peso:3},{num:265,peso:1}]}]},
+    {id:'viridian', nome:'Cidade Viridian', col:2,row:7, kind:'gym', gymType:'Terra', desc:'Última cidade antes da Liga -- o Ginásio mais escondido de Kanto, só abre depois de zerar o resto.',
+      areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:165,peso:3},{num:167,peso:3},{num:204,peso:3},{num:265,peso:1}]}]},
+    {id:'pewter', nome:'Cidade Pewter', col:2,row:1, kind:'gym', gymType:'Pedra', desc:'Cidade de pedra encostada no Monte Moon, primeira parada de quem sai de Pallet.',
+      areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:204,peso:5},{num:265,peso:3},{num:396,peso:2}]}]},
+    {id:'cerulean', nome:'Cidade Cerulean', col:8,row:1, kind:'gym', gymType:'Água', desc:'Cercada de riachos -- sede do Ginásio de Água, com Nugget Bridge e a Caverna Cerúlea por perto.',
+      areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:20, encontros:[{num:163,peso:10},{num:204,peso:5},{num:415,peso:3}]}]},
+    {id:'vermilion', nome:'Cidade Vermilion', col:7,row:8, kind:'gym', gymType:'Elétrico', desc:'Porto badalado, com o Ginásio Elétrico, a Caverna Diglett e um navio enorme atracado no cais.',
+      areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:10, nivelMax:20, encontros:[{num:21,peso:5},{num:214,peso:5},{num:415,peso:5}]}]},
     {id:'lavender', nome:'Vila Lavender', col:11,row:4, kind:'start', icon:'👻', desc:'Vila pequena vivendo à sombra da Torre Pokémon, onde ninguém entra sem um bom motivo.'},
-    {id:'celadon', nome:'Cidade Celadon', col:4,row:4, kind:'gym', gymType:'Grama', desc:'A maior cidade de Kanto, com o shopping mais famoso da região e o Ginásio de Grama.'},
-    {id:'fuchsia', nome:'Cidade Fuchsia', col:4,row:10, kind:'gym', gymType:'Venenoso', desc:'Lar de uma zona de safári só dela e do Ginásio Venenoso.'},
+    {id:'celadon', nome:'Cidade Celadon', col:4,row:4, kind:'gym', gymType:'Grama', desc:'A maior cidade de Kanto, com o shopping mais famoso da região e o Ginásio de Grama.',
+      areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:10, nivelMax:20, encontros:[{num:214,peso:5},{num:415,peso:5}]}]},
+    {id:'fuchsia', nome:'Cidade Fuchsia', col:4,row:10, kind:'gym', gymType:'Venenoso', desc:'Lar de uma zona de safári só dela e do Ginásio Venenoso.',
+      areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:21, nivelMax:34, encontros:[{num:163,peso:10},{num:165,peso:5},{num:167,peso:5},{num:265,peso:3}]}]},
     {id:'saffron', nome:'Cidade Saffron', col:7,row:4, kind:'gym', gymType:'Psíquico', desc:'Bem no meio do mapa -- cidade grande, movimentada, com o Ginásio Psíquico no centro.'},
     {id:'cinnabar', nome:'Ilha Cinnabar', col:0,row:10, kind:'gym', gymType:'Fogo', island:true, desc:'Ilha vulcânica isolada, com o Ginásio de Fogo e uma mansão abandonada cheia de histórias.'},
     {id:'viridianforest', nome:'Floresta Viridian', col:2,row:4, kind:'forest', icon:'🌲', desc:'Floresta densa entre Viridian e Pewter, cheia de Pokémon do tipo Inseto.',
-      areas:[{id:'grama', nome:'Grama da Floresta', metodo:'grama', nivelMin:3, nivelMax:9, encontros:[{num:10,peso:3},{num:11,peso:2},{num:13,peso:3},{num:14,peso:2},{num:25,peso:1}]}]},
+      areas:[{id:'grama', nome:'Grama da Floresta', metodo:'grama', nivelMin:3, nivelMax:7, encontros:[{num:10,peso:25},{num:13,peso:25},{num:16,peso:15},{num:11,peso:8},{num:14,peso:8},{num:43,peso:8},{num:69,peso:8},{num:25,peso:5},{num:12,peso:1},{num:15,peso:1},{num:1,peso:1}]}]},
     {id:'mtmoon', nome:'Monte Moon', col:5,row:1, kind:'cave', icon:'⛰️', desc:'Caverna famosa por fósseis raros -- dizem que balança de vez em quando.',
-      areas:[{id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:7, nivelMax:11, encontros:[{num:41,peso:4},{num:46,peso:3},{num:74,peso:3},{num:35,peso:1}]}]},
+      areas:[{id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:5, nivelMax:10, encontros:[{num:41,peso:40},{num:74,peso:34},{num:46,peso:15},{num:35,peso:7},{num:95,peso:1},{num:113,peso:1}]}]},
     {id:'rocktunnel', nome:'Túnel da Rocha', col:10,row:3, kind:'cave', icon:'🕳️', desc:'Escuro de verdade lá dentro -- sem enxergar direito, é fácil se perder.',
-      areas:[{id:'cave', nome:'Dentro do túnel', metodo:'cave', nivelMin:13, nivelMax:17, encontros:[{num:41,peso:4},{num:74,peso:3},{num:66,peso:3}]}]},
+      areas:[{id:'cave', nome:'Dentro do túnel', metodo:'cave', nivelMin:18, nivelMax:23, encontros:[{num:42,peso:20},{num:75,peso:20},{num:41,peso:10},{num:66,peso:10},{num:74,peso:10},{num:95,peso:10},{num:111,peso:10},{num:104,peso:9},{num:115,peso:1},{num:4,peso:1}]}]},
     {id:'seafoam', nome:'Ilhas Seafoam', col:2,row:11, kind:'water', icon:'🌊', desc:'Duas ilhas geladas cercadas de água funda, ligando Fuchsia a Cinnabar.',
       areas:[
-        {id:'cave', nome:'Galerias de gelo', metodo:'cave', nivelMin:22, nivelMax:26, encontros:[{num:41,peso:3},{num:86,peso:3},{num:79,peso:2}]},
-        {id:'agua', nome:'Água ao redor', metodo:'agua', nivelMin:24, nivelMax:30, encontros:[{num:72,peso:3},{num:87,peso:1}]}
+        {id:'cave', nome:'Galerias de gelo', metodo:'cave', nivelMin:39, nivelMax:44, encontros:[{num:42,peso:20},{num:79,peso:20},{num:86,peso:20},{num:41,peso:16},{num:124,peso:14},{num:80,peso:5},{num:87,peso:5},{num:7,peso:1}]},
+        {id:'agua', nome:'Água ao redor', metodo:'agua', nivelMin:39, nivelMax:44, encontros:[{num:72,peso:30},{num:90,peso:30},{num:129,peso:30},{num:73,peso:9},{num:91,peso:1}]},
+        {id:'especial', nome:'Articuno adormecido', metodo:'especial', nivelMin:50, nivelMax:50, encontros:[{num:144,peso:1}]}
       ]},
     {id:'indigo', nome:'Planalto Índigo', col:0,row:1, kind:'league', icon:'🏆', desc:'A Liga Pokémon em pessoa -- só chega até aqui quem já tem as 8 Insígnias de Kanto. Só treinadores fortes, nenhum Pokémon selvagem.'},
     {id:'victoryroad', nome:'Estrada da Vitória', col:0,row:4, kind:'cave', icon:'🕳️', desc:'Última caverna antes da Liga -- cheia de treinadores fortes e quebra-cabeças de pedra.',
-      areas:[{id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:27, nivelMax:31, encontros:[{num:66,peso:3},{num:74,peso:3},{num:41,peso:2},{num:95,peso:2}]}]},
+      areas:[
+        {id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:42, nivelMax:47, encontros:[{num:42,peso:15},{num:67,peso:15},{num:75,peso:15},{num:41,peso:10},{num:66,peso:10},{num:74,peso:10},{num:95,peso:10},{num:111,peso:10},{num:112,peso:5},{num:106,peso:3},{num:107,peso:3},{num:113,peso:1}]},
+        {id:'especial', nome:'Moltres adormecido', metodo:'especial', nivelMin:50, nivelMax:50, encontros:[{num:146,peso:1}]}
+      ]},
     {id:'digletts', nome:'Caverna Diglett', col:9,row:8, kind:'cave', icon:'🕳️', desc:'Túnel cavado por uma legião de Diglett -- atalho famoso saindo de Vermilion.',
-      areas:[{id:'cave', nome:'Dentro do túnel', metodo:'cave', nivelMin:15, nivelMax:19, encontros:[{num:50,peso:5},{num:51,peso:1}]}]},
+      areas:[{id:'cave', nome:'Dentro do túnel', metodo:'cave', nivelMin:13, nivelMax:18, encontros:[{num:50,peso:85},{num:41,peso:10},{num:51,peso:5},{num:113,peso:1}]}]},
     {id:'ceruleancave', nome:'Caverna Cerúlea', col:6,row:0, kind:'cave', icon:'🕳️', desc:'Caverna isolada ao norte de Cerulean, só liberada depois que a Liga é vencida. Pokémon bem mais fortes que o normal.',
-      areas:[{id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:46, nivelMax:55, encontros:[{num:67,peso:3},{num:47,peso:2},{num:82,peso:2},{num:105,peso:2},{num:132,peso:1}]}]},
+      areas:[
+        {id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:51, nivelMax:56, encontros:[{num:42,peso:15},{num:55,peso:15},{num:75,peso:15},{num:41,peso:10},{num:74,peso:10},{num:108,peso:10},{num:111,peso:10},{num:54,peso:5},{num:112,peso:5},{num:132,peso:5},{num:143,peso:1}]},
+        {id:'agua', nome:'Água ao redor', metodo:'agua', nivelMin:51, nivelMax:56, encontros:[{num:60,peso:45},{num:129,peso:45},{num:61,peso:9},{num:62,peso:1}]},
+        {id:'especial', nome:'Mewtwo no fundo da caverna', metodo:'especial', nivelMin:70, nivelMax:70, encontros:[{num:150,peso:1}]}
+      ]},
     {id:'pontenugget', nome:'Ponte Pepita', col:8,row:0, kind:'route-junction', icon:'🌉', desc:'Ponte cheia de treinadores enfileirados, todos querendo batalhar. Só gente, nenhum Pokémon selvagem por aqui.'},
     {id:'billshouse', nome:'Casa do Bill', col:9,row:0, kind:'landmark', icon:'🏠', desc:'Casa isolada de um pesquisador excêntrico, no fim da estrada. Sem grama nenhuma por perto.'},
     {id:'mansion', nome:'Mansão Pokémon', col:0,row:11, kind:'landmark', icon:'🏚️', desc:'Prédio abandonado em Cinnabar, com diários antigos sobre experimentos estranhos.',
-      areas:[{id:'cave', nome:'Corredores da mansão', metodo:'cave', nivelMin:30, nivelMax:34, encontros:[{num:88,peso:4},{num:109,peso:4},{num:58,peso:1},{num:132,peso:1}]}]},
+      areas:[{id:'cave', nome:'Corredores da mansão', metodo:'cave', nivelMin:39, nivelMax:44, encontros:[{num:88,peso:20},{num:109,peso:20},{num:19,peso:10},{num:20,peso:10},{num:126,peso:12},{num:89,peso:7},{num:110,peso:7},{num:132,peso:5},{num:113,peso:1}]}]},
     {id:'powerplant', nome:'Usina Elétrica', col:11,row:3, kind:'landmark', icon:'⚡', desc:'Usina desativada tomada por Pokémon elétricos -- algo grande dorme lá dentro.',
-      areas:[{id:'cave', nome:'Dentro da usina', metodo:'cave', nivelMin:18, nivelMax:22, encontros:[{num:100,peso:3},{num:81,peso:3},{num:101,peso:1}]}]},
+      areas:[
+        {id:'cave', nome:'Dentro da usina', metodo:'cave', nivelMin:37, nivelMax:42, encontros:[{num:88,peso:13},{num:109,peso:12},{num:81,peso:12},{num:100,peso:11},{num:125,peso:14},{num:82,peso:5},{num:89,peso:5},{num:101,peso:5},{num:110,peso:5},{num:113,peso:1}]},
+        {id:'especial', nome:'Zapdos', metodo:'especial', nivelMin:50, nivelMax:50, encontros:[{num:145,peso:1}]}
+      ]},
     {id:'safarizone', nome:'Zona Safari', col:5,row:10, kind:'landmark', icon:'🎋', desc:'Área cercada com espécies raras -- aqui você captura sem lutar de verdade, só com bolinhas de isca.',
-      areas:[{id:'safari', nome:'Dentro da Zona Safari', metodo:'safari', nivelMin:22, nivelMax:28, encontros:[{num:29,peso:2},{num:32,peso:2},{num:46,peso:2},{num:48,peso:2},{num:102,peso:2},{num:111,peso:2},{num:113,peso:1},{num:123,peso:1},{num:127,peso:1},{num:128,peso:1},{num:115,peso:1}]}]},
+      areas:[
+        {id:'centro', nome:'Área Central', metodo:'safari', nivelMin:22, nivelMax:25, encontros:[{num:29,peso:4},{num:32,peso:4},{num:102,peso:3},{num:111,peso:3},{num:48,peso:3},{num:123,peso:1},{num:127,peso:1},{num:113,peso:1}]},
+        {id:'leste', nome:'Área Leste', metodo:'safari', nivelMin:25, nivelMax:28, encontros:[{num:84,peso:5},{num:115,peso:1},{num:123,peso:1},{num:127,peso:1}]},
+        {id:'norte', nome:'Área Norte', metodo:'safari', nivelMin:28, nivelMax:32, encontros:[{num:49,peso:4},{num:128,peso:1}]},
+        {id:'oeste', nome:'Área Oeste', metodo:'safari', nivelMin:25, nivelMax:28, encontros:[{num:128,peso:4},{num:115,peso:1}]}
+      ]},
     {id:'ssanne', nome:'S.S. Anne', col:7,row:9, kind:'landmark', icon:'🚢', desc:'Navio de cruzeiro enorme, atracado no cais de Vermilion, cheio de treinadores a bordo. Sem Pokémon selvagem, só gente pra batalhar.'},
     {id:'snorlaxspot', nome:'Trecho do Snorlax', col:5,row:8, kind:'route-junction', icon:'😴', desc:'Um Snorlax gigante dorme bem no meio do caminho -- ninguém passa sem acordar ele primeiro.',
       areas:[{id:'especial', nome:'Acordar o Snorlax', metodo:'especial', nivelMin:30, nivelMax:30, encontros:[{num:143,peso:1}]}]}
   ],
   routes:[
     {id:'r1', from:'pallet', to:'viridian', nome:'Rota 1', desc:'Estrada tranquila de grama baixa entre a vila inicial e a primeira cidade de verdade.',
-      areas:[{id:'grama', nome:'Grama baixa', metodo:'grama', nivelMin:2, nivelMax:4, encontros:[{num:19,peso:5},{num:16,peso:5}]}]},
+      areas:[{id:'grama', nome:'Grama baixa', metodo:'grama', nivelMin:3, nivelMax:4, encontros:[{num:16,peso:35},{num:19,peso:35},{num:43,peso:15},{num:69,peso:15}]}]},
     {id:'r2a', from:'viridian', to:'viridianforest', nome:'Rota 2', desc:'Começo da longa Rota 2, logo na entrada da Floresta Viridian.',
-      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:2, nivelMax:5, encontros:[{num:19,peso:3},{num:16,peso:3},{num:10,peso:2},{num:13,peso:2}]}]},
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:2, nivelMax:5, encontros:[{num:16,peso:30},{num:19,peso:30},{num:10,peso:15},{num:13,peso:15},{num:43,peso:5},{num:69,peso:5}]}]},
     {id:'r2b', from:'viridianforest', to:'pewter', nome:'Rota 2', desc:'Trecho final da Rota 2, saindo da floresta direto pra Pewter.',
-      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:3, nivelMax:5, encontros:[{num:10,peso:3},{num:13,peso:3},{num:16,peso:2}]}]},
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:3, nivelMax:5, encontros:[{num:10,peso:25},{num:13,peso:25},{num:16,peso:20},{num:19,peso:20},{num:43,peso:5},{num:69,peso:5}]}]},
     {id:'r3', from:'pewter', to:'mtmoon', nome:'Rota 3', desc:'Sobe a montanha até a boca do Monte Moon.',
-      areas:[{id:'grama', nome:'Grama da subida', metodo:'grama', nivelMin:6, nivelMax:8, encontros:[{num:19,peso:3},{num:21,peso:3},{num:32,peso:2},{num:29,peso:2},{num:56,peso:2}]}]},
+      areas:[{id:'grama', nome:'Grama da subida', metodo:'grama', nivelMin:3, nivelMax:8, encontros:[{num:19,peso:20},{num:21,peso:20},{num:23,peso:20},{num:27,peso:20},{num:56,peso:19},{num:4,peso:1}]}]},
     {id:'r4', from:'mtmoon', to:'cerulean', nome:'Rota 4', desc:'Desce do Monte Moon direto pro centro de Cerulean.',
-      areas:[{id:'grama', nome:'Grama da descida', metodo:'grama', nivelMin:6, nivelMax:8, encontros:[{num:19,peso:5},{num:21,peso:5}]}]},
+      areas:[
+        {id:'grama', nome:'Grama da descida', metodo:'grama', nivelMin:7, nivelMax:12, encontros:[{num:21,peso:20},{num:19,peso:20},{num:23,peso:15},{num:27,peso:15},{num:56,peso:15},{num:54,peso:15}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:7, nivelMax:12, encontros:[{num:72,peso:45},{num:129,peso:45},{num:73,peso:10}]},
+        {id:'pesca', nome:'Pescando na água', metodo:'pesca', nivelMin:5, nivelMax:35, chanceFisgar:0.65, encontros:[{num:129,peso:5},{num:98,peso:3},{num:116,peso:3},{num:54,peso:2},{num:79,peso:2},{num:130,peso:1}]}
+      ]},
     {id:'r5', from:'cerulean', to:'saffron', nome:'Rota 5', desc:'Passagem Subterrânea ligando Cerulean ao norte de Saffron.',
-      areas:[{id:'grama', nome:'Grama da passagem', metodo:'grama', nivelMin:8, nivelMax:12, encontros:[{num:39,peso:3},{num:52,peso:3},{num:69,peso:3}]}]},
+      areas:[{id:'grama', nome:'Grama da passagem', metodo:'grama', nivelMin:11, nivelMax:16, encontros:[{num:19,peso:20},{num:16,peso:20},{num:37,peso:15},{num:58,peso:15},{num:39,peso:15},{num:17,peso:8},{num:63,peso:5},{num:113,peso:1}]}]},
     {id:'r6', from:'saffron', to:'vermilion', nome:'Rota 6', desc:'Passagem Subterrânea descendo de Saffron até o porto de Vermilion.',
-      areas:[{id:'grama', nome:'Grama da passagem', metodo:'grama', nivelMin:10, nivelMax:13, encontros:[{num:52,peso:3},{num:58,peso:2},{num:69,peso:3}]}]},
+      areas:[
+        {id:'grama', nome:'Grama da passagem', metodo:'grama', nivelMin:11, nivelMax:16, encontros:[{num:19,peso:20},{num:16,peso:20},{num:37,peso:15},{num:58,peso:15},{num:39,peso:15},{num:17,peso:8},{num:63,peso:5},{num:113,peso:1}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:11, nivelMax:16, encontros:[{num:118,peso:45},{num:129,peso:45},{num:119,peso:10}]}
+      ]},
     {id:'r7', from:'saffron', to:'celadon', nome:'Rota 7', desc:'Passagem Subterrânea curta ligando Saffron a Celadon.',
-      areas:[{id:'grama', nome:'Grama da passagem', metodo:'grama', nivelMin:11, nivelMax:14, encontros:[{num:56,peso:3},{num:52,peso:3}]}]},
+      areas:[{id:'grama', nome:'Grama da passagem', metodo:'grama', nivelMin:22, nivelMax:27, encontros:[{num:37,peso:10},{num:58,peso:9},{num:39,peso:15},{num:16,peso:4},{num:17,peso:4},{num:19,peso:4},{num:20,peso:3},{num:63,peso:4},{num:38,peso:1},{num:59,peso:1},{num:64,peso:1},{num:137,peso:1}]}]},
     {id:'r8', from:'saffron', to:'lavender', nome:'Rota 8', desc:'Liga Saffron a Lavender, passando perto da sede da Equipe Rocket.',
-      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:12, nivelMax:15, encontros:[{num:19,peso:3},{num:23,peso:3},{num:27,peso:3}]}]},
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:22, nivelMax:27, encontros:[{num:37,peso:10},{num:58,peso:9},{num:39,peso:15},{num:16,peso:4},{num:17,peso:4},{num:19,peso:4},{num:20,peso:3},{num:63,peso:4},{num:38,peso:1},{num:59,peso:1},{num:64,peso:1},{num:113,peso:1}]}]},
     {id:'r9', from:'cerulean', to:'rocktunnel', nome:'Rota 9', desc:'Sai de Cerulean rumo à boca oeste do Túnel da Rocha.',
-      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:8, nivelMax:11, encontros:[{num:23,peso:3},{num:27,peso:3},{num:21,peso:2},{num:56,peso:2}]}]},
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:17, nivelMax:22, encontros:[{num:19,peso:10},{num:21,peso:10},{num:29,peso:8},{num:32,peso:7},{num:20,peso:5},{num:22,peso:5},{num:30,peso:3},{num:33,peso:2},{num:113,peso:1}]}]},
     {id:'r10', from:'rocktunnel', to:'lavender', nome:'Rota 10', desc:'Saída leste do Túnel da Rocha, descendo até Lavender.',
-      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:13, nivelMax:16, encontros:[{num:19,peso:3},{num:20,peso:2},{num:100,peso:2}]}]},
+      areas:[
+        {id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:18, nivelMax:23, encontros:[{num:19,peso:8},{num:21,peso:7},{num:29,peso:8},{num:32,peso:7},{num:20,peso:4},{num:22,peso:3},{num:98,peso:3},{num:30,peso:3},{num:33,peso:2},{num:113,peso:1}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:18, nivelMax:23, encontros:[{num:72,peso:45},{num:129,peso:45},{num:73,peso:5},{num:147,peso:4},{num:148,peso:1}]}
+      ]},
     {id:'r10b', from:'rocktunnel', to:'powerplant', nome:'Rota 10 (ramal)', desc:'Desvio curto da Rota 10 até a Usina Elétrica abandonada.'},
     {id:'r11', from:'vermilion', to:'snorlaxspot', nome:'Rota 11', desc:'Sai do porto de Vermilion rumo ao interior, cheia de treinadores marinheiros.',
-      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:11, nivelMax:14, encontros:[{num:23,peso:3},{num:96,peso:3},{num:21,peso:3}]}]},
+      areas:[
+        {id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:13, nivelMax:18, encontros:[{num:16,peso:25},{num:19,peso:25},{num:96,peso:25},{num:17,peso:10},{num:20,peso:10},{num:113,peso:1}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:13, nivelMax:18, encontros:[{num:72,peso:30},{num:116,peso:30},{num:129,peso:30},{num:73,peso:5},{num:117,peso:5}]}
+      ]},
     {id:'r1215', from:'snorlaxspot', to:'fuchsia', nome:'Rota 12-15', desc:'Trecho longo (fusão das Rotas 12 a 15) até Fuchsia, com direito a labirinto de grama.',
-      areas:[{id:'grama', nome:'Grama do labirinto', metodo:'grama', nivelMin:13, nivelMax:18, encontros:[{num:43,peso:3},{num:69,peso:3},{num:48,peso:3},{num:19,peso:2},{num:16,peso:2}]}]},
+      areas:[
+        {id:'grama', nome:'Grama do labirinto', metodo:'grama', nivelMin:31, nivelMax:38, encontros:[{num:16,peso:15},{num:17,peso:10},{num:43,peso:8},{num:44,peso:8},{num:69,peso:8},{num:70,peso:8},{num:98,peso:8},{num:83,peso:10},{num:48,peso:8},{num:128,peso:5},{num:99,peso:5},{num:123,peso:1},{num:127,peso:1},{num:113,peso:1}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:31, nivelMax:38, encontros:[{num:72,peso:30},{num:116,peso:30},{num:129,peso:30},{num:73,peso:5},{num:117,peso:5}]}
+      ]},
     {id:'r16', from:'celadon', to:'fuchsia', nome:'Rota 16', desc:'Estrada de ciclismo ligando Celadon ao sul do mapa.',
-      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:16, nivelMax:20, encontros:[{num:84,peso:4},{num:19,peso:3},{num:20,peso:2}]}]},
+      areas:[
+        {id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:31, nivelMax:36, encontros:[{num:84,peso:25},{num:16,peso:10},{num:17,peso:10},{num:19,peso:8},{num:20,peso:7},{num:85,peso:5},{num:113,peso:1}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:33, nivelMax:38, encontros:[{num:72,peso:30},{num:120,peso:30},{num:129,peso:30},{num:73,peso:9},{num:121,peso:1}]}
+      ]},
     {id:'r19', from:'fuchsia', to:'seafoam', nome:'Rota 19', water:true, desc:'Trecho de água nadando pra fora de Fuchsia, rumo às ilhas geladas.',
       areas:[
-        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:15, nivelMax:25, encontros:[{num:72,peso:5}]},
-        {id:'pesca', nome:'Pescando na água', metodo:'pesca', nivelMin:5, nivelMax:20, chanceFisgar:0.65, encontros:[{num:129,peso:5},{num:118,peso:2}]}
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:37, nivelMax:42, encontros:[{num:72,peso:30},{num:120,peso:30},{num:129,peso:30},{num:73,peso:9},{num:121,peso:1},{num:131,peso:1}]},
+        {id:'pesca', nome:'Pescando na água', metodo:'pesca', nivelMin:5, nivelMax:35, chanceFisgar:0.65, encontros:[{num:129,peso:5},{num:98,peso:3},{num:116,peso:3},{num:54,peso:2},{num:79,peso:2},{num:130,peso:1}]}
       ]},
     {id:'r20', from:'seafoam', to:'cinnabar', nome:'Rota 20', water:true, desc:'Água funda entre as Ilhas Seafoam e o vulcão de Cinnabar.',
       areas:[
-        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:20, nivelMax:30, encontros:[{num:72,peso:5}]},
-        {id:'pesca', nome:'Pescando na água', metodo:'pesca', nivelMin:10, nivelMax:25, chanceFisgar:0.65, encontros:[{num:129,peso:4},{num:118,peso:2},{num:119,peso:1}]}
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:37, nivelMax:44, encontros:[{num:72,peso:45},{num:129,peso:45},{num:73,peso:5},{num:130,peso:4},{num:131,peso:1}]},
+        {id:'pesca', nome:'Pescando na água', metodo:'pesca', nivelMin:5, nivelMax:35, chanceFisgar:0.65, encontros:[{num:129,peso:5},{num:98,peso:3},{num:116,peso:3},{num:54,peso:2},{num:79,peso:2},{num:130,peso:1}]}
       ]},
     {id:'r21', from:'cinnabar', to:'pallet', nome:'Rota 21', water:true, desc:'Volta de barco/nado de Cinnabar até Pallet, fechando o loop sul.',
       areas:[
-        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:15, nivelMax:25, encontros:[{num:72,peso:5}]},
+        {id:'grama', nome:'Faixa de grama da praia', metodo:'grama', nivelMin:37, nivelMax:42, encontros:[{num:17,peso:20},{num:20,peso:20},{num:114,peso:15},{num:44,peso:7},{num:70,peso:7},{num:16,peso:10},{num:19,peso:10},{num:43,peso:5},{num:69,peso:5},{num:45,peso:1},{num:71,peso:1},{num:113,peso:1}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:37, nivelMax:42, encontros:[{num:72,peso:30},{num:120,peso:30},{num:129,peso:30},{num:73,peso:9},{num:121,peso:1}]},
         {id:'pesca', nome:'Pescando na água', metodo:'pesca', nivelMin:5, nivelMax:20, chanceFisgar:0.65, encontros:[{num:129,peso:5},{num:118,peso:2}]}
       ]},
     {id:'r22', from:'viridian', to:'victoryroad', nome:'Rota 22', desc:'Saída oeste de Viridian, onde o rival costuma aparecer pra batalhar.',
-      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:3, nivelMax:5, encontros:[{num:19,peso:3},{num:32,peso:2},{num:29,peso:2},{num:56,peso:2}]}]},
-    {id:'r23', from:'victoryroad', to:'indigo', nome:'Rota 23', desc:'Trecho final antes do Planalto Índigo, cheio de treinadores fortes. Sem grama, só batalhas.'},
-    {id:'r24', from:'cerulean', to:'pontenugget', nome:'Rota 24', desc:'Sobe de Cerulean até a badalada Ponte Pepita, um corredor só de treinadores.'},
+      areas:[
+        {id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:3, nivelMax:4, encontros:[{num:19,peso:30},{num:21,peso:30},{num:29,peso:20},{num:32,peso:20}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:3, nivelMax:4, encontros:[{num:60,peso:45},{num:129,peso:45},{num:61,peso:10}]}
+      ]},
+    {id:'r23', from:'victoryroad', to:'indigo', nome:'Rota 23', desc:'Trecho final antes do Planalto Índigo, cheio de treinadores fortes, com grama antes da subida.',
+      areas:[
+        {id:'grama', nome:'Grama antes da Liga', metodo:'grama', nivelMin:41, nivelMax:46, encontros:[{num:30,peso:10},{num:33,peso:9},{num:22,peso:15},{num:102,peso:14},{num:21,peso:5},{num:29,peso:3},{num:32,peso:2},{num:31,peso:1},{num:34,peso:1},{num:103,peso:1},{num:113,peso:1}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:41, nivelMax:46, encontros:[{num:60,peso:45},{num:129,peso:45},{num:61,peso:10}]}
+      ]},
+    {id:'r24', from:'cerulean', to:'pontenugget', nome:'Rota 24', desc:'Sobe de Cerulean até a badalada Ponte Pepita, com grama antes do corredor de treinadores.',
+      areas:[
+        {id:'grama', nome:'Grama antes da ponte', metodo:'grama', nivelMin:7, nivelMax:12, encontros:[{num:16,peso:15},{num:48,peso:15},{num:43,peso:10},{num:52,peso:10},{num:54,peso:10},{num:69,peso:10},{num:7,peso:1}]},
+        {id:'agua', nome:'Nadando na água', metodo:'agua', nivelMin:7, nivelMax:12, encontros:[{num:72,peso:45},{num:129,peso:45},{num:73,peso:10}]}
+      ]},
     {id:'r25', from:'pontenugget', to:'billshouse', nome:'Rota 25', desc:'Trecho curto da Ponte Pepita até a casa isolada do Bill.',
-      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:12, nivelMax:16, encontros:[{num:43,peso:3},{num:69,peso:3},{num:63,peso:2},{num:48,peso:2}]}]},
+      areas:[{id:'grama', nome:'Grama da estrada', metodo:'grama', nivelMin:9, nivelMax:14, encontros:[{num:16,peso:15},{num:48,peso:15},{num:43,peso:10},{num:52,peso:10},{num:54,peso:10},{num:69,peso:10},{num:7,peso:1}]}]},
     {id:'spurcave', from:'cerulean', to:'ceruleancave', nome:'Caverna Cerúlea', desc:'Caminho até a caverna mais forte de Kanto, só liberado pós-Liga.'},
     {id:'spurmansion', from:'cinnabar', to:'mansion', nome:'Mansão Pokémon', desc:'Entrada da mansão abandonada, logo ao lado do Ginásio de Fogo.'},
     {id:'spursafari', from:'fuchsia', to:'safarizone', nome:'Zona Safari', desc:'Portão de entrada da Zona Safari, ao lado de Fuchsia.'},
@@ -14444,8 +14498,29 @@ var KANTO_MAP = {
     {id:'spurdiglett', from:'vermilion', to:'digletts', nome:'Caverna Diglett', desc:'Entrada do túnel cavado pelos Diglett, saindo de Vermilion.'}
   ]
 };
-var KANTO_METODO_ICON = { grama:'🌿', agua:'💧', pesca:'🎣', cave:'🕳️', especial:'✨', safari:'🎋' };
-var KANTO_METODO_LABEL = { grama:'Grama selvagem', agua:'Nadando na água', pesca:'Pesca', cave:'Dentro da área', especial:'Encontro especial', safari:'Zona Safari' };
+var KANTO_METODO_ICON = { grama:'🌿', agua:'💧', pesca:'🎣', cave:'🕳️', especial:'✨', safari:'🎋', headbutt:'🌳' };
+var KANTO_METODO_LABEL = { grama:'Grama selvagem', agua:'Nadando na água', pesca:'Pesca', cave:'Dentro da área', especial:'Encontro especial', safari:'Zona Safari', headbutt:'Cutucar árvores (Headbutt)' };
+/* Cap. leva desta sessão: "Pode colocar as lutas com lider de ginásio
+   também. Originais" -- os 8 Líderes DE VERDADE de Kanto (roster
+   clássico FRLG), chaveados pelo id do local do Ginásio no
+   KANTO_MAP. Estrutura separada do GYM_LEADERS fictício (Mestre
+   Enxame etc. -- esses continuam existindo à parte); reaproveita
+   startBattle('elite', ...) igual um Treinador de Elite comum, que
+   NÃO concede Insígnia nenhuma (só o fluxo antigo kind:'trainer' dá). */
+var KANTO_GYM_LEADERS = {
+  pewter: { id:'brock', nome:'Brock', tipo:'Pedra', roster:[{num:74,level:12},{num:95,level:14}] },
+  cerulean: { id:'misty', nome:'Misty', tipo:'Água', roster:[{num:120,level:18},{num:121,level:21}] },
+  vermilion: { id:'ltsurge', nome:'Tenente Surge', tipo:'Elétrico', roster:[{num:100,level:21},{num:25,level:18},{num:26,level:24}] },
+  celadon: { id:'erika', nome:'Erika', tipo:'Grama', roster:[{num:71,level:29},{num:114,level:24},{num:45,level:29}] },
+  fuchsia: { id:'koga', nome:'Koga', tipo:'Venenoso', roster:[{num:109,level:37},{num:89,level:39},{num:109,level:37},{num:110,level:43}] },
+  saffron: { id:'sabrina', nome:'Sabrina', tipo:'Psíquico', roster:[{num:64,level:38},{num:122,level:37},{num:49,level:38},{num:65,level:43}] },
+  cinnabar: { id:'blaine', nome:'Blaine', tipo:'Fogo', roster:[{num:58,level:42},{num:77,level:40},{num:78,level:42},{num:59,level:47}] },
+  viridian: { id:'giovanni', nome:'Giovanni', tipo:'Terra', roster:[{num:111,level:45},{num:51,level:42},{num:31,level:44},{num:34,level:45},{num:112,level:50}] }
+};
+function kantoGymZonaIdx(leader){
+  var media = Math.round(leader.roster.reduce(function(s,m){ return s+m.level; },0)/leader.roster.length);
+  return clampInt(Math.floor((media-1)/10), 0, ZONAS.length-1);
+}
 function kantoLocsById(){
   if(!KANTO_MAP._locsById){
     KANTO_MAP._locsById = {};
@@ -14525,6 +14600,26 @@ DT.gaKantoIniciarCaptura = function(leadId){
   SESSION.kantoEscolhendoArea = null;
   startBattle('wild', { leadPartyId: leadId, wildNum: encontro.num, wildLevel: level, wildForma: forma, zonaIdx: zonaIdx }, false);
 };
+DT.gaKantoDesafiarGinasio = function(locId){
+  if(!SESSION.isAdmin) return;
+  if(!KANTO_GYM_LEADERS[locId]) return;
+  SESSION.kantoEscolhendoGinasio = locId;
+  render();
+};
+DT.gaKantoCancelarGinasio = function(){
+  SESSION.kantoEscolhendoGinasio = null;
+  render();
+};
+DT.gaKantoIniciarGinasio = function(leadId){
+  if(!SESSION.isAdmin || !SESSION.kantoEscolhendoGinasio) return;
+  var leader = KANTO_GYM_LEADERS[SESSION.kantoEscolhendoGinasio];
+  if(!leader){ SESSION.kantoEscolhendoGinasio = null; render(); return; }
+  var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
+  if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar a luta.'; render(); return; }
+  var zonaIdx = kantoGymZonaIdx(leader);
+  SESSION.kantoEscolhendoGinasio = null;
+  startBattle('elite', { leadPartyId: leadId, eliteNome: leader.nome+' ('+leader.tipo+')', eliteTeam: leader.roster, zonaIdx: zonaIdx }, false);
+};
 
 function kantoRoutesTouching(locId){
   return KANTO_MAP.routes.filter(function(r){ return r.from===locId || r.to===locId; });
@@ -14566,6 +14661,23 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
   }
   return out;
 }
+function kantoGinasioBlocoHTML(loc){
+  var leader = KANTO_GYM_LEADERS[loc.id];
+  if(!leader) return '';
+  var rosterTxt = leader.roster.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
+  var out = '<div class="ga-kanto-lider">'+
+    '<p class="ga-hint">🎖️ Líder de Ginásio original: <b>'+esc2(leader.nome)+'</b> ('+esc2(leader.tipo)+') -- '+esc2(rosterTxt)+'. Não concede Insígnia, só treino (usa o mesmo motor de Treinador de Elite).</p>'+
+    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoDesafiarGinasio(\''+loc.id+'\')">⚔️ Desafiar '+esc2(leader.nome)+'</button>';
+  if(SESSION.kantoEscolhendoGinasio===loc.id){
+    out += '<div class="ga-poke-grid" style="margin-top:8px;">'+
+      STATE.party.map(function(p){
+        var sp = speciesByNum(p.num);
+        return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarGinasio(\''+p.id+'\')">Escolher</button></div>';
+      }).join('')+
+      '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarGinasio()">✕ Cancelar</button>';
+  }
+  return out+'</div>';
+}
 function kantoInfoPainelHTML(){
   if(!SESSION.kantoSelecionado){
     return '<div class="ga-kanto-info-empty">🧭<p>Clique numa cidade, caverna OU numa rota no mapa pra ver os detalhes e capturar aqui.</p></div>';
@@ -14578,7 +14690,7 @@ function kantoInfoPainelHTML(){
     var touching = kantoRoutesTouching(loc.id);
     var conecta = touching.length ? '<div class="ga-hint">Rotas conectadas: '+touching.map(function(r){ return '<button type="button" class="ga-linklike" onclick="DT.gaKantoSelecionar(\'route\',\''+r.id+'\')">'+(r.water?'🌊':'🛤️')+' '+esc2(r.nome)+'</button>'; }).join(', ')+'</div>' : '';
     return '<div class="ga-kanto-info-head"><span class="ga-kanto-info-ic">'+kantoOwnerIcon(loc)+'</span><div><h3>'+esc2(loc.nome)+'</h3></div></div>'+badge+
-      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoAreasListaHTML('loc', loc.id, loc)+conecta;
+      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoGinasioBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+conecta;
   }
   var route = KANTO_MAP.routes.filter(function(r){ return r.id===sel.id; })[0];
   if(!route) return '';
@@ -14595,7 +14707,7 @@ function kantoInfoPainelHTML(){
    script solto novo). Cidades/masmorras = pino grande; rota = pino
    pequeno, mesmo clicável. */
 function kantoMapaHTML(){
-  var CELL = 26, GAP = 2, STEP = CELL+GAP;
+  var CELL = 34, GAP = 4, STEP = CELL+GAP;
   var byId = kantoLocsById();
   var cells = {};
   function key(c,r){ return c+','+r; }
