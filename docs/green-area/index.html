@@ -8244,7 +8244,7 @@ var LEGACY_LOCAL_KEY = 'green_area_save_v1'; // save do protótipo antigo (só l
 var ADMIN_DOC_IDS = ['marcus'];
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoMercadoAberto:false };
 
 function freshState(trainerName){
   return {
@@ -12343,7 +12343,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoMercadoAberto:false };
   render();
 };
 
@@ -14371,20 +14371,29 @@ var KANTO_MAP = {
     {id:'pallet', nome:'Vila Pallet', col:2,row:10, kind:'start', icon:'🏠', desc:'Onde a jornada começa: um vilarejo de poucas casas, com o laboratório do Professor logo na entrada.',
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:165,peso:3},{num:167,peso:3},{num:204,peso:3},{num:265,peso:1}]}]},
     {id:'viridian', nome:'Cidade Viridian', col:2,row:7, kind:'gym', gymType:'Terra', desc:'Última cidade antes da Liga -- o Ginásio mais escondido de Kanto, só abre depois de zerar o resto.',
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-lua','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:165,peso:3},{num:167,peso:3},{num:204,peso:3},{num:265,peso:1}]}]},
     {id:'pewter', nome:'Cidade Pewter', col:2,row:1, kind:'gym', gymType:'Pedra', desc:'Cidade de pedra encostada no Monte Moon, primeira parada de quem sai de Pallet.',
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-lua','capacete-rochoso','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:204,peso:5},{num:265,peso:3},{num:396,peso:2}]}]},
     {id:'cerulean', nome:'Cidade Cerulean', col:8,row:1, kind:'gym', gymType:'Água', desc:'Cercada de riachos -- sede do Ginásio de Água, com Nugget Bridge e a Caverna Cerúlea por perto.',
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-agua','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:20, encontros:[{num:163,peso:10},{num:204,peso:5},{num:415,peso:3}]}]},
     {id:'vermilion', nome:'Cidade Vermilion', col:7,row:8, kind:'gym', gymType:'Elétrico', desc:'Porto badalado, com o Ginásio Elétrico, a Caverna Diglett e um navio enorme atracado no cais.',
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-trovao','garra-rapida','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:10, nivelMax:20, encontros:[{num:21,peso:5},{num:214,peso:5},{num:415,peso:5}]}]},
-    {id:'lavender', nome:'Vila Lavender', col:11,row:4, kind:'start', icon:'👻', desc:'Vila pequena vivendo à sombra da Torre Pokémon, onde ninguém entra sem um bom motivo.'},
+    {id:'lavender', nome:'Vila Lavender', col:11,row:4, kind:'start', icon:'👻', desc:'Vila pequena vivendo à sombra da Torre Pokémon, onde ninguém entra sem um bom motivo.',
+      mercado:['pokebola','greatball','pocao','superpocao','baga-lum']},
     {id:'celadon', nome:'Cidade Celadon', col:4,row:4, kind:'gym', gymType:'Grama', desc:'A maior cidade de Kanto, com o shopping mais famoso da região e o Ginásio de Grama.',
+      mercado:'todos',
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:10, nivelMax:20, encontros:[{num:214,peso:5},{num:415,peso:5}]}]},
     {id:'fuchsia', nome:'Cidade Fuchsia', col:4,row:10, kind:'gym', gymType:'Venenoso', desc:'Lar de uma zona de safári só dela e do Ginásio Venenoso.',
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','lama-negra','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:21, nivelMax:34, encontros:[{num:163,peso:10},{num:165,peso:5},{num:167,peso:5},{num:265,peso:3}]}]},
-    {id:'saffron', nome:'Cidade Saffron', col:7,row:4, kind:'gym', gymType:'Psíquico', desc:'Bem no meio do mapa -- cidade grande, movimentada, com o Ginásio Psíquico no centro.'},
-    {id:'cinnabar', nome:'Ilha Cinnabar', col:0,row:10, kind:'gym', gymType:'Fogo', island:true, desc:'Ilha vulcânica isolada, com o Ginásio de Fogo e uma mansão abandonada cheia de histórias.'},
+    {id:'saffron', nome:'Cidade Saffron', col:7,row:4, kind:'gym', gymType:'Psíquico', desc:'Bem no meio do mapa -- cidade grande, movimentada, com o Ginásio Psíquico no centro.',
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-alvorada','pedra-crepusculo','oculos-sabios']},
+    {id:'cinnabar', nome:'Ilha Cinnabar', col:0,row:10, kind:'gym', gymType:'Fogo', island:true, desc:'Ilha vulcânica isolada, com o Ginásio de Fogo e uma mansão abandonada cheia de histórias.',
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-fogo','baga-oran']},
     {id:'viridianforest', nome:'Floresta Viridian', col:2,row:4, kind:'forest', icon:'🌲', desc:'Floresta densa entre Viridian e Pewter, cheia de Pokémon do tipo Inseto.',
       areas:[{id:'grama', nome:'Grama da Floresta', metodo:'grama', nivelMin:3, nivelMax:7, encontros:[{num:10,peso:25},{num:13,peso:25},{num:16,peso:15},{num:11,peso:8},{num:14,peso:8},{num:43,peso:8},{num:69,peso:8},{num:25,peso:5},{num:12,peso:1},{num:15,peso:1},{num:1,peso:1}]}]},
     {id:'mtmoon', nome:'Monte Moon', col:5,row:1, kind:'cave', icon:'⛰️', desc:'Caverna famosa por fósseis raros -- dizem que balança de vez em quando.',
@@ -14584,15 +14593,30 @@ DT.gaKantoSelecionar = function(tipo, id){
   SESSION.kantoSelecionado = { tipo:tipo, id:id };
   SESSION.kantoEscolhendoArea = null;
   SESSION.kantoEscolhendoGinasio = null;
+  SESSION.kantoMercadoAberto = false;
   render();
 };
-/* Fecha o popup de local/rota (clique fora ou ✕) -- limpa os 3 campos
-   de uma vez pra nunca deixar um seletor de área/líder de Ginásio
-   "fantasma" aberto na próxima vez que o popup reabrir. */
+/* Fecha o popup de local/rota (clique fora ou ✕) -- limpa os 4 campos
+   de uma vez pra nunca deixar um seletor de área/líder de Ginásio/
+   Mercado "fantasma" aberto na próxima vez que o popup reabrir. */
 DT.gaKantoFecharPopup = function(){
   SESSION.kantoSelecionado = null;
   SESSION.kantoEscolhendoArea = null;
   SESSION.kantoEscolhendoGinasio = null;
+  SESSION.kantoMercadoAberto = false;
+  render();
+};
+/* Cap. leva desta sessão ("Cada lugar onde possa ter mercado no mapa,
+   quero que você coloque um lá... No Shopping de Celadon é pra ter
+   todos"): o Mercado de uma cidade reusa 100% o motor de compra da
+   Loja de verdade -- `DT.gaComprarItem`/`lojaCardHTML` já aceitam
+   QUALQUER item (Pokébola/poção/pedra/segurado/néctar) pelo `key`,
+   então abrir/fechar aqui é só um toggle de visibilidade (mesmo
+   padrão de `kantoEscolhendoGinasio`), sem duplicar nada da lógica de
+   compra/preço/Pokédólar. */
+DT.gaKantoToggleMercado = function(){
+  if(!SESSION.isAdmin) return;
+  SESSION.kantoMercadoAberto = !SESSION.kantoMercadoAberto;
   render();
 };
 DT.gaKantoEscolherArea = function(ownerType, ownerId, areaId){
@@ -14710,6 +14734,29 @@ function kantoGinasioBlocoHTML(loc){
   }
   return out+'</div>';
 }
+/* Cap. leva desta sessão ("Cada lugar onde possa ter mercado no mapa,
+   quero que você coloque um lá... No Shopping de Celadon é pra ter
+   todos"): `loc.mercado` é uma lista de `key` (bate com QUALQUER
+   catálogo que `itemByKeyQualquer` já resolve -- Pokébola/Poção/
+   Pedra/Item Exclusivo/Segurado/Néctar) OU a string `'todos'` (só
+   Celadon, reusa `raidRecompensaCatalogoCompleto()` -- o MESMO
+   catálogo completo que a lista de recompensa de Raid já usa, "todos
+   os itens do jogo" com o mesmo sentido de sempre). Comprar aqui é o
+   MESMO `lojaCardHTML`/`DT.gaComprarItem` da Loja de verdade -- sem
+   duplicar preço/estoque/Pokédólar em lugar nenhum, só reaproveitado. */
+function kantoMercadoItensDoLocal(loc){
+  if(loc.mercado==='todos') return raidRecompensaCatalogoCompleto();
+  return (loc.mercado||[]).map(itemByKeyQualquer).filter(Boolean);
+}
+function kantoMercadoBlocoHTML(loc){
+  if(!loc.mercado) return '';
+  var itens = kantoMercadoItensDoLocal(loc);
+  var titulo = loc.mercado==='todos' ? '🏬 Central de Compras Celadon (tudo do jogo)' : '🏪 Mercado';
+  var out = '<div class="ga-kanto-lider">'+
+    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoToggleMercado()">'+titulo+' -- '+itens.length+' iten'+(itens.length===1?'':'s')+(SESSION.kantoMercadoAberto?' ▲':' ▼')+'</button>';
+  if(SESSION.kantoMercadoAberto) out += '<div class="ga-loja-grid" style="margin-top:8px;">'+itens.map(lojaCardHTML).join('')+'</div>';
+  return out+'</div>';
+}
 function kantoInfoPainelHTML(){
   if(!SESSION.kantoSelecionado){
     return '<div class="ga-kanto-info-empty">🧭<p>Clique numa cidade, caverna OU numa rota no mapa pra ver os detalhes e capturar aqui.</p></div>';
@@ -14722,7 +14769,7 @@ function kantoInfoPainelHTML(){
     var touching = kantoRoutesTouching(loc.id);
     var conecta = touching.length ? '<div class="ga-hint">Rotas conectadas: '+touching.map(function(r){ return '<button type="button" class="ga-linklike" onclick="DT.gaKantoSelecionar(\'route\',\''+r.id+'\')">'+(r.water?'🌊':'🛤️')+' '+esc2(r.nome)+'</button>'; }).join(', ')+'</div>' : '';
     return '<div class="ga-kanto-info-head"><span class="ga-kanto-info-ic">'+kantoOwnerIcon(loc)+'</span><div><h3>'+esc2(loc.nome)+'</h3></div></div>'+badge+
-      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoGinasioBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+conecta;
+      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoGinasioBlocoHTML(loc)+kantoMercadoBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+conecta;
   }
   var route = KANTO_MAP.routes.filter(function(r){ return r.id===sel.id; })[0];
   if(!route) return '';
