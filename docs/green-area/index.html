@@ -6060,8 +6060,9 @@ var EVOLUTION_PARTY_SPECIES_REQUIRED = { 226: 223 };
    PokeAPI (`EVOLUTION_MIN_HAPPINESS_OVERRIDE`, indexado pela Espécie
    destino). `EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED` cobre o outro lado
    da condição oficial que SOBREVIVE (golpe de Tipo Fada conhecido) --
-   `p.moves[*].tipo` já vem preenchido, sem precisar consultar
-   MOVES_DEX de novo. */
+   checado via `moveTipoAtual` (ver comentário lá -- nunca confia
+   direto em `p.moves[*].tipo`, que pode estar desatualizado numa
+   Equipe salva antes de uma mudança de nome de Tipo). */
 var EVOLUTION_MIN_HAPPINESS_OVERRIDE = { 700: 204 };
 var EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED = { 700: 'Fairy' }; // mesma grafia de MOVES_DEX[*].tipo (ex. Moonblast: tipo:'Fairy')
 /* Cap. leva desta sessão ("Pode mexer na questão do annihilape",
@@ -7903,6 +7904,21 @@ function findMoveByName(name){
     MOVES_DEX.forEach(function(m){ findMoveByName._idx[m.name.toLowerCase()] = m; });
   }
   return findMoveByName._idx[(name||'').toLowerCase()] || null;
+}
+/* Cap. leva desta sessão (Tipos em inglês padrão): um Movimento
+   guardado na Equipe/Caixa de um jogador é uma CÓPIA de MOVES_DEX
+   feita no momento em que foi aprendido (ver pickMovesForLevel) --
+   se o `tipo` mudar de valor depois (como agora, Português->Inglês),
+   essa cópia salva fica desatualizada pra sempre (nunca escreve de
+   volta sozinha). `moveTipoAtual` sempre confere o Nome contra o
+   MOVES_DEX ATUAL primeiro (nunca confia no campo `tipo` salvo) --
+   usado em todo lugar que decide COR/comparação por Tipo de um
+   Movimento vindo de `poke.moves` (nunca precisa disso pra Movimento
+   fresco de `pickMovesForLevel`, que já nasce com o Tipo current). */
+function moveTipoAtual(m){
+  if(!m) return null;
+  var fresco = findMoveByName(m.name);
+  return (fresco && fresco.tipo) || m.tipo;
 }
 
 /* Monta o kit de até 4 Movimentos de um Pokémon nesse Nível -- pega
@@ -10209,7 +10225,7 @@ function eligibleEvolution(p){
     var felicidadeOverride = EVOLUTION_MIN_HAPPINESS_OVERRIDE[e.to];
     if(felicidadeOverride!=null){
       var tipoFadaNecessario = EVOLUTION_KNOWN_MOVE_TYPE_REQUIRED[e.to];
-      if(tipoFadaNecessario && !(p.moves||[]).some(function(m){ return m.tipo===tipoFadaNecessario; })) return false;
+      if(tipoFadaNecessario && !(p.moves||[]).some(function(m){ return moveTipoAtual(m)===tipoFadaNecessario; })) return false;
       return (p.felicidade||0) >= felicidadeOverride;
     }
     /* Cap. leva desta sessão -- Dia/Noite de verdade (ver
@@ -11587,6 +11603,17 @@ function resolveGaTurn(user, target, preSelectedMove){
     var pool = (user.moves && user.moves.length) ? user.moves : [];
     move = preSelectedMove || pickMoveByRole(pool, user.papelCombate, user.pp) || FALLBACK_MOVE;
   }
+  /* Cap. leva desta sessão (Tipos em inglês padrão): `move` pode vir
+     de `user.moves` (cópia salva na Equipe/Caixa, possivelmente com
+     `tipo` desatualizado -- ver moveTipoAtual) -- normaliza AQUI, no
+     único ponto de entrada do Tipo pro turno inteiro, sem mutar o
+     objeto original (cópia rasa) pra nunca alterar o que está
+     gravado na Equipe/Firestore. Todo o resto da função (STAB/
+     efetividade/Clima/Terreno/imunidade por Tipo de Habilidade ou
+     Item/Scrappy/Justified/Rattled) lê esse MESMO `move`, corrigido
+     de uma vez só. */
+  var tipoFresco = moveTipoAtual(move);
+  if(tipoFresco && tipoFresco!==move.tipo) move = Object.assign({}, move, {tipo: tipoFresco});
   var of = officialMoveData(move);
   // Cap. Habilidades Serene Grace (dobra a chance de QUALQUER efeito
   // secundário do PRÓPRIO golpe) e Sheer Force (golpe com efeito
@@ -17622,8 +17649,9 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
   var movesHTML = [0,1,2,3].map(function(idx){
     var m = moves[idx];
     var nome = m ? m.name : '—';
-    var cor = m ? (TEAM_CARD_TYPE_COLOR[m.tipo]||'#8fb3a2') : '#3a4750';
-    var titulo = m ? (m.name+' ('+m.tipo+' · '+m.categoria+')') : 'Espaço de Movimento vazio';
+    var mTipo = m ? moveTipoAtual(m) : null;
+    var cor = m ? (TEAM_CARD_TYPE_COLOR[mTipo]||'#8fb3a2') : '#3a4750';
+    var titulo = m ? (m.name+' ('+mTipo+' · '+m.categoria+')') : 'Espaço de Movimento vazio';
     return '<button type="button" class="ga-team-move" title="'+esc2(titulo)+'" onclick="DT.gaOpenMoves(\''+poke.id+'\','+idx+')">'+
       '<span class="ga-team-move-fill" style="background:'+cor+';"></span>'+
       '<span class="ga-team-move-label">'+esc2(nome)+'</span>'+
@@ -18261,7 +18289,7 @@ function movesPopupHTML(pid){
     if(idx < moves.length){
       var m = moves[idx];
       linhas.push('<div class="ga-move-row">'+
-        '<div class="ga-move-atual"><strong>'+esc2(m.name)+'</strong> <span class="ga-hint">('+esc2(m.tipo)+' · '+esc2(m.categoria)+')</span></div>'+
+        '<div class="ga-move-atual"><strong>'+esc2(m.name)+'</strong> <span class="ga-hint">('+esc2(moveTipoAtual(m))+' · '+esc2(m.categoria)+')</span></div>'+
         (opts ? ('<select id="gaMoveNovo-'+idx+'"><option value="">— trocar por --</option>'+opts+'</select>'+
           '<button class="ga-btn-sm" onclick="DT.gaTrocarMovimento(\''+p.id+'\','+idx+',document.getElementById(\'gaMoveNovo-'+idx+'\').value)">Trocar</button>')
           : '<span class="ga-hint">nenhum Movimento elegível pra trocar aqui agora</span>')+
