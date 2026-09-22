@@ -14788,13 +14788,66 @@ function kantoMercadoItensDoLocal(loc){
   if(loc.mercado==='todos') return raidRecompensaCatalogoCompleto();
   return (loc.mercado||[]).map(itemByKeyQualquer).filter(Boolean);
 }
+/* Mesma categorização que a Loja de verdade já usa (`lojaScreenHTML`)
+   -- olha em QUAL catálogo o item vive, em vez de duplicar uma
+   segunda taxonomia -- pra filtrar por categoria no Mercado de Kanto
+   bater 1-pra-1 com o que a Loja mostra pro mesmo item. TMs nunca
+   aparecem num Mercado de Kanto (não fazem parte de `mercado`
+   nenhum), então não têm categoria aqui. */
+function itemCategoriaLoja(it){
+  if(POKEBALLS.indexOf(it)!==-1) return 'pokebolas';
+  if(GA_ITEMS.indexOf(it)!==-1) return 'itens';
+  if(EVOLUTION_STONES.indexOf(it)!==-1 || EVOLUTION_EXCLUSIVE_ITEMS.indexOf(it)!==-1) return 'pedras';
+  if(HELD_ITEMS.indexOf(it)!==-1) return 'segurados';
+  if(EVOLUTION_HELD_ITEMS.indexOf(it)!==-1) return 'evolucao-troca';
+  if(ORICORIO_NECTAR_ITEMS.indexOf(it)!==-1) return 'nectares';
+  return '';
+}
+/* Cap. leva desta sessão ("Na aba de mercado, no mapa, pode colocar o
+   menu de filtro e pesquisa igual tem no mercado normal que já temos
+   em uso"): MESMO campo de busca + abas de categoria da Loja de
+   verdade (`LOJA_CATEGORIAS`/`lojaFiltrosHTML`), só com estado PRÓPRIO
+   (`SESSION.kantoMercadoSearch`/`kantoMercadoCategoria`) pra filtrar
+   um Mercado de Kanto nunca mexer no filtro da Loja normal (e
+   vice-versa) -- são 2 telas diferentes, cada uma com sua própria
+   sessão de filtro, exatamente como Dex/Caixa/Movimentos já fazem
+   cada uma com o filtro delas. Sem aba "💿 TMs" (Mercado de Kanto
+   nunca vende TM, ver kantoMercadoItensDoLocal). */
+function kantoMercadoBuscaAtual(){ return (SESSION.kantoMercadoSearch||'').trim().toLowerCase(); }
+function kantoMercadoItemBateBusca(it){ var q = kantoMercadoBuscaAtual(); return !q || it.nome.toLowerCase().indexOf(q)!==-1; }
+function kantoMercadoItensFiltrados(loc){
+  var cat = SESSION.kantoMercadoCategoria;
+  return kantoMercadoItensDoLocal(loc).filter(function(it){
+    return (!cat || itemCategoriaLoja(it)===cat) && kantoMercadoItemBateBusca(it);
+  });
+}
+function kantoMercadoFiltrosHTML(){
+  var catAtual = SESSION.kantoMercadoCategoria || '';
+  var categorias = LOJA_CATEGORIAS.filter(function(c){ return c[0]!=='tms'; });
+  return '<div class="ga-dex-filtros">'+
+      '<input type="text" id="gaKantoMercadoSearch" placeholder="Nome do item..." value="'+esc2(SESSION.kantoMercadoSearch||'')+'" onkeydown="if(event.key===\'Enter\')DT.gaSetKantoMercadoSearch(document.getElementById(\'gaKantoMercadoSearch\'))">'+
+      '<button class="ga-btn-sm" onclick="DT.gaSetKantoMercadoSearch(document.getElementById(\'gaKantoMercadoSearch\'))">🔍 Buscar</button>'+
+      (SESSION.kantoMercadoSearch ? '<button class="ga-btn-sm" onclick="DT.gaSetKantoMercadoSearch({value:\'\'})">✕ Limpar busca</button>' : '')+
+      '<span class="ga-tabs">'+categorias.map(function(c){
+        return '<button class="'+(catAtual===c[0]?'active':'')+'" title="'+esc2(c[2])+'" aria-label="'+esc2(c[2])+'" onclick="DT.gaSetKantoMercadoCategoria(\''+c[0]+'\')">'+c[1]+'</button>';
+      }).join('')+'</span>'+
+    '</div>';
+}
+DT.gaSetKantoMercadoSearch = function(el){ SESSION.kantoMercadoSearch = (el && el.value || '').trim(); render(); };
+DT.gaSetKantoMercadoCategoria = function(key){ SESSION.kantoMercadoCategoria = key||''; render(); };
 function kantoMercadoBlocoHTML(loc){
   if(!loc.mercado) return '';
   var itens = kantoMercadoItensDoLocal(loc);
   var titulo = loc.mercado==='todos' ? '🏬 Central de Compras Celadon (tudo do jogo)' : '🏪 Mercado';
   var out = '<div class="ga-kanto-lider">'+
     '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoToggleMercado()">'+titulo+' -- '+itens.length+' iten'+(itens.length===1?'':'s')+(SESSION.kantoMercadoAberto?' ▲':' ▼')+'</button>';
-  if(SESSION.kantoMercadoAberto) out += '<div class="ga-loja-grid" style="margin-top:8px;">'+itens.map(lojaCardHTML).join('')+'</div>';
+  if(SESSION.kantoMercadoAberto){
+    var filtrados = kantoMercadoItensFiltrados(loc);
+    out += kantoMercadoFiltrosHTML();
+    out += filtrados.length
+      ? '<div class="ga-loja-grid" style="margin-top:8px;">'+filtrados.map(lojaCardHTML).join('')+'</div>'
+      : '<p class="ga-hint">Nenhum item bate com esse filtro/busca.</p>';
+  }
   return out+'</div>';
 }
 function kantoInfoPainelHTML(){
