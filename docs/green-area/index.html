@@ -15439,6 +15439,18 @@ var KANTO_GYM_LEADERS = {
   cinnabar: { id:'blaine', nome:'Blaine', tipo:'Fire', insignia:'Volcano Badge', sprite:'assets/trainers/Spr_FRLG_Blaine.png', roster:[{num:58,level:42},{num:77,level:40},{num:78,level:42},{num:59,level:47}] },
   viridian: { id:'giovanni', nome:'Giovanni', tipo:'Ground', insignia:'Earth Badge', sprite:'assets/trainers/Spr_FRLG_Giovanni.png', roster:[{num:111,level:45},{num:51,level:42},{num:31,level:44},{num:34,level:45},{num:112,level:50}] }
 };
+/* Cap. leva desta sessão ("A ordem tem que ser a correta do jogo: Brock
+   (Rocha), Misty (Água), Lt. Surge (Elétrico), Erika (Planta), Koga
+   (Venenoso), Sabrina (Psíquico), Blaine (Fogo) e Giovanni (Terra). O
+   site tá bloqueando tudo errado"): ordem OFICIAL de conquista das
+   Insígnias, usada pelo guarda (`kantoCaminhoBloqueadoPorInsignia`)
+   pra nunca pedir uma Insígnia "fora de ordem" -- mesmo que o mapa
+   redesenhado (geografia real) faça o caminho mais curto passar por
+   uma cidade mais à frente ANTES de uma mais atrás na progressão
+   oficial, o guarda sempre cobra a insígnia que falta há mais tempo
+   primeiro. Viridian fica de FORA de propósito (sempre a última, e
+   nunca bloqueia passagem -- ver kantoCaminhoBloqueadoPorInsignia). */
+var KANTO_BADGE_ORDEM = ['pewter','cerulean','vermilion','celadon','fuchsia','saffron','cinnabar'];
 /* Cap. leva desta sessão ("Use os sprites originais de treinadores,
    líderes de ginásio pixelados pra ficar mais legal"): sprites de
    Treinador FireRed/LeafGreen REAIS (mesmo `archives.bulbagarden.net`
@@ -15665,9 +15677,27 @@ function kantoCaminhoBloqueadoPorInsignia(caminho){
   KANTO_MAP.locs.forEach(function(loc){
     if(loc.kind==='gym' && loc.id!=='viridian') cidadesGinasio[loc.col+','+loc.row] = loc;
   });
+  /* A própria cidade de DESTINO nunca entra na exigência de Insígnia
+     (nem a dela mesma, nem quando ela aparece como "pré-requisito" de
+     alguma cidade de passagem mais à frente na ordem oficial) -- é
+     justamente pra lá que o jogador está indo pra desafiar aquele
+     Líder e CONSEGUIR a Insígnia, então cobrar essa Insígnia dela
+     mesma travaria ele pra sempre. */
+  var destinoLoc = cidadesGinasio[caminho[caminho.length-1][0]+','+caminho[caminho.length-1][1]];
   for(var i=1;i<caminho.length-1;i++){
     var loc = cidadesGinasio[caminho[i][0]+','+caminho[i][1]];
-    if(loc && (STATE.kantoBadges||[]).indexOf(loc.id)===-1) return loc;
+    if(!loc) continue;
+    /* Nunca deixa "pular a fila" -- se o caminho mais curto passa por
+       uma cidade mais à frente na ordem oficial (ex.: Celadon) sem o
+       jogador ainda ter as Insígnias de trás (ex.: Pewter/Cerulean),
+       cobra a MAIS ANTIGA que ainda falta, nunca a da cidade que o
+       caminho encostou primeiro. */
+    var idxAlvo = KANTO_BADGE_ORDEM.indexOf(loc.id);
+    for(var j=0;j<=idxAlvo;j++){
+      var idCidade = KANTO_BADGE_ORDEM[j];
+      if(destinoLoc && idCidade===destinoLoc.id) continue;
+      if((STATE.kantoBadges||[]).indexOf(idCidade)===-1) return kantoLocsById()[idCidade];
+    }
   }
   return null;
 }
