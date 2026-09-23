@@ -787,49 +787,58 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
    qualquer tamanho de tela. `overflow-x:auto` no wrapper acima é só
    rede de segurança (mapa nunca deveria mais precisar dela). */
 .ga-kanto-mapa-fit{ width:100%; overflow:hidden; }
-.ga-kanto-mapa{ position:relative; margin:0 auto; }
-.ga-kanto-tile{ position:absolute; border-radius:3px; background:#111a22; }
-.ga-kanto-tile.alt{ background:#141f28; }
-.ga-kanto-tile.trilha{ background:#4a4230; }
-.ga-kanto-tile.agua-rota{ background:#173654; }
-/* Parte 5 do redesenho do mapa ("onde é água, você colocar água"):
-   água em camadas -- ondas diagonais (repeating-linear-gradient) por
-   baixo de reflexos redondos (radial-gradient), tudo CSS puro, sem
-   nenhuma imagem nova, só mais rico que o pontilhado plano de antes. */
+.ga-kanto-mapa{ position:relative; margin:0 auto; box-shadow:0 0 0 3px #1a2e1c, 0 6px 22px rgba(0,0,0,.5); border-radius:4px; overflow:hidden; }
+/* Cap. leva desta sessão ("O mapa só ta feio ainda... mais parecido
+   com natural"): reforma visual completa do terreno -- células agora
+   ficam COLADAS (sem gap, ver kantoMapaHTML) e SEM cantos arredondados
+   (terreno contínuo de verdade, não mais uma grade de fichas soltas),
+   com paleta natural (verde/marrom/azul) no lugar do azul-marinho
+   abstrato de antes, e 3 tons por célula (`.tone0/1/2`, determinístico
+   por posição -- ver `hashStr` em kantoMapaHTML) pra dar a variação
+   orgânica de mancha que grama/terra de verdade têm, em vez de um
+   padrão xadrez repetitivo. */
+.ga-kanto-tile{ position:absolute; background:#345c37; }
+.ga-kanto-tile.campo.tone1{ background:#3a6540; }
+.ga-kanto-tile.campo.tone2{ background:#2f5334; }
+.ga-kanto-tile.trilha{ background:#8a6a3c; }
+.ga-kanto-tile.trilha.tone1{ background:#93733f; }
+.ga-kanto-tile.trilha.tone2{ background:#7d5f35; }
+/* Água em camadas -- ondas diagonais (repeating-linear-gradient) por
+   baixo de reflexos redondos (radial-gradient), num azul de verdade
+   (não mais quase preto), CSS puro, sem nenhuma imagem nova. */
 .ga-kanto-tile.agua{
-  background-color:#0f2740;
+  background-color:#1d5580;
   background-image:
-    radial-gradient(circle at 26% 30%, rgba(255,255,255,.16) 0 2px, transparent 3px),
-    radial-gradient(circle at 68% 62%, rgba(255,255,255,.12) 0 2px, transparent 3px),
-    repeating-linear-gradient(125deg, rgba(255,255,255,.07) 0 2px, transparent 2px 9px),
-    linear-gradient(155deg, #1c4066 0%, #123252 60%, #0e2038 100%);
+    radial-gradient(circle at 26% 30%, rgba(255,255,255,.24) 0 2px, transparent 3px),
+    radial-gradient(circle at 68% 62%, rgba(255,255,255,.18) 0 2px, transparent 3px),
+    repeating-linear-gradient(125deg, rgba(255,255,255,.11) 0 2px, transparent 2px 9px),
+    linear-gradient(155deg, #3576a8 0%, #1f5c8c 60%, #143f60 100%);
 }
 .ga-kanto-tile.agua-rota{
-  background-color:#123048;
+  background-color:#215d8a;
   background-image:
-    repeating-linear-gradient(125deg, rgba(255,255,255,.06) 0 2px, transparent 2px 8px),
-    linear-gradient(155deg, #1d4468 0%, #173654 100%);
+    repeating-linear-gradient(125deg, rgba(255,255,255,.10) 0 2px, transparent 2px 8px),
+    linear-gradient(155deg, #3070a2 0%, #21567f 100%);
 }
-/* Floresta com "mini-árvores" de verdade -- 3 copas verdes (radial-
-   gradient, tons diferentes pra dar profundidade) por cima de um
-   fundo mais escuro, no lugar do pontilhado uniforme de antes. */
+/* Floresta com "mini-árvores" de verdade -- copas verdes vivas em 2
+   tons (radial-gradient) por cima de um fundo mais escuro, dando
+   profundidade -- não mais o pontilhado uniforme original. */
 .ga-kanto-tile.floresta{
-  background-color:#0f1e13;
+  background-color:#1c421f;
   background-image:
-    radial-gradient(circle at 28% 32%, #3d7444 0 5px, transparent 6px),
-    radial-gradient(circle at 62% 22%, #2f5c37 0 4px, transparent 5px),
-    radial-gradient(circle at 45% 62%, #3d7444 0 6px, transparent 7px),
-    radial-gradient(circle at 75% 55%, #2f5c37 0 4px, transparent 5px),
-    linear-gradient(#16301c, #0f1e13);
+    radial-gradient(circle at 28% 32%, #5a9c53 0 5px, transparent 6px),
+    radial-gradient(circle at 62% 22%, #457a3f 0 4px, transparent 5px),
+    radial-gradient(circle at 45% 62%, #5a9c53 0 6px, transparent 7px),
+    radial-gradient(circle at 75% 55%, #457a3f 0 4px, transparent 5px),
+    linear-gradient(#245029, #1c421f);
 }
-/* Parte 5 -- textura "rochosa" nova, pras células de caverna/montanha
-   que antes não pintavam terreno nenhum (bug real corrigido junto,
-   ver kantoMapaHTML): estratos diagonais em tom de pedra/terra via
-   repeating-linear-gradient em 2 camadas cruzadas. */
+/* Textura "rochosa" pras células de caverna/montanha (que antes não
+   pintavam terreno nenhum) -- estratos diagonais em tom de pedra
+   quente via repeating-linear-gradient em 2 camadas cruzadas. */
 .ga-kanto-tile.rocha{
-  background-color:#2b2620;
+  background-color:#443c30;
   background-image:
-    repeating-linear-gradient(135deg, #3d3529 0 4px, #2b2620 4px 9px),
+    repeating-linear-gradient(135deg, #574c3a 0 4px, #3e3628 4px 9px),
     repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 2px, transparent 2px 7px);
 }
 /* Parte 3 do redesenho do mapa ("todos os quadrados da rota vão ser
@@ -840,20 +849,35 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 button.ga-kanto-tile{ border:0; padding:0; margin:0; font:inherit; cursor:pointer; }
 button.ga-kanto-tile:hover{ filter:brightness(1.35); }
 button.ga-kanto-tile.ativo{ box-shadow:0 0 0 2px var(--accent) inset; filter:brightness(1.3); }
-.ga-kanto-pin-local{ position:absolute; transform:translate(-50%,-50%); width:38px; height:38px; border-radius:9px; border:2px solid var(--line); background:var(--panel3); display:flex; align-items:center; justify-content:center; font-size:1rem; padding:0; z-index:2; }
-.ga-kanto-pin-local:hover{ transform:translate(-50%,-50%) scale(1.1); }
+/* Pino de cidade/caverna virou marcador de mapa de verdade (círculo +
+   pontinha triangular embaixo, sombra suave) no lugar do quadrado
+   arredondado antigo -- mesmo espírito de um pino de Google Maps,
+   parado em pé sobre o terreno em vez de flutuar num chip quadrado. */
+.ga-kanto-pin-local{ position:absolute; transform:translate(-50%,-62%); width:30px; height:30px; border-radius:50%; border:2.5px solid var(--line); background:var(--panel3); display:flex; align-items:center; justify-content:center; font-size:1rem; padding:0; z-index:2; filter:drop-shadow(0 3px 3px rgba(0,0,0,.55)); }
+.ga-kanto-pin-local::after{ content:''; position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:7px solid var(--line); }
+.ga-kanto-pin-local:hover{ transform:translate(-50%,-62%) scale(1.12); }
 .ga-kanto-pin-local.ativo{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(52,211,153,.28); }
+.ga-kanto-pin-local.ativo::after{ border-top-color:var(--accent); }
 .ga-kanto-pin-local.gym{ border-color:var(--gold); }
+.ga-kanto-pin-local.gym::after{ border-top-color:var(--gold); }
 .ga-kanto-pin-local.start{ border-color:var(--accent-dim); }
+.ga-kanto-pin-local.start::after{ border-top-color:var(--accent-dim); }
 .ga-kanto-pin-local.cave,.ga-kanto-pin-local.forest{ border-color:#7c8a72; }
+.ga-kanto-pin-local.cave::after,.ga-kanto-pin-local.forest::after{ border-top-color:#7c8a72; }
 .ga-kanto-pin-local.water{ border-color:#5f9fd8; }
+.ga-kanto-pin-local.water::after{ border-top-color:#5f9fd8; }
 .ga-kanto-pin-local.landmark{ border-color:var(--pink); }
+.ga-kanto-pin-local.landmark::after{ border-top-color:var(--pink); }
 .ga-kanto-pin-local.league{ border-color:var(--gold); background:#241a08; }
-.ga-kanto-pin-local.tem-area::after{ content:''; position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:var(--accent); border:1px solid var(--bg2); }
-.ga-kanto-pin-rota{ position:absolute; transform:translate(-50%,-50%); min-width:18px; height:18px; padding:0 3px; border-radius:5px; background:rgba(10,14,19,.85); border:1.5px solid #6b6142; color:#d8cba3; font-size:.56rem; font-weight:800; display:flex; align-items:center; justify-content:center; z-index:1; white-space:nowrap; }
+.ga-kanto-pin-local.league::after{ border-top-color:var(--gold); }
+/* "Tem Pokémon selvagem" mudou de ::after pro ::before -- o ::after
+   agora é a pontinha do pino (ver acima), os dois não podem dividir o
+   mesmo pseudo-elemento. */
+.ga-kanto-pin-local.tem-area::before{ content:''; position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:var(--accent); border:1px solid var(--bg2); z-index:1; }
+.ga-kanto-pin-rota{ position:absolute; transform:translate(-50%,-50%); min-width:20px; height:20px; padding:0 4px; border-radius:50%; background:rgba(24,18,10,.92); border:1.5px solid #a3823f; color:#f0e2bb; font-size:.56rem; font-weight:800; display:flex; align-items:center; justify-content:center; z-index:1; white-space:nowrap; filter:drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
 .ga-kanto-pin-rota:hover{ border-color:var(--accent); color:var(--accent); }
 .ga-kanto-pin-rota.ativo{ border-color:var(--accent); color:var(--accent); background:var(--panel2); box-shadow:0 0 0 2px rgba(52,211,153,.28); }
-.ga-kanto-pin-rota.agua{ border-color:#3f79b0; color:#bcdcf7; }
+.ga-kanto-pin-rota.agua{ border-color:#5fa8e0; color:#bcdcf7; }
 .ga-kanto-pin-rota.tem-area{ box-shadow:0 0 0 2px rgba(52,211,153,.35); }
 /* Parte 4 do redesenho do mapa -- marcador "você está aqui", CSS puro
    (círculo pulsante), sempre acima de qualquer pino na mesma célula. */
@@ -862,11 +886,11 @@ button.ga-kanto-tile.ativo{ box-shadow:0 0 0 2px var(--accent) inset; filter:bri
 .ga-kanto-legenda{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; font-size:.74rem; color:var(--ink-dim); }
 .ga-kanto-legenda span{ display:inline-flex; align-items:center; gap:6px; }
 .ga-kanto-legenda i{ display:inline-block; width:14px; height:14px; border-radius:4px; }
-.ga-kanto-legenda i.campo{ background:#111a22; border:1px solid var(--line); }
-.ga-kanto-legenda i.trilha{ background:#4a4230; }
-.ga-kanto-legenda i.agua{ background:#173654; }
-.ga-kanto-legenda i.floresta{ background:#132417; }
-.ga-kanto-legenda i.rocha{ background:#2b2620; }
+.ga-kanto-legenda i.campo{ background:#345c37; }
+.ga-kanto-legenda i.trilha{ background:#8a6a3c; }
+.ga-kanto-legenda i.agua{ background:#1d5580; }
+.ga-kanto-legenda i.floresta{ background:#1c421f; }
+.ga-kanto-legenda i.rocha{ background:#443c30; }
 .ga-kanto-legenda i.gymring{ background:transparent; border:2px solid var(--gold); border-radius:5px; }
 .ga-kanto-legenda i.areapin{ background:var(--accent); }
 .ga-kanto-info-empty{ color:var(--ink-dim); font-size:.86rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:26px 6px; }
@@ -15837,11 +15861,23 @@ function kantoInfoPainelHTML(){
    script solto novo). Cidades/masmorras = pino grande; rota = pino
    pequeno, mesmo clicável. */
 function kantoMapaHTML(){
-  var CELL = 34, GAP = 4, STEP = CELL+GAP;
+  /* Cap. leva desta sessão ("O mapa só ta feio ainda... queria que
+     você fizesse ele mais bonito... mais parecido com natural"): GAP
+     zerado -- as células agora ficam coladas (terreno contínuo, sem
+     as frestas escuras que faziam o mapa parecer uma grade de
+     quadradinhos soltos em vez de um mapa de verdade). */
+  var CELL = 34, GAP = 0, STEP = CELL+GAP;
   var byId = kantoLocsById();
   var cells = {};
   function key(c,r){ return c+','+r; }
-  for(var r=0;r<KANTO_MAP.rows;r++) for(var c=0;c<KANTO_MAP.cols;c++) cells[key(c,r)] = { terreno:'campo', alt:(c+r)%2===0 };
+  /* `tone` (0-2, determinístico por célula via hashStr -- mesma
+     função já usada pra escalar Treinador) substitui o antigo
+     checkerboard `alt` -- dá uma variação orgânica de tom (grama e
+     terra nunca são uma cor 100% lisa num mapa de verdade), e o MESMO
+     valor é reaproveitado pro terreno final da célula (campo, trilha
+     ou o que for), pra manter uma textura "de mancha" coerente em vez
+     de um padrão xadrez repetitivo. */
+  for(var r=0;r<KANTO_MAP.rows;r++) for(var c=0;c<KANTO_MAP.cols;c++) cells[key(c,r)] = { terreno:'campo', tone: hashStr('terreno_'+c+'_'+r)%3 };
   KANTO_MAP.locs.forEach(function(loc){
     if(loc.kind==='water' || loc.island){
       for(var dr=-1;dr<=1;dr++) for(var dc=-1;dc<=1;dc++){
@@ -15882,7 +15918,7 @@ function kantoMapaHTML(){
   for(var rr2=0; rr2<KANTO_MAP.rows; rr2++){
     for(var cc2=0; cc2<KANTO_MAP.cols; cc2++){
       var cd = cells[key(cc2,rr2)];
-      var cls = 'ga-kanto-tile '+cd.terreno+(cd.alt&&cd.terreno==='campo'?' alt':'');
+      var cls = 'ga-kanto-tile '+cd.terreno+' tone'+cd.tone;
       if(cd.routeId){
         var selT = SESSION.kantoSelecionado;
         var ativoT = selT && selT.tipo==='route-tile' && selT.routeId===cd.routeId && selT.tileIndex===cd.tileIndex;
