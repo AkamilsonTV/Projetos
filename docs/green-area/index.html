@@ -4351,6 +4351,36 @@ function especieNaEvolucaoParaNivel(numBase, nivelAlvo){
   }
   return atual;
 }
+/* Cap. leva desta sessão ("As evoluções que não forem de nível, tipo
+   por pedra, troca e etc, pode fazer também nos níveis mais altos...
+   se o pokémon passou do 40, evolui ele para que possa ter uma
+   dificuldade maior. Mas só nos casos de pokémon que não evoluem por
+   nível nos treinadores e líderes. Por exemplo, o vulpix do Blaine"):
+   USADA SÓ pra gerar variações de Faixa de Treinador/Líder (nunca pro
+   Pokémon selvagem nem pro do próprio jogador, que continuam intocados
+   -- só se aplica aqui, onde não existe jogador nenhum decidindo usar
+   Pedra/Trocar de verdade). Primeiro passa por TODA evolução de Nível
+   normal (`especieNaEvolucaoParaNivel`, igual sempre); só DEPOIS, se o
+   Nível alvo já passou de 40 ("por exemplo... passou do 40"), continua
+   evoluindo por cima mesmo que a próxima aresta seja Pedra/Troca/
+   Felicidade/Hora do dia -- só quando existe exatamente 1 candidata
+   (o mesmo "default seguro" de sempre pra qualquer bifurcação AMBÍGUA,
+   ex. Poliwhirl com Pedra-d'Água OU Troca -- fica como está, igual
+   `especieNaEvolucaoParaNivel` já faz pras de Nível). */
+function especieEvoluidaTreinador(numBase, nivelAlvo){
+  var atual = especieNaEvolucaoParaNivel(numBase, nivelAlvo);
+  if(nivelAlvo<=40) return atual;
+  for(var guard=0; guard<10; guard++){
+    var arestas = EVOLUTIONS_DEX[atual];
+    if(!arestas || !arestas.length) break;
+    var naoNivel = arestas.filter(function(e){
+      return e.item || e.minHappiness || e.timeOfDay || e.tradeSpeciesId || (e.trigger && e.trigger!=='level-up');
+    });
+    if(naoNivel.length!==1) break;
+    atual = naoNivel[0].to;
+  }
+  return atual;
+}
 /* Cap. leva desta sessão ("Você pode criar uma base de quantas
    variações aquele treinador vai ter, não precisa ser EXATA... mas
    ter uma faixa, igual é com as Áreas de caça"): gera 1 variação de
@@ -4469,7 +4499,7 @@ function gerarVariacoesRoster(rosterCanonico, faixasExtras, tema, seedId){
       if(pool.length){
         baseNum = pool[hashStr((seedId||'')+'_'+slotIdx) % pool.length];
       }
-      return { num: especieNaEvolucaoParaNivel(baseNum, nivelAlvo), level: nivelAlvo };
+      return { num: especieEvoluidaTreinador(baseNum, nivelAlvo), level: nivelAlvo };
     });
     variacoes.push({ faixaIdx: faixaAlvo, roster: roster });
   }
