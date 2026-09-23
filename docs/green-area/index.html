@@ -18816,6 +18816,28 @@ function render(){
     var el = document.getElementById(id);
     if(el) el.scrollTop = scrollPos[id];
   });
+  /* Cap. pedido do jogador ("Todas as mensagens de erro não podem
+     aparecer ali em cima, tem que ser na tela que estamos mexendo...
+     Seja pra erro de sistema ou até mesmo pra aviso de que não tem tal
+     coisa"): bannersHTML() sempre nasce no topo de .ga-body (o fundo da
+     tela) -- quando tem um popup aberto por CIMA (.ga-overlay,
+     position:fixed cobrindo a tela toda), o aviso precisa aparecer
+     DENTRO do card do popup, não solto atrás dele. Em vez de duplicar
+     bannersHTML() em cada uma das dezenas de funções de popup do jogo,
+     move o(s) .ga-banner já renderizado(s) pra dentro do card do popup
+     mais de cima (se houver algum aberto) logo depois do innerHTML
+     entrar no DOM -- 1 fix só, funciona pra QUALQUER popup existente ou
+     futuro sem precisar lembrar de tocar nessa função de novo. */
+  (function(){
+    var banners = appEl_.querySelectorAll('.ga-banner');
+    if(!banners.length) return;
+    var overlays = appEl_.querySelectorAll('.ga-overlay');
+    if(!overlays.length) return; // sem popup aberto: já está certo, no topo da tela normal
+    var alvo = overlays[overlays.length-1];
+    var card = alvo.querySelector('.ga-overlay-card') || alvo.firstElementChild;
+    if(!card) return;
+    for(var i=banners.length-1;i>=0;i--){ card.insertBefore(banners[i], card.firstChild); }
+  })();
   /* Cap. leva desta sessão ("só sobe as antigas deixando as mais
      recentes"): diferente da lista acima (que PRESERVA onde o jogador
      tinha rolado), um chat sempre quer mostrar a mensagem MAIS NOVA --
