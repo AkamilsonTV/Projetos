@@ -817,6 +817,10 @@ button.ga-kanto-tile.ativo{ box-shadow:0 0 0 2px var(--accent) inset; filter:bri
 .ga-kanto-pin-rota.ativo{ border-color:var(--accent); color:var(--accent); background:var(--panel2); box-shadow:0 0 0 2px rgba(52,211,153,.28); }
 .ga-kanto-pin-rota.agua{ border-color:#3f79b0; color:#bcdcf7; }
 .ga-kanto-pin-rota.tem-area{ box-shadow:0 0 0 2px rgba(52,211,153,.35); }
+/* Parte 4 do redesenho do mapa -- marcador "você está aqui", CSS puro
+   (círculo pulsante), sempre acima de qualquer pino na mesma célula. */
+.ga-kanto-voce-aqui{ position:absolute; transform:translate(-50%,-50%); width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid #fff; z-index:3; pointer-events:none; box-shadow:0 0 0 0 rgba(52,211,153,.6); animation:ga-kanto-pulso 1.6s ease-out infinite; }
+@keyframes ga-kanto-pulso{ 0%{ box-shadow:0 0 0 0 rgba(52,211,153,.6); } 70%{ box-shadow:0 0 0 10px rgba(52,211,153,0); } 100%{ box-shadow:0 0 0 0 rgba(52,211,153,0); } }
 .ga-kanto-legenda{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; font-size:.74rem; color:var(--ink-dim); }
 .ga-kanto-legenda span{ display:inline-flex; align-items:center; gap:6px; }
 .ga-kanto-legenda i{ display:inline-block; width:14px; height:14px; border-radius:4px; }
@@ -8494,7 +8498,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null };
 
 function freshState(trainerName){
   return {
@@ -8506,6 +8510,7 @@ function freshState(trainerName){
     kantoBadges: [], // Cap. leva desta sessão (Líderes de Ginásio de Kanto reais, faixas + 1x/dia) -- array PARALELA a `badges`, nunca a mesma (Mestres fictícios x Líderes reais são coleções diferentes)
     kantoGymLastBeatenDay: {}, // {[locId]: periodoDoJogoIndex() da última vez que desafiou} -- mesmo padrão de poketicketsLastGameDay
     kantoTrainersLastBeatenDay: {}, // {[trainerId]: periodoDoJogoIndex()} -- Treinadores de Rota, mesmo padrão
+    kantoPos: { col:2, row:10 }, // Parte 4 do redesenho do mapa -- posição REAL do jogador no grid de Kanto (célula de Vila Pallet), só recebe esse valor na CRIAÇÃO da conta, nunca reseta sozinha depois (só via Admin -- ver DT.gaAdminResetarPosicaoKanto)
     pokebolas: { pokebola:10, greatball:0, ultraball:0 },
     poketickets: 100, // Cap. leva desta sessão: "Novos jogadores começam com 100 tickets"
     poketicketsLastGameDay: periodoDoJogoIndex(), // Cap. leva desta sessão (esquema de Dia/Noite) -- substitui poketicketsUpdatedAt, ver tickPoketickets
@@ -8564,6 +8569,7 @@ function migrateState(){
   delete STATE.poketicketsUpdatedAt;
   STATE.poketickets = clampInt(STATE.poketickets, 0, POKETICKETS_MAX); // uma conta antiga pode já ter passado do teto novo (nunca dava antes) -- trava em 1000 na migração também
   if(!STATE.actionLog || !Array.isArray(STATE.actionLog)) STATE.actionLog = []; // conta sem log ainda (Cap. "log pra o Admin saber o que cada jogador tá fazendo") nasce com histórico vazio, nunca tenta reconstruir o passado
+  if(!STATE.kantoPos || typeof STATE.kantoPos.col!=='number' || typeof STATE.kantoPos.row!=='number') STATE.kantoPos = { col:2, row:10 }; // conta criada antes da Parte 4 do redesenho do mapa nasce em Vila Pallet, igual conta nova
   if(!STATE.tms || typeof STATE.tms!=='object') STATE.tms = {};
   if(typeof STATE.pokebolas==='number') STATE.pokebolas = { pokebola: STATE.pokebolas, greatball:0, ultraball:0 };
   if(!STATE.pokebolas || typeof STATE.pokebolas!=='object') STATE.pokebolas = { pokebola:0, greatball:0, ultraball:0 };
@@ -9527,6 +9533,21 @@ function startBattle(kind, opts, skipDiscrepancia){
     render(); return;
   }
   STATE.energy -= custoEnergia;
+  /* Parte 4 do redesenho do mapa de Kanto ("achado bônus" -- cooldown
+     diário de Líder/Treinador marcado cedo demais): mover pra CÁ (logo
+     depois da checagem de Energia acima, único ponto que TODOS os
+     caminhos que realmente iniciam a luta atravessam -- direto,
+     confirmação de luta discrepante ou troca de Pokéticket por
+     Energia) garante que uma luta abortada por falta de Energia nunca
+     gasta o cooldown do dia à toa, sem duplicar a marcação nos 3
+     caminhos possíveis. */
+  if(kind==='kantogym'){
+    STATE.kantoGymLastBeatenDay = STATE.kantoGymLastBeatenDay || {};
+    kantoMarcarEnfrentadoHoje(STATE.kantoGymLastBeatenDay, opts.leaderId);
+  } else if(kind==='routetrainer'){
+    STATE.kantoTrainersLastBeatenDay = STATE.kantoTrainersLastBeatenDay || {};
+    kantoMarcarEnfrentadoHoje(STATE.kantoTrainersLastBeatenDay, opts.trainerId);
+  }
   logAction('batalha', 'Entrou numa luta ('+kind+'): '+label+', '+oppTeam.length+' oponente(s), custou '+custoEnergia+' de Energia.');
   zerarContadoresPorBatalha(); // Cap. Farfetch'd->Sirfetch'd (ver EVOLUTION_BATTLE_CRIT_REQUIRED) -- toda luta NOVA zera criticosNaLuta de todo o Time
 
@@ -12694,7 +12715,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null };
   render();
 };
 
@@ -14339,6 +14360,17 @@ DT.gaAdminRebaixar = function(docId){
     DT.gaAdminAbrirPainel();
   }).catch(function(){ SESSION.error='Não consegui tirar o Admin dessa conta.'; render(); });
 };
+/* Parte 4 do redesenho do mapa de Kanto ("A última posição do jogador
+   tem que ser salva. Ele não pode SEMPRE começar em Pallet. A menos
+   que seja resetada via ADMIN a posição dele"): MESMO padrão de
+   Banir/Promover -- escreve direto no `state.kantoPos` daquela conta
+   no Firestore (não precisa estar logado como ela). */
+DT.gaAdminResetarPosicaoKanto = function(docId){
+  savesCol.doc(docId).update({'state.kantoPos': {col:2,row:10}}).then(function(){
+    logAction('admin', 'Resetou a posição de Kanto da conta "'+docId+'" pra Vila Pallet.'); mutate();
+    DT.gaAdminAbrirPainel();
+  }).catch(function(){ SESSION.error='Não consegui resetar a posição dessa conta.'; render(); });
+};
 DT.gaAdminExcluir = function(docId){
   if(SESSION.adminConfirmExcluir!==docId){ SESSION.adminConfirmExcluir = docId; render(); return; }
   SESSION.adminConfirmExcluir = null;
@@ -15099,8 +15131,117 @@ function kantoZonaIdxDaArea(area){
   var media = Math.round((area.nivelMin+area.nivelMax)/2);
   return clampInt(Math.floor((media-1)/10), 0, ZONAS.length-1);
 }
+/* Parte 4 do redesenho do mapa ("A última posição do jogador tem que
+   ser salva... ele pode andar tile a tile ou clicar numa rota bem
+   mais a frente e o jogo calcular o caminho mais curto"): grid de
+   células ANDÁVEIS -- toda célula de loc + toda célula de trilha/
+   água-rota de alguma Rota, calculado com os MESMOS dados que
+   `kantoMapaHTML` usa pra desenhar terreno (via `kantoPathCells`,
+   compartilhada), então o BFS abaixo NUNCA anda por cima de campo
+   vazio -- só por cima do que já aparece desenhado como caminho. */
+function kantoWalkableGrid(){
+  var byId = kantoLocsById();
+  var walk = {};
+  function key(c,r){ return c+','+r; }
+  KANTO_MAP.locs.forEach(function(loc){ walk[key(loc.col,loc.row)] = true; });
+  KANTO_MAP.routes.forEach(function(route){
+    var a = byId[route.from], b = byId[route.to]; if(!a||!b) return;
+    kantoPathCells([a.col,a.row],[b.col,b.row]).forEach(function(p){ walk[key(p[0],p[1])] = true; });
+  });
+  return walk;
+}
+/* BFS 4-direcional sobre o grid andável -- devolve a sequência de
+   células `[[col,row], ...]` da origem (índice 0) até o destino, ou
+   `null` se inalcançável (não deveria acontecer -- o mapa é 1
+   componente conectado só). */
+function kantoCaminhoMaisCurto(origem, destino){
+  var walk = kantoWalkableGrid();
+  function key(c,r){ return c+','+r; }
+  var startKey = key(origem.col,origem.row), goalKey = key(destino.col,destino.row);
+  if(!walk[startKey] || !walk[goalKey]) return null;
+  if(startKey===goalKey) return [[origem.col,origem.row]];
+  var visitado = {}; visitado[startKey] = true;
+  var fila = [[origem.col,origem.row]];
+  var veioDe = {};
+  var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+  while(fila.length){
+    var atual = fila.shift();
+    var atualKey = key(atual[0],atual[1]);
+    if(atualKey===goalKey){
+      var caminho = [atual];
+      var passoKey = atualKey;
+      while(veioDe[passoKey]){
+        passoKey = veioDe[passoKey];
+        var partes = passoKey.split(',');
+        caminho.unshift([parseInt(partes[0],10), parseInt(partes[1],10)]);
+      }
+      return caminho;
+    }
+    for(var i=0;i<dirs.length;i++){
+      var nc = atual[0]+dirs[i][0], nr = atual[1]+dirs[i][1];
+      if(nc<0||nr<0||nc>=KANTO_MAP.cols||nr>=KANTO_MAP.rows) continue;
+      var nk = key(nc,nr);
+      if(!walk[nk] || visitado[nk]) continue;
+      visitado[nk] = true;
+      veioDe[nk] = atualKey;
+      fila.push([nc,nr]);
+    }
+  }
+  return null;
+}
+/* Posição atual, com fallback defensivo -- `migrateState` já garante
+   isso pra save carregado do Firestore, este é só o mesmo cuidado pro
+   caminho de teste/Node onde `migrateState` pode não ter rodado. */
+function kantoPosAtual(){
+  if(!STATE.kantoPos || typeof STATE.kantoPos.col!=='number') STATE.kantoPos = { col:2, row:10 };
+  return STATE.kantoPos;
+}
+/* Clicar numa célula que NÃO é onde o jogador está agora dispara o
+   fluxo de confirmação de "Andar até aqui" (caminho mais curto + custo
+   de Energia) em vez de abrir o popup na hora -- clicar na PRÓPRIA
+   célula onde já está continua de graça (só olhar o que já está
+   pisando não anda). Devolve `true` quando ficou pendente de
+   confirmação (o chamador não deve trocar a seleção ainda -- ver
+   DT.gaKantoSelecionar/gaKantoSelecionarTile), `false` quando pode
+   seguir normal (mesma célula, sem custo nenhum). */
+function kantoTentarAndarPara(destinoCel, alvoSelecao){
+  var atual = kantoPosAtual();
+  if(atual.col===destinoCel.col && atual.row===destinoCel.row) return false;
+  var caminho = kantoCaminhoMaisCurto(atual, destinoCel);
+  if(!caminho){ SESSION.error = 'Não existe caminho andável até aqui.'; render(); return true; }
+  var passos = caminho.length-1;
+  SESSION.pendingKantoAndar = { destino: destinoCel, alvo: alvoSelecao, passos: passos, custo: passos*10 };
+  render();
+  return true;
+}
+DT.gaKantoCancelarAndar = function(){ SESSION.pendingKantoAndar = null; render(); };
+/* Ao confirmar: desconta Energia, move `STATE.kantoPos` pro destino, e
+   REUTILIZA o próprio handler de seleção (agora a posição já bate com
+   o destino, então ele cai direto no caminho "de graça" e abre o
+   popup normal -- sem duplicar nenhuma lógica de exibição). */
+DT.gaKantoConfirmarAndar = function(){
+  if(!SESSION.isAdmin || !SESSION.pendingKantoAndar) return;
+  var pa = SESSION.pendingKantoAndar;
+  if(STATE.energy < pa.custo){
+    SESSION.error = 'Energia insuficiente pra andar até aqui -- precisa de '+pa.custo+' de Energia, você tem '+STATE.energy+'.';
+    SESSION.pendingKantoAndar = null;
+    render(); return;
+  }
+  STATE.energy = clampInt(STATE.energy - pa.custo, 0, 1000);
+  STATE.kantoPos = { col: pa.destino.col, row: pa.destino.row };
+  var alvo = pa.alvo;
+  SESSION.pendingKantoAndar = null;
+  mutate();
+  if(alvo.tipo==='loc') DT.gaKantoSelecionar('loc', alvo.id);
+  else if(alvo.tipo==='route-tile') DT.gaKantoSelecionarTile(alvo.routeId, alvo.tileIndex);
+  else render();
+};
 DT.gaKantoSelecionar = function(tipo, id){
   if(!SESSION.isAdmin) return;
+  if(tipo==='loc'){
+    var loc = kantoLocsById()[id];
+    if(loc && kantoTentarAndarPara({col:loc.col,row:loc.row}, {tipo:'loc', id:id})) return;
+  }
   SESSION.kantoSelecionado = { tipo:tipo, id:id };
   SESSION.kantoEscolhendoArea = null;
   SESSION.kantoEscolhendoGinasio = null;
@@ -15215,9 +15356,12 @@ DT.gaKantoIniciarGinasio = function(leadId){
   var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
   if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar a luta.'; render(); return; }
   var zonaIdx = kantoGymZonaIdx(variacao.roster);
-  STATE.kantoGymLastBeatenDay = STATE.kantoGymLastBeatenDay || {};
-  kantoMarcarEnfrentadoHoje(STATE.kantoGymLastBeatenDay, escolha.locId);
   SESSION.kantoEscolhendoGinasio = null;
+  /* Parte 4 do redesenho do mapa de Kanto ("achado bônus" -- cooldown
+     diário só é marcado DENTRO de startBattle, depois da checagem de
+     Energia, nunca aqui -- ver comentário em startBattle. Antes disso,
+     uma luta abortada por falta de Energia gastava o cooldown do dia
+     à toa. */
   startBattle('kantogym', { leadPartyId: leadId, leaderId: escolha.locId, eliteNome: leader.nome+' ('+leader.tipo+')', eliteTeam: variacao.roster, zonaIdx: zonaIdx }, false);
 };
 
@@ -15280,11 +15424,12 @@ DT.gaKantoIniciarTreinadorRota = function(leadId){
   var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
   if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar a luta.'; render(); return; }
   var zonaIdx = kantoGymZonaIdx(variacao.roster);
-  STATE.kantoTrainersLastBeatenDay = STATE.kantoTrainersLastBeatenDay || {};
-  kantoMarcarEnfrentadoHoje(STATE.kantoTrainersLastBeatenDay, escolha.trainerId);
   SESSION.kantoEscolhendoTreinador = null;
   var nomeCompleto = trainer.emoji+' '+trainer.classe+(trainer.nome?' '+trainer.nome:'');
-  startBattle('routetrainer', { leadPartyId: leadId, trainerTeam: variacao.roster, trainerNome: nomeCompleto, zonaIdx: zonaIdx }, false);
+  /* Parte 4 do redesenho do mapa de Kanto ("achado bônus" -- cooldown
+     diário só é marcado DENTRO de startBattle, depois da checagem de
+     Energia, nunca aqui -- ver comentário em startBattle). */
+  startBattle('routetrainer', { leadPartyId: leadId, trainerTeam: variacao.roster, trainerNome: nomeCompleto, trainerId: escolha.trainerId, zonaIdx: zonaIdx }, false);
 };
 
 function kantoRoutesTouching(locId){
@@ -15580,6 +15725,8 @@ function kantoRouteTileById(routeId, tileIndex){
    fatia de Treinador daquele trecho (ver kantoInfoPainelHTML). */
 DT.gaKantoSelecionarTile = function(routeId, tileIndex){
   if(!SESSION.isAdmin) return;
+  var tile = kantoRouteTileById(routeId, tileIndex);
+  if(tile && kantoTentarAndarPara({col:tile.col,row:tile.row}, {tipo:'route-tile', routeId:routeId, tileIndex:tileIndex})) return;
   SESSION.kantoSelecionado = { tipo:'route-tile', routeId:routeId, tileIndex:tileIndex };
   SESSION.kantoEscolhendoArea = null;
   SESSION.kantoEscolhendoGinasio = null;
@@ -15698,6 +15845,11 @@ function kantoMapaHTML(){
     var classeTipo = loc.kind==='gym' ? 'gym' : (loc.kind==='route-junction' ? 'landmark' : loc.kind);
     out += '<button type="button" class="ga-kanto-pin-local '+classeTipo+(ativo?' ativo':'')+(loc.areas&&loc.areas.length?' tem-area':'')+'" style="left:'+((loc.col+0.5)*STEP)+'px;top:'+((loc.row+0.5)*STEP)+'px;" title="'+esc2(loc.nome)+'" onclick="DT.gaKantoSelecionar(\'loc\',\''+loc.id+'\')">'+kantoOwnerIcon(loc)+'</button>';
   });
+  /* Parte 4 do redesenho do mapa -- marcador "você está aqui", CSS
+     puro (círculo pulsante), sempre por CIMA de qualquer pino que
+     esteja na mesma célula (z-index maior, ver CSS). */
+  var posAtual = kantoPosAtual();
+  out += '<div class="ga-kanto-voce-aqui" style="left:'+((posAtual.col+0.5)*STEP)+'px;top:'+((posAtual.row+0.5)*STEP)+'px;" title="Você está aqui"></div>';
   out += '</div>';
   /* Cap. leva desta sessão ("tá bem ruim o mapa, mal enquadrado tendo
      que rolar a tela pro lado"): o mapa tem largura NATIVA fixa em px
@@ -15744,6 +15896,23 @@ function kantoPopupHTML(){
   return '<div class="ga-overlay" onclick="DT.gaKantoFecharPopup()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaKantoFecharPopup()">✕</button>'+
     kantoInfoPainelHTML()+
+  '</div></div>';
+}
+/* Parte 4 do redesenho do mapa -- confirmação de "Andar até aqui",
+   mesmo padrão visual de outras confirmações do jogo (`.ga-overlay`/
+   `.ga-overlay-card`, ver confirmarEncerrarRaidPopupHTML). Sem Energia
+   suficiente NÃO oferece trocar Pokéticket (isso fica reservado pra
+   entrar numa luta -- movimento no mapa é um custo separado). */
+function kantoAndarConfirmPopupHTML(){
+  var pa = SESSION.pendingKantoAndar; if(!pa) return '';
+  return '<div class="ga-overlay" onclick="DT.gaKantoCancelarAndar()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaKantoCancelarAndar()">✕</button>'+
+    '<h2>🚶 Andar até aqui</h2>'+
+    '<p class="ga-hint">'+pa.passos+' quadrado(s) de distância -- custa <b>'+pa.custo+' de Energia</b> pra chegar lá (você tem '+STATE.energy+').</p>'+
+    '<div class="ga-btn-row">'+
+      '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoConfirmarAndar()">✅ Confirmar</button>'+
+      '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarAndar()">✕ Cancelar</button>'+
+    '</div>'+
   '</div></div>';
 }
 
@@ -18201,7 +18370,7 @@ function screenHTML(){
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
-    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() : hubScreenHTML());
+    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
@@ -19961,6 +20130,7 @@ function adminScreenHTML(){
         (c.banido
           ? '<button class="ga-btn-sm" onclick="DT.gaAdminDesbanir(\''+c.docId+'\')">Desbanir</button>'
           : '<button class="ga-btn-sm danger" onclick="DT.gaAdminBanir(\''+c.docId+'\')">Banir</button>')+
+        '<button class="ga-btn-sm" title="Volta a posição desse jogador no mapa de Kanto pra Vila Pallet" onclick="DT.gaAdminResetarPosicaoKanto(\''+c.docId+'\')">🧭 Resetar posição no mapa</button>'+
         (SESSION.adminConfirmExcluir===c.docId
           ? '<button class="ga-btn-sm danger" onclick="DT.gaAdminExcluir(\''+c.docId+'\')">Confirmar exclusão</button><button class="ga-btn-sm" onclick="DT.gaAdminCancelarExcluir()">Cancelar</button>'
           : '<button class="ga-btn-sm danger" onclick="DT.gaAdminExcluir(\''+c.docId+'\')">🗑️ Excluir</button>')+
