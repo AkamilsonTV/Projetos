@@ -797,8 +797,17 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-kanto-info-details{ font-size:.86rem; color:var(--ink-dim); }
 .ga-kanto-info-details summary{ cursor:pointer; color:var(--ink); font-weight:600; }
 .ga-kanto-info-details p{ margin:8px 0 0; }
-.ga-kanto-mapawrap{ background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:16px; flex:1 1 auto; min-height:0; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; scroll-behavior:smooth; touch-action:pan-x pan-y; }
+/* Cap. leva desta sessão ("acrescente no canto direito a opção de dar
+   e tirar zoom do mapa"): `.ga-kanto-map-outer` só existe pra ancorar
+   o controle de zoom (`position:absolute`) no canto da tela -- se ele
+   morasse DENTRO do `.ga-kanto-mapawrap` (que é quem rola), ele
+   rolaria junto com o mapa em vez de ficar fixo no canto. */
+.ga-kanto-map-outer{ position:relative; flex:1 1 auto; min-height:0; display:flex; }
+.ga-kanto-mapawrap{ background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:16px; flex:1 1 auto; min-height:0; width:100%; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; scroll-behavior:smooth; touch-action:pan-x pan-y; }
 .ga-kanto-mapa-fit{ display:inline-block; }
+.ga-kanto-zoom-ctrl{ position:absolute; top:10px; right:10px; z-index:5; display:flex; align-items:center; gap:6px; background:rgba(15,23,20,.85); border:1px solid var(--line); border-radius:999px; padding:4px 8px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+.ga-kanto-zoom-ctrl button{ width:26px; height:26px; padding:0; border-radius:50%; font-weight:800; line-height:1; }
+.ga-kanto-zoom-ctrl span{ font-size:.72rem; min-width:34px; text-align:center; color:var(--ink-dim); }
 .ga-kanto-mapa{ position:relative; box-shadow:0 0 0 3px #1a2e1c, 0 6px 22px rgba(0,0,0,.5); border-radius:4px; overflow:hidden; }
 /* Cap. leva desta sessão ("O mapa só ta feio ainda... mais parecido
    com natural"): reforma visual completa do terreno -- células agora
@@ -8573,7 +8582,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1 };
 
 function freshState(trainerName){
   return {
@@ -12790,7 +12799,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1 };
   render();
 };
 
@@ -15985,6 +15994,38 @@ function kantoMapaHTML(){
      não cabe inteiro, em vez da PÁGINA inteira precisar rolar. */
   return '<div class="ga-kanto-mapa-fit">'+out+'</div>';
 }
+/* Cap. leva desta sessão ("acrescente no canto direito a opção de dar
+   e tirar zoom do mapa"): `SESSION.kantoZoom` guarda o fator atual (1
+   = tamanho normal), só de sessão -- não é dado de jogo, não precisa
+   persistir no Firestore nem sobreviver a um F5 (mesmo espírito de
+   `SESSION.kantoSelecionado`). Passo de 0.25 entre 0.5x e 2x -- dá
+   pra ver o mapa inteiro de longe OU aproximar bem além do tamanho
+   nativo, sempre travado nesses limites (`clampInt`/`Math.min`/`Math.max`
+   de sempre). O EFEITO de verdade (aplicar `transform:scale()` no
+   `.ga-kanto-mapa` e redimensionar o `.ga-kanto-mapa-fit` que o
+   envolve pra o wrapper rolável saber o tamanho real renderizado)
+   mora em `ajustarEscalaMapaKanto()`, que já roda depois de todo
+   `render()` -- os botões só mudam o número, quem desenha é a mesma
+   função de sempre. */
+var KANTO_ZOOM_MIN = 0.5, KANTO_ZOOM_MAX = 2, KANTO_ZOOM_STEP = 0.25;
+DT.gaKantoZoomIn = function(){
+  if(!SESSION.isAdmin) return;
+  SESSION.kantoZoom = Math.min(KANTO_ZOOM_MAX, Math.round((SESSION.kantoZoom+KANTO_ZOOM_STEP)*100)/100);
+  render();
+};
+DT.gaKantoZoomOut = function(){
+  if(!SESSION.isAdmin) return;
+  SESSION.kantoZoom = Math.max(KANTO_ZOOM_MIN, Math.round((SESSION.kantoZoom-KANTO_ZOOM_STEP)*100)/100);
+  render();
+};
+function kantoZoomControleHTML(){
+  var zoom = SESSION.kantoZoom||1;
+  return '<div class="ga-kanto-zoom-ctrl">'+
+    '<button type="button" class="ga-btn-sm" '+(zoom<=KANTO_ZOOM_MIN?'disabled':'')+' title="Diminuir zoom" onclick="DT.gaKantoZoomOut()">−</button>'+
+    '<span>'+Math.round(zoom*100)+'%</span>'+
+    '<button type="button" class="ga-btn-sm" '+(zoom>=KANTO_ZOOM_MAX?'disabled':'')+' title="Aumentar zoom" onclick="DT.gaKantoZoomIn()">+</button>'+
+  '</div>';
+}
 function kantoScreenHTML(){
   var gyms = KANTO_MAP.locs.filter(function(l){ return l.kind==='gym'; }).length;
   var comArea = KANTO_MAP.locs.filter(function(l){ return l.areas&&l.areas.length; }).length + KANTO_MAP.routes.filter(function(r){ return r.areas&&r.areas.length; }).length;
@@ -16011,7 +16052,15 @@ function kantoScreenHTML(){
            clicar em qualquer um dos dois. */
         ticketParaEnergiaWidgetHTML('kanto')+
       '</div>'+
-      '<div class="ga-kanto-mapawrap">'+kantoMapaHTML()+'</div>'+
+      /* `.ga-kanto-map-outer` só existe pra ancorar o controle de zoom
+         no canto (`position:absolute`) SEM ele rolar junto com o mapa
+         -- `.ga-kanto-mapawrap` continua sendo o único elemento com
+         `overflow:auto` (quem realmente rola), o controle fica por
+         CIMA, sempre no mesmo canto da tela. */
+      '<div class="ga-kanto-map-outer">'+
+        '<div class="ga-kanto-mapawrap">'+kantoMapaHTML()+'</div>'+
+        kantoZoomControleHTML()+
+      '</div>'+
       '<div class="ga-kanto-legenda">'+
         '<span><i class="campo"></i> Campo</span>'+
         '<span><i class="trilha"></i> Rota</span>'+
@@ -18234,6 +18283,27 @@ function ajustarEscalaMapaKanto(){
   if(typeof document==='undefined' || !document.querySelector) return;
   var vp = document.querySelector('.ga-kanto-viewport');
   if(!vp || typeof vp.getBoundingClientRect!=='function') return; // guarda o mesmo harness Node (DOM falso sem getBoundingClientRect) que o resto do arquivo já protege
+  /* Cap. leva desta sessão ("...opção de dar e tirar zoom do mapa"):
+     aplica o `SESSION.kantoZoom` atual ANTES de medir a altura
+     disponível abaixo -- o `.ga-kanto-mapa-fit` (o elemento de tamanho
+     NATIVO em px, ver kantoMapaHTML) ganha `transform:scale()` e o
+     wrapper rolável (`.ga-kanto-mapawrap`) precisa saber o tamanho
+     REAL renderizado (nativo × zoom) pra rolar/medir certo -- do
+     contrário a área rolável continuaria do tamanho de sempre (zoom
+     visual sem efeito no scroll) ou cortaria o mapa (zoom>1 sem
+     espaço extra reservado). `offsetWidth`/`offsetHeight` sempre
+     leem o tamanho de LAYOUT (nunca o já transformado -- `transform`
+     é só visual, não mexe em layout), então dá pra medir o nativo
+     puro mesmo com um `transform:scale()` já aplicado antes. */
+  var mapaFit = document.querySelector('.ga-kanto-mapa-fit');
+  var mapa = mapaFit && mapaFit.querySelector ? mapaFit.querySelector('.ga-kanto-mapa') : null;
+  if(mapaFit && mapa && mapa.offsetWidth){
+    var zoom = (typeof SESSION!=='undefined' && SESSION.kantoZoom) ? SESSION.kantoZoom : 1;
+    mapa.style.transformOrigin = 'top left';
+    mapa.style.transform = 'scale('+zoom+')';
+    mapaFit.style.width = (mapa.offsetWidth*zoom)+'px';
+    mapaFit.style.height = (mapa.offsetHeight*zoom)+'px';
+  }
   vp.style.height = 'auto';
   var innerH = (typeof window!=='undefined' && window.innerHeight) ? window.innerHeight : 0;
   if(innerH<=0) return;
