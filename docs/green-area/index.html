@@ -18408,6 +18408,18 @@ function caixaFilteredList(){
     return na.localeCompare(nb);
   });
   else if(SESSION.caixaOrdenar==='numero') lista = lista.slice().sort(function(a,b){ return a.num-b.num; });
+  /* Cap. leva desta sessão ("Coloque uma organização por nível na
+     Caixa também"): mesmo padrão das outras opções de ordem acima --
+     não filtra nada, só muda a ORDEM da lista. Maior Nível primeiro
+     (mesmo critério que "Mais recentes" já usa -- o mais "relevante"
+     primeiro), com nome como desempate pra ordem estável entre
+     Pokémon do mesmo Nível. */
+  else if(SESSION.caixaOrdenar==='nivel') lista = lista.slice().sort(function(a,b){
+    if(b.level!==a.level) return b.level-a.level;
+    var na = (a.apelido||speciesByNum(a.num).name).toLowerCase();
+    var nb = (b.apelido||speciesByNum(b.num).name).toLowerCase();
+    return na.localeCompare(nb);
+  });
   return lista;
 }
 function caixaFiltrosHTML(){
@@ -18440,7 +18452,7 @@ function caixaFiltrosHTML(){
          adicionando 'nome' (A-Z, usa apelido se tiver) e 'numero'
          (crescente pela Pokédex) às opções já existentes. */
       '<span class="ga-tabs">'+
-        [['','🕓 Ordem: padrão'],['recente','🆕 Mais recentes'],['antigo','🕰️ Mais antigos'],['nome','🔤 Nome (A-Z)'],['numero','#️⃣ Número da Pokédex']].map(function(pair){
+        [['','🕓 Ordem: padrão'],['recente','🆕 Mais recentes'],['antigo','🕰️ Mais antigos'],['nome','🔤 Nome (A-Z)'],['numero','#️⃣ Número da Pokédex'],['nivel','📶 Nível (maior primeiro)']].map(function(pair){
           return '<button class="'+(SESSION.caixaOrdenar===pair[0]?'active':'')+'" onclick="DT.gaSetCaixaOrdenar(\''+pair[0]+'\')">'+pair[1]+'</button>';
         }).join('')+
       '</span>'+
