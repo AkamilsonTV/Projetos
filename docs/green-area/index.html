@@ -8613,7 +8613,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null };
 
 function freshState(trainerName){
   return {
@@ -13021,7 +13021,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null };
   render();
 };
 
@@ -15642,6 +15642,41 @@ function kantoPosAtual(){
   if(!STATE.kantoPos || typeof STATE.kantoPos.col!=='number') STATE.kantoPos = { col:2, row:10 };
   return STATE.kantoPos;
 }
+/* Cap. leva desta sessão ("bloqueie de passar pela cidade se não tiver
+   a insignia dela. Exceto Viridian... Se o cara tentar burlar isso
+   tentando usar fly ou outro movimento que leve pra outro lugar, a
+   mensagem deverá ser a mesma"): checa se o CAMINHO calculado passa por
+   dentro de uma cidade com Ginásio sem Insígnia ainda -- só as células
+   NO MEIO do caminho (índices 1..length-2, nunca a origem nem o
+   destino final) contam como "passar por dentro", porque entrar numa
+   cidade pra desafiar o próprio Líder dela sempre tem que continuar
+   liberado (é assim que se GANHA a Insígnia). Viridian fica de fora de
+   propósito -- o Ginásio dela só abre depois de zerar o resto, mas
+   ninguém fica preso por não ter a Insígnia dela especificamente
+   (mesmo comportamento do jogo original). Roda sobre o CAMINHO já
+   calculado (não sobre cliques individuais), então vale pra QUALQUER
+   jeito de tentar chegar lá -- andar tile a tile, clicar longe e
+   confirmar o caminho todo, ou qualquer futuro atalho tipo Fly (que
+   também teria que produzir um destino e passar por aqui pra mover
+   STATE.kantoPos de verdade). */
+function kantoCaminhoBloqueadoPorInsignia(caminho){
+  if(!caminho || caminho.length<3) return null;
+  var cidadesGinasio = {};
+  KANTO_MAP.locs.forEach(function(loc){
+    if(loc.kind==='gym' && loc.id!=='viridian') cidadesGinasio[loc.col+','+loc.row] = loc;
+  });
+  for(var i=1;i<caminho.length-1;i++){
+    var loc = cidadesGinasio[caminho[i][0]+','+caminho[i][1]];
+    if(loc && (STATE.kantoBadges||[]).indexOf(loc.id)===-1) return loc;
+  }
+  return null;
+}
+/* Nome "limpo" da cidade pra mensagem do guarda -- os `nome` do mapa
+   seguem o padrão "Cidade X"/"Ilha X" (ver KANTO_MAP.locs), mas soa
+   estranho repetir "Ginásio de Cidade Pewter" -- só "Pewter" mesmo. */
+function kantoNomeCidadeCurto(loc){
+  return loc.nome.replace(/^Cidade |^Ilha /, '');
+}
 /* Clicar numa célula que NÃO é onde o jogador está agora dispara o
    fluxo de confirmação de "Andar até aqui" (caminho mais curto + custo
    de Energia) em vez de abrir o popup na hora -- clicar na PRÓPRIA
@@ -15655,11 +15690,18 @@ function kantoTentarAndarPara(destinoCel, alvoSelecao){
   if(atual.col===destinoCel.col && atual.row===destinoCel.row) return false;
   var caminho = kantoCaminhoMaisCurto(atual, destinoCel);
   if(!caminho){ SESSION.error = 'Não existe caminho andável até aqui.'; render(); return true; }
+  var locBloqueio = kantoCaminhoBloqueadoPorInsignia(caminho);
+  if(locBloqueio){
+    SESSION.kantoGuardaBloqueio = locBloqueio.id;
+    render();
+    return true;
+  }
   var passos = caminho.length-1;
   SESSION.pendingKantoAndar = { destino: destinoCel, alvo: alvoSelecao, passos: passos, custo: passos*10 };
   render();
   return true;
 }
+DT.gaKantoFecharGuardaBloqueio = function(){ SESSION.kantoGuardaBloqueio = null; render(); };
 DT.gaKantoCancelarAndar = function(){ SESSION.pendingKantoAndar = null; render(); };
 /* Ao confirmar: desconta Energia, move `STATE.kantoPos` pro destino, e
    REUTILIZA o próprio handler de seleção (agora a posição já bate com
@@ -16650,6 +16692,28 @@ function kantoAndarConfirmPopupHTML(){
       '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoConfirmarAndar()">✅ Confirmar</button>'+
       '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarAndar()">✕ Cancelar</button>'+
     '</div>'+
+  '</div></div>';
+}
+/* Cap. leva desta sessão ("bloqueie de passar pela cidade se não tiver
+   a insignia dela... A imagem do guarda dizendo 'Ei, volte!...'"):
+   popup de bloqueio de passagem -- dispara quando `kantoTentarAndarPara`
+   acha uma cidade com Ginásio (sem Insígnia ainda) no MEIO do caminho
+   calculado. Sprite da Policial (Officer Jenny, sem equivalente oficial
+   de "Guarda" nos dados do FRLG -- ela nunca luta, então não existe
+   retrato de batalha oficial pra essa classe -- self-hosted mesmo
+   assim, só de outro jogo/mídia oficial em vez do padrão Spr_FRLG_*). */
+function kantoGuardaBloqueioPopupHTML(){
+  var locId = SESSION.kantoGuardaBloqueio;
+  if(!locId) return '';
+  var loc = kantoLocsById()[locId];
+  var leader = KANTO_GYM_LEADERS[locId];
+  if(!loc || !leader) return '';
+  return '<div class="ga-overlay" onclick="DT.gaKantoFecharGuardaBloqueio()"><div class="ga-overlay-card" onclick="event.stopPropagation()" style="text-align:center;">'+
+    '<button class="ga-overlay-close" onclick="DT.gaKantoFecharGuardaBloqueio()">✕</button>'+
+    '<img src="assets/trainers/Officer_Jenny_BW.png" alt="Policial" style="width:88px;height:auto;margin:0 auto 8px;display:block;">'+
+    '<h2>🚫 Passagem bloqueada</h2>'+
+    '<p>"Ei, volte! Você ainda não possui a <b>'+esc2(leader.insignia)+'</b>, só poderá passar quando vencer o Líder do Ginásio de <b>'+esc2(kantoNomeCidadeCurto(loc))+'</b>, <b>'+esc2(leader.nome)+'</b>."</p>'+
+    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoFecharGuardaBloqueio()">Entendi</button>'+
   '</div></div>';
 }
 
@@ -19204,7 +19268,7 @@ function screenHTML(){
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
-    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() : hubScreenHTML());
+    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
