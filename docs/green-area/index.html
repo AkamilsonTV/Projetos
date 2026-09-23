@@ -8492,6 +8492,23 @@ var trocasCol = null;
    mais abaixo pra o desenho completo (quem escreve o quê, quem resolve
    as Rodadas, como cada lado credita o PRÓPRIO V/D no final). */
 var duelosCol = null;
+/* Cap. leva desta sessão (Kanto: "cada centro pokémon é único... chat,
+   pvp e troca só poderão ser feitos se os jogadores estiverem no
+   mesmo centro pokémon"): 2 coleções NOVAS, mesmo espírito de
+   presencaCol/chatCol acima, só que MULTIPLICADAS por Centro em vez
+   de 1 lugar global só:
+     - green_area_kanto_centro_presenca/{docId} -- 1 documento por
+       CONTA (igual presencaCol), com um campo `centroId` a mais
+       dizendo EM QUAL dos 10 Centros de Kanto ela está agora. Mesmo
+       jeito de expirar sozinho (timeout) e ser apagado ao sair. Como
+       só existe 1 posição real por jogador no mapa (STATE.kantoPos),
+       nunca precisa de mais de 1 doc por conta aqui.
+     - green_area_kanto_centro_chat/{centroId} -- 1 documento POR
+       CENTRO (mesmo padrão de raidChatCol -- 1 doc por SALA em vez de
+       1 global), mensagens sempre via arrayUnion. Nunca lido/escrito
+       fora do Centro certo -- cada cidade só assina o PRÓPRIO doc. */
+var kantoCentroPresencaCol = null;
+var kantoCentroChatCol = null;
 /* Cap. leva desta sessão (Caça em Grupo): MESMO espírito exato de
    duelosCol acima, só que até 5 lados em vez de 2 --
    `green_area_cacadas_grupo/{id}` -- 1 documento por caçada (lobby +
@@ -8545,6 +8562,9 @@ var unsubscribePresenca = null;
 var unsubscribeDm = null;
 var unsubscribeTrocas = null;
 var presencaHeartbeatTimer = null;
+var unsubscribeKantoCentroPresenca = null; // mesmo espírito de unsubscribePresenca, mas escuta green_area_kanto_centro_presenca (ver comentário grande perto de kantoCentroPresencaCol)
+var unsubscribeKantoCentroChat = null;
+var kantoCentroHeartbeatTimer = null;
 var trocaExecutandoLocal = {}; // tradeId -> true enquanto a PRÓPRIA aplicação da troca está em andamento (evita aplicar 2x por reentrância do listener)
 /* Cap. leva desta sessão ("depois da confirmação a troca é realizada
    mas não fecha a janela... fica dando mensagem que não temos mais o
@@ -8582,7 +8602,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1 };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null };
 
 function freshState(trainerName){
   return {
@@ -9165,6 +9185,8 @@ function bootApp(){
     dmCol = db.collection('green_area_dm');
     trocasCol = db.collection('green_area_trocas');
     duelosCol = db.collection('green_area_duelos');
+    kantoCentroPresencaCol = db.collection('green_area_kanto_centro_presenca');
+    kantoCentroChatCol = db.collection('green_area_kanto_centro_chat');
     cacadasCol = db.collection('green_area_cacadas_grupo');
     configCol = db.collection('green_area_config');
     raidsCol = db.collection('green_area_raids');
@@ -12787,6 +12809,7 @@ DT.gaSair = function(){
     currentSaveRef.update({ state: sanitizeForFirestore(STATE), updatedAt: Date.now() }).catch(function(){});
   }
   sairDaPresencaDoCentro(); // Cap. leva desta sessão: "ao sair ele sai dali também" -- vale pra SAIR DA CONTA também, não só trocar de tela
+  if(SESSION.kantoCentroAberto) sairDaPresencaDoKantoCentro(); // mesmo princípio, agora pro Centro Pokémon de Kanto
   if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot=null; }
   if(unsubscribeInbox){ unsubscribeInbox(); unsubscribeInbox=null; }
   if(unsubscribeAmizades){ unsubscribeAmizades(); unsubscribeAmizades=null; }
@@ -12799,7 +12822,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1 };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null };
   render();
 };
 
@@ -12890,6 +12913,107 @@ function sairDaPresencaDoCentro(){
   if(unsubscribePresenca){ unsubscribePresenca(); unsubscribePresenca=null; }
   if(presencaCol && SESSION.currentDocId){ presencaCol.doc(SESSION.currentDocId).delete().catch(function(){}); }
 }
+
+/* ---- Centro Pokémon de Kanto (1 por cidade, cada um À PARTE) ----
+   Cap. leva desta sessão ("coloque centros pokémon... cada centro
+   pokémon é único... chat, pvp e troca só poderão ser feitos se os
+   jogadores estiverem no mesmo centro pokémon"): MESMO mecanismo
+   exato de entrarNaPresencaDoCentro/sairDaPresencaDoCentro acima (1
+   doc por CONTA, heartbeat, timeout honesto pra quando a aba fecha
+   sem avisar), só que com um campo `centroId` a mais -- e por isso o
+   snapshot listener FILTRA pra só listar quem está no MESMO centroId
+   que EU, não todo mundo que está em QUALQUER Centro de Kanto.
+   `entrarNaPresencaDoKantoCentro` só é chamada quando o jogador abre o
+   bloco "🏥 Centro Pokémon" dentro do popup de uma cidade -- e, por
+   causa do gate de "andar até aqui" que já existe (kantoTentarAndarPara,
+   Parte 4 do redesenho do mapa), a essa altura STATE.kantoPos JÁ bate
+   com a célula daquela cidade -- não precisa checar de novo "será que
+   o jogador está mesmo aqui", é garantido por construção. */
+var KANTO_CENTRO_PRESENCA_HEARTBEAT_MS = 25000;
+var KANTO_CENTRO_PRESENCA_TIMEOUT_MS = 75000;
+function entrarNaPresencaDoKantoCentro(centroId){
+  if(!STATE || !kantoCentroPresencaCol) return;
+  var meuId = SESSION.currentDocId, meuNome = STATE.trainerName;
+  var ping = function(){ kantoCentroPresencaCol.doc(meuId).set({ nome: meuNome, centroId: centroId, ultimoPing: Date.now() }).catch(function(){}); };
+  ping();
+  if(kantoCentroHeartbeatTimer) clearInterval(kantoCentroHeartbeatTimer);
+  kantoCentroHeartbeatTimer = setInterval(function(){
+    if(SESSION.kantoCentroAberto!==centroId || !STATE){ clearInterval(kantoCentroHeartbeatTimer); kantoCentroHeartbeatTimer=null; return; }
+    ping();
+  }, KANTO_CENTRO_PRESENCA_HEARTBEAT_MS);
+  if(unsubscribeKantoCentroPresenca) unsubscribeKantoCentroPresenca();
+  unsubscribeKantoCentroPresenca = kantoCentroPresencaCol.onSnapshot(function(snap){
+    var agora = Date.now();
+    var lista = [];
+    snap.forEach(function(doc){
+      if(doc.id===meuId) return;
+      var d = doc.data();
+      if(!d || d.centroId!==centroId) return; // é aqui que "cada centro é único" vira de verdade -- nunca mistura gente de cidades diferentes
+      if((agora - (d.ultimoPing||0)) > KANTO_CENTRO_PRESENCA_TIMEOUT_MS) return;
+      lista.push({ docId: doc.id, nome: d.nome || doc.id });
+    });
+    lista.sort(function(a,b){ return a.nome.localeCompare(b.nome); });
+    SESSION.kantoCentroDiretorio = lista;
+    SESSION.kantoCentroDiretorioCarregando = false;
+    render();
+  }, function(err){
+    SESSION.kantoCentroDiretorioCarregando = false;
+    SESSION.error = 'Não consegui ver quem está nesse Centro Pokémon agora ('+erroFirestoreMsg(err)+').';
+    render();
+  });
+  if(unsubscribeKantoCentroChat) unsubscribeKantoCentroChat();
+  unsubscribeKantoCentroChat = kantoCentroChatCol.doc(centroId).onSnapshot(function(doc){
+    SESSION.kantoCentroChat = (doc.exists && doc.data().mensagens) || [];
+    render();
+  }, function(err){ SESSION.error = 'Não consegui carregar o chat desse Centro Pokémon ('+erroFirestoreMsg(err)+').'; render(); });
+}
+/* Chamado sempre que o jogador sai do bloco do Centro (fecha o toggle,
+   fecha o popup da cidade, clica em outro ponto do mapa, troca de tela
+   ou sai da conta) -- mesmo "ao sair ele sai dali também" do Centro
+   Pokémon global, agora por Centro. `SESSION.kantoCentroAberto` (o id
+   do Centro atual, ou null) é quem decide se há algo pra sair -- os
+   pontos de chamada nunca precisam checar isso antes. */
+function sairDaPresencaDoKantoCentro(){
+  if(kantoCentroHeartbeatTimer){ clearInterval(kantoCentroHeartbeatTimer); kantoCentroHeartbeatTimer=null; }
+  if(unsubscribeKantoCentroPresenca){ unsubscribeKantoCentroPresenca(); unsubscribeKantoCentroPresenca=null; }
+  if(unsubscribeKantoCentroChat){ unsubscribeKantoCentroChat(); unsubscribeKantoCentroChat=null; }
+  if(kantoCentroPresencaCol && SESSION.currentDocId){ kantoCentroPresencaCol.doc(SESSION.currentDocId).delete().catch(function(){}); }
+  SESSION.kantoCentroAberto = null;
+  SESSION.kantoCentroDiretorio = null;
+  SESSION.kantoCentroDiretorioCarregando = false;
+  SESSION.kantoCentroChat = null;
+}
+DT.gaKantoToggleCentro = function(centroId){
+  if(!SESSION.isAdmin || !centroId) return;
+  if(SESSION.kantoCentroAberto===centroId){ sairDaPresencaDoKantoCentro(); render(); return; }
+  if(SESSION.kantoCentroAberto) sairDaPresencaDoKantoCentro(); // defensivo -- não deveria acontecer no fluxo normal (só 1 popup de cidade aberto por vez)
+  SESSION.kantoCentroAberto = centroId;
+  SESSION.kantoCentroDiretorioCarregando = true;
+  render();
+  entrarNaPresencaDoKantoCentro(centroId);
+};
+/* Chat de um Centro Pokémon de Kanto -- MESMO padrão de
+   DT.gaEnviarMensagemChat (chat global) e DT.gaEnviarMensagemRaidChat
+   (chat por sala de Raid), só que 1 documento por CIDADE
+   (`kantoCentroChatCol.doc(centroId)`) em vez de 1 global ou 1 por
+   sala de Raid. */
+var KANTO_CENTRO_CHAT_MAX = 200;
+var KANTO_CENTRO_CHAT_MSG_MAX_LEN = 300;
+DT.gaEnviarMensagemChatKantoCentro = function(centroId, inputEl){
+  if(!STATE || !kantoCentroChatCol || !centroId) return;
+  var texto = ((inputEl && inputEl.value)||'').trim();
+  if(!texto) return;
+  if(texto.length>KANTO_CENTRO_CHAT_MSG_MAX_LEN) texto = texto.slice(0,KANTO_CENTRO_CHAT_MSG_MAX_LEN);
+  var msg = { autor: STATE.trainerName, docId: SESSION.currentDocId, texto: texto, ts: Date.now() };
+  kantoCentroChatCol.doc(centroId).set({ mensagens: firebase.firestore.FieldValue.arrayUnion(msg) }, {merge:true}).then(function(){
+    if(inputEl) inputEl.value='';
+    var loc = kantoLocsById()[centroId];
+    logAction('centro', 'Mandou uma mensagem no Centro Pokémon de '+(loc?loc.nome:centroId)+'.');
+    mutate();
+    var atuais = SESSION.kantoCentroChat||[];
+    if(atuais.length>KANTO_CENTRO_CHAT_MAX) kantoCentroChatCol.doc(centroId).update({ mensagens: atuais.slice(atuais.length-KANTO_CENTRO_CHAT_MAX) }).catch(function(){});
+  }).catch(function(err){ SESSION.error = 'Não consegui mandar a mensagem ('+erroFirestoreMsg(err)+').'; render(); });
+};
 
 /* ---- Amizade ----
    Pedido enviado: escrito direto no INBOX de quem recebe (nunca no
@@ -14854,34 +14978,56 @@ function iniciarLutaDeZona(leadId, zonaId, skipDiscrepancia){
    de memória dos jogos originais (Red/Blue/FireRed/LeafGreen), não
    um dump exato de dados -- documentado aqui pra ninguém achar que é
    100% oficial. */
+/* Cap. leva desta sessão ("coloque centros pokémon... Pesquise onde
+   por Kanto tenha centro pokémon e coloque acessível em cada lugar"):
+   `pokecenter:true` marca as 10 cidades/locais que TÊM Centro Pokémon
+   de verdade em FRLG (a mesma referência usada em todo o resto do
+   mapa) -- Viridian/Pewter/Cerulean/Vermilion/Lavender/Celadon/
+   Fuchsia/Saffron/Cinnabar + o Planalto Índigo (tem 1 na entrada da
+   Liga). Vila Pallet fica de FORA de propósito -- só tem o Laboratório
+   do Professor no jogo original, nenhum Centro Pokémon -- mesmo
+   princípio que já decidiu ela não ter `mercado`. Cada Centro é um
+   lugar À PARTE dos outros (ver kantoCentroBlocoHTML/
+   entrarNaPresencaDoKantoCentro) -- chat, Troca e Duelo só funcionam
+   entre jogadores DENTRO DO MESMO Centro agora, nunca entre Centros
+   diferentes nem com o Centro Pokémon global (fora de Kanto). */
 var KANTO_MAP = {
   cols:13, rows:12,
   locs:[
     {id:'pallet', nome:'Vila Pallet', col:2,row:10, kind:'start', icon:'🏠', desc:'Onde a jornada começa: um vilarejo de poucas casas, com o laboratório do Professor logo na entrada.',
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:165,peso:3},{num:167,peso:3},{num:204,peso:3},{num:265,peso:1}]}]},
     {id:'viridian', nome:'Cidade Viridian', col:2,row:7, kind:'gym', gymType:'Ground', desc:'Última cidade antes da Liga -- o Ginásio mais escondido de Kanto, só abre depois de zerar o resto.',
+      pokecenter:true,
       mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-lua','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:165,peso:3},{num:167,peso:3},{num:204,peso:3},{num:265,peso:1}]}]},
     {id:'pewter', nome:'Cidade Pewter', col:2,row:1, kind:'gym', gymType:'Rock', desc:'Cidade de pedra encostada no Monte Moon, primeira parada de quem sai de Pallet.',
+      pokecenter:true,
       mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-lua','capacete-rochoso','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:204,peso:5},{num:265,peso:3},{num:396,peso:2}]}]},
     {id:'cerulean', nome:'Cidade Cerulean', col:8,row:1, kind:'gym', gymType:'Water', desc:'Cercada de riachos -- sede do Ginásio de Água, com Nugget Bridge e a Caverna Cerúlea por perto.',
+      pokecenter:true,
       mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-agua','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:2, nivelMax:20, encontros:[{num:163,peso:10},{num:204,peso:5},{num:415,peso:3}]}]},
     {id:'vermilion', nome:'Cidade Vermilion', col:7,row:8, kind:'gym', gymType:'Electric', desc:'Porto badalado, com o Ginásio Elétrico, a Caverna Diglett e um navio enorme atracado no cais.',
+      pokecenter:true,
       mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-trovao','garra-rapida','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:10, nivelMax:20, encontros:[{num:21,peso:5},{num:214,peso:5},{num:415,peso:5}]}]},
     {id:'lavender', nome:'Vila Lavender', col:9,row:4, kind:'start', icon:'👻', desc:'Vila pequena vivendo à sombra da Torre Pokémon, onde ninguém entra sem um bom motivo.',
+      pokecenter:true,
       mercado:['pokebola','greatball','pocao','superpocao','baga-lum']},
     {id:'celadon', nome:'Cidade Celadon', col:4,row:4, kind:'gym', gymType:'Grass', desc:'A maior cidade de Kanto, com o shopping mais famoso da região e o Ginásio de Grama.',
+      pokecenter:true,
       mercado:'todos',
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:10, nivelMax:20, encontros:[{num:214,peso:5},{num:415,peso:5}]}]},
     {id:'fuchsia', nome:'Cidade Fuchsia', col:4,row:10, kind:'gym', gymType:'Poison', desc:'Lar de uma zona de safári só dela e do Ginásio Venenoso.',
+      pokecenter:true,
       mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','lama-negra','baga-oran'],
       areas:[{id:'headbutt', nome:'Cutucar as árvores', metodo:'headbutt', nivelMin:21, nivelMax:34, encontros:[{num:163,peso:10},{num:165,peso:5},{num:167,peso:5},{num:265,peso:3}]}]},
     {id:'saffron', nome:'Cidade Saffron', col:7,row:4, kind:'gym', gymType:'Psychic', desc:'Bem no meio do mapa -- cidade grande, movimentada, com o Ginásio Psíquico no centro.',
+      pokecenter:true,
       mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-alvorada','pedra-crepusculo','oculos-sabios']},
     {id:'cinnabar', nome:'Ilha Cinnabar', col:0,row:10, kind:'gym', gymType:'Fire', island:true, desc:'Ilha vulcânica isolada, com o Ginásio de Fogo e uma mansão abandonada cheia de histórias.',
+      pokecenter:true,
       mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-fogo','baga-oran']},
     {id:'viridianforest', nome:'Floresta Viridian', col:2,row:4, kind:'forest', icon:'🌲', desc:'Floresta densa entre Viridian e Pewter, cheia de Pokémon do tipo Inseto.',
       areas:[{id:'grama', nome:'Grama da Floresta', metodo:'grama', nivelMin:3, nivelMax:7, encontros:[{num:10,peso:25},{num:13,peso:25},{num:16,peso:15},{num:11,peso:8},{num:14,peso:8},{num:43,peso:8},{num:69,peso:8},{num:25,peso:5},{num:12,peso:1},{num:15,peso:1},{num:1,peso:1}]}],
@@ -14898,7 +15044,7 @@ var KANTO_MAP = {
         {id:'agua', nome:'Água ao redor', metodo:'agua', nivelMin:39, nivelMax:44, encontros:[{num:72,peso:30},{num:90,peso:30},{num:129,peso:30},{num:73,peso:9},{num:91,peso:1}]},
         {id:'especial', nome:'Articuno adormecido', metodo:'especial', nivelMin:50, nivelMax:50, encontros:[{num:144,peso:1}]}
       ]},
-    {id:'indigo', nome:'Planalto Índigo', col:0,row:1, kind:'league', icon:'🏆', desc:'A Liga Pokémon em pessoa -- só chega até aqui quem já tem as 8 Insígnias de Kanto. Só treinadores fortes, nenhum Pokémon selvagem.'},
+    {id:'indigo', nome:'Planalto Índigo', col:0,row:1, kind:'league', icon:'🏆', pokecenter:true, desc:'A Liga Pokémon em pessoa -- só chega até aqui quem já tem as 8 Insígnias de Kanto. Só treinadores fortes, nenhum Pokémon selvagem.'},
     {id:'victoryroad', nome:'Estrada da Vitória', col:0,row:4, kind:'cave', icon:'🕳️', desc:'Última caverna antes da Liga -- cheia de treinadores fortes e quebra-cabeças de pedra.',
       areas:[
         {id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:42, nivelMax:47, encontros:[{num:42,peso:15},{num:67,peso:15},{num:75,peso:15},{num:41,peso:10},{num:66,peso:10},{num:74,peso:10},{num:95,peso:10},{num:111,peso:10},{num:112,peso:5},{num:106,peso:3},{num:107,peso:3},{num:113,peso:1}]},
@@ -15342,6 +15488,7 @@ DT.gaKantoSelecionar = function(tipo, id){
     var loc = kantoLocsById()[id];
     if(loc && kantoTentarAndarPara({col:loc.col,row:loc.row}, {tipo:'loc', id:id})) return;
   }
+  if(SESSION.kantoCentroAberto) sairDaPresencaDoKantoCentro(); // "cada centro é único" -- sair do quadrado atual (mesmo que só reclicando a mesma cidade) já sai do Centro, mesmo padrão do Mercado abaixo
   SESSION.kantoSelecionado = { tipo:tipo, id:id };
   SESSION.kantoEscolhendoArea = null;
   SESSION.kantoEscolhendoGinasio = null;
@@ -15354,6 +15501,7 @@ DT.gaKantoSelecionar = function(tipo, id){
    Treinador de Rota/Mercado "fantasma" aberto na próxima vez que o
    popup reabrir. */
 DT.gaKantoFecharPopup = function(){
+  if(SESSION.kantoCentroAberto) sairDaPresencaDoKantoCentro();
   SESSION.kantoSelecionado = null;
   SESSION.kantoEscolhendoArea = null;
   SESSION.kantoEscolhendoGinasio = null;
@@ -15698,6 +15846,85 @@ function kantoMercadoFiltrosHTML(){
 }
 DT.gaSetKantoMercadoSearch = function(el){ SESSION.kantoMercadoSearch = (el && el.value || '').trim(); render(); };
 DT.gaSetKantoMercadoCategoria = function(key){ SESSION.kantoMercadoCategoria = key||''; render(); };
+/* Cap. leva desta sessão ("Coloque os iniciais de Kanto, escolhendo
+   entre os 3 primeiros. Squirtle, Bulbasaur e Charmander. Quem começar
+   o jogo, vai passar a começar daqui -- mas só quando eu liberar o
+   mapa pro jogo, ainda estamos no admin"): só aparece em Vila Pallet
+   (nunca em outro local) e só enquanto `STATE.party` estiver vazia --
+   a escolha acontece 1 vez só, igual o jogo de verdade (depois que
+   escolhe, o Pokémon vai pra Equipe e o bloco some sozinho, porque a
+   condição `party.length===0` deixa de bater). Fica testável AGORA só
+   pelo Admin (a tela de Kanto inteira já é admin-only, ver
+   kantoScreenHTML) -- a criação de conta NOVA (`DT.gaCriar`) continua
+   100% intocada, sorteando um inicial aleatório de qualquer Geração
+   como sempre, até o jogador decidir "liberar o mapa pro jogo" de
+   verdade (aí sim essa escolha vira o fluxo real de conta nova, ligar
+   isso é trabalho de uma leva futura, não desta). */
+var KANTO_STARTERS = [1, 4, 7]; // Bulbasaur, Charmander, Squirtle -- únicos 3 iniciais REAIS de Kanto (FRLG)
+function kantoInicialBlocoHTML(loc){
+  if(loc.id!=='pallet' || (STATE.party&&STATE.party.length)) return '';
+  return '<div class="ga-kanto-lider"><h3 class="ga-subhead">🧪 Escolha seu Pokémon inicial</h3>'+
+    '<p class="ga-hint">O Professor Oak te oferece 1 dos 3 iniciais clássicos de Kanto -- essa escolha só acontece 1 vez.</p>'+
+    '<div class="ga-poke-grid">'+KANTO_STARTERS.map(function(num){
+      var sp = speciesByNum(num);
+      return '<div class="ga-friend-card"><img src="'+spriteUrl(num)+'" alt="" loading="lazy" style="width:72px;height:72px;image-rendering:pixelated;">'+
+        '<strong>'+esc2(sp.name)+'</strong>'+typeTagsHTML(sp)+
+        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoEscolherInicial('+num+')">Escolher</button></div>';
+    }).join('')+'</div></div>';
+}
+DT.gaKantoEscolherInicial = function(num){
+  if(!SESSION.isAdmin || !STATE) return;
+  if(STATE.party && STATE.party.length) return; // já escolheu -- não dá pra escolher de novo
+  if(KANTO_STARTERS.indexOf(num)===-1) return;
+  STATE.party = [spawnPoke(num, 5)]; // Nível 5, mesmo padrão de DT.gaCriar (criação de conta)
+  STATE.dex[num] = {seen:true, caught:true, caughtAt:Date.now()};
+  logAction('kanto', 'Escolheu '+speciesByNum(num).name+' como Pokémon inicial em Vila Pallet.');
+  mutate();
+};
+/* Cap. mesma leva ("cada centro pokémon é único... chat, pvp e troca
+   só poderão ser feitos se os jogadores estiverem no mesmo centro
+   pokémon"): mesmo padrão visual/toggle do Mercado logo abaixo, só que
+   com presença AO VIVO (ver entrarNaPresencaDoKantoCentro) em vez de
+   uma lista estática de itens. */
+function kantoCentroBlocoHTML(loc){
+  if(!loc.pokecenter) return '';
+  var aberto = SESSION.kantoCentroAberto===loc.id;
+  var out = '<div class="ga-kanto-lider">'+
+    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoToggleCentro(\''+loc.id+'\')">🏥 Centro Pokémon'+(aberto?' ▲':' ▼')+'</button>';
+  if(aberto){
+    out += '<p class="ga-hint">Cada Centro Pokémon é um lugar À PARTE -- só dá pra conversar, trocar e duelar com quem estiver NESTE MESMO Centro agora. Faça amizade primeiro no 🏥 Centro Pokémon global (menu lateral) pra poder Trocar/Desafiar por aqui.</p>';
+    out += '<h4 class="ga-subhead" style="margin-top:8px;">🧑‍🤝‍🧑 Treinadores aqui agora</h4>'+
+      (SESSION.kantoCentroDiretorioCarregando
+        ? '<p class="ga-hint">Vendo quem está aqui agora...</p>'
+        : (!SESSION.kantoCentroDiretorio || !SESSION.kantoCentroDiretorio.length
+            ? '<p class="ga-hint">Nenhum outro Treinador está neste Centro Pokémon agora.</p>'
+            : '<div class="ga-poke-grid">'+SESSION.kantoCentroDiretorio.map(function(p){
+                var jaAmigo = (SESSION.amigos||[]).some(function(a){ return a.outro===p.docId; });
+                var trocaComEle = (SESSION.trocasAtivas||[]).filter(function(t){ return t.a===p.docId || t.b===p.docId; })[0];
+                var duelComEle = (SESSION.duelosAtivos||[]).filter(function(d){ return (d.a===p.docId || d.b===p.docId) && d.status!=='fim'; })[0];
+                var acoes = jaAmigo
+                  ? '<div class="ga-btn-row"><button class="ga-btn-sm" onclick="DT.gaIniciarTroca(\''+p.docId+'\')">🔄 '+(trocaComEle?'Continuar troca':'Trocar')+'</button>'+
+                    '<button class="ga-btn-sm" onclick="DT.gaDesafiarDuelo(\''+p.docId+'\')">⚔️ '+(duelComEle?'Continuar Duelo':'Desafiar')+'</button></div>'
+                  : '<span class="ga-hint">Adicione amizade no Centro Pokémon global pra Trocar/Desafiar</span>';
+                return '<div class="ga-friend-card"><strong>'+esc2(p.nome)+'</strong>'+acoes+'</div>';
+              }).join('')+'</div>'
+        )
+      );
+    out += '<h4 class="ga-subhead" style="margin-top:8px;">💬 Chat deste Centro</h4>'+
+      '<div class="ga-chat-log" id="gaKantoCentroChatLog">'+
+        (!SESSION.kantoCentroChat || !SESSION.kantoCentroChat.length
+          ? '<div class="ga-hint">Nenhuma mensagem ainda -- seja o primeiro a falar!</div>'
+          : SESSION.kantoCentroChat.map(function(m){
+              return '<div class="ga-chat-msg'+(m.docId===SESSION.currentDocId?' mine':'')+'"><strong>'+esc2(m.autor)+':</strong> '+esc2(m.texto)+'</div>';
+            }).join(''))+
+      '</div>'+
+      '<div class="ga-capqtd-row">'+
+        '<input type="text" maxlength="'+KANTO_CENTRO_CHAT_MSG_MAX_LEN+'" id="gaKantoCentroChatInput" placeholder="Escreva uma mensagem..." class="ga-chat-input" onkeydown="if(event.key===\'Enter\')DT.gaEnviarMensagemChatKantoCentro(\''+loc.id+'\',document.getElementById(\'gaKantoCentroChatInput\'))">'+
+        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemChatKantoCentro(\''+loc.id+'\',document.getElementById(\'gaKantoCentroChatInput\'))">Enviar</button>'+
+      '</div>';
+  }
+  return out+'</div>';
+}
 function kantoMercadoBlocoHTML(loc){
   if(!loc.mercado) return '';
   var itens = kantoMercadoItensDoLocal(loc);
@@ -15827,6 +16054,7 @@ DT.gaKantoSelecionarTile = function(routeId, tileIndex){
   if(!SESSION.isAdmin) return;
   var tile = kantoRouteTileById(routeId, tileIndex);
   if(tile && kantoTentarAndarPara({col:tile.col,row:tile.row}, {tipo:'route-tile', routeId:routeId, tileIndex:tileIndex})) return;
+  if(SESSION.kantoCentroAberto) sairDaPresencaDoKantoCentro();
   SESSION.kantoSelecionado = { tipo:'route-tile', routeId:routeId, tileIndex:tileIndex };
   SESSION.kantoEscolhendoArea = null;
   SESSION.kantoEscolhendoGinasio = null;
@@ -15865,7 +16093,7 @@ function kantoInfoPainelHTML(){
     var touching = kantoRoutesTouching(loc.id);
     var conecta = touching.length ? '<div class="ga-hint">Rotas conectadas: '+touching.map(function(r){ return '<button type="button" class="ga-linklike" onclick="DT.gaKantoSelecionar(\'route\',\''+r.id+'\')">'+(r.water?'🌊':'🛤️')+' '+esc2(r.nome)+'</button>'; }).join(', ')+'</div>' : '';
     return '<div class="ga-kanto-info-head"><span class="ga-kanto-info-ic">'+kantoOwnerIcon(loc)+'</span><div><h3>'+esc2(loc.nome)+'</h3></div></div>'+badge+
-      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoGinasioBlocoHTML(loc)+kantoMercadoBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+kantoTreinadoresBlocoHTML(loc, 'loc')+conecta;
+      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoInicialBlocoHTML(loc)+kantoGinasioBlocoHTML(loc)+kantoMercadoBlocoHTML(loc)+kantoCentroBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+kantoTreinadoresBlocoHTML(loc, 'loc')+conecta;
   }
   var route = KANTO_MAP.routes.filter(function(r){ return r.id===sel.id; })[0];
   if(!route) return '';
@@ -17144,6 +17372,15 @@ DT.gaGoto = function(screen){
   if(SESSION.screen==='centro' && screen!=='centro'){
     if(unsubscribeChat){ unsubscribeChat(); unsubscribeChat=null; }
     sairDaPresencaDoCentro();
+  }
+  /* Cap. mesma leva -- Centro Pokémon de Kanto: sai do Centro (se
+     algum estiver aberto) ao trocar pra QUALQUER tela fora de Kanto --
+     dentro de Kanto quem cuida disso são os próprios seletores de
+     mapa (gaKantoSelecionar/gaKantoSelecionarTile/gaKantoFecharPopup),
+     já que trocar de cidade SEM sair da tela 'kanto' também precisa
+     sair do Centro antigo. */
+  if(SESSION.kantoCentroAberto && screen!=='kanto'){
+    sairDaPresencaDoKantoCentro();
   }
   /* Cap. leva desta sessão (Raids): mesmo espírito acima -- o chat de
      uma sala de Raid só fica ao vivo enquanto essa sala específica
@@ -21324,7 +21561,7 @@ if(document.readyState==='complete' || document.readyState==='interactive') boot
    quando FUNCIONA. `typeof window!=='undefined' && window.addEventListener`
    protege o harness de teste em Node, que não tem essa API. */
 if(typeof window!=='undefined' && window.addEventListener){
-  window.addEventListener('beforeunload', function(){ sairDaPresencaDoCentro(); });
+  window.addEventListener('beforeunload', function(){ sairDaPresencaDoCentro(); if(SESSION.kantoCentroAberto) sairDaPresencaDoKantoCentro(); });
   /* Cap. leva desta sessão (mapa de Kanto responsivo): `render()` já
      chama `ajustarEscalaMapaKanto()` toda vez que o STATE muda, mas
      girar o celular ou redimensionar a janela NÃO muda o STATE --
