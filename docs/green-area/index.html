@@ -4370,8 +4370,82 @@ function faixaMediaDoRoster(roster){
   var media = Math.round(roster.reduce(function(s,slot){ return s+slot.level; },0)/roster.length);
   return rangeIndexForLevel(media);
 }
-function gerarVariacoesRoster(rosterCanonico, faixasExtras){
+/* Cap. leva desta sessão ("Os pokémon de treinadores e líderes de
+   ginásio não precisam ficar repetidos como são nos jogos originais.
+   Pega pokémons da região e que sejam próximos ao estilo deles. Aí de
+   acordo com a progressão de dificuldade eles podem aumentar de
+   nível, evoluir e etc"): o roster CANÔNICO (Faixa real, pesquisada no
+   Bulbapedia) continua 100% intocado -- só as variações de Faixa
+   ACIMA da canônica (pra jogador avançado, `i>0` no loop abaixo)
+   passam a poder trocar de ESPÉCIE, dentro do mesmo "estilo" (Tipo) do
+   Treinador/Líder, em vez de só evoluir a MESMA espécie canônica pra
+   frente feito antes. `hashStr` dá uma escolha DETERMINÍSTICA (não
+   `Math.random()`) por Treinador+posição no time -- mesmo Treinador
+   sempre cai no mesmo Pokémon substituto entre uma sessão e outra, e
+   esse substituto continua evoluindo NA FRENTE conforme a Faixa sobe
+   (mesmo `especieNaEvolucaoParaNivel` de sempre, só que a partir de
+   uma base NOVA em vez da canônica). */
+function hashStr(s){
+  var h = 0;
+  for(var i=0;i<s.length;i++){ h = ((h<<5)-h+s.charCodeAt(i))|0; }
+  return Math.abs(h);
+}
+/* themeParaClasse: o Tipo-tema de uma CLASSE de Treinador (ex. 'Bug
+   Catcher') -- 100% orientado a dado, contando o Tipo mais comum entre
+   TODOS os Pokémon que essa classe já usa no roster canônico REAL
+   (os 158+64 Treinadores pesquisados no Bulbapedia), em vez de inventar
+   "Bug Catcher = Inseto" na mão pra cada uma das 23 classes -- a
+   pesquisa real já revela sozinha qual Tipo cada classe favorece de
+   verdade em FRLG. Calculado 1x e cacheado (`_classThemeCache`). */
+var _classThemeCache = null;
+function themeParaClasse(classe){
+  if(!_classThemeCache){
+    _classThemeCache = {};
+    var contagem = {};
+    function conta(trainers){
+      (trainers||[]).forEach(function(t){
+        if(!contagem[t.classe]) contagem[t.classe] = {};
+        t.rosterCanonico.forEach(function(s){
+          var sp = speciesByNum(s.num);
+          if(!sp) return;
+          contagem[t.classe][sp.tipo1] = (contagem[t.classe][sp.tipo1]||0)+1;
+          if(sp.tipo2) contagem[t.classe][sp.tipo2] = (contagem[t.classe][sp.tipo2]||0)+1;
+        });
+      });
+    }
+    KANTO_MAP.routes.forEach(function(r){ conta(r.trainers); });
+    KANTO_MAP.locs.forEach(function(l){ conta(l.trainers); });
+    Object.keys(contagem).forEach(function(cl){
+      var tipos = Object.keys(contagem[cl]).sort(function(a,b){ return contagem[cl][b]-contagem[cl][a]; });
+      _classThemeCache[cl] = tipos.slice(0,2);
+    });
+  }
+  return _classThemeCache[classe] || [];
+}
+/* poolTematico: candidatos da REGIÃO (Kanto -- #1 a #151, "pokémons da
+   região" do pedido) que batem com o Tipo-tema, restrito às formas
+   BASE de cada família de evolução (sem pré-evolução, `preEvolucoesDe`
+   vazio) -- assim `especieNaEvolucaoParaNivel` sempre tem uma cadeia
+   INTEIRA pra evoluir conforme o Nível sobe, nunca uma forma evoluída
+   solta sem explicação. Sem Lendário/Mítico (`LEGENDARY_NUMS`) -- os
+   Treinadores comuns nunca usam um no jogo original também. */
+var _poolTematicoCache = {};
+function poolTematico(tipos){
+  if(!tipos || !tipos.length) return [];
+  var chave = tipos.join('|');
+  if(_poolTematicoCache[chave]) return _poolTematicoCache[chave];
+  var pool = SPECIES_DEX.filter(function(sp){
+    if(sp.num<1 || sp.num>151) return false;
+    if(LEGENDARY_NUMS.indexOf(sp.num)!==-1) return false;
+    if(preEvolucoesDe(sp.num).length>0) return false;
+    return tipos.indexOf(sp.tipo1)!==-1 || (sp.tipo2 && tipos.indexOf(sp.tipo2)!==-1);
+  }).map(function(sp){ return sp.num; });
+  _poolTematicoCache[chave] = pool;
+  return pool;
+}
+function gerarVariacoesRoster(rosterCanonico, faixasExtras, tema, seedId){
   var faixaCanonica = faixaMediaDoRoster(rosterCanonico);
+  var pool = tema ? poolTematico(tema) : [];
   var variacoes = [];
   var faixasVistas = {};
   for(var i=0; i<=faixasExtras; i++){
@@ -4379,9 +4453,23 @@ function gerarVariacoesRoster(rosterCanonico, faixasExtras){
     if(faixasVistas[faixaAlvo]) continue; // já bateu no teto (Faixa 9) -- não duplica variação idêntica
     faixasVistas[faixaAlvo] = true;
     var deltaNivel = (faixaAlvo-faixaCanonica)*10;
-    var roster = rosterCanonico.map(function(slot){
+    var acimaDaCanonica = i>0;
+    var roster = rosterCanonico.map(function(slot, slotIdx){
       var nivelAlvo = clampInt(slot.level+deltaNivel, 1, NIVEL_MAX);
-      return { num: especieNaEvolucaoParaNivel(slot.num, nivelAlvo), level: nivelAlvo };
+      /* Faixa canônica (i===0): espécie EXATA da pesquisa, sem passar
+         por `especieNaEvolucaoParaNivel` -- alguns Treinadores reais
+         carregam uma espécie ainda NÃO evoluída num Nível em que ela já
+         teria evoluído sozinha (ex. Bug Catcher com Caterpie Nv.10,
+         mesmo Caterpie evoluindo pra Metapod no Nv.7 na natureza --
+         fiel ao jogo original, que também faz isso), então "recalcular"
+         a espécie aqui de propósito trocaria a Faixa canônica por algo
+         que NUNCA apareceu na pesquisa real. */
+      if(!acimaDaCanonica) return { num: slot.num, level: nivelAlvo };
+      var baseNum = slot.num;
+      if(pool.length){
+        baseNum = pool[hashStr((seedId||'')+'_'+slotIdx) % pool.length];
+      }
+      return { num: especieNaEvolucaoParaNivel(baseNum, nivelAlvo), level: nivelAlvo };
     });
     variacoes.push({ faixaIdx: faixaAlvo, roster: roster });
   }
@@ -14868,9 +14956,15 @@ function kantoTrainerSpriteUrl(trainer){
    vez por dia"): cada Líder ganha `variacoes` pré-computadas (mesma
    fábrica `gerarVariacoesRoster` usada pros Treinadores de Rota, ver
    comentário lá) -- o `roster` ORIGINAL acima continua existindo
-   intacto (é a Faixa canônica, `variacoes[0]`), só ganhou companhia. */
+   intacto (é a Faixa canônica, `variacoes[0]`), só ganhou companhia.
+   Cap. leva posterior ("não precisam ficar repetidos como são nos
+   jogos originais... da região e que sejam próximos ao estilo
+   deles"): tema = o próprio Tipo do Ginásio (`leader.tipo`, já existe
+   por Líder) -- Faixas acima da canônica passam a variar dentro desse
+   Tipo em vez de só evoluir Geodude/Onix/etc. pra frente. */
 Object.keys(KANTO_GYM_LEADERS).forEach(function(locId){
-  KANTO_GYM_LEADERS[locId].variacoes = gerarVariacoesRoster(KANTO_GYM_LEADERS[locId].roster, 3);
+  var leader = KANTO_GYM_LEADERS[locId];
+  leader.variacoes = gerarVariacoesRoster(leader.roster, 3, [leader.tipo], 'ginasio_'+locId);
 });
 /* Cap. leva desta sessão (Treinadores de Rota de Kanto -- "Colocar nas
    rotas, alguns treinadores que são ajustados de acordo com o nível do
@@ -14880,11 +14974,13 @@ Object.keys(KANTO_GYM_LEADERS).forEach(function(locId){
    roster/Nível/recompensa de FireRed/LeafGreen) e gravados em
    `KANTO_MAP.routes[i].trainers`. Cada Treinador ganha `variacoes`
    pré-computadas igual os Líderes -- `rosterCanonico` continua intacto
-   (é a Faixa canônica, `variacoes[0]`). */
+   (é a Faixa canônica, `variacoes[0]`). Tema = `themeParaClasse` (Tipo
+   mais comum da CLASSE do Treinador, ver comentário lá), `trainer.id`
+   como seed -- cada Treinador cai sempre no MESMO substituto temático. */
 KANTO_MAP.routes.forEach(function(route){
   if(!route.trainers) return;
   route.trainers.forEach(function(trainer){
-    trainer.variacoes = gerarVariacoesRoster(trainer.rosterCanonico, 3);
+    trainer.variacoes = gerarVariacoesRoster(trainer.rosterCanonico, 3, themeParaClasse(trainer.classe), trainer.id);
   });
 });
 /* Cap. leva desta sessão ("Só achei treinadores na rota 3. E na floresta?
@@ -14893,11 +14989,11 @@ KANTO_MAP.routes.forEach(function(route){
    Treinador de verdade em FireRed/LeafGreen (Floresta Viridian/Monte
    Moon/Túnel da Rocha/S.S. Anne/Estrada da Vitória/Mansão Pokémon --
    pesquisados no Bulbapedia igual as 25 Rotas), gravados em
-   `KANTO_MAP.locs[i].trainers`. */
+   `KANTO_MAP.locs[i].trainers`. MESMO tema por classe das Rotas acima. */
 KANTO_MAP.locs.forEach(function(loc){
   if(!loc.trainers) return;
   loc.trainers.forEach(function(trainer){
-    trainer.variacoes = gerarVariacoesRoster(trainer.rosterCanonico, 3);
+    trainer.variacoes = gerarVariacoesRoster(trainer.rosterCanonico, 3, themeParaClasse(trainer.classe), trainer.id);
   });
 });
 /* Cap. leva desta sessão (faixas de Nível): passou a receber o ROSTER
