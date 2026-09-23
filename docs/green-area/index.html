@@ -637,6 +637,25 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
    card (`overflow-y:auto`, nunca a página), mesmo se sobrar mais
    Pokébola do que cabe. */
 .ga-overlay-card.compact{ max-width:280px; max-height:min(45vh,320px); }
+/* Cap. leva desta sessão ("Quando eu clicar em centro pokémon quero que
+   o chat abra assim, na lateral"): wrapper novo em volta do popup de
+   Kanto (`.ga-overlay-card.wide`), que ganha um IRMÃO
+   (`.ga-kanto-centro-chat-painel`) só quando um Centro Pokémon está
+   aberto (ver kantoPopupHTML). Em tela ESTREITA (celular -- "no celular
+   pode deixar como está fica melhor") os 2 empilham em coluna dentro
+   de UM wrapper que rola inteiro (mesmo efeito visual de antes, chat
+   logo depois da lista de Treinadores, só que agora em 2 caixas em vez
+   de 1). Em tela LARGA o wrapper vira linha -- o chat sai pro lado,
+   cada caixa com a própria rolagem independente (exatamente a
+   referência que o jogador desenhou). */
+.ga-kanto-popup-flex{ display:flex; flex-direction:column; gap:12px; width:100%; max-width:900px; max-height:85vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.ga-kanto-popup-flex > .ga-overlay-card{ max-height:none; overflow-y:visible; width:100%; margin:0; }
+.ga-kanto-centro-chat-painel{ background:var(--panel); border:1px solid var(--accent-dim); border-radius:var(--radius); padding:16px; text-align:left; }
+@media (min-width:900px){
+  .ga-kanto-popup-flex{ flex-direction:row; align-items:flex-start; max-width:1260px; max-height:none; overflow:visible; }
+  .ga-kanto-popup-flex > .ga-overlay-card{ max-height:85vh; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto; min-width:0; }
+  .ga-kanto-centro-chat-painel{ width:340px; flex:0 0 340px; max-height:85vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+}
 .ga-admin-log{ display:flex; flex-direction:column; gap:4px; margin-top:6px; max-height:320px; overflow-y:auto; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px; }
 .ga-admin-log-row{ font-size:.82rem; border-bottom:1px solid var(--line); padding:4px 0; }
 .ga-admin-log-row:last-child{ border-bottom:none; }
@@ -16002,25 +16021,44 @@ function kantoCentroBlocoHTML(loc){
               }).join('')+'</div>'
         )
       );
-    out += '<h4 class="ga-subhead" style="margin-top:8px;">💬 Chat deste Centro</h4>'+
-      /* `.ga-chat-log-fixo` trava a altura da caixa (ver CSS) -- não
-         cresce a cada mensagem nova, só rola as últimas
-         KANTO_CENTRO_CHAT_MAX (50) internamente. `.slice(-...)` aqui é
-         defensivo (um documento salvo ANTES desta leva pode ainda ter
-         até 200 mensagens até o próximo trim server-side acontecer). */
-      '<div class="ga-chat-log ga-chat-log-fixo" id="gaKantoCentroChatLog">'+
-        (!SESSION.kantoCentroChat || !SESSION.kantoCentroChat.length
-          ? '<div class="ga-hint">Nenhuma mensagem ainda -- seja o primeiro a falar!</div>'
-          : SESSION.kantoCentroChat.slice(-KANTO_CENTRO_CHAT_MAX).map(function(m){
-              return '<div class="ga-chat-msg'+(m.docId===SESSION.currentDocId?' mine':'')+'"><strong>'+esc2(m.autor)+':</strong> '+esc2(m.texto)+'</div>';
-            }).join(''))+
-      '</div>'+
-      '<div class="ga-capqtd-row">'+
-        '<input type="text" maxlength="'+KANTO_CENTRO_CHAT_MSG_MAX_LEN+'" id="gaKantoCentroChatInput" placeholder="Escreva uma mensagem..." class="ga-chat-input" onkeydown="if(event.key===\'Enter\')DT.gaEnviarMensagemChatKantoCentro(\''+loc.id+'\',document.getElementById(\'gaKantoCentroChatInput\'))">'+
-        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemChatKantoCentro(\''+loc.id+'\',document.getElementById(\'gaKantoCentroChatInput\'))">Enviar</button>'+
-      '</div>';
+    /* Cap. leva desta sessão ("Quando eu clicar em centro pokémon quero
+       que o chat abra assim, na lateral"): o CHAT em si saiu daqui --
+       vira um painel separado, renderizado por kantoPopupHTML como
+       IRMÃO do card principal (ver kantoCentroChatConteudoHTML abaixo),
+       não mais dentro deste bloco. Em telas largas isso empurra o chat
+       pra uma caixa à direita (`.ga-kanto-centro-chat-painel`); em
+       telas estreitas (celular) o wrapper `.ga-kanto-popup-flex` empilha
+       os 2 em coluna (ver CSS) -- visualmente continua aparecendo logo
+       depois da lista de Treinadores, exatamente como antes.
+       "No celular pode deixar como está fica melhor" -- por isso o
+       empilhamento em coluna no celular, sem nenhuma outra mudança lá. */
   }
   return out+'</div>';
+}
+/* Extraído de kantoCentroBlocoHTML (ver comentário acima) -- só o
+   pedaço do CHAT (título + caixa de mensagens + campo de enviar), pra
+   virar um painel próprio ao lado do popup principal em telas largas
+   (`kantoPopupHTML`, `.ga-kanto-centro-chat-painel`). Só é chamado
+   quando `SESSION.kantoCentroAberto` já bate com este `loc`, então
+   nunca precisa checar `loc.pokecenter`/`aberto` de novo. */
+function kantoCentroChatConteudoHTML(loc){
+  return '<h4 class="ga-subhead">💬 Chat deste Centro</h4>'+
+    /* `.ga-chat-log-fixo` trava a altura da caixa (ver CSS) -- não
+       cresce a cada mensagem nova, só rola as últimas
+       KANTO_CENTRO_CHAT_MAX (50) internamente. `.slice(-...)` aqui é
+       defensivo (um documento salvo ANTES desta leva pode ainda ter
+       até 200 mensagens até o próximo trim server-side acontecer). */
+    '<div class="ga-chat-log ga-chat-log-fixo" id="gaKantoCentroChatLog">'+
+      (!SESSION.kantoCentroChat || !SESSION.kantoCentroChat.length
+        ? '<div class="ga-hint">Nenhuma mensagem ainda -- seja o primeiro a falar!</div>'
+        : SESSION.kantoCentroChat.slice(-KANTO_CENTRO_CHAT_MAX).map(function(m){
+            return '<div class="ga-chat-msg'+(m.docId===SESSION.currentDocId?' mine':'')+'"><strong>'+esc2(m.autor)+':</strong> '+esc2(m.texto)+'</div>';
+          }).join(''))+
+    '</div>'+
+    '<div class="ga-capqtd-row">'+
+      '<input type="text" maxlength="'+KANTO_CENTRO_CHAT_MSG_MAX_LEN+'" id="gaKantoCentroChatInput" placeholder="Escreva uma mensagem..." class="ga-chat-input" onkeydown="if(event.key===\'Enter\')DT.gaEnviarMensagemChatKantoCentro(\''+loc.id+'\',document.getElementById(\'gaKantoCentroChatInput\'))">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemChatKantoCentro(\''+loc.id+'\',document.getElementById(\'gaKantoCentroChatInput\'))">Enviar</button>'+
+    '</div>';
 }
 function kantoMercadoBlocoHTML(loc){
   if(!loc.mercado) return '';
@@ -16459,9 +16497,34 @@ function kantoScreenHTML(){
    quando STATE.battle existe), nunca mais como tela cheia separada. */
 function kantoPopupHTML(){
   if(!SESSION.kantoSelecionado) return '';
-  return '<div class="ga-overlay" onclick="DT.gaKantoFecharPopup()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
-    '<button class="ga-overlay-close" onclick="DT.gaKantoFecharPopup()">✕</button>'+
-    kantoInfoPainelHTML()+
+  /* Cap. leva desta sessão ("Quando eu clicar em centro pokémon quero
+     que o chat abra assim, na lateral" + "tem que parar de subir a
+     tela de popup pro topo a toda mensagem que mandar"): 2 mudanças
+     nesta reescrita --
+     (1) `.ga-kanto-popup-flex` é um wrapper NOVO em volta do card de
+     sempre (`.ga-overlay-card`) e, só quando um Centro Pokémon está
+     aberto, de um painel IRMÃO com o chat (`.ga-kanto-centro-chat-
+     painel`, ver kantoCentroChatConteudoHTML) -- em tela larga o CSS
+     vira `flex-direction:row` (chat na lateral, cada um com a própria
+     rolagem) e em tela estreita continua `column` (empilhado, "como
+     está" no celular, só que agora como 2 caixas em vez de 1 -- olho
+     nu não muda quase nada).
+     (2) `id="gaKantoPopupCard"` no wrapper (ver GA_SCROLL_PRESERVE_IDS
+     mais abaixo, MESMO mecanismo já usado pra Caixa/Pokédex/Movimentos)
+     -- antes o popup inteiro não tinha id nenhum, então TODO render()
+     enquanto ele estava aberto (mandar mensagem no chat, o listener de
+     presença atualizando sozinho, o heartbeat...) recriava o HTML do
+     zero e a rolagem voltava pro topo, mesmo sem o jogador ter pedido
+     nada disso -- exatamente o "sobe pro topo a toda mensagem que
+     mandar" reportado. */
+  var centroLoc = (SESSION.kantoSelecionado.tipo==='loc' && SESSION.kantoCentroAberto) ? kantoLocsById()[SESSION.kantoCentroAberto] : null;
+  var chatPainel = centroLoc ? '<div class="ga-kanto-centro-chat-painel" id="gaKantoCentroChatPainel">'+kantoCentroChatConteudoHTML(centroLoc)+'</div>' : '';
+  return '<div class="ga-overlay" onclick="DT.gaKantoFecharPopup()"><div class="ga-kanto-popup-flex" id="gaKantoPopupCard" onclick="event.stopPropagation()">'+
+    '<div class="ga-overlay-card wide" id="gaKantoPopupCardInner">'+
+      '<button class="ga-overlay-close" onclick="DT.gaKantoFecharPopup()">✕</button>'+
+      kantoInfoPainelHTML()+
+    '</div>'+
+    chatPainel+
   '</div></div>';
 }
 /* Parte 4 do redesenho do mapa -- confirmação de "Andar até aqui",
@@ -18624,7 +18687,14 @@ var appEl_ = null;
    na tela atual) antes de trocar o HTML, e devolve o MESMO valor
    depois -- funciona porque o id é sempre o mesmo elemento reaparecendo
    no mesmo lugar da árvore, nunca uma rolagem "adivinhada". */
-var GA_SCROLL_PRESERVE_IDS = ['gaCaixaScroll','gaDexScroll','gaMovDexScroll'];
+var GA_SCROLL_PRESERVE_IDS = ['gaCaixaScroll','gaDexScroll','gaMovDexScroll',
+  /* Cap. leva desta sessão ("tem que parar de subir a tela de popup pro
+     topo a toda mensagem que mandar") -- ver kantoPopupHTML. 3 ids
+     porque QUEM realmente rola muda com o tamanho da tela: o wrapper
+     rola no celular (coluna), o card por dentro OU o painel de chat
+     rolam sozinhos em tela larga (linha) -- preservar os 3 é inofensivo
+     (o que não é o scroller ativo simplesmente fica sempre em 0). */
+  'gaKantoPopupCard','gaKantoPopupCardInner','gaKantoCentroChatPainel'];
 function render(){
   if(!appEl_) appEl_ = document.getElementById('app');
   var scrollPos = {};
