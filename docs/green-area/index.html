@@ -12866,17 +12866,51 @@ DT.gaCriar = function(nomeEl, pinEl, pin2El){
 function carvalhoTelaFundoHTML(){
   return '<div class="ga-card" style="text-align:center;"><h2>🟢 Green Área</h2><p class="ga-hint">Sua jornada Pokémon está prestes a começar...</p></div>';
 }
+/* Cap. leva desta sessão ("Centraliza, traga um card parecido com o da
+   equipe exibindo os moves niveis (sem nature e ability reveladas, só
+   depois que escolher)"): reaproveita o visual do `.ga-team-card` (o
+   MESMO card da tela Equipe -- sprite grande, Tipo(s), Movimentos em
+   grade) só que numa versão de PRÉVIA, sem dono ainda -- sem V/D, sem
+   Papel de Combate/Item/Caixa (nada disso existe antes de escolher).
+   Movimentos mostrados são os REAIS que o inicial vai nascer sabendo
+   no Nível 5 (`pickMovesForLevel`, função pura -- sem sorteio, dá pra
+   mostrar ANTES de escolher com segurança, o resultado é sempre o
+   mesmo). Natureza/Habilidade ficam "???" de propósito -- essas SÃO
+   sorteadas (`rollNatureForSpecies`/`rollAbilityForSpecies`, dentro de
+   `spawnPoke`) só no exato momento de escolher, então mostrar antes
+   seria mentira (o valor mudaria a cada re-render). */
+function kantoInicialPreviewCardHTML(num){
+  var sp = speciesByNum(num);
+  var moves = pickMovesForLevel(num, 5);
+  var movesHTML = [0,1,2,3].map(function(idx){
+    var m = moves[idx];
+    var cor = m ? (TEAM_CARD_TYPE_COLOR[m.tipo]||'#8fb3a2') : '#3a4750';
+    var titulo = m ? (m.name+' ('+m.tipo+' · '+m.categoria+')') : 'Espaço de Movimento vazio';
+    return '<div class="ga-team-move" title="'+esc2(titulo)+'">'+
+      '<span class="ga-team-move-fill" style="background:'+cor+';"></span>'+
+      '<span class="ga-team-move-label">'+esc2(m?m.name:'—')+'</span>'+
+    '</div>';
+  }).join('');
+  var tiposHTML = [sp.tipo1].concat(sp.tipo2?[sp.tipo2]:[]).map(function(t){
+    return '<span class="ga-team-type-pill" style="background:'+(TEAM_CARD_TYPE_COLOR[t]||'#8fb3a2')+';">'+esc2(t)+'</span>';
+  }).join('');
+  return '<div class="ga-team-card">'+
+    '<div class="ga-team-stage"><div class="ga-team-sprite-wrap"><img class="ga-team-sprite" src="'+spriteUrl(num)+'" alt=""></div></div>'+
+    '<div class="ga-team-typerow">'+tiposHTML+'</div>'+
+    '<div class="ga-team-nameplate"><span class="ga-team-nome">'+esc2(sp.name.toUpperCase())+'</span></div>'+
+    '<div class="ga-team-subrow"><span class="ga-hint">Nv. 5</span><span class="ga-team-natureza" title="Só é sorteada no momento de escolher">Natureza: ???</span><span class="ga-team-habilidade" title="Só é sorteada no momento de escolher">Habilidade: ???</span></div>'+
+    '<div class="ga-team-moves">'+movesHTML+'</div>'+
+    '<button type="button" class="ga-btn-sm ga-btn-primary" style="width:100%;margin-top:8px;" onclick="DT.gaEscolherInicialReal('+num+')">Escolher</button>'+
+  '</div>';
+}
 function kantoCarvalhoEscolhaPopupHTML(){
   return '<div class="ga-overlay"><div class="ga-overlay-card wide" style="text-align:center;">'+
     '<img src="assets/trainers/Spr_FRLG_Oak.png" alt="Professor Carvalho" style="width:96px;height:96px;image-rendering:pixelated;">'+
     '<h2>Professor Carvalho</h2>'+
     '<p class="ga-hint">Olá, '+esc2(STATE.trainerName)+'! Escolha seu Pokémon inicial.</p>'+
-    '<div class="ga-poke-grid">'+KANTO_STARTERS.map(function(num){
-      var sp = speciesByNum(num);
-      return '<div class="ga-poke-card"><img src="'+spriteUrl(num)+'" alt="'+esc2(sp.name)+'">'+
-        '<div class="ga-poke-name">'+esc2(sp.name)+'</div>'+typeTagsHTML(sp)+
-        '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherInicialReal('+num+')">Escolher</button></div>';
-    }).join('')+'</div>'+
+    '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin-top:14px;">'+
+      KANTO_STARTERS.map(kantoInicialPreviewCardHTML).join('')+
+    '</div>'+
   '</div></div>';
 }
 DT.gaEscolherInicialReal = function(num){
