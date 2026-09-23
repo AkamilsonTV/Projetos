@@ -792,8 +792,46 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-kanto-tile.alt{ background:#141f28; }
 .ga-kanto-tile.trilha{ background:#4a4230; }
 .ga-kanto-tile.agua-rota{ background:#173654; }
-.ga-kanto-tile.agua{ background:#122c47; background-image:radial-gradient(circle,#1c4066 30%,transparent 32%); background-size:10px 10px; }
-.ga-kanto-tile.floresta{ background:#132417; background-image:radial-gradient(circle,#1c3320 32%,transparent 34%); background-size:8px 8px; }
+/* Parte 5 do redesenho do mapa ("onde é água, você colocar água"):
+   água em camadas -- ondas diagonais (repeating-linear-gradient) por
+   baixo de reflexos redondos (radial-gradient), tudo CSS puro, sem
+   nenhuma imagem nova, só mais rico que o pontilhado plano de antes. */
+.ga-kanto-tile.agua{
+  background-color:#0f2740;
+  background-image:
+    radial-gradient(circle at 26% 30%, rgba(255,255,255,.16) 0 2px, transparent 3px),
+    radial-gradient(circle at 68% 62%, rgba(255,255,255,.12) 0 2px, transparent 3px),
+    repeating-linear-gradient(125deg, rgba(255,255,255,.07) 0 2px, transparent 2px 9px),
+    linear-gradient(155deg, #1c4066 0%, #123252 60%, #0e2038 100%);
+}
+.ga-kanto-tile.agua-rota{
+  background-color:#123048;
+  background-image:
+    repeating-linear-gradient(125deg, rgba(255,255,255,.06) 0 2px, transparent 2px 8px),
+    linear-gradient(155deg, #1d4468 0%, #173654 100%);
+}
+/* Floresta com "mini-árvores" de verdade -- 3 copas verdes (radial-
+   gradient, tons diferentes pra dar profundidade) por cima de um
+   fundo mais escuro, no lugar do pontilhado uniforme de antes. */
+.ga-kanto-tile.floresta{
+  background-color:#0f1e13;
+  background-image:
+    radial-gradient(circle at 28% 32%, #3d7444 0 5px, transparent 6px),
+    radial-gradient(circle at 62% 22%, #2f5c37 0 4px, transparent 5px),
+    radial-gradient(circle at 45% 62%, #3d7444 0 6px, transparent 7px),
+    radial-gradient(circle at 75% 55%, #2f5c37 0 4px, transparent 5px),
+    linear-gradient(#16301c, #0f1e13);
+}
+/* Parte 5 -- textura "rochosa" nova, pras células de caverna/montanha
+   que antes não pintavam terreno nenhum (bug real corrigido junto,
+   ver kantoMapaHTML): estratos diagonais em tom de pedra/terra via
+   repeating-linear-gradient em 2 camadas cruzadas. */
+.ga-kanto-tile.rocha{
+  background-color:#2b2620;
+  background-image:
+    repeating-linear-gradient(135deg, #3d3529 0 4px, #2b2620 4px 9px),
+    repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 2px, transparent 2px 7px);
+}
 /* Parte 3 do redesenho do mapa ("todos os quadrados da rota vão ser
    clicáveis"): célula de trilha/água-rota agora é um <button> de
    verdade (não mais só decoração) -- reset de estilo de botão nativo
@@ -828,6 +866,7 @@ button.ga-kanto-tile.ativo{ box-shadow:0 0 0 2px var(--accent) inset; filter:bri
 .ga-kanto-legenda i.trilha{ background:#4a4230; }
 .ga-kanto-legenda i.agua{ background:#173654; }
 .ga-kanto-legenda i.floresta{ background:#132417; }
+.ga-kanto-legenda i.rocha{ background:#2b2620; }
 .ga-kanto-legenda i.gymring{ background:transparent; border:2px solid var(--gold); border-radius:5px; }
 .ga-kanto-legenda i.areapin{ background:var(--accent); }
 .ga-kanto-info-empty{ color:var(--ink-dim); font-size:.86rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:26px 6px; }
@@ -15797,6 +15836,12 @@ function kantoMapaHTML(){
       }
     }
     if(loc.kind==='forest'){ var k2=key(loc.col,loc.row); if(cells[k2]) cells[k2].terreno='floresta'; }
+    /* Parte 5 do redesenho do mapa ("onde for rochoso faça também"):
+       cavernas/montanhas (e Usina/Mansão, que não são `kind:'cave'`
+       mas são igualmente "rochosas") ganham terreno próprio -- hoje
+       essas células não pintavam NADA (bug real confirmado antes de
+       desenhar a solução), ficavam com o campo padrão por baixo. */
+    if(loc.kind==='cave' || loc.id==='powerplant' || loc.id==='mansion'){ var k3=key(loc.col,loc.row); if(cells[k3]) cells[k3].terreno='rocha'; }
   });
   var pinCell = {}, usados = {};
   KANTO_MAP.routes.forEach(function(route){
@@ -15873,7 +15918,8 @@ function kantoScreenHTML(){
         '<span><i class="campo"></i> Campo</span>'+
         '<span><i class="trilha"></i> Rota</span>'+
         '<span><i class="agua"></i> Água</span>'+
-        '<span><i class="floresta"></i> Floresta/Caverna</span>'+
+        '<span><i class="floresta"></i> Floresta</span>'+
+        '<span><i class="rocha"></i> Caverna/Montanha</span>'+
         '<span><i class="gymring"></i> Ginásio</span>'+
         '<span><i class="areapin"></i> Tem Pokémon selvagem</span>'+
       '</div>'+
