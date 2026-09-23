@@ -404,6 +404,15 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    batalha), mensagem própria destacada com uma borda na cor de
    destaque pra distinguir rápido "o que eu disse" no meio da conversa. */
 .ga-chat-log{ background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; max-height:280px; overflow-y:auto; font-size:.85rem; display:flex; flex-direction:column; gap:5px; margin:8px 0; }
+/* Cap. leva desta sessão ("quero que o chat fique estático sem crescer
+   ali no canto, quando eu clicar em centro pokémon"): `.ga-chat-log`
+   sozinho só tem `max-height` -- cresce livre até lá conforme mensagens
+   chegam (com 0-2 mensagens fica baixinho, "pulando" de tamanho a cada
+   nova). Essa classe extra TRAVA a altura no mesmo valor sempre
+   (min-height=height=max-height), só pro chat de Centro Pokémon de
+   Kanto -- os outros chats do jogo (público/DM/Raid) não pedem isso,
+   então ficam do jeito que sempre foram. */
+.ga-chat-log.ga-chat-log-fixo{ height:200px; min-height:200px; }
 .ga-chat-msg{ padding:4px 8px; border-radius:6px; }
 .ga-chat-msg.mine{ background:var(--accent-dim); color:#04170c; }
 .ga-chat-input{ flex:1; }
@@ -9493,6 +9502,49 @@ function initBattlerExtras(b){
 function buildBattlerFromParty(poke){
   return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade, item: poke.itemSegurado||null, forma: formaEfetivaAtual(poke) });
 }
+/* Cap. leva desta sessão ("agora os pokémon precisam se curar de fato
+   depois dos combates... status, vida e PP agora são gastos e só
+   recuperam depois de usar algum item que recupere ou centro
+   pokémon... quero que seja ativo só pro mapa mesmo"): FORA de Kanto,
+   a regra de sempre continua intacta -- "sempre que a luta acaba, o
+   Pokémon é totalmente recuperado" (ver cabeçalho do arquivo), nada
+   aqui muda isso, porque estas duas funções só fazem alguma coisa
+   quando `origemMapa` é true, e só os 3 pontos de entrada de luta do
+   mapa de Kanto (gaKantoIniciarCaptura/gaKantoIniciarGinasio/
+   gaKantoIniciarTreinadorRota) passam `origemMapa:true` pro
+   startBattle. PV/PP/Status atuais vivem nos MESMOS 3 campos novos do
+   Pokémon persistente (`kantoHpAtual`/`kantoStatus`/`kantoPP`,
+   `null`/`undefined` = "cheio", igual sempre foi antes desta leva) --
+   nunca no `battler` efêmero, que continua sendo reconstruído do zero
+   a cada entrada em campo (Estágio -6..+6 continua resetando sempre,
+   igual o jogo oficial faz até numa troca normal). Entrada em campo
+   busca esses 3 campos pra dentro do battler novo; SAÍDA de campo
+   (troca voluntária/forçada, desmaio ou fim da luta) devolve o estado
+   atual do battler de volta pra esses 3 campos -- ver os 5 pontos de
+   chamada (startBattle, tentarTrocaForcada, resolveFaintAfterDamage,
+   DT.gaTrocarPokemon, finishBattle). */
+function kantoAplicarPersistenciaEntrada(battler, poke, hpObj, origemMapa){
+  if(!origemMapa || !poke) return;
+  var hpMax = gaHpMax(battler);
+  hpObj[battler.key] = (poke.kantoHpAtual!=null) ? clampInt(poke.kantoHpAtual,0,hpMax) : hpMax;
+  if(poke.kantoStatus){ battler.status = poke.kantoStatus.status; battler.statusTurns = poke.kantoStatus.statusTurns||0; }
+  if(poke.kantoPP){ (battler.moves||[]).forEach(function(m){ if(poke.kantoPP[m.name]!=null) battler.pp[m.name] = Math.min(battler.pp[m.name], poke.kantoPP[m.name]); }); }
+}
+function kantoSalvarPersistenciaSaida(battler, hpObj, origemMapa){
+  if(!origemMapa || !battler || !battler.partyId) return;
+  var poke = STATE.party.filter(function(p){ return p.id===battler.partyId; })[0];
+  if(!poke) return;
+  poke.kantoHpAtual = Math.max(0, hpObj[battler.key]||0);
+  poke.kantoStatus = battler.status ? {status:battler.status, statusTurns:battler.statusTurns||0} : null;
+  poke.kantoPP = {};
+  (battler.moves||[]).forEach(function(m){ poke.kantoPP[m.name] = battler.pp[m.name]; });
+}
+/* Cap. leva desta sessão: PV Máximo de um Pokémon da Equipe FORA de
+   luta (pro widget "Estado da Equipe" de Kanto abaixo) -- monta um
+   battler descartável só pra reusar `gaHpMax`/`effStat`, nunca guarda
+   nada dele. */
+function kantoHpMaxDoPoke(poke){ return gaHpMax(buildBattlerFromParty(poke)); }
+function kantoNomeExibicaoPoke(poke){ var sp = speciesByNum(poke.num); return poke.apelido || (sp?sp.name:('#'+poke.num)); }
 /* Cap. leva desta sessão ("o wooper tem que aparecer na versão certa
    pra o jogador saber"): `forma` opcional -- já vem PRONTA de
    `iniciarLutaDeZona` (sorteada no exato instante do encontro, ver
@@ -9660,10 +9712,12 @@ function startBattle(kind, opts, skipDiscrepancia){
   var hp = {};
   var playerBattler = buildBattlerFromParty(lead);
   hp[playerBattler.key] = gaHpMax(playerBattler);
+  kantoAplicarPersistenciaEntrada(playerBattler, lead, hp, !!opts.origemMapa); // Cap. PV/PP/Status persistentes em Kanto -- ver comentário em kantoAplicarPersistenciaEntrada
   oppTeam.forEach(function(b){ hp[b.key] = gaHpMax(b); markSeen(b.num); });
 
   STATE.battle = {
     kind: kind,
+    origemMapa: !!opts.origemMapa, // Cap. PV/PP/Status persistentes -- só true quando a luta nasceu no mapa de Kanto (ver DT.gaKanto*)
     label: label,
     leaderId: (kind==='trainer'||kind==='kantogym') ? opts.leaderId : null,
     playerActive: playerBattler,
@@ -9782,12 +9836,14 @@ function tentarTrocaForcada(saindo, b, carregarEstagios){
     b.hp[saindo.key] = Math.min(maxSaindo, b.hp[saindo.key]+Math.max(1, Math.floor(maxSaindo/3)));
     if(b.hp[saindo.key]>antesSaindo) b.log.push('💚 '+displayName(saindo)+' recuperou '+(b.hp[saindo.key]-antesSaindo)+' PV ao sair (Regenerator).');
   }
+  kantoSalvarPersistenciaSaida(saindo, b.hp, b.origemMapa); // Cap. PV/PP/Status persistentes em Kanto -- quem sai de campo leva o desgaste atual de volta pro registro persistente
   var novoBattler = buildBattlerFromParty(proximo);
   // Cap. CORREÇÃO desta sessão (mesmo bug do auto-switch por desmaio, ver
   // resolveFaintAfterDamage): sem isso, `b.hp[chave nova]` nunca existia
   // pra quem entra via U-turn/Baton Pass/etc., virando NaN no primeiro
   // dano recebido e ficando impossível de desmaiar pelo resto da luta.
   b.hp[novoBattler.key] = gaHpMax(novoBattler);
+  kantoAplicarPersistenciaEntrada(novoBattler, proximo, b.hp, b.origemMapa); // Cap. PV/PP/Status persistentes em Kanto -- quem entra puxa o desgaste salvo de uma luta anterior no mapa
   if(carregarEstagios) novoBattler.estagios = { atk:saindo.estagios.atk, def:saindo.estagios.def, spa:saindo.estagios.spa, spd:saindo.estagios.spd, spe:saindo.estagios.spe, accuracy:saindo.estagios.accuracy, evasion:saindo.estagios.evasion };
   if(b.usedPartyIds.indexOf(proximo.id)===-1) b.usedPartyIds.push(proximo.id);
   return novoBattler;
@@ -9828,6 +9884,7 @@ function resolveFaintAfterDamage(target, user, b, moveUsado){
        finishBattle pra onde isso vira o crédito de fato. */
     b.faintedPartyIds = b.faintedPartyIds || [];
     if(target.partyId && b.faintedPartyIds.indexOf(target.partyId)===-1) b.faintedPartyIds.push(target.partyId);
+    kantoSalvarPersistenciaSaida(target, b.hp, b.origemMapa); // Cap. PV/PP/Status persistentes em Kanto -- desmaiar salva PV 0 (precisa curar depois, item ou Centro)
     if(everyPartyFainted(b)){ finishBattle('derrota'); return true; }
     var proximo = proximoDaFila(b);
     if(proximo){
@@ -9845,6 +9902,7 @@ function resolveFaintAfterDamage(target, user, b, moveUsado){
          Pokémon literalmente NUNCA MAIS podia desmaiar pelo resto da
          luta inteira, não importa quanto dano recebesse. */
       b.hp[b.playerActive.key] = gaHpMax(b.playerActive);
+      kantoAplicarPersistenciaEntrada(b.playerActive, proximo, b.hp, b.origemMapa); // Cap. PV/PP/Status persistentes em Kanto
       if(b.usedPartyIds.indexOf(proximo.id)===-1) b.usedPartyIds.push(proximo.id);
       b.log.push('🔄 Vai, '+displayName(b.playerActive)+'! (próximo da fila, ordem da Equipe)');
       return false;
@@ -10242,6 +10300,7 @@ function ticketReward(b){
 function finishBattle(result){
   var b = STATE.battle;
   b.finished = result;
+  kantoSalvarPersistenciaSaida(b.playerActive, b.hp, b.origemMapa); // Cap. PV/PP/Status persistentes em Kanto -- quem ficou em campo até o fim nunca "saiu" antes, salva aqui
   /* Cap. leva desta sessão: "Coloque a opção de histórico de vitórias e
      derrotas de cada pokémon. Ele será individual para cada individuo...
      Caso esse pokémon seja trocado o histórico vai junto" -- os campos
@@ -12629,9 +12688,18 @@ DT.gaTrocarPokemon = function(partyId){
   var b = STATE.battle; if(!b || !b.pendingSwitch) return;
   var poke = STATE.party.filter(function(p){ return p.id===partyId; })[0]; if(!poke) return;
   var key = 'p_'+partyId;
-  if(b.hp[key]===undefined) b.hp[key] = gaHpMax(buildBattlerFromParty(poke));
+  if(b.hp[key]===undefined){
+    var hpMaxGuard = gaHpMax(buildBattlerFromParty(poke));
+    // Cap. PV/PP/Status persistentes em Kanto -- um Pokémon que ainda não
+    // entrou NESTA luta, mas ficou desmaiado/ferido numa luta ANTERIOR do
+    // mapa, não pode ser mandado pra campo com o guard antigo (que sempre
+    // assumia PV Máximo cheio pra quem nunca tinha `b.hp[key]` definido).
+    b.hp[key] = (b.origemMapa && poke.kantoHpAtual!=null) ? clampInt(poke.kantoHpAtual,0,hpMaxGuard) : hpMaxGuard;
+  }
   if(b.hp[key]<=0) return;
+  kantoSalvarPersistenciaSaida(b.playerActive, b.hp, b.origemMapa); // quem estava em campo leva o desgaste atual de volta
   b.playerActive = buildBattlerFromParty(poke);
+  kantoAplicarPersistenciaEntrada(b.playerActive, poke, b.hp, b.origemMapa); // quem entra puxa o desgaste salvo
   if(b.usedPartyIds.indexOf(partyId)===-1) b.usedPartyIds.push(partyId);
   b.log.push('🔄 Vai, '+displayName(b.playerActive)+'!');
   b.pendingSwitch = false;
@@ -12992,12 +13060,29 @@ DT.gaKantoToggleCentro = function(centroId){
   render();
   entrarNaPresencaDoKantoCentro(centroId);
 };
+/* Cap. leva desta sessão ("status, vida e PP agora são gastos e só
+   recuperam... ou centro pokémon"): cura de graça e instantânea, igual
+   toda Enfermeira Joy -- zera os 3 campos persistentes de TODA a
+   Equipe (`null`/`undefined` = "cheio", mesma convenção de
+   kantoAplicarPersistenciaEntrada/kantoSalvarPersistenciaSaida lá em
+   cima perto de buildBattlerFromParty). Não exige estar no meio de uma
+   luta nem checa Energia -- é só um botão dentro do bloco do Centro,
+   que só aparece com `SESSION.kantoCentroAberto` setado (ver
+   kantoCentroBlocoHTML), então só pode ser clicado por quem já andou
+   até lá de verdade (ver kantoTentarAndarPara). */
+DT.gaKantoCurarEquipe = function(){
+  if(!SESSION.isAdmin) return;
+  STATE.party.forEach(function(p){ p.kantoHpAtual = null; p.kantoStatus = null; p.kantoPP = null; });
+  logAction('centro', 'Curou a Equipe inteira num Centro Pokémon de Kanto.');
+  SESSION.notice = '💊 Sua Equipe foi totalmente curada!';
+  mutate();
+};
 /* Chat de um Centro Pokémon de Kanto -- MESMO padrão de
    DT.gaEnviarMensagemChat (chat global) e DT.gaEnviarMensagemRaidChat
    (chat por sala de Raid), só que 1 documento por CIDADE
    (`kantoCentroChatCol.doc(centroId)`) em vez de 1 global ou 1 por
    sala de Raid. */
-var KANTO_CENTRO_CHAT_MAX = 200;
+var KANTO_CENTRO_CHAT_MAX = 50; // Cap. leva desta sessão ("mantendo uma rolagem das ultimas 50 mensagens") -- era 200, igual os outros chats do jogo
 var KANTO_CENTRO_CHAT_MSG_MAX_LEN = 300;
 DT.gaEnviarMensagemChatKantoCentro = function(centroId, inputEl){
   if(!STATE || !kantoCentroChatCol || !centroId) return;
@@ -15557,7 +15642,7 @@ DT.gaKantoIniciarCaptura = function(leadId){
   markSeen(encontro.num);
   var forma = rollFormaDeEncontro(encontro.num);
   SESSION.kantoEscolhendoArea = null;
-  startBattle('wild', { leadPartyId: leadId, wildNum: encontro.num, wildLevel: level, wildForma: forma, zonaIdx: zonaIdx }, false);
+  startBattle('wild', { leadPartyId: leadId, wildNum: encontro.num, wildLevel: level, wildForma: forma, zonaIdx: zonaIdx, origemMapa: true }, false);
 };
 /* Cap. leva desta sessão (faixas de Nível + 1x/dia): abrir o desafio
    agora é em 2 passos -- primeiro escolhe a FAIXA (`SESSION.
@@ -15610,7 +15695,7 @@ DT.gaKantoIniciarGinasio = function(leadId){
      Energia, nunca aqui -- ver comentário em startBattle. Antes disso,
      uma luta abortada por falta de Energia gastava o cooldown do dia
      à toa. */
-  startBattle('kantogym', { leadPartyId: leadId, leaderId: escolha.locId, eliteNome: leader.nome+' ('+leader.tipo+')', eliteTeam: variacao.roster, zonaIdx: zonaIdx }, false);
+  startBattle('kantogym', { leadPartyId: leadId, leaderId: escolha.locId, eliteNome: leader.nome+' ('+leader.tipo+')', eliteTeam: variacao.roster, zonaIdx: zonaIdx, origemMapa: true }, false);
 };
 
 /* Cap. leva desta sessão ("Só achei treinadores na rota 3. E na floresta?
@@ -15677,7 +15762,7 @@ DT.gaKantoIniciarTreinadorRota = function(leadId){
   /* Parte 4 do redesenho do mapa de Kanto ("achado bônus" -- cooldown
      diário só é marcado DENTRO de startBattle, depois da checagem de
      Energia, nunca aqui -- ver comentário em startBattle). */
-  startBattle('routetrainer', { leadPartyId: leadId, trainerTeam: variacao.roster, trainerNome: nomeCompleto, trainerId: escolha.trainerId, zonaIdx: zonaIdx }, false);
+  startBattle('routetrainer', { leadPartyId: leadId, trainerTeam: variacao.roster, trainerNome: nomeCompleto, trainerId: escolha.trainerId, zonaIdx: zonaIdx, origemMapa: true }, false);
 };
 
 function kantoRoutesTouching(locId){
@@ -15893,6 +15978,13 @@ function kantoCentroBlocoHTML(loc){
     '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoToggleCentro(\''+loc.id+'\')">🏥 Centro Pokémon'+(aberto?' ▲':' ▼')+'</button>';
   if(aberto){
     out += '<p class="ga-hint">Cada Centro Pokémon é um lugar À PARTE -- só dá pra conversar, trocar e duelar com quem estiver NESTE MESMO Centro agora. Faça amizade primeiro no 🏥 Centro Pokémon global (menu lateral) pra poder Trocar/Desafiar por aqui.</p>';
+    /* Cap. leva desta sessão ("status, vida e PP agora são gastos e só
+       recuperam... ou centro pokémon"): igual o jogo de verdade, entrar
+       num Centro Pokémon de Kanto cura a Equipe INTEIRA de graça --
+       PV+PP+Condição de uma vez (zera os 3 campos persistentes, ver
+       kantoAplicarPersistenciaEntrada/kantoSalvarPersistenciaSaida lá em
+       cima). Poção sozinha (ver kantoEstadoEquipeHTML) só cobre PV. */
+    out += '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoCurarEquipe()">💊 Curar Equipe (grátis)</button>';
     out += '<h4 class="ga-subhead" style="margin-top:8px;">🧑‍🤝‍🧑 Treinadores aqui agora</h4>'+
       (SESSION.kantoCentroDiretorioCarregando
         ? '<p class="ga-hint">Vendo quem está aqui agora...</p>'
@@ -15911,10 +16003,15 @@ function kantoCentroBlocoHTML(loc){
         )
       );
     out += '<h4 class="ga-subhead" style="margin-top:8px;">💬 Chat deste Centro</h4>'+
-      '<div class="ga-chat-log" id="gaKantoCentroChatLog">'+
+      /* `.ga-chat-log-fixo` trava a altura da caixa (ver CSS) -- não
+         cresce a cada mensagem nova, só rola as últimas
+         KANTO_CENTRO_CHAT_MAX (50) internamente. `.slice(-...)` aqui é
+         defensivo (um documento salvo ANTES desta leva pode ainda ter
+         até 200 mensagens até o próximo trim server-side acontecer). */
+      '<div class="ga-chat-log ga-chat-log-fixo" id="gaKantoCentroChatLog">'+
         (!SESSION.kantoCentroChat || !SESSION.kantoCentroChat.length
           ? '<div class="ga-hint">Nenhuma mensagem ainda -- seja o primeiro a falar!</div>'
-          : SESSION.kantoCentroChat.map(function(m){
+          : SESSION.kantoCentroChat.slice(-KANTO_CENTRO_CHAT_MAX).map(function(m){
               return '<div class="ga-chat-msg'+(m.docId===SESSION.currentDocId?' mine':'')+'"><strong>'+esc2(m.autor)+':</strong> '+esc2(m.texto)+'</div>';
             }).join(''))+
       '</div>'+
@@ -16254,6 +16351,53 @@ function kantoZoomControleHTML(){
     '<button type="button" class="ga-btn-sm" '+(zoom>=KANTO_ZOOM_MAX?'disabled':'')+' title="Aumentar zoom" onclick="DT.gaKantoZoomIn()">+</button>'+
   '</div>';
 }
+/* Cap. leva desta sessão ("agora os pokémon precisam se curar de fato
+   depois dos combates... só pro mapa mesmo"): widget compacto, só na
+   tela de Kanto, mostrando o PV/Condição PERSISTENTE de cada Pokémon
+   da Equipe (ver kantoAplicarPersistenciaEntrada/kantoSalvarPersistenciaSaida,
+   lá em cima perto de buildBattlerFromParty) -- recolhido por padrão
+   (mesmo padrão de "Como funciona"), pra não roubar altura do mapa
+   sem necessidade (a tela inteira é travada pra caber sem rolagem, ver
+   ajustarEscalaMapaKanto). Poção/Super Poção/Hiper Poção (as 3 únicas
+   que o jogo tem) podem ser usadas AQUI, fora de luta -- Status e PP só
+   voltam num 🏥 Centro Pokémon (nenhum item deste jogo cura Condição
+   ou PP, igual o catálogo real de GA_ITEMS). */
+function kantoEstadoEquipePokeCardHTML(poke){
+  var sp = speciesByNum(poke.num);
+  var hpMax = kantoHpMaxDoPoke(poke);
+  var hpAtual = (poke.kantoHpAtual!=null) ? clampInt(poke.kantoHpAtual,0,hpMax) : hpMax;
+  var statusTag = poke.kantoStatus ? '<div class="ga-hint">🤒 '+STATUS_LABELS_PT[poke.kantoStatus.status]+'</div>' : '';
+  var pocoes = hpAtual<hpMax ? GA_ITEMS.filter(function(it){ return it.curaPct>0 && (STATE.itens[it.key]||0)>0; }) : [];
+  var pocoesBtns = pocoes.length
+    ? '<div class="ga-btn-row">'+pocoes.map(function(it){
+        return '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoUsarPocao(\''+poke.id+'\',\''+it.key+'\')">'+it.emoji+' '+it.nome+'</button>';
+      }).join('')+'</div>'
+    : (hpAtual<hpMax ? '<div class="ga-hint">Sem Poção no estoque.</div>' : '');
+  return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(poke))+'" alt=""><div class="ga-poke-name">'+esc2(kantoNomeExibicaoPoke(poke))+'</div><div class="ga-poke-meta">Nv. '+poke.level+'</div>'+
+    hpBarHTML(hpAtual, hpMax)+statusTag+pocoesBtns+
+  '</div>';
+}
+function kantoEstadoEquipeHTML(){
+  if(!STATE.party.length) return '';
+  return '<details class="ga-kanto-info-details"><summary>🩺 Estado da Equipe (Kanto)</summary>'+
+    '<p class="ga-hint">Fora do mapa de Kanto, PV/PP/Condição continuam sendo restaurados 100% ao fim de toda luta, como sempre foi. SÓ AQUI, no mapa, o desgaste fica de verdade -- cure com uma Poção (só PV) ou visite um 🏥 Centro Pokémon (PV+PP+Condição de uma vez, de graça).</p>'+
+    '<div class="ga-poke-grid">'+STATE.party.map(kantoEstadoEquipePokeCardHTML).join('')+'</div>'+
+  '</details>';
+}
+DT.gaKantoUsarPocao = function(partyId, itemKey){
+  if(!SESSION.isAdmin) return;
+  var poke = STATE.party.filter(function(p){ return p.id===partyId; })[0]; if(!poke) return;
+  var it = itemByKey(itemKey); if(!it || !(it.curaPct>0)) return;
+  if((STATE.itens[itemKey]||0)<=0){ SESSION.error = 'Você não tem mais '+it.nome+'.'; render(); return; }
+  var hpMax = kantoHpMaxDoPoke(poke);
+  var atual = (poke.kantoHpAtual!=null) ? clampInt(poke.kantoHpAtual,0,hpMax) : hpMax;
+  if(atual>=hpMax){ SESSION.error = kantoNomeExibicaoPoke(poke)+' já está com o PV cheio.'; render(); return; }
+  var cura = Math.round(hpMax*it.curaPct);
+  poke.kantoHpAtual = Math.min(hpMax, atual+cura);
+  STATE.itens[itemKey]--;
+  logAction('item', 'Usou '+it.nome+' em '+kantoNomeExibicaoPoke(poke)+' no mapa de Kanto (+'+(poke.kantoHpAtual-atual)+' PV).');
+  mutate();
+};
 function kantoScreenHTML(){
   var gyms = KANTO_MAP.locs.filter(function(l){ return l.kind==='gym'; }).length;
   var comArea = KANTO_MAP.locs.filter(function(l){ return l.areas&&l.areas.length; }).length + KANTO_MAP.routes.filter(function(r){ return r.areas&&r.areas.length; }).length;
@@ -16279,6 +16423,7 @@ function kantoScreenHTML(){
            quanto pra lutar, então faz sentido poder completar ANTES de
            clicar em qualquer um dos dois. */
         ticketParaEnergiaWidgetHTML('kanto')+
+        kantoEstadoEquipeHTML()+
       '</div>'+
       /* `.ga-kanto-map-outer` só existe pra ancorar o controle de zoom
          no canto (`position:absolute`) SEM ele rolar junto com o mapa
@@ -18493,6 +18638,16 @@ function render(){
     var el = document.getElementById(id);
     if(el) el.scrollTop = scrollPos[id];
   });
+  /* Cap. leva desta sessão ("só sobe as antigas deixando as mais
+     recentes"): diferente da lista acima (que PRESERVA onde o jogador
+     tinha rolado), um chat sempre quer mostrar a mensagem MAIS NOVA --
+     então, ao contrário, sempre gruda no fundo a cada render (chega
+     mensagem nova, troca de filtro, qualquer coisa). Só o chat do
+     Centro Pokémon de Kanto por enquanto (ver `.ga-chat-log-fixo`). */
+  (function(){
+    var elChat = document.getElementById('gaKantoCentroChatLog');
+    if(elChat) elChat.scrollTop = elChat.scrollHeight;
+  })();
   ajustarEscalaMapaKanto();
 }
 /* Cap. leva desta sessão ("Quero que o mapa e as opções fiquem dentro
