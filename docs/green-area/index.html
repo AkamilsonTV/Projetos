@@ -409,6 +409,24 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-chat-input{ flex:1; }
 .ga-poke-card{ position:relative; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:10px; text-align:center; display:flex; flex-direction:column; }
 .ga-poke-card img{ width:64px; height:64px; image-rendering:pixelated; align-self:center; }
+/* Cap. leva desta sessão ("quero que tenha um menu onde eu possa ver
+   os treinadores e selecionar quem que quero batalhar... Use os
+   sprites originais de treinadores, líderes de ginásio pixelados pra
+   ficar mais legal"): cards clicáveis com o sprite REAL de FRLG (ver
+   TRAINER_CLASS_SPRITE/KANTO_GYM_LEADERS[x].sprite), MESMO
+   `image-rendering:pixelated` que os sprites de Pokémon já usam em
+   todo o jogo -- vira um `<button>` inteiro (não só um botão de texto
+   embaixo), pra selecionar o Treinador JÁ é clicar no sprite dele. */
+.ga-trainer-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:10px; margin-top:10px; }
+.ga-trainer-card{ position:relative; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:8px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; font-family:inherit; color:inherit; }
+.ga-trainer-card:hover{ border-color:var(--accent); }
+.ga-trainer-card img{ width:64px; height:64px; image-rendering:pixelated; }
+.ga-trainer-card .ga-trainer-nome{ font-size:.72rem; font-weight:600; line-height:1.25; }
+.ga-trainer-card.ativo{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.ga-trainer-card.feito{ opacity:.5; cursor:not-allowed; }
+.ga-trainer-card .ga-trainer-status{ font-size:.62rem; color:var(--ink-dim); }
+.ga-trainer-leader-card{ display:flex; align-items:center; gap:12px; }
+.ga-trainer-leader-card img{ width:96px; height:96px; image-rendering:pixelated; flex-shrink:0; }
 /* Cap. leva desta sessão: "Coloque a opção de histórico de vitórias e
    derrotas de cada pokémon... Pode ser algo simples como V: e D: no
    canto superior direito do card" -- flutua por cima do canto superior
@@ -9403,6 +9421,7 @@ function startBattle(kind, opts, skipDiscrepancia){
     pendingTrocarGolpeEvolucao: null,
     pendingTrocarGolpeEvolucaoQueue: null,
     oppDefeatedLevels: [],
+    xpGanhoPorPokemon: {}, // Cap. leva desta sessão -- {partyId: totalXpNaLuta}, ver grantXpAndMaybeEvolve/battleReportEntry
     finished: null,
     captureDone: false,
     weather: { tipo:'neutro', turnsLeft:null }, // Cap. Clima -- por LUTA, sempre começa Neutro
@@ -10456,6 +10475,16 @@ function grantXpAndMaybeEvolve(b, partyId, xpGain){
   var p = STATE.party.filter(function(x){ return x.id===partyId; })[0];
   if(!p || xpGain<=0) return false;
   var key = 'p_'+p.id;
+  /* Cap. leva desta sessão ("na final do relatório, em cada luta,
+     também tem que constar quanto de EXP por pokémon recebeu"):
+     acumula o XP ganho por PARTY ID durante a luta inteira (um
+     Treinador de Rota/Ginásio pode ter vários Pokémon -- se o líder
+     trocar no meio, mais de 1 Pokémon do Time ganha XP na MESMA luta)
+     -- guardado no PRÓPRIO objeto da luta, MESMO padrão de
+     `b.premioGanho`/`b.ticketsGanhos`, lido depois por
+     `battleReportEntry` pro relatório final da sequência. */
+  b.xpGanhoPorPokemon = b.xpGanhoPorPokemon || {};
+  b.xpGanhoPorPokemon[partyId] = (b.xpGanhoPorPokemon[partyId]||0) + xpGain;
   p.xpNivel = (p.xpNivel||0) + xpGain;
   while(p.xpNivel>=xpParaProximoNivel(p,p.level) && p.level<NIVEL_MAX){
     p.xpNivel -= xpParaProximoNivel(p,p.level);
@@ -14764,15 +14793,52 @@ var KANTO_METODO_LABEL = { grama:'Grama selvagem', agua:'Nadando na água', pesc
    startBattle('elite', ...) igual um Treinador de Elite comum, que
    NÃO concede Insígnia nenhuma (só o fluxo antigo kind:'trainer' dá). */
 var KANTO_GYM_LEADERS = {
-  pewter: { id:'brock', nome:'Brock', tipo:'Rock', insignia:'Boulder Badge', roster:[{num:74,level:12},{num:95,level:14}] },
-  cerulean: { id:'misty', nome:'Misty', tipo:'Water', insignia:'Cascade Badge', roster:[{num:120,level:18},{num:121,level:21}] },
-  vermilion: { id:'ltsurge', nome:'Tenente Surge', tipo:'Electric', insignia:'Thunder Badge', roster:[{num:100,level:21},{num:25,level:18},{num:26,level:24}] },
-  celadon: { id:'erika', nome:'Erika', tipo:'Grass', insignia:'Rainbow Badge', roster:[{num:71,level:29},{num:114,level:24},{num:45,level:29}] },
-  fuchsia: { id:'koga', nome:'Koga', tipo:'Poison', insignia:'Soul Badge', roster:[{num:109,level:37},{num:89,level:39},{num:109,level:37},{num:110,level:43}] },
-  saffron: { id:'sabrina', nome:'Sabrina', tipo:'Psychic', insignia:'Marsh Badge', roster:[{num:64,level:38},{num:122,level:37},{num:49,level:38},{num:65,level:43}] },
-  cinnabar: { id:'blaine', nome:'Blaine', tipo:'Fire', insignia:'Volcano Badge', roster:[{num:58,level:42},{num:77,level:40},{num:78,level:42},{num:59,level:47}] },
-  viridian: { id:'giovanni', nome:'Giovanni', tipo:'Ground', insignia:'Earth Badge', roster:[{num:111,level:45},{num:51,level:42},{num:31,level:44},{num:34,level:45},{num:112,level:50}] }
+  pewter: { id:'brock', nome:'Brock', tipo:'Rock', insignia:'Boulder Badge', sprite:'https://archives.bulbagarden.net/media/upload/7/7c/Spr_FRLG_Brock.png', roster:[{num:74,level:12},{num:95,level:14}] },
+  cerulean: { id:'misty', nome:'Misty', tipo:'Water', insignia:'Cascade Badge', sprite:'https://archives.bulbagarden.net/media/upload/2/2c/Spr_FRLG_Misty.png', roster:[{num:120,level:18},{num:121,level:21}] },
+  vermilion: { id:'ltsurge', nome:'Tenente Surge', tipo:'Electric', insignia:'Thunder Badge', sprite:'https://archives.bulbagarden.net/media/upload/5/5c/Spr_FRLG_Lt_Surge.png', roster:[{num:100,level:21},{num:25,level:18},{num:26,level:24}] },
+  celadon: { id:'erika', nome:'Erika', tipo:'Grass', insignia:'Rainbow Badge', sprite:'https://archives.bulbagarden.net/media/upload/c/c9/Spr_FRLG_Erika.png', roster:[{num:71,level:29},{num:114,level:24},{num:45,level:29}] },
+  fuchsia: { id:'koga', nome:'Koga', tipo:'Poison', insignia:'Soul Badge', sprite:'https://archives.bulbagarden.net/media/upload/0/02/Spr_FRLG_Koga.png', roster:[{num:109,level:37},{num:89,level:39},{num:109,level:37},{num:110,level:43}] },
+  saffron: { id:'sabrina', nome:'Sabrina', tipo:'Psychic', insignia:'Marsh Badge', sprite:'https://archives.bulbagarden.net/media/upload/d/dd/Spr_FRLG_Sabrina.png', roster:[{num:64,level:38},{num:122,level:37},{num:49,level:38},{num:65,level:43}] },
+  cinnabar: { id:'blaine', nome:'Blaine', tipo:'Fire', insignia:'Volcano Badge', sprite:'https://archives.bulbagarden.net/media/upload/6/6d/Spr_FRLG_Blaine.png', roster:[{num:58,level:42},{num:77,level:40},{num:78,level:42},{num:59,level:47}] },
+  viridian: { id:'giovanni', nome:'Giovanni', tipo:'Ground', insignia:'Earth Badge', sprite:'https://archives.bulbagarden.net/media/upload/4/41/Spr_FRLG_Giovanni.png', roster:[{num:111,level:45},{num:51,level:42},{num:31,level:44},{num:34,level:45},{num:112,level:50}] }
 };
+/* Cap. leva desta sessão ("Use os sprites originais de treinadores,
+   líderes de ginásio pixelados pra ficar mais legal"): sprites de
+   Treinador FireRed/LeafGreen REAIS (mesmo `archives.bulbagarden.net`
+   já usado pros sprites de Pokémon em todo o jogo -- `spriteUrl`),
+   1 por CLASSE de Treinador (não por indivíduo -- os jogos originais
+   também reusam o mesmo sprite de classe pra todo Treinador daquela
+   classe). Extraídos das MESMAS páginas do Bulbapedia usadas pra
+   pesquisar o roster de cada Treinador (Parte 4 -- Treinadores de
+   Rota), então são os sprites de VERDADE de cada classe em FRLG. */
+var TRAINER_CLASS_SPRITE = {
+  'Lass':'https://archives.bulbagarden.net/media/upload/4/46/Spr_FRLG_Lass.png',
+  'Bug Catcher':'https://archives.bulbagarden.net/media/upload/b/b9/Spr_FRLG_Bug_Catcher.png',
+  'Youngster':'https://archives.bulbagarden.net/media/upload/d/d5/Spr_FRLG_Youngster.png',
+  'Camper':'https://archives.bulbagarden.net/media/upload/2/23/Spr_FRLG_Camper.png',
+  'Picnicker':'https://archives.bulbagarden.net/media/upload/a/a0/Spr_FRLG_Picnicker.png',
+  'Hiker':'https://archives.bulbagarden.net/media/upload/8/8c/Spr_FRLG_Hiker.png',
+  'PokéManiac':'https://archives.bulbagarden.net/media/upload/0/0e/Spr_FRLG_Pok%C3%A9Maniac.png',
+  'Fisherman':'https://archives.bulbagarden.net/media/upload/c/c7/Spr_FRLG_Fisherman.png',
+  'Gamer':'https://archives.bulbagarden.net/media/upload/1/1e/Spr_FRLG_Gamer.png',
+  'Engineer':'https://archives.bulbagarden.net/media/upload/7/71/Spr_FRLG_Engineer.png',
+  'Bird Keeper':'https://archives.bulbagarden.net/media/upload/b/b2/Spr_FRLG_Bird_Keeper.png',
+  'Biker':'https://archives.bulbagarden.net/media/upload/6/6e/Spr_FRLG_Biker.png',
+  'Beauty':'https://archives.bulbagarden.net/media/upload/3/39/Spr_FRLG_Beauty.png',
+  'Cue Ball':'https://archives.bulbagarden.net/media/upload/1/19/Spr_FRLG_Cue_Ball.png',
+  'Swimmer♂':'https://archives.bulbagarden.net/media/upload/9/95/Spr_FRLG_Swimmer_M.png',
+  'Swimmer♀':'https://archives.bulbagarden.net/media/upload/4/4d/Spr_FRLG_Swimmer_F.png',
+  'Super Nerd':'https://archives.bulbagarden.net/media/upload/1/1f/Spr_FRLG_Super_Nerd.png',
+  'Rocker':'https://archives.bulbagarden.net/media/upload/f/f3/Spr_FRLG_Rocker.png',
+  'Twins':'https://archives.bulbagarden.net/media/upload/a/ab/Spr_FRLG_Twins.png',
+  'Young Couple':'https://archives.bulbagarden.net/media/upload/2/2b/Spr_FRLG_Young_Couple.png',
+  'Sis and Bro':'https://archives.bulbagarden.net/media/upload/9/94/Spr_FRLG_Sis_and_Bro.png',
+  'Crush Kin':'https://archives.bulbagarden.net/media/upload/c/cc/Spr_FRLG_Crush_Kin.png',
+  'Team Rocket Grunt':'https://archives.bulbagarden.net/media/upload/8/85/Spr_FRLG_Team_Rocket_Grunt_M.png'
+};
+function trainerClassSpriteUrl(classe){
+  return TRAINER_CLASS_SPRITE[classe] || 'https://archives.bulbagarden.net/media/upload/d/d5/Spr_FRLG_Youngster.png';
+}
 /* Cap. leva desta sessão ("aproveita pra deixar os líderes de ginásio
    de Kanto da mesma forma [faixas de Nível]... podendo enfrentar uma
    vez por dia"): cada Líder ganha `variacoes` pré-computadas (mesma
@@ -15063,10 +15129,15 @@ function kantoGinasioBlocoHTML(loc){
   var rosterTxt = leader.roster.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
   var out = '<div class="ga-kanto-lider">'+
     '<p class="ga-hint">🎖️ Líder de Ginásio original: <b>'+esc2(leader.nome)+'</b> ('+esc2(leader.tipo)+')'+(temInsignia?' -- <b>Insígnia '+esc2(leader.insignia)+' conquistada ✅</b>':'')+' -- roster canônico: '+esc2(rosterTxt)+'. Enfrentável 1x por Dia de jogo, em Faixas de Nível diferentes (escolha abaixo).</p>';
+  /* Cap. leva desta sessão ("menu onde eu possa ver os treinadores e
+     selecionar... Use os sprites originais... líderes de ginásio
+     pixelados"): sprite REAL de FRLG do Líder (`leader.sprite`),
+     MESMO card clicável dos Treinadores de Rota (`.ga-trainer-card`,
+     só a variante maior `-leader-card`, 1 Líder só por Ginásio). */
   if(jaHoje){
-    out += '<button type="button" class="ga-btn-sm" disabled title="Volta a liberar no próximo Dia de jogo">⏳ Já desafiado hoje</button>';
+    out += '<div class="ga-trainer-card ga-trainer-leader-card feito" title="Volta a liberar no próximo Dia de jogo"><img src="'+leader.sprite+'" alt="'+esc2(leader.nome)+'"><div><div class="ga-trainer-nome">'+esc2(leader.nome)+'</div><div class="ga-trainer-status">⏳ Já desafiado hoje</div></div></div>';
   } else {
-    out += '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoDesafiarGinasio(\''+loc.id+'\')">⚔️ Desafiar '+esc2(leader.nome)+'</button>';
+    out += '<button type="button" class="ga-trainer-card ga-trainer-leader-card" onclick="DT.gaKantoDesafiarGinasio(\''+loc.id+'\')"><img src="'+leader.sprite+'" alt="'+esc2(leader.nome)+'"><div><div class="ga-trainer-nome">⚔️ Desafiar '+esc2(leader.nome)+'</div><div class="ga-trainer-status">'+esc2(leader.tipo)+'</div></div></button>';
   }
   var escolha = SESSION.kantoEscolhendoGinasio;
   if(escolha && escolha.locId===loc.id){
@@ -15165,49 +15236,54 @@ function kantoMercadoBlocoHTML(loc){
   }
   return out+'</div>';
 }
-/* Cap. leva desta sessão (Treinadores de Rota de Kanto): lista TODOS
-   os Treinadores reais da Rota (`route.trainers`, pesquisados no
-   Bulbapedia -- ver `KANTO_MAP.routes`), cada um com seu próprio botão
-   "⚔️ Desafiar" (ou "⏳ Já enfrentado hoje", cooldown por Treinador) --
-   escolher um abre o MESMO seletor de Faixa+Pokémon líder do Ginásio
-   (`kantoGinasioBlocoHTML` acima), só que via
-   `SESSION.kantoEscolhendoTreinador` (guarda também `trainerId`, já
-   que uma Rota pode ter VÁRIOS Treinadores ao mesmo tempo, diferente
-   de 1 Ginásio por cidade). */
+/* Cap. leva desta sessão ("quero que tenha um menu onde eu possa ver
+   os treinadores e selecionar quem que quero batalhar, no popup de
+   cada rota ou cidade. Use os sprites originais de treinadores...
+   pixelados pra ficar mais legal"): MENU de verdade -- grade de cards
+   clicáveis com o sprite REAL de FRLG de cada Treinador (1 sprite por
+   CLASSE, `TRAINER_CLASS_SPRITE` -- mesmo padrão da Loja/Pokédex de
+   já usar imagem em vez de só texto), em vez da lista de botões de
+   texto de antes. Clicar no card É o "Desafiar" (mesmo handler,
+   `DT.gaKantoDesafiarTreinador`); Treinador já enfrentado hoje some
+   pra estado desabilitado (cinza, sem clique), com "⏳ Hoje" no lugar
+   do roster. O seletor de Faixa+Pokémon líder abre LOGO ABAIXO da
+   grade (não mais dentro de cada card), pro Treinador que estiver
+   selecionado no momento (`SESSION.kantoEscolhendoTreinador`, MESMO
+   estado de antes, só mudou onde renderiza). */
 function kantoTreinadoresBlocoHTML(route){
   if(!route.trainers || !route.trainers.length) return '';
   var escolha = SESSION.kantoEscolhendoTreinador;
-  var out = '<div class="ga-kanto-lider"><p class="ga-hint">⚔️ <b>'+route.trainers.length+' Treinador(es)</b> nesta Rota (fiel ao FireRed/LeafGreen) -- cada um enfrentável 1x por Dia de jogo, em Faixas de Nível diferentes.</p>';
-  route.trainers.forEach(function(trainer){
+  var trainerSelecionado = (escolha && escolha.routeId===route.id) ? kantoTrainerById(route.id, escolha.trainerId) : null;
+  var out = '<div class="ga-kanto-lider"><p class="ga-hint">⚔️ <b>'+route.trainers.length+' Treinador(es)</b> nesta Rota (fiel ao FireRed/LeafGreen) -- clique num Treinador pra desafiar, cada um enfrentável 1x por Dia de jogo, em Faixas de Nível diferentes.</p>';
+  out += '<div class="ga-trainer-grid">'+route.trainers.map(function(trainer){
     var jaHoje = kantoJaEnfrentadoHoje(STATE.kantoTrainersLastBeatenDay, trainer.id);
-    var rosterTxt = trainer.rosterCanonico.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
-    var nomeTxt = trainer.emoji+' '+esc2(trainer.classe)+(trainer.nome?' '+esc2(trainer.nome):'');
-    out += '<div style="margin-top:8px;"><p class="ga-hint">'+nomeTxt+' -- roster canônico: '+esc2(rosterTxt)+' (💰'+trainer.recompensaBase+' na Faixa canônica).</p>';
+    var ativo = trainerSelecionado && trainerSelecionado.id===trainer.id;
+    var nomeTxt = esc2(trainer.classe)+(trainer.nome?'<br>'+esc2(trainer.nome):'');
     if(jaHoje){
-      out += '<button type="button" class="ga-btn-sm" disabled title="Volta a liberar no próximo Dia de jogo">⏳ Já enfrentado hoje</button>';
+      return '<div class="ga-trainer-card feito" title="Volta a liberar no próximo Dia de jogo"><img src="'+trainerClassSpriteUrl(trainer.classe)+'" alt="'+esc2(trainer.classe)+'"><div class="ga-trainer-nome">'+nomeTxt+'</div><div class="ga-trainer-status">⏳ Hoje</div></div>';
+    }
+    return '<button type="button" class="ga-trainer-card'+(ativo?' ativo':'')+'" onclick="DT.gaKantoDesafiarTreinador(\''+route.id+'\',\''+trainer.id+'\')"><img src="'+trainerClassSpriteUrl(trainer.classe)+'" alt="'+esc2(trainer.classe)+'"><div class="ga-trainer-nome">'+nomeTxt+'</div><div class="ga-trainer-status">💰'+trainer.recompensaBase+'</div></button>';
+  }).join('')+'</div>';
+  if(trainerSelecionado){
+    var rosterTxt = trainerSelecionado.rosterCanonico.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
+    out += '<p class="ga-hint" style="margin-top:8px;">'+trainerSelecionado.emoji+' <b>'+esc2(trainerSelecionado.classe)+(trainerSelecionado.nome?' '+esc2(trainerSelecionado.nome):'')+'</b> -- roster canônico: '+esc2(rosterTxt)+' (💰'+trainerSelecionado.recompensaBase+' na Faixa canônica).</p>';
+    if(escolha.faixaIdx==null){
+      out += '<div class="ga-loja-grid" style="margin-top:8px;">'+
+        trainerSelecionado.variacoes.map(function(v){
+          var zona = ZONAS[v.faixaIdx];
+          var rosterVarTxt = v.roster.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
+          return '<button type="button" class="ga-btn-sm ga-btn-primary" style="text-align:left;" onclick="DT.gaKantoEscolherFaixaTreinador('+v.faixaIdx+')">🎯 '+esc2(zona.nome)+' (Nv.'+zona.min+'-'+zona.max+')<br><span class="ga-hint">'+esc2(rosterVarTxt)+'</span></button>';
+        }).join('')+
+        '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarTreinador()">✕ Cancelar</button>';
     } else {
-      out += '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoDesafiarTreinador(\''+route.id+'\',\''+trainer.id+'\')">⚔️ Desafiar</button>';
+      out += '<div class="ga-poke-grid" style="margin-top:8px;">'+
+        STATE.party.map(function(p){
+          var sp = speciesByNum(p.num);
+          return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarTreinadorRota(\''+p.id+'\')">Escolher</button></div>';
+        }).join('')+
+        '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarTreinador()">✕ Cancelar</button>';
     }
-    if(escolha && escolha.routeId===route.id && escolha.trainerId===trainer.id){
-      if(escolha.faixaIdx==null){
-        out += '<div class="ga-loja-grid" style="margin-top:8px;">'+
-          trainer.variacoes.map(function(v){
-            var zona = ZONAS[v.faixaIdx];
-            var rosterVarTxt = v.roster.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
-            return '<button type="button" class="ga-btn-sm ga-btn-primary" style="text-align:left;" onclick="DT.gaKantoEscolherFaixaTreinador('+v.faixaIdx+')">🎯 '+esc2(zona.nome)+' (Nv.'+zona.min+'-'+zona.max+')<br><span class="ga-hint">'+esc2(rosterVarTxt)+'</span></button>';
-          }).join('')+
-          '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarTreinador()">✕ Cancelar</button>';
-      } else {
-        out += '<div class="ga-poke-grid" style="margin-top:8px;">'+
-          STATE.party.map(function(p){
-            var sp = speciesByNum(p.num);
-            return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarTreinadorRota(\''+p.id+'\')">Escolher</button></div>';
-          }).join('')+
-          '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarTreinador()">✕ Cancelar</button>';
-      }
-    }
-    out += '</div>';
-  });
+  }
   return out+'</div>';
 }
 function kantoInfoPainelHTML(){
@@ -15626,6 +15702,21 @@ function resolverLutaAutomaticamente(cs){
    inteira. Guarda o log COMPLETO da luta junto (pra quem quiser abrir
    o detalhe turno a turno), não só o resumo estruturado. */
 function battleReportEntry(b, numero){
+  /* Cap. leva desta sessão ("na final do relatório, em cada luta,
+     também tem que constar quanto de EXP por pokémon recebeu por cada
+     combate. Ali onde exibe os pokedollar e etc"): resolve
+     `b.xpGanhoPorPokemon` (partyId->XP total NESSA luta) pro nome/
+     Espécie ATUAL de cada um (Apelido se tiver, senão nome da
+     Espécie) -- resolvido AGORA (não guarda só o partyId cru), porque
+     um Pokémon pode ter EVOLUÍDO durante a própria luta e o relatório
+     deve mostrar quem ele é hoje, igual o resto do relatório já faz
+     (log/premio/etc são todos snapshots do momento em que a luta
+     fechou). */
+  var xpGanho = Object.keys(b.xpGanhoPorPokemon||{}).map(function(partyId){
+    var p = STATE.party.filter(function(x){ return x.id===partyId; })[0];
+    var sp = p && speciesByNum(p.num);
+    return { partyId: partyId, nome: p ? (p.apelido||(sp?sp.name:'?')) : '?', xp: b.xpGanhoPorPokemon[partyId] };
+  });
   return {
     numero: numero,
     kind: b.kind,
@@ -15633,6 +15724,7 @@ function battleReportEntry(b, numero){
     resultado: b.finished, // 'vitoria' | 'derrota'
     premio: b.premioGanho || 0,
     tickets: b.ticketsGanhos || 0,
+    xpGanho: xpGanho, // [{partyId,nome,xp}] -- 1 entrada por Pokémon que ganhou XP nesta luta (pode ser mais de 1 se trocou de líder)
     itensUsados: b.itensUsadosSequencia || [],
     captura: b.capturaTentativaSequencia || null, // {bola, especie, sucesso} ou null (não era selvagem / não tentou)
     capturaIgnoradaPossuida: b.capturaIgnoradaPossuida || null, // {especie} -- ignorou de propósito (já tinha, toggle ligado)
@@ -15886,6 +15978,13 @@ function sequenciaRelatorioHTML(cs){
       var resultTxt = r.resultado==='vitoria' ? '🏆 Vitória' : '☠️ Derrota';
       var extras = [];
       if(r.premio) extras.push('💰 +'+r.premio);
+      /* Cap. leva desta sessão ("na final do relatório, em cada luta,
+         também tem que constar quanto de EXP por pokémon recebeu por
+         cada combate. Ali onde exibe os pokedollar e etc"): MESMO
+         lugar do 💰/🎫, 1 pílula por Pokémon que ganhou XP nesta luta
+         (normalmente só 1 -- o líder --, mas pode ser mais de 1 se
+         trocou de Pokémon no meio, ver `r.trocouPokemon` abaixo). */
+      if(r.xpGanho && r.xpGanho.length) extras.push('✨ '+r.xpGanho.map(function(x){ return esc2(x.nome)+' +'+x.xp+'XP'; }).join(', '));
       if(r.tickets) extras.push('🎫 +'+r.tickets);
       if(r.itensUsados.length) extras.push('💊 usou '+r.itensUsados.map(esc2).join(', '));
       if(r.captura) extras.push(r.captura.sucesso
