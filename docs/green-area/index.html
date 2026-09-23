@@ -777,17 +777,29 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
    .ga-poke-grid) pra ficar no MESMO estilo do resto do site. */
 .ga-linklike{ background:none; border:none; padding:0; color:var(--accent); font-size:inherit; font-weight:600; text-decoration:underline; text-underline-offset:2px; }
 .ga-linklike:hover{ color:var(--accent-dim); }
-.ga-kanto-mapawrap{ background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:16px; overflow-x:auto; margin-top:14px; }
-/* Cap. leva desta sessão ("tá bem ruim o mapa, mal enquadrado tendo
-   que rolar a tela pro lado"): `.ga-kanto-mapa` tem largura NATIVA
-   fixa em px (bem maior que a tela de um celular) -- este wrapper é
-   quem `ajustarEscalaMapaKanto()` (JS, chamada em cada `render()` e
-   no resize) mede pra aplicar `transform:scale()` no mapa e ele
-   SEMPRE caber inteiro, sem cortar nem pedir rolagem lateral, em
-   qualquer tamanho de tela. `overflow-x:auto` no wrapper acima é só
-   rede de segurança (mapa nunca deveria mais precisar dela). */
-.ga-kanto-mapa-fit{ width:100%; overflow:hidden; }
-.ga-kanto-mapa{ position:relative; margin:0 auto; box-shadow:0 0 0 3px #1a2e1c, 0 6px 22px rgba(0,0,0,.5); border-radius:4px; overflow:hidden; }
+/* Cap. leva desta sessão ("Quero que o mapa e as opções fiquem dentro
+   da tela, sem rolagem... como vai ficar muito grande no celular
+   quero que arrume um jeito de ficar suave a navegação"): a tela
+   inteira de Kanto (cabeçalho + mapa + legenda) passou a caber numa
+   caixa com altura TRAVADA à tela disponível (`.ga-kanto-viewport`,
+   altura calculada em JS por `ajustarEscalaMapaKanto()`, ver mais
+   abaixo -- mede quanto sobra de viewport e nunca deixa a PÁGINA
+   precisar rolar) -- só o `.ga-kanto-mapawrap` (o mapa em si, que é
+   o único pedaço grande o bastante pra não caber inteiro, ainda mais
+   depois da leva de aumentar o tamanho) rola por DENTRO dessa caixa,
+   nas 2 direções, com rolagem por toque suave/inercial
+   (`-webkit-overflow-scrolling:touch`) e sem "vazar" a rolagem pra
+   página por trás (`overscroll-behavior:contain`) -- arrastar o dedo
+   pelo mapa no celular vira a forma de "andar a vista" por ele. */
+.ga-kanto-card{ display:flex; flex-direction:column; min-height:0; }
+.ga-kanto-viewport{ display:flex; flex-direction:column; min-height:260px; gap:10px; }
+.ga-kanto-header{ flex:0 0 auto; display:flex; flex-direction:column; gap:8px; }
+.ga-kanto-info-details{ font-size:.86rem; color:var(--ink-dim); }
+.ga-kanto-info-details summary{ cursor:pointer; color:var(--ink); font-weight:600; }
+.ga-kanto-info-details p{ margin:8px 0 0; }
+.ga-kanto-mapawrap{ background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:16px; flex:1 1 auto; min-height:0; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; scroll-behavior:smooth; touch-action:pan-x pan-y; }
+.ga-kanto-mapa-fit{ display:inline-block; }
+.ga-kanto-mapa{ position:relative; box-shadow:0 0 0 3px #1a2e1c, 0 6px 22px rgba(0,0,0,.5); border-radius:4px; overflow:hidden; }
 /* Cap. leva desta sessão ("O mapa só ta feio ainda... mais parecido
    com natural"): reforma visual completa do terreno -- células agora
    ficam COLADAS (sem gap, ver kantoMapaHTML) e SEM cantos arredondados
@@ -883,7 +895,7 @@ button.ga-kanto-tile.ativo{ box-shadow:0 0 0 2px var(--accent) inset; filter:bri
    (círculo pulsante), sempre acima de qualquer pino na mesma célula. */
 .ga-kanto-voce-aqui{ position:absolute; transform:translate(-50%,-50%); width:30px; height:30px; border-radius:50%; background:var(--accent); border:4.2px solid #fff; z-index:3; pointer-events:none; box-shadow:0 0 0 0 rgba(52,211,153,.6); animation:ga-kanto-pulso 1.6s ease-out infinite; }
 @keyframes ga-kanto-pulso{ 0%{ box-shadow:0 0 0 0 rgba(52,211,153,.6); } 70%{ box-shadow:0 0 0 21px rgba(52,211,153,0); } 100%{ box-shadow:0 0 0 0 rgba(52,211,153,0); } }
-.ga-kanto-legenda{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; font-size:.74rem; color:var(--ink-dim); }
+.ga-kanto-legenda{ display:flex; flex-wrap:wrap; gap:10px; margin-top:0; font-size:.74rem; color:var(--ink-dim); flex:0 0 auto; }
 .ga-kanto-legenda span{ display:inline-flex; align-items:center; gap:6px; }
 .ga-kanto-legenda i{ display:inline-block; width:14px; height:14px; border-radius:4px; }
 .ga-kanto-legenda i.campo{ background:#345c37; }
@@ -15868,14 +15880,15 @@ function kantoMapaHTML(){
      quadradinhos soltos em vez de um mapa de verdade). Cap. seguinte
      ("Aumenta esse mapa proporcionalmente, aumentando o tamanho dos
      quadrados também. Umas 4 polegadas." -> depois "Melhorou mas
-     diminui 1 polegada"): CELL subiu de 34 pra 72 (~2.12x) --
-     ajustarEscalaMapaKanto() só ENCOLHE o mapa quando não cabe na
-     tela (nunca aumenta além do tamanho nativo), então um CELL maior
-     deixa o mapa fisicamente maior sempre que a tela comportar. 13
+     diminui 1 polegada"): CELL subiu de 34 pra 72 (~2.12x). 13
      colunas * 72px = 936px, ~494px (~5.15pol a 96px/pol) a mais que
      os 442px de antes -- a 1ª tentativa (CELL=64) tinha calculado
      ~4.06pol mas ficou ~1pol curta na prática, então essa leva
-     compensa subindo mais. */
+     compensa subindo mais. Mapa nativo grande de propósito -- desde a
+     leva seguinte ("mapa e opções dentro da tela, sem rolagem") ele
+     não encolhe mais pra caber: rola por dentro do próprio wrapper
+     (ver `ajustarEscalaMapaKanto()`, que agora trava a ALTURA da
+     caixa em vez de encolher a LARGURA do mapa). */
   var CELL = 72, GAP = 0, STEP = CELL+GAP;
   var byId = kantoLocsById();
   var cells = {};
@@ -15958,32 +15971,47 @@ function kantoMapaHTML(){
   var posAtual = kantoPosAtual();
   out += '<div class="ga-kanto-voce-aqui" style="left:'+((posAtual.col+0.5)*STEP)+'px;top:'+((posAtual.row+0.5)*STEP)+'px;" title="Você está aqui"></div>';
   out += '</div>';
-  /* Cap. leva desta sessão ("tá bem ruim o mapa, mal enquadrado tendo
-     que rolar a tela pro lado"): o mapa tem largura NATIVA fixa em px
-     (13 colunas x STEP), maior que a tela de qualquer celular -- em
-     vez de forçar rolagem lateral dentro de `.ga-kanto-mapawrap`
-     (o que já acontecia e é exatamente a reclamação), o wrapper
-     `.ga-kanto-mapa-fit` deixa `ajustarEscalaMapaKanto()` (chamada a
-     cada `render()`, ver mais abaixo) medir a largura disponível de
-     verdade e aplicar `transform:scale()` no mapa pra ele SEMPRE
-     caber inteiro, sem cortar nem pedir rolagem -- funciona em
-     qualquer tamanho de tela, não só num breakpoint fixo. */
+  /* Cap. leva desta sessão ("Quero que o mapa e as opções fiquem
+     dentro da tela, sem rolagem... quero que arrume um jeito de ficar
+     suave a navegação" no celular): virou o oposto do que este wrapper
+     fazia antes -- não encolhe mais o mapa com `transform:scale()` pra
+     caber na largura (isso deixaria o mapa maior de novo minúsculo,
+     desfazendo a leva de aumentar o tamanho). Agora `.ga-kanto-mapa-fit`
+     só existe como o elemento de tamanho NATIVO dentro do wrapper
+     rolável `.ga-kanto-mapawrap` (ver kantoScreenHTML) -- é ESSA caixa
+     que fica com altura travada pra caber na tela (via
+     `ajustarEscalaMapaKanto()`, que agora mede altura em vez de
+     escalar largura) e rola por dentro (arrastar/tocar) quando o mapa
+     não cabe inteiro, em vez da PÁGINA inteira precisar rolar. */
   return '<div class="ga-kanto-mapa-fit">'+out+'</div>';
 }
 function kantoScreenHTML(){
   var gyms = KANTO_MAP.locs.filter(function(l){ return l.kind==='gym'; }).length;
   var comArea = KANTO_MAP.locs.filter(function(l){ return l.areas&&l.areas.length; }).length + KANTO_MAP.routes.filter(function(r){ return r.areas&&r.areas.length; }).length;
-  return '<div class="ga-card"><h2>🗾 Kanto -- protótipo de captura por rota</h2>'+
-    '<p class="ga-hint">Só Admin vê essa aba. Cada cidade/rota/caverna do mapa tem seu PRÓPRIO elenco de Pokémon selvagem, igual os jogos originais -- clique num ponto pra ver quem aparece lá e testar a captura num popup (usa o mesmo motor de luta de sempre). '+KANTO_MAP.locs.length+' locais, '+KANTO_MAP.routes.length+' rotas/atalhos, '+comArea+' com Pokémon selvagem, '+gyms+' Ginásios.</p>'+
-    '<div class="ga-hint">🔋 '+STATE.energy+'/1000 de Energia · 🎫 '+(STATE.poketickets||0)+' Pokéticket(s)</div>'+
-    /* Cap. leva desta sessão ("Colocar a opção de recarregar energia
-       com ticket em kanto também"): mesmo widget reaproveitado nas
-       outras telas que gastam Energia (Início/Captura/Mestres) --
-       aqui Energia é gasta tanto pra andar no mapa (10/quadrado)
-       quanto pra lutar, então faz sentido poder completar ANTES de
-       clicar em qualquer um dos dois. */
-    ticketParaEnergiaWidgetHTML('kanto')+
-    '<div class="ga-kanto-mapawrap">'+kantoMapaHTML()+
+  /* Cap. leva desta sessão ("Quero que o mapa e as opções fiquem
+     dentro da tela, sem rolagem"): a explicação longa (parágrafo)
+     virou um `<details>` recolhido por padrão -- mesmo padrão já usado
+     no relatório de sequência automática (`.ga-seq-relatorio-item`) --
+     pra sobrar mais altura de tela pro mapa em si, que é o conteúdo
+     principal da tela. Energia/Pokéticket + o widget de trocar
+     continuam sempre visíveis (são "opções" de verdade, usadas o tempo
+     todo), só a explicação de texto que é lida 1x vira opcional. */
+  return '<div class="ga-card ga-kanto-card"><h2>🗾 Kanto -- protótipo de captura por rota</h2>'+
+    '<div class="ga-kanto-viewport">'+
+      '<div class="ga-kanto-header">'+
+        '<details class="ga-kanto-info-details"><summary>ℹ️ Como funciona</summary>'+
+          '<p class="ga-hint">Só Admin vê essa aba. Cada cidade/rota/caverna do mapa tem seu PRÓPRIO elenco de Pokémon selvagem, igual os jogos originais -- clique num ponto pra ver quem aparece lá e testar a captura num popup (usa o mesmo motor de luta de sempre). '+KANTO_MAP.locs.length+' locais, '+KANTO_MAP.routes.length+' rotas/atalhos, '+comArea+' com Pokémon selvagem, '+gyms+' Ginásios.</p>'+
+        '</details>'+
+        '<div class="ga-hint">🔋 '+STATE.energy+'/1000 de Energia · 🎫 '+(STATE.poketickets||0)+' Pokéticket(s)</div>'+
+        /* Cap. leva anterior ("Colocar a opção de recarregar energia
+           com ticket em kanto também"): mesmo widget reaproveitado nas
+           outras telas que gastam Energia (Início/Captura/Mestres) --
+           aqui Energia é gasta tanto pra andar no mapa (10/quadrado)
+           quanto pra lutar, então faz sentido poder completar ANTES de
+           clicar em qualquer um dos dois. */
+        ticketParaEnergiaWidgetHTML('kanto')+
+      '</div>'+
+      '<div class="ga-kanto-mapawrap">'+kantoMapaHTML()+'</div>'+
       '<div class="ga-kanto-legenda">'+
         '<span><i class="campo"></i> Campo</span>'+
         '<span><i class="trilha"></i> Rota</span>'+
@@ -18181,29 +18209,40 @@ function render(){
   });
   ajustarEscalaMapaKanto();
 }
-/* Cap. leva desta sessão ("tá bem ruim o mapa, mal enquadrado tendo
-   que rolar a tela pro lado. Ajeita isso também"): o mapa de Kanto
-   tem largura NATIVA fixa em px (13 colunas -- bem maior que a tela
-   de um celular). Em vez de um breakpoint fixo (que erraria em algum
-   tamanho de tela), mede a largura DISPONÍVEL de verdade
-   (`.ga-kanto-mapa-fit.clientWidth`) e aplica `transform:scale()` no
-   mapa pra ele SEMPRE caber inteiro -- nunca amplia (`Math.min(1,...)`,
-   mapa grande em tela grande fica no tamanho normal), só encolhe
-   quando precisa. Roda depois de TODO `render()` (a única hora em que
-   o DOM do mapa muda) e nos resizes/giros de tela; é um no-op barato
-   quando o mapa não está na tela (`querySelector` não acha nada). */
+/* Cap. leva desta sessão ("Quero que o mapa e as opções fiquem dentro
+   da tela, sem rolagem. E como vai ficar muito grande no celular
+   quero que arrume um jeito de ficar suave a navegação"): virou o
+   OPOSTO da versão anterior desta função (que encolhia o mapa com
+   `transform:scale()` pra caber na LARGURA -- isso voltaria a deixar
+   o mapa minúsculo, desfazendo a leva de aumentar o tamanho pedida
+   antes). Agora trava a ALTURA da caixa `.ga-kanto-viewport` pra a
+   PÁGINA nunca precisar rolar -- o mapa em si (`.ga-kanto-mapawrap`,
+   ver CSS -- `overflow:auto` nas 2 direções, com rolagem de toque
+   suave/inercial) fica maior que a caixa na maioria das telas,
+   principalmente no celular, e quem rola é ELE por dentro (arrastar o
+   dedo = "andar a vista" pelo mapa), sem afetar o resto da tela. Em
+   vez de tentar CONTAR na mão cada coisa que fica acima/abaixo da
+   caixa (padding do card, barra lateral, barra fixa do celular etc.
+   -- frágil, qualquer mudança de layout futura quebraria a conta),
+   mede o jeito ROBUSTO: solta a altura (`'auto'`), deixa o navegador
+   calcular o tamanho natural de tudo, olha se a PÁGINA passou da tela
+   (`document.documentElement.scrollHeight > window.innerHeight`) e,
+   se passou, desconta exatamente esse excesso da altura natural da
+   caixa -- funciona não importa o que exista em volta dela, porque
+   está medindo o resultado final de verdade, não uma soma estimada. */
 function ajustarEscalaMapaKanto(){
   if(typeof document==='undefined' || !document.querySelector) return;
-  var fit = document.querySelector('.ga-kanto-mapa-fit');
-  if(!fit) return;
-  var mapa = fit.querySelector('.ga-kanto-mapa');
-  if(!mapa) return;
-  var nativeW = mapa.offsetWidth, nativeH = mapa.offsetHeight;
-  var availW = fit.clientWidth;
-  var scale = (availW>0 && nativeW>0) ? Math.min(1, availW/nativeW) : 1;
-  mapa.style.transformOrigin = 'top left';
-  mapa.style.transform = 'scale('+scale+')';
-  fit.style.height = (nativeH*scale)+'px';
+  var vp = document.querySelector('.ga-kanto-viewport');
+  if(!vp || typeof vp.getBoundingClientRect!=='function') return; // guarda o mesmo harness Node (DOM falso sem getBoundingClientRect) que o resto do arquivo já protege
+  vp.style.height = 'auto';
+  var innerH = (typeof window!=='undefined' && window.innerHeight) ? window.innerHeight : 0;
+  if(innerH<=0) return;
+  var docH = document.documentElement.scrollHeight;
+  var excesso = docH - innerH;
+  if(excesso>0){
+    var alturaNatural = vp.offsetHeight;
+    vp.style.height = Math.max(260, alturaNatural-excesso)+'px';
+  }
 }
 function esc2(s){ return esc(s); }
 
@@ -21222,6 +21261,18 @@ if(typeof window!=='undefined' && window.addEventListener){
      precisa desse listener à parte pra recalcular a escala nesses
      casos (mesmo guard de sempre pra não quebrar o harness Node). */
   window.addEventListener('resize', ajustarEscalaMapaKanto);
+  /* Cap. mesma leva (mapa e opções sem rolagem de página): fonte
+     customizada (`fonts-inline.css`) pode trocar a métrica do texto
+     depois da 1ª medição (efeito clássico de FOUT -- o navegador
+     desenha com a fonte de reserva primeiro, troca pra fonte de
+     verdade depois), o que mudaria a altura natural do cabeçalho por
+     alguns px DEPOIS de `ajustarEscalaMapaKanto()` já ter rodado --
+     reroda quando as fontes terminam de carregar pra corrigir esse
+     resíduo, se o navegador suportar `document.fonts` (nem todo
+     WebView antigo suporta). */
+  if(typeof document!=='undefined' && document.fonts && document.fonts.ready && typeof document.fonts.ready.then==='function'){
+    document.fonts.ready.then(ajustarEscalaMapaKanto);
+  }
 }
 
 /* Cap. leva desta sessão ("Pawmo, Bramblin e Rellor... contador de
