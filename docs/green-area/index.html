@@ -427,6 +427,13 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-trainer-card .ga-trainer-status{ font-size:.62rem; color:var(--ink-dim); }
 .ga-trainer-leader-card{ display:flex; align-items:center; gap:12px; }
 .ga-trainer-leader-card img{ width:96px; height:96px; image-rendering:pixelated; flex-shrink:0; }
+/* Cap. leva desta sessão ("cliquei, abre outra pagina com a seleção de
+   nível do treinador... pode até me dar a opção de voltar"): cabeçalho
+   da view dedicada de desafio (Líder OU Treinador de Rota/Local) --
+   sprite grande + nome, acima da grade de Faixa/Pokémon dessa página. */
+.ga-trainer-detail-head{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.ga-trainer-detail-head img{ width:80px; height:80px; image-rendering:pixelated; flex-shrink:0; }
+.ga-trainer-detail-head h3{ margin:0 0 2px; }
 /* Cap. leva desta sessão: "Coloque a opção de histórico de vitórias e
    derrotas de cada pokémon... Pode ser algo simples como V: e D: no
    canto superior direito do card" -- flutua por cima do canto superior
@@ -14635,11 +14642,14 @@ var KANTO_MAP = {
     {id:'cinnabar', nome:'Ilha Cinnabar', col:0,row:10, kind:'gym', gymType:'Fire', island:true, desc:'Ilha vulcânica isolada, com o Ginásio de Fogo e uma mansão abandonada cheia de histórias.',
       mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-fogo','baga-oran']},
     {id:'viridianforest', nome:'Floresta Viridian', col:2,row:4, kind:'forest', icon:'🌲', desc:'Floresta densa entre Viridian e Pewter, cheia de Pokémon do tipo Inseto.',
-      areas:[{id:'grama', nome:'Grama da Floresta', metodo:'grama', nivelMin:3, nivelMax:7, encontros:[{num:10,peso:25},{num:13,peso:25},{num:16,peso:15},{num:11,peso:8},{num:14,peso:8},{num:43,peso:8},{num:69,peso:8},{num:25,peso:5},{num:12,peso:1},{num:15,peso:1},{num:1,peso:1}]}]},
+      areas:[{id:'grama', nome:'Grama da Floresta', metodo:'grama', nivelMin:3, nivelMax:7, encontros:[{num:10,peso:25},{num:13,peso:25},{num:16,peso:15},{num:11,peso:8},{num:14,peso:8},{num:43,peso:8},{num:69,peso:8},{num:25,peso:5},{num:12,peso:1},{num:15,peso:1},{num:1,peso:1}]}],
+      trainers:[{id:"viridianforest_bugcatcherrick0",classe:"Bug Catcher",nome:"Rick",emoji:"🐛",sprite:"https://archives.bulbagarden.net/media/upload/b/b9/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:13,level:6},{num:10,level:6}],recompensaBase:72},{id:"viridianforest_bugcatcherdoug1",classe:"Bug Catcher",nome:"Doug",emoji:"🐛",sprite:"https://archives.bulbagarden.net/media/upload/b/b9/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:13,level:7},{num:14,level:7},{num:13,level:7}],recompensaBase:84},{id:"viridianforest_bugcatcheranthony2",classe:"Bug Catcher",nome:"Anthony",emoji:"🐛",sprite:"https://archives.bulbagarden.net/media/upload/b/b9/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:10,level:7},{num:10,level:8}],recompensaBase:96},{id:"viridianforest_bugcatchercharlie3",classe:"Bug Catcher",nome:"Charlie",emoji:"🐛",sprite:"https://archives.bulbagarden.net/media/upload/b/b9/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:11,level:7},{num:10,level:7},{num:11,level:7}],recompensaBase:84},{id:"viridianforest_bugcatchersammy4",classe:"Bug Catcher",nome:"Sammy",emoji:"🐛",sprite:"https://archives.bulbagarden.net/media/upload/b/b9/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:13,level:9}],recompensaBase:108}]},
     {id:'mtmoon', nome:'Monte Moon', col:5,row:1, kind:'cave', icon:'⛰️', desc:'Caverna famosa por fósseis raros -- dizem que balança de vez em quando.',
-      areas:[{id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:5, nivelMax:10, encontros:[{num:41,peso:40},{num:74,peso:34},{num:46,peso:15},{num:35,peso:7},{num:95,peso:1},{num:113,peso:1}]}]},
+      areas:[{id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:5, nivelMax:10, encontros:[{num:41,peso:40},{num:74,peso:34},{num:46,peso:15},{num:35,peso:7},{num:95,peso:1},{num:113,peso:1}]}],
+      trainers:[{id:"mtmoon_bugcatcherkent0",classe:"Bug Catcher",nome:"Kent",emoji:"🐛",sprite:"https://archives.bulbagarden.net/media/upload/b/b9/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:13,level:11},{num:14,level:11}],recompensaBase:132},{id:"mtmoon_lassiris1",classe:"Lass",nome:"Iris",emoji:"🎀",sprite:"https://archives.bulbagarden.net/media/upload/4/46/Spr_FRLG_Lass.png",rosterCanonico:[{num:35,level:14}],recompensaBase:224},{id:"mtmoon_supernerdjovan2",classe:"Super Nerd",nome:"Jovan",emoji:"🤓",sprite:"https://archives.bulbagarden.net/media/upload/1/1f/Spr_FRLG_Super_Nerd.png",rosterCanonico:[{num:81,level:11},{num:100,level:11}],recompensaBase:264},{id:"mtmoon_bugcatcherrobby3",classe:"Bug Catcher",nome:"Robby",emoji:"🐛",sprite:"https://archives.bulbagarden.net/media/upload/b/b9/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:10,level:10},{num:11,level:10},{num:10,level:10}],recompensaBase:120},{id:"mtmoon_lassmiriam4",classe:"Lass",nome:"Miriam",emoji:"🎀",sprite:"https://archives.bulbagarden.net/media/upload/4/46/Spr_FRLG_Lass.png",rosterCanonico:[{num:43,level:11},{num:69,level:11}],recompensaBase:176},{id:"mtmoon_youngsterjosh5",classe:"Youngster",nome:"Josh",emoji:"👦",sprite:"https://archives.bulbagarden.net/media/upload/d/d5/Spr_FRLG_Youngster.png",rosterCanonico:[{num:19,level:10},{num:19,level:10},{num:41,level:10}],recompensaBase:160},{id:"mtmoon_hikermarcos6",classe:"Hiker",nome:"Marcos",emoji:"⛏️",sprite:"https://archives.bulbagarden.net/media/upload/8/8c/Spr_FRLG_Hiker.png",rosterCanonico:[{num:74,level:10},{num:74,level:10},{num:95,level:10}],recompensaBase:360},{id:"mtmoon_teamrocketgrunt7",classe:"Team Rocket Grunt",nome:null,emoji:"☠️",sprite:"https://archives.bulbagarden.net/media/upload/8/85/Spr_FRLG_Team_Rocket_Grunt_M.png",rosterCanonico:[{num:27,level:11},{num:19,level:11},{num:41,level:11}],recompensaBase:352},{id:"mtmoon_supernerdmiguel8",classe:"Super Nerd",nome:"Miguel",emoji:"🤓",sprite:"https://archives.bulbagarden.net/media/upload/1/1f/Spr_FRLG_Super_Nerd.png",rosterCanonico:[{num:88,level:12},{num:100,level:12},{num:109,level:12}],recompensaBase:288}]},
     {id:'rocktunnel', nome:'Túnel da Rocha', col:10,row:3, kind:'cave', icon:'🕳️', desc:'Escuro de verdade lá dentro -- sem enxergar direito, é fácil se perder.',
-      areas:[{id:'cave', nome:'Dentro do túnel', metodo:'cave', nivelMin:18, nivelMax:23, encontros:[{num:42,peso:20},{num:75,peso:20},{num:41,peso:10},{num:66,peso:10},{num:74,peso:10},{num:95,peso:10},{num:111,peso:10},{num:104,peso:9},{num:115,peso:1},{num:4,peso:1}]}]},
+      areas:[{id:'cave', nome:'Dentro do túnel', metodo:'cave', nivelMin:18, nivelMax:23, encontros:[{num:42,peso:20},{num:75,peso:20},{num:41,peso:10},{num:66,peso:10},{num:74,peso:10},{num:95,peso:10},{num:111,peso:10},{num:104,peso:9},{num:115,peso:1},{num:4,peso:1}]}],
+      trainers:[{id:"rocktunnel_pokmaniacashton0",classe:"PokéManiac",nome:"Ashton",emoji:"🦴",sprite:"https://archives.bulbagarden.net/media/upload/0/0e/Spr_FRLG_Pok%C3%A9Maniac.png",rosterCanonico:[{num:104,level:23},{num:79,level:23}],recompensaBase:1104},{id:"rocktunnel_pokmaniacwinston1",classe:"PokéManiac",nome:"Winston",emoji:"🦴",sprite:"https://archives.bulbagarden.net/media/upload/0/0e/Spr_FRLG_Pok%C3%A9Maniac.png",rosterCanonico:[{num:79,level:25}],recompensaBase:1200},{id:"rocktunnel_picnickermartha2",classe:"Picnicker",nome:"Martha",emoji:"🧺",sprite:"https://archives.bulbagarden.net/media/upload/a/a0/Spr_FRLG_Picnicker.png",rosterCanonico:[{num:43,level:22},{num:1,level:22}],recompensaBase:440},{id:"rocktunnel_pokmaniacsteve3",classe:"PokéManiac",nome:"Steve",emoji:"🦴",sprite:"https://archives.bulbagarden.net/media/upload/0/0e/Spr_FRLG_Pok%C3%A9Maniac.png",rosterCanonico:[{num:4,level:22},{num:104,level:22}],recompensaBase:1056},{id:"rocktunnel_hikerallen4",classe:"Hiker",nome:"Allen",emoji:"⛏️",sprite:"https://archives.bulbagarden.net/media/upload/8/8c/Spr_FRLG_Hiker.png",rosterCanonico:[{num:74,level:25}],recompensaBase:900},{id:"rocktunnel_hikereric5",classe:"Hiker",nome:"Eric",emoji:"⛏️",sprite:"https://archives.bulbagarden.net/media/upload/8/8c/Spr_FRLG_Hiker.png",rosterCanonico:[{num:66,level:20},{num:95,level:20}],recompensaBase:720},{id:"rocktunnel_hikerlenny6",classe:"Hiker",nome:"Lenny",emoji:"⛏️",sprite:"https://archives.bulbagarden.net/media/upload/8/8c/Spr_FRLG_Hiker.png",rosterCanonico:[{num:74,level:19},{num:66,level:19},{num:74,level:19},{num:74,level:19}],recompensaBase:684},{id:"rocktunnel_hikeroliver7",classe:"Hiker",nome:"Oliver",emoji:"⛏️",sprite:"https://archives.bulbagarden.net/media/upload/8/8c/Spr_FRLG_Hiker.png",rosterCanonico:[{num:95,level:20},{num:95,level:20},{num:74,level:20}],recompensaBase:720},{id:"rocktunnel_hikerlucas8",classe:"Hiker",nome:"Lucas",emoji:"⛏️",sprite:"https://archives.bulbagarden.net/media/upload/8/8c/Spr_FRLG_Hiker.png",rosterCanonico:[{num:74,level:21},{num:75,level:21}],recompensaBase:756},{id:"rocktunnel_picnickersofia9",classe:"Picnicker",nome:"Sofia",emoji:"🧺",sprite:"https://archives.bulbagarden.net/media/upload/a/a0/Spr_FRLG_Picnicker.png",rosterCanonico:[{num:39,level:21},{num:16,level:21},{num:52,level:21}],recompensaBase:420},{id:"rocktunnel_hikerdudley10",classe:"Hiker",nome:"Dudley",emoji:"⛏️",sprite:"https://archives.bulbagarden.net/media/upload/8/8c/Spr_FRLG_Hiker.png",rosterCanonico:[{num:74,level:21},{num:74,level:21},{num:75,level:21}],recompensaBase:756},{id:"rocktunnel_pokmaniaccooper11",classe:"PokéManiac",nome:"Cooper",emoji:"🦴",sprite:"https://archives.bulbagarden.net/media/upload/0/0e/Spr_FRLG_Pok%C3%A9Maniac.png",rosterCanonico:[{num:79,level:20},{num:79,level:20},{num:79,level:20}],recompensaBase:960},{id:"rocktunnel_picnickerleah12",classe:"Picnicker",nome:"Leah",emoji:"🧺",sprite:"https://archives.bulbagarden.net/media/upload/a/a0/Spr_FRLG_Picnicker.png",rosterCanonico:[{num:69,level:22},{num:35,level:22}],recompensaBase:440},{id:"rocktunnel_picnickerariana13",classe:"Picnicker",nome:"Ariana",emoji:"🧺",sprite:"https://archives.bulbagarden.net/media/upload/a/a0/Spr_FRLG_Picnicker.png",rosterCanonico:[{num:16,level:19},{num:19,level:19},{num:19,level:19},{num:69,level:19}],recompensaBase:380},{id:"rocktunnel_picnickerdana14",classe:"Picnicker",nome:"Dana",emoji:"🧺",sprite:"https://archives.bulbagarden.net/media/upload/a/a0/Spr_FRLG_Picnicker.png",rosterCanonico:[{num:52,level:20},{num:43,level:20},{num:16,level:20}],recompensaBase:400}]},
     {id:'seafoam', nome:'Ilhas Seafoam', col:2,row:11, kind:'water', icon:'🌊', desc:'Duas ilhas geladas cercadas de água funda, ligando Fuchsia a Cinnabar.',
       areas:[
         {id:'cave', nome:'Galerias de gelo', metodo:'cave', nivelMin:39, nivelMax:44, encontros:[{num:42,peso:20},{num:79,peso:20},{num:86,peso:20},{num:41,peso:16},{num:124,peso:14},{num:80,peso:5},{num:87,peso:5},{num:7,peso:1}]},
@@ -14651,7 +14661,8 @@ var KANTO_MAP = {
       areas:[
         {id:'cave', nome:'Dentro da caverna', metodo:'cave', nivelMin:42, nivelMax:47, encontros:[{num:42,peso:15},{num:67,peso:15},{num:75,peso:15},{num:41,peso:10},{num:66,peso:10},{num:74,peso:10},{num:95,peso:10},{num:111,peso:10},{num:112,peso:5},{num:106,peso:3},{num:107,peso:3},{num:113,peso:1}]},
         {id:'especial', nome:'Moltres adormecido', metodo:'especial', nivelMin:50, nivelMax:50, encontros:[{num:146,peso:1}]}
-      ]},
+      ],
+      trainers:[{id:"victoryroad_cooltrainernaomi0",classe:"Cooltrainer",nome:"Naomi",emoji:"🌟",sprite:"https://archives.bulbagarden.net/media/upload/7/7f/Spr_FRLG_Cooltrainer_F.png",rosterCanonico:[{num:53,level:42},{num:77,level:42},{num:78,level:42},{num:37,level:42},{num:38,level:42}],recompensaBase:1512},{id:"victoryroad_cooltrainerrolando1",classe:"Cooltrainer",nome:"Rolando",emoji:"🌟",sprite:"https://archives.bulbagarden.net/media/upload/b/b8/Spr_FRLG_Cooltrainer_M.png",rosterCanonico:[{num:20,level:42},{num:2,level:42},{num:8,level:42},{num:5,level:42},{num:6,level:42}],recompensaBase:1512},{id:"victoryroad_blackbeltdaisuke2",classe:"Black Belt",nome:"Daisuke",emoji:"🥋",sprite:"https://archives.bulbagarden.net/media/upload/8/8e/Spr_FRLG_Black_Belt.png",rosterCanonico:[{num:67,level:43},{num:66,level:43},{num:67,level:43}],recompensaBase:1032},{id:"victoryroad_jugglernelson3",classe:"Juggler",nome:"Nelson",emoji:"🤹",sprite:"https://archives.bulbagarden.net/media/upload/5/50/Spr_FRLG_Juggler.png",rosterCanonico:[{num:96,level:41},{num:97,level:41},{num:64,level:41},{num:64,level:41}],recompensaBase:1640},{id:"victoryroad_tamervincent4",classe:"Tamer",nome:"Vincent",emoji:"🐕",sprite:"https://archives.bulbagarden.net/media/upload/8/89/Spr_FRLG_Tamer.png",rosterCanonico:[{num:53,level:44},{num:55,level:44}],recompensaBase:1760},{id:"victoryroad_jugglergregory5",classe:"Juggler",nome:"Gregory",emoji:"🤹",sprite:"https://archives.bulbagarden.net/media/upload/5/50/Spr_FRLG_Juggler.png",rosterCanonico:[{num:122,level:48}],recompensaBase:1920},{id:"victoryroad_cooltrainergeorge6",classe:"Cooltrainer",nome:"George",emoji:"🌟",sprite:"https://archives.bulbagarden.net/media/upload/b/b8/Spr_FRLG_Cooltrainer_M.png",rosterCanonico:[{num:103,level:42},{num:28,level:42},{num:91,level:42},{num:101,level:42},{num:59,level:42}],recompensaBase:1512},{id:"victoryroad_pokmaniacdawson7",classe:"PokéManiac",nome:"Dawson",emoji:"🦴",sprite:"https://archives.bulbagarden.net/media/upload/0/0e/Spr_FRLG_Pok%C3%A9Maniac.png",rosterCanonico:[{num:5,level:40},{num:131,level:40},{num:108,level:40}],recompensaBase:1920},{id:"victoryroad_cooltraineralexa8",classe:"Cooltrainer",nome:"Alexa",emoji:"🌟",sprite:"https://archives.bulbagarden.net/media/upload/7/7f/Spr_FRLG_Cooltrainer_F.png",rosterCanonico:[{num:35,level:42},{num:39,level:42},{num:53,level:42},{num:87,level:42},{num:113,level:42}],recompensaBase:1512},{id:"victoryroad_cooltrainercolby9",classe:"Cooltrainer",nome:"Colby",emoji:"🌟",sprite:"https://archives.bulbagarden.net/media/upload/b/b8/Spr_FRLG_Cooltrainer_M.png",rosterCanonico:[{num:99,level:41},{num:61,level:42},{num:73,level:42},{num:117,level:42},{num:9,level:43}],recompensaBase:1548},{id:"victoryroad_cooltrainercaroline10",classe:"Cooltrainer",nome:"Caroline",emoji:"🌟",sprite:"https://archives.bulbagarden.net/media/upload/7/7f/Spr_FRLG_Cooltrainer_F.png",rosterCanonico:[{num:69,level:42},{num:70,level:42},{num:71,level:42},{num:46,level:42},{num:47,level:42}],recompensaBase:1512},{id:"victoryroad_coolcouplerayetyra11",classe:"Cool Couple",nome:"Ray & Tyra",emoji:"💞",sprite:"https://archives.bulbagarden.net/media/upload/c/cf/Spr_FRLG_Cool_Couple.png",rosterCanonico:[{num:34,level:45},{num:31,level:45}],recompensaBase:2160}]},
     {id:'digletts', nome:'Caverna Diglett', col:9,row:8, kind:'cave', icon:'🕳️', desc:'Túnel cavado por uma legião de Diglett -- atalho famoso saindo de Vermilion.',
       areas:[{id:'cave', nome:'Dentro do túnel', metodo:'cave', nivelMin:13, nivelMax:18, encontros:[{num:50,peso:85},{num:41,peso:10},{num:51,peso:5},{num:113,peso:1}]}]},
     {id:'ceruleancave', nome:'Caverna Cerúlea', col:6,row:0, kind:'cave', icon:'🕳️', desc:'Caverna isolada ao norte de Cerulean, só liberada depois que a Liga é vencida. Pokémon bem mais fortes que o normal.',
@@ -14663,7 +14674,8 @@ var KANTO_MAP = {
     {id:'pontenugget', nome:'Ponte Pepita', col:8,row:0, kind:'route-junction', icon:'🌉', desc:'Ponte cheia de treinadores enfileirados, todos querendo batalhar. Só gente, nenhum Pokémon selvagem por aqui.'},
     {id:'billshouse', nome:'Casa do Bill', col:9,row:0, kind:'landmark', icon:'🏠', desc:'Casa isolada de um pesquisador excêntrico, no fim da estrada. Sem grama nenhuma por perto.'},
     {id:'mansion', nome:'Mansão Pokémon', col:0,row:11, kind:'landmark', icon:'🏚️', desc:'Prédio abandonado em Cinnabar, com diários antigos sobre experimentos estranhos.',
-      areas:[{id:'cave', nome:'Corredores da mansão', metodo:'cave', nivelMin:39, nivelMax:44, encontros:[{num:88,peso:20},{num:109,peso:20},{num:19,peso:10},{num:20,peso:10},{num:126,peso:12},{num:89,peso:7},{num:110,peso:7},{num:132,peso:5},{num:113,peso:1}]}]},
+      areas:[{id:'cave', nome:'Corredores da mansão', metodo:'cave', nivelMin:39, nivelMax:44, encontros:[{num:88,peso:20},{num:109,peso:20},{num:19,peso:10},{num:20,peso:10},{num:126,peso:12},{num:89,peso:7},{num:110,peso:7},{num:132,peso:5},{num:113,peso:1}]}],
+      trainers:[{id:"mansion_youngsterjohnson0",classe:"Youngster",nome:"Johnson",emoji:"👦",sprite:"https://archives.bulbagarden.net/media/upload/d/d5/Spr_FRLG_Youngster.png",rosterCanonico:[{num:23,level:33},{num:23,level:33},{num:20,level:34}],recompensaBase:544},{id:"mansion_burglararnie1",classe:"Burglar",nome:"Arnie",emoji:"🦹",sprite:"https://archives.bulbagarden.net/media/upload/7/78/Spr_FRLG_Burglar.png",rosterCanonico:[{num:4,level:34},{num:5,level:34}],recompensaBase:2992},{id:"mansion_burglarsimon2",classe:"Burglar",nome:"Simon",emoji:"🦹",sprite:"https://archives.bulbagarden.net/media/upload/7/78/Spr_FRLG_Burglar.png",rosterCanonico:[{num:38,level:38}],recompensaBase:3344},{id:"mansion_scientistbraydon3",classe:"Scientist",nome:"Braydon",emoji:"🔬",sprite:"https://archives.bulbagarden.net/media/upload/f/f9/Spr_FRLG_Scientist.png",rosterCanonico:[{num:81,level:33},{num:82,level:33},{num:100,level:33}],recompensaBase:1584},{id:"mansion_scientistted4",classe:"Scientist",nome:"Ted",emoji:"🔬",sprite:"https://archives.bulbagarden.net/media/upload/f/f9/Spr_FRLG_Scientist.png",rosterCanonico:[{num:101,level:29},{num:110,level:29}],recompensaBase:1392},{id:"mansion_burglarlewis5",classe:"Burglar",nome:"Lewis",emoji:"🦹",sprite:"https://archives.bulbagarden.net/media/upload/7/78/Spr_FRLG_Burglar.png",rosterCanonico:[{num:58,level:34},{num:77,level:34}],recompensaBase:2992},{id:"mansion_scientistivan6",classe:"Scientist",nome:"Ivan",emoji:"🔬",sprite:"https://archives.bulbagarden.net/media/upload/f/f9/Spr_FRLG_Scientist.png",rosterCanonico:[{num:81,level:34},{num:101,level:34}],recompensaBase:1632}]},
     {id:'powerplant', nome:'Usina Elétrica', col:11,row:3, kind:'landmark', icon:'⚡', desc:'Usina desativada tomada por Pokémon elétricos -- algo grande dorme lá dentro.',
       areas:[
         {id:'cave', nome:'Dentro da usina', metodo:'cave', nivelMin:37, nivelMax:42, encontros:[{num:88,peso:13},{num:109,peso:12},{num:81,peso:12},{num:100,peso:11},{num:125,peso:14},{num:82,peso:5},{num:89,peso:5},{num:101,peso:5},{num:110,peso:5},{num:113,peso:1}]},
@@ -14676,7 +14688,8 @@ var KANTO_MAP = {
         {id:'norte', nome:'Área Norte', metodo:'safari', nivelMin:28, nivelMax:32, encontros:[{num:49,peso:4},{num:128,peso:1}]},
         {id:'oeste', nome:'Área Oeste', metodo:'safari', nivelMin:25, nivelMax:28, encontros:[{num:128,peso:4},{num:115,peso:1}]}
       ]},
-    {id:'ssanne', nome:'S.S. Anne', col:7,row:9, kind:'landmark', icon:'🚢', desc:'Navio de cruzeiro enorme, atracado no cais de Vermilion, cheio de treinadores a bordo. Sem Pokémon selvagem, só gente pra batalhar.'},
+    {id:'ssanne', nome:'S.S. Anne', col:7,row:9, kind:'landmark', icon:'🚢', desc:'Navio de cruzeiro enorme, atracado no cais de Vermilion, cheio de treinadores a bordo. Sem Pokémon selvagem, só gente pra batalhar.',
+      trainers:[{id:"ssanne_sailortrevor0",classe:"Sailor",nome:"Trevor",emoji:"⚓",sprite:"https://archives.bulbagarden.net/media/upload/a/a1/Spr_FRLG_Sailor.png",rosterCanonico:[{num:66,level:17},{num:72,level:17}],recompensaBase:544},{id:"ssanne_sailoredmond1",classe:"Sailor",nome:"Edmond",emoji:"⚓",sprite:"https://archives.bulbagarden.net/media/upload/a/a1/Spr_FRLG_Sailor.png",rosterCanonico:[{num:66,level:18},{num:90,level:18}],recompensaBase:576},{id:"ssanne_fishermanbarny2",classe:"Fisherman",nome:"Barny",emoji:"🎣",sprite:"https://archives.bulbagarden.net/media/upload/c/c7/Spr_FRLG_Fisherman.png",rosterCanonico:[{num:72,level:17},{num:120,level:17},{num:90,level:17}],recompensaBase:612},{id:"ssanne_sailorphillip3",classe:"Sailor",nome:"Phillip",emoji:"⚓",sprite:"https://archives.bulbagarden.net/media/upload/a/a1/Spr_FRLG_Sailor.png",rosterCanonico:[{num:66,level:20}],recompensaBase:640},{id:"ssanne_sailorhuey4",classe:"Sailor",nome:"Huey",emoji:"⚓",sprite:"https://archives.bulbagarden.net/media/upload/a/a1/Spr_FRLG_Sailor.png",rosterCanonico:[{num:72,level:18},{num:120,level:18}],recompensaBase:576},{id:"ssanne_sailordylan5",classe:"Sailor",nome:"Dylan",emoji:"⚓",sprite:"https://archives.bulbagarden.net/media/upload/a/a1/Spr_FRLG_Sailor.png",rosterCanonico:[{num:116,level:17},{num:116,level:17},{num:116,level:17}],recompensaBase:544},{id:"ssanne_sailorduncan6",classe:"Sailor",nome:"Duncan",emoji:"⚓",sprite:"https://archives.bulbagarden.net/media/upload/a/a1/Spr_FRLG_Sailor.png",rosterCanonico:[{num:116,level:17},{num:90,level:17},{num:72,level:17}],recompensaBase:544},{id:"ssanne_sailorleonard7",classe:"Sailor",nome:"Leonard",emoji:"⚓",sprite:"https://archives.bulbagarden.net/media/upload/a/a1/Spr_FRLG_Sailor.png",rosterCanonico:[{num:90,level:21}],recompensaBase:672},{id:"ssanne_gentlemanthomas8",classe:"Gentleman",nome:"Thomas",emoji:"🎩",sprite:"https://archives.bulbagarden.net/media/upload/9/94/Spr_FRLG_Gentleman.png",rosterCanonico:[{num:58,level:18},{num:58,level:18}],recompensaBase:1296},{id:"ssanne_gentlemanarthur9",classe:"Gentleman",nome:"Arthur",emoji:"🎩",sprite:"https://archives.bulbagarden.net/media/upload/9/94/Spr_FRLG_Gentleman.png",rosterCanonico:[{num:32,level:19},{num:29,level:19}],recompensaBase:1368},{id:"ssanne_lassann10",classe:"Lass",nome:"Ann",emoji:"🎀",sprite:"https://archives.bulbagarden.net/media/upload/4/46/Spr_FRLG_Lass.png",rosterCanonico:[{num:16,level:18},{num:29,level:18}],recompensaBase:288},{id:"ssanne_youngstertyler11",classe:"Youngster",nome:"Tyler",emoji:"👦",sprite:"https://archives.bulbagarden.net/media/upload/d/d5/Spr_FRLG_Youngster.png",rosterCanonico:[{num:32,level:21}],recompensaBase:336},{id:"ssanne_fishermandale12",classe:"Fisherman",nome:"Dale",emoji:"🎣",sprite:"https://archives.bulbagarden.net/media/upload/c/c7/Spr_FRLG_Fisherman.png",rosterCanonico:[{num:118,level:17},{num:118,level:17},{num:72,level:17}],recompensaBase:612},{id:"ssanne_gentlemanbrooks13",classe:"Gentleman",nome:"Brooks",emoji:"🎩",sprite:"https://archives.bulbagarden.net/media/upload/9/94/Spr_FRLG_Gentleman.png",rosterCanonico:[{num:25,level:23}],recompensaBase:1656},{id:"ssanne_lassdawn14",classe:"Lass",nome:"Dawn",emoji:"🎀",sprite:"https://archives.bulbagarden.net/media/upload/4/46/Spr_FRLG_Lass.png",rosterCanonico:[{num:19,level:18},{num:25,level:18}],recompensaBase:288},{id:"ssanne_gentlemanlamar15",classe:"Gentleman",nome:"Lamar",emoji:"🎩",sprite:"https://archives.bulbagarden.net/media/upload/9/94/Spr_FRLG_Gentleman.png",rosterCanonico:[{num:58,level:17},{num:77,level:17}],recompensaBase:1224}]},
     {id:'snorlaxspot', nome:'Trecho do Snorlax', col:5,row:8, kind:'route-junction', icon:'😴', desc:'Um Snorlax gigante dorme bem no meio do caminho -- ninguém passa sem acordar ele primeiro.',
       areas:[{id:'especial', nome:'Acordar o Snorlax', metodo:'especial', nivelMin:30, nivelMax:30, encontros:[{num:143,peso:1}]}]}
   ],
@@ -14839,6 +14852,17 @@ var TRAINER_CLASS_SPRITE = {
 function trainerClassSpriteUrl(classe){
   return TRAINER_CLASS_SPRITE[classe] || 'https://archives.bulbagarden.net/media/upload/d/d5/Spr_FRLG_Youngster.png';
 }
+/* Cap. leva desta sessão (Treinadores de Local -- Floresta Viridian/Monte
+   Moon/Túnel da Rocha/S.S. Anne/Estrada da Vitória/Mansão Pokémon): alguns
+   destes Treinadores têm `sprite` PRÓPRIO por instância (não só por
+   classe) -- a classe Cooltrainer usa sprite M/F diferente por indivíduo
+   mesmo com o mesmo texto de classe (Naomi/Alexa/Caroline = fêmea,
+   Rolando/George/Colby = macho), então cada um carrega seu sprite real
+   direto no dado. Prefere `trainer.sprite` quando existe, só cai pro
+   sprite de CLASSE (Treinador de Rota antigo, sem esse campo) senão. */
+function kantoTrainerSpriteUrl(trainer){
+  return trainer.sprite || trainerClassSpriteUrl(trainer.classe);
+}
 /* Cap. leva desta sessão ("aproveita pra deixar os líderes de ginásio
    de Kanto da mesma forma [faixas de Nível]... podendo enfrentar uma
    vez por dia"): cada Líder ganha `variacoes` pré-computadas (mesma
@@ -14860,6 +14884,19 @@ Object.keys(KANTO_GYM_LEADERS).forEach(function(locId){
 KANTO_MAP.routes.forEach(function(route){
   if(!route.trainers) return;
   route.trainers.forEach(function(trainer){
+    trainer.variacoes = gerarVariacoesRoster(trainer.rosterCanonico, 3);
+  });
+});
+/* Cap. leva desta sessão ("Só achei treinadores na rota 3. E na floresta?
+   E nas rotas antes e depois... eu quero que fique igual no jogo"):
+   MESMA fábrica acima, agora pros locais NÃO-numerados que também têm
+   Treinador de verdade em FireRed/LeafGreen (Floresta Viridian/Monte
+   Moon/Túnel da Rocha/S.S. Anne/Estrada da Vitória/Mansão Pokémon --
+   pesquisados no Bulbapedia igual as 25 Rotas), gravados em
+   `KANTO_MAP.locs[i].trainers`. */
+KANTO_MAP.locs.forEach(function(loc){
+  if(!loc.trainers) return;
+  loc.trainers.forEach(function(trainer){
     trainer.variacoes = gerarVariacoesRoster(trainer.rosterCanonico, 3);
   });
 });
@@ -15002,8 +15039,16 @@ DT.gaKantoEscolherFaixaGinasio = function(faixaIdx){
   SESSION.kantoEscolhendoGinasio.faixaIdx = faixaIdx;
   render();
 };
-DT.gaKantoCancelarGinasio = function(){
-  SESSION.kantoEscolhendoGinasio = null;
+/* Cap. leva desta sessão ("quando eu clicar num treinador o popup dele
+   tem que mudar e não crescer pra baixo... pode até me dar a opção de
+   voltar"): mesmo "Voltar" em 1 botão só do Treinador de Rota/Local
+   acima, aplicado ao Líder de Ginásio -- volta 1 passo por vez (Pokémon
+   → Faixa → grade normal do Ginásio). Substitui o antigo
+   `gaKantoCancelarGinasio`. */
+DT.gaKantoVoltarGinasio = function(){
+  if(!SESSION.kantoEscolhendoGinasio) return;
+  if(SESSION.kantoEscolhendoGinasio.faixaIdx!=null) SESSION.kantoEscolhendoGinasio.faixaIdx = null;
+  else SESSION.kantoEscolhendoGinasio = null;
   render();
 };
 DT.gaKantoIniciarGinasio = function(leadId){
@@ -15022,28 +15067,35 @@ DT.gaKantoIniciarGinasio = function(leadId){
   startBattle('kantogym', { leadPartyId: leadId, leaderId: escolha.locId, eliteNome: leader.nome+' ('+leader.tipo+')', eliteTeam: variacao.roster, zonaIdx: zonaIdx }, false);
 };
 
-function kantoTrainerById(routeId, trainerId){
-  var route = KANTO_MAP.routes.filter(function(r){ return r.id===routeId; })[0];
-  if(!route || !route.trainers) return null;
-  return route.trainers.filter(function(t){ return t.id===trainerId; })[0] || null;
+/* Cap. leva desta sessão ("Só achei treinadores na rota 3. E na floresta?
+   E nas rotas antes e depois"): generalizado de `routeId` pra
+   `{ownerType, ownerId}` -- MESMO padrão que `kantoOwnerById`/
+   `kantoAreaById` já usam pra Área de Captura, assim o mesmo Treinador
+   funciona tanto numa Rota numerada quanto num local (Floresta/Caverna/
+   Navio/Mansão). `kantoOwnerById` já existe acima e resolve os dois
+   tipos de dono. */
+function kantoTrainerById(ownerType, ownerId, trainerId){
+  var owner = kantoOwnerById(ownerType, ownerId);
+  if(!owner || !owner.trainers) return null;
+  return owner.trainers.filter(function(t){ return t.id===trainerId; })[0] || null;
 }
-/* Cap. leva desta sessão (Treinadores de Rota de Kanto -- "Colocar nas
-   rotas, alguns treinadores que são ajustados de acordo com o nível do
-   treinador. Podendo ser enfrentados 1 vez ao dia de jogo apenas"):
+/* Cap. leva desta sessão (Treinadores de Rota/Local de Kanto -- "Colocar
+   nas rotas, alguns treinadores que são ajustados de acordo com o nível
+   do treinador. Podendo ser enfrentados 1 vez ao dia de jogo apenas"):
    MESMO padrão de 2 passos + cooldown 1x/dia dos Líderes de Ginásio
-   acima (`SESSION.kantoEscolhendoTreinador = {routeId, trainerId,
-   faixaIdx}`, `STATE.kantoTrainersLastBeatenDay` -- campo que já
-   existia em `freshState`, reservado desde a leva dos Líderes), só que
+   acima (`SESSION.kantoEscolhendoTreinador = {ownerType, ownerId,
+   trainerId, faixaIdx}`, `STATE.kantoTrainersLastBeatenDay` -- campo que
+   já existia em `freshState`, reservado desde a leva dos Líderes), só que
    NUNCA dá Insígnia (só os 8 Líderes reais dão -- ver finishBattle,
    kind 'routetrainer' não entra em nenhum bloco de Insígnia). */
-DT.gaKantoDesafiarTreinador = function(routeId, trainerId){
+DT.gaKantoDesafiarTreinador = function(ownerType, ownerId, trainerId){
   if(!SESSION.isAdmin) return;
-  if(!kantoTrainerById(routeId, trainerId)) return;
+  if(!kantoTrainerById(ownerType, ownerId, trainerId)) return;
   if(kantoJaEnfrentadoHoje(STATE.kantoTrainersLastBeatenDay, trainerId)){
     SESSION.error = 'Você já enfrentou esse Treinador hoje -- volte amanhã (novo Dia de jogo).';
     render(); return;
   }
-  SESSION.kantoEscolhendoTreinador = { routeId: routeId, trainerId: trainerId, faixaIdx: null };
+  SESSION.kantoEscolhendoTreinador = { ownerType: ownerType, ownerId: ownerId, trainerId: trainerId, faixaIdx: null };
   render();
 };
 DT.gaKantoEscolherFaixaTreinador = function(faixaIdx){
@@ -15051,14 +15103,23 @@ DT.gaKantoEscolherFaixaTreinador = function(faixaIdx){
   SESSION.kantoEscolhendoTreinador.faixaIdx = faixaIdx;
   render();
 };
-DT.gaKantoCancelarTreinador = function(){
-  SESSION.kantoEscolhendoTreinador = null;
+/* Cap. leva desta sessão ("quando eu clicar num treinador o popup dele
+   tem que mudar e não crescer pra baixo... pode até me dar a opção de
+   voltar"): 1 botão só de "Voltar" faz os 2 passos ao contrário -- na
+   tela de Pokémon (faixaIdx já escolhida) volta pra tela de Faixa; na
+   tela de Faixa (faixaIdx ainda null) sai de vez e volta pra grade de
+   Treinadores. Substitui o antigo `gaKantoCancelarTreinador` (que só
+   saía de vez, sem passo intermediário). */
+DT.gaKantoVoltarTreinador = function(){
+  if(!SESSION.kantoEscolhendoTreinador) return;
+  if(SESSION.kantoEscolhendoTreinador.faixaIdx!=null) SESSION.kantoEscolhendoTreinador.faixaIdx = null;
+  else SESSION.kantoEscolhendoTreinador = null;
   render();
 };
 DT.gaKantoIniciarTreinadorRota = function(leadId){
   if(!SESSION.isAdmin || !SESSION.kantoEscolhendoTreinador || SESSION.kantoEscolhendoTreinador.faixaIdx==null) return;
   var escolha = SESSION.kantoEscolhendoTreinador;
-  var trainer = kantoTrainerById(escolha.routeId, escolha.trainerId);
+  var trainer = kantoTrainerById(escolha.ownerType, escolha.ownerId, escolha.trainerId);
   if(!trainer){ SESSION.kantoEscolhendoTreinador = null; render(); return; }
   var variacao = trainer.variacoes.filter(function(v){ return v.faixaIdx===escolha.faixaIdx; })[0];
   if(!variacao){ SESSION.kantoEscolhendoTreinador = null; render(); return; }
@@ -15133,32 +15194,49 @@ function kantoGinasioBlocoHTML(loc){
      selecionar... Use os sprites originais... líderes de ginásio
      pixelados"): sprite REAL de FRLG do Líder (`leader.sprite`),
      MESMO card clicável dos Treinadores de Rota (`.ga-trainer-card`,
-     só a variante maior `-leader-card`, 1 Líder só por Ginásio). */
+     só a variante maior `-leader-card`, 1 Líder só por Ginásio).
+     Cap. leva desta sessão ("quando eu clicar num treinador o popup dele
+     tem que mudar e não crescer pra baixo"): clicar aqui não abre mais
+     nada NESTE bloco -- `SESSION.kantoEscolhendoGinasio` faz o painel
+     inteiro trocar pra `kantoDesafioLiderViewHTML()` (ver
+     `kantoInfoPainelHTML`), então este bloco só mostra o card. */
   if(jaHoje){
     out += '<div class="ga-trainer-card ga-trainer-leader-card feito" title="Volta a liberar no próximo Dia de jogo"><img src="'+leader.sprite+'" alt="'+esc2(leader.nome)+'"><div><div class="ga-trainer-nome">'+esc2(leader.nome)+'</div><div class="ga-trainer-status">⏳ Já desafiado hoje</div></div></div>';
   } else {
     out += '<button type="button" class="ga-trainer-card ga-trainer-leader-card" onclick="DT.gaKantoDesafiarGinasio(\''+loc.id+'\')"><img src="'+leader.sprite+'" alt="'+esc2(leader.nome)+'"><div><div class="ga-trainer-nome">⚔️ Desafiar '+esc2(leader.nome)+'</div><div class="ga-trainer-status">'+esc2(leader.tipo)+'</div></div></button>';
   }
-  var escolha = SESSION.kantoEscolhendoGinasio;
-  if(escolha && escolha.locId===loc.id){
-    if(escolha.faixaIdx==null){
-      out += '<div class="ga-loja-grid" style="margin-top:8px;">'+
-        leader.variacoes.map(function(v){
-          var zona = ZONAS[v.faixaIdx];
-          var rosterVarTxt = v.roster.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
-          return '<button type="button" class="ga-btn-sm ga-btn-primary" style="text-align:left;" onclick="DT.gaKantoEscolherFaixaGinasio('+v.faixaIdx+')">🎯 '+esc2(zona.nome)+' (Nv.'+zona.min+'-'+zona.max+')<br><span class="ga-hint">'+esc2(rosterVarTxt)+'</span></button>';
-        }).join('')+
-        '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarGinasio()">✕ Cancelar</button>';
-    } else {
-      out += '<div class="ga-poke-grid" style="margin-top:8px;">'+
-        STATE.party.map(function(p){
-          var sp = speciesByNum(p.num);
-          return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarGinasio(\''+p.id+'\')">Escolher</button></div>';
-        }).join('')+
-        '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarGinasio()">✕ Cancelar</button>';
-    }
-  }
   return out+'</div>';
+}
+/* Cap. leva desta sessão ("cliquei, abre outra pagina com a seleção de
+   nível do treinador e depois do nível a seleção de pokémon... pode até
+   me dar a opção de voltar"): view DEDICADA que TOMA o lugar do painel
+   inteiro (ver `kantoInfoPainelHTML`) em vez de crescer pra baixo dentro
+   do popup da cidade -- página 1 escolhe a Faixa (`leader.variacoes`),
+   página 2 escolhe o Pokémon líder, 1 botão "← Voltar" sempre no topo
+   (`DT.gaKantoVoltarGinasio`, volta 1 passo ou fecha de vez). */
+function kantoDesafioLiderViewHTML(){
+  var escolha = SESSION.kantoEscolhendoGinasio;
+  var leader = KANTO_GYM_LEADERS[escolha.locId];
+  if(!leader){ SESSION.kantoEscolhendoGinasio = null; return kantoInfoPainelHTML(); }
+  var out = '<div class="ga-kanto-info-head"><button type="button" class="ga-btn-sm" onclick="DT.gaKantoVoltarGinasio()">← Voltar</button></div>'+
+    '<div class="ga-trainer-detail-head"><img src="'+leader.sprite+'" alt="'+esc2(leader.nome)+'"><div><h3>'+esc2(leader.nome)+'</h3><p class="ga-hint">🎖️ Líder de Ginásio '+esc2(leader.tipo)+'</p></div></div>';
+  if(escolha.faixaIdx==null){
+    out += '<h4 class="ga-subhead">Escolha a Faixa de Nível</h4><div class="ga-loja-grid">'+
+      leader.variacoes.map(function(v){
+        var zona = ZONAS[v.faixaIdx];
+        var rosterVarTxt = v.roster.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
+        return '<button type="button" class="ga-btn-sm ga-btn-primary" style="text-align:left;" onclick="DT.gaKantoEscolherFaixaGinasio('+v.faixaIdx+')">🎯 '+esc2(zona.nome)+' (Nv.'+zona.min+'-'+zona.max+')<br><span class="ga-hint">'+esc2(rosterVarTxt)+'</span></button>';
+      }).join('')+
+      '</div>';
+  } else {
+    out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid">'+
+      STATE.party.map(function(p){
+        var sp = speciesByNum(p.num);
+        return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarGinasio(\''+p.id+'\')">Escolher</button></div>';
+      }).join('')+
+      '</div>';
+  }
+  return out;
 }
 /* Cap. leva desta sessão ("Cada lugar onde possa ter mercado no mapa,
    quero que você coloque um lá... No Shopping de Celadon é pra ter
@@ -15239,57 +15317,79 @@ function kantoMercadoBlocoHTML(loc){
 /* Cap. leva desta sessão ("quero que tenha um menu onde eu possa ver
    os treinadores e selecionar quem que quero batalhar, no popup de
    cada rota ou cidade. Use os sprites originais de treinadores...
-   pixelados pra ficar mais legal"): MENU de verdade -- grade de cards
-   clicáveis com o sprite REAL de FRLG de cada Treinador (1 sprite por
-   CLASSE, `TRAINER_CLASS_SPRITE` -- mesmo padrão da Loja/Pokédex de
-   já usar imagem em vez de só texto), em vez da lista de botões de
-   texto de antes. Clicar no card É o "Desafiar" (mesmo handler,
-   `DT.gaKantoDesafiarTreinador`); Treinador já enfrentado hoje some
-   pra estado desabilitado (cinza, sem clique), com "⏳ Hoje" no lugar
-   do roster. O seletor de Faixa+Pokémon líder abre LOGO ABAIXO da
-   grade (não mais dentro de cada card), pro Treinador que estiver
-   selecionado no momento (`SESSION.kantoEscolhendoTreinador`, MESMO
-   estado de antes, só mudou onde renderiza). */
-function kantoTreinadoresBlocoHTML(route){
-  if(!route.trainers || !route.trainers.length) return '';
-  var escolha = SESSION.kantoEscolhendoTreinador;
-  var trainerSelecionado = (escolha && escolha.routeId===route.id) ? kantoTrainerById(route.id, escolha.trainerId) : null;
-  var out = '<div class="ga-kanto-lider"><p class="ga-hint">⚔️ <b>'+route.trainers.length+' Treinador(es)</b> nesta Rota (fiel ao FireRed/LeafGreen) -- clique num Treinador pra desafiar, cada um enfrentável 1x por Dia de jogo, em Faixas de Nível diferentes.</p>';
-  out += '<div class="ga-trainer-grid">'+route.trainers.map(function(trainer){
+   pixelados pra ficar mais legal" + "Só achei treinadores na rota 3. E
+   na floresta? E nas rotas antes e depois... eu quero que fique igual
+   no jogo"): MENU de verdade -- grade de cards clicáveis com o sprite
+   REAL de FRLG de cada Treinador (`kantoTrainerSpriteUrl`, por
+   INSTÂNCIA quando o dado tem `sprite` próprio -- caso das Cooltrainer
+   M/F -- senão cai pra 1 sprite por CLASSE, `TRAINER_CLASS_SPRITE`).
+   Generalizado de "só Rota" pra `(owner, ownerType)` -- MESMA grade
+   funciona pra Rota numerada OU local (Floresta/Caverna/Navio/Mansão),
+   ambos guardam `trainers` no mesmo formato. Clicar no card É o
+   "Desafiar" (`DT.gaKantoDesafiarTreinador`); Treinador já enfrentado
+   hoje vira card desabilitado (cinza), com "⏳ Hoje" no lugar do
+   roster. Cap. leva desta sessão ("quando eu clicar num treinador o
+   popup dele tem que mudar e não crescer pra baixo"): este bloco NÃO
+   abre mais o seletor de Faixa/Pokémon aqui dentro -- clicar troca o
+   painel inteiro pra `kantoDesafioTreinadorViewHTML()` (ver
+   `kantoInfoPainelHTML`), então esta função só desenha a grade. */
+function kantoTreinadoresBlocoHTML(owner, ownerType){
+  if(!owner.trainers || !owner.trainers.length) return '';
+  var out = '<div class="ga-kanto-lider"><p class="ga-hint">⚔️ <b>'+owner.trainers.length+' Treinador(es)</b> aqui (fiel ao FireRed/LeafGreen) -- clique num Treinador pra desafiar, cada um enfrentável 1x por Dia de jogo, em Faixas de Nível diferentes.</p>';
+  out += '<div class="ga-trainer-grid">'+owner.trainers.map(function(trainer){
     var jaHoje = kantoJaEnfrentadoHoje(STATE.kantoTrainersLastBeatenDay, trainer.id);
-    var ativo = trainerSelecionado && trainerSelecionado.id===trainer.id;
     var nomeTxt = esc2(trainer.classe)+(trainer.nome?'<br>'+esc2(trainer.nome):'');
     if(jaHoje){
-      return '<div class="ga-trainer-card feito" title="Volta a liberar no próximo Dia de jogo"><img src="'+trainerClassSpriteUrl(trainer.classe)+'" alt="'+esc2(trainer.classe)+'"><div class="ga-trainer-nome">'+nomeTxt+'</div><div class="ga-trainer-status">⏳ Hoje</div></div>';
+      return '<div class="ga-trainer-card feito" title="Volta a liberar no próximo Dia de jogo"><img src="'+kantoTrainerSpriteUrl(trainer)+'" alt="'+esc2(trainer.classe)+'"><div class="ga-trainer-nome">'+nomeTxt+'</div><div class="ga-trainer-status">⏳ Hoje</div></div>';
     }
-    return '<button type="button" class="ga-trainer-card'+(ativo?' ativo':'')+'" onclick="DT.gaKantoDesafiarTreinador(\''+route.id+'\',\''+trainer.id+'\')"><img src="'+trainerClassSpriteUrl(trainer.classe)+'" alt="'+esc2(trainer.classe)+'"><div class="ga-trainer-nome">'+nomeTxt+'</div><div class="ga-trainer-status">💰'+trainer.recompensaBase+'</div></button>';
+    return '<button type="button" class="ga-trainer-card" onclick="DT.gaKantoDesafiarTreinador(\''+ownerType+'\',\''+owner.id+'\',\''+trainer.id+'\')"><img src="'+kantoTrainerSpriteUrl(trainer)+'" alt="'+esc2(trainer.classe)+'"><div class="ga-trainer-nome">'+nomeTxt+'</div><div class="ga-trainer-status">💰'+trainer.recompensaBase+'</div></button>';
   }).join('')+'</div>';
-  if(trainerSelecionado){
-    var rosterTxt = trainerSelecionado.rosterCanonico.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
-    out += '<p class="ga-hint" style="margin-top:8px;">'+trainerSelecionado.emoji+' <b>'+esc2(trainerSelecionado.classe)+(trainerSelecionado.nome?' '+esc2(trainerSelecionado.nome):'')+'</b> -- roster canônico: '+esc2(rosterTxt)+' (💰'+trainerSelecionado.recompensaBase+' na Faixa canônica).</p>';
-    if(escolha.faixaIdx==null){
-      out += '<div class="ga-loja-grid" style="margin-top:8px;">'+
-        trainerSelecionado.variacoes.map(function(v){
-          var zona = ZONAS[v.faixaIdx];
-          var rosterVarTxt = v.roster.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
-          return '<button type="button" class="ga-btn-sm ga-btn-primary" style="text-align:left;" onclick="DT.gaKantoEscolherFaixaTreinador('+v.faixaIdx+')">🎯 '+esc2(zona.nome)+' (Nv.'+zona.min+'-'+zona.max+')<br><span class="ga-hint">'+esc2(rosterVarTxt)+'</span></button>';
-        }).join('')+
-        '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarTreinador()">✕ Cancelar</button>';
-    } else {
-      out += '<div class="ga-poke-grid" style="margin-top:8px;">'+
-        STATE.party.map(function(p){
-          var sp = speciesByNum(p.num);
-          return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarTreinadorRota(\''+p.id+'\')">Escolher</button></div>';
-        }).join('')+
-        '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarTreinador()">✕ Cancelar</button>';
-    }
-  }
   return out+'</div>';
+}
+/* Mesma view dedicada do Líder de Ginásio (ver comentário em
+   `kantoDesafioLiderViewHTML`), agora pro Treinador de Rota/Local --
+   página 1 Faixa, página 2 Pokémon, "← Voltar" sempre no topo
+   (`DT.gaKantoVoltarTreinador`). */
+function kantoDesafioTreinadorViewHTML(){
+  var escolha = SESSION.kantoEscolhendoTreinador;
+  var trainer = kantoTrainerById(escolha.ownerType, escolha.ownerId, escolha.trainerId);
+  if(!trainer){ SESSION.kantoEscolhendoTreinador = null; return kantoInfoPainelHTML(); }
+  var nomeTxt = trainer.emoji+' '+esc2(trainer.classe)+(trainer.nome?' '+esc2(trainer.nome):'');
+  var out = '<div class="ga-kanto-info-head"><button type="button" class="ga-btn-sm" onclick="DT.gaKantoVoltarTreinador()">← Voltar</button></div>'+
+    '<div class="ga-trainer-detail-head"><img src="'+kantoTrainerSpriteUrl(trainer)+'" alt="'+esc2(trainer.classe)+'"><div><h3>'+nomeTxt+'</h3></div></div>';
+  if(escolha.faixaIdx==null){
+    var rosterTxt = trainer.rosterCanonico.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
+    out += '<p class="ga-hint">Roster canônico: '+esc2(rosterTxt)+' (💰'+trainer.recompensaBase+' na Faixa canônica).</p>';
+    out += '<h4 class="ga-subhead">Escolha a Faixa de Nível</h4><div class="ga-loja-grid">'+
+      trainer.variacoes.map(function(v){
+        var zona = ZONAS[v.faixaIdx];
+        var rosterVarTxt = v.roster.map(function(s){ var sp=speciesByNum(s.num); return (sp?sp.name:('#'+s.num))+' Nv.'+s.level; }).join(', ');
+        return '<button type="button" class="ga-btn-sm ga-btn-primary" style="text-align:left;" onclick="DT.gaKantoEscolherFaixaTreinador('+v.faixaIdx+')">🎯 '+esc2(zona.nome)+' (Nv.'+zona.min+'-'+zona.max+')<br><span class="ga-hint">'+esc2(rosterVarTxt)+'</span></button>';
+      }).join('')+
+      '</div>';
+  } else {
+    out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid">'+
+      STATE.party.map(function(p){
+        var sp = speciesByNum(p.num);
+        return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarTreinadorRota(\''+p.id+'\')">Escolher</button></div>';
+      }).join('')+
+      '</div>';
+  }
+  return out;
 }
 function kantoInfoPainelHTML(){
   if(!SESSION.kantoSelecionado){
     return '<div class="ga-kanto-info-empty">🧭<p>Clique numa cidade, caverna OU numa rota no mapa pra ver os detalhes e capturar aqui.</p></div>';
   }
+  /* Cap. leva desta sessão ("quando eu clicar num treinador o popup dele
+     tem que mudar e não crescer pra baixo... cliquei, abre outra pagina
+     com a seleção de nível do treinador e depois do nível a seleção de
+     pokémon"): enquanto o jogador estiver desafiando um Líder OU um
+     Treinador, o painel INTEIRO vira a view dedicada (troca de conteúdo,
+     não crescimento) -- sai dela só pelo "← Voltar" (que zera passo a
+     passo) ou fechando o popup inteiro (`gaKantoFecharPopup`). */
+  if(SESSION.kantoEscolhendoGinasio) return kantoDesafioLiderViewHTML();
+  if(SESSION.kantoEscolhendoTreinador) return kantoDesafioTreinadorViewHTML();
   var sel = SESSION.kantoSelecionado;
   if(sel.tipo==='loc'){
     var loc = kantoLocsById()[sel.id];
@@ -15298,7 +15398,7 @@ function kantoInfoPainelHTML(){
     var touching = kantoRoutesTouching(loc.id);
     var conecta = touching.length ? '<div class="ga-hint">Rotas conectadas: '+touching.map(function(r){ return '<button type="button" class="ga-linklike" onclick="DT.gaKantoSelecionar(\'route\',\''+r.id+'\')">'+(r.water?'🌊':'🛤️')+' '+esc2(r.nome)+'</button>'; }).join(', ')+'</div>' : '';
     return '<div class="ga-kanto-info-head"><span class="ga-kanto-info-ic">'+kantoOwnerIcon(loc)+'</span><div><h3>'+esc2(loc.nome)+'</h3></div></div>'+badge+
-      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoGinasioBlocoHTML(loc)+kantoMercadoBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+conecta;
+      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoGinasioBlocoHTML(loc)+kantoMercadoBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+kantoTreinadoresBlocoHTML(loc, 'loc')+conecta;
   }
   var route = KANTO_MAP.routes.filter(function(r){ return r.id===sel.id; })[0];
   if(!route) return '';
@@ -15306,7 +15406,7 @@ function kantoInfoPainelHTML(){
   var a = byId[route.from], b = byId[route.to];
   var pontas = [a,b].filter(Boolean).map(function(l){ return '<button type="button" class="ga-linklike" onclick="DT.gaKantoSelecionar(\'loc\',\''+l.id+'\')">'+kantoOwnerIcon(l)+' '+esc2(l.nome)+'</button>'; }).join(' ↔ ');
   return '<div class="ga-kanto-info-head"><span class="ga-kanto-info-ic">'+(route.water?'🌊':'🛤️')+'</span><div><h3>'+esc2(route.nome)+'</h3></div></div>'+
-    '<p class="ga-hint">'+esc2(route.desc)+'</p>'+kantoAreasListaHTML('route', route.id, route)+kantoTreinadoresBlocoHTML(route)+
+    '<p class="ga-hint">'+esc2(route.desc)+'</p>'+kantoAreasListaHTML('route', route.id, route)+kantoTreinadoresBlocoHTML(route, 'route')+
     '<div class="ga-hint">Liga: '+pontas+'</div>';
 }
 /* Mapa em grade -- mesma técnica do protótipo aprovado em Artifact
