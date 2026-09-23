@@ -5717,29 +5717,12 @@ function rollDie(sides){ return 1 + Math.floor(Math.random()*sides); }
    "de Nível" sozinho, sem Treinador investindo Atributo/Vínculo)
    ============================================================ */
 
-/* Um inicial de cada Geração 1-9 (verificados contra SPECIES_DEX de
-   verdade, não de memória -- ver o comentário do Cap. "Learnset
-   Anterior" desta mesma sessão sobre por que isso importa). Sorteio:
-   1º sorteia a Geração, 2º sorteia um dos 3 dela -- dá a mesma chance
-   pra cada Geração aparecer, não just a mesma chance pra cada um dos
-   27 Pokémon (que pesaria a favor de nada em particular, mas deixa
-   claro a intenção: "um Pokémon aleatório dos iniciais de CADA
-   geração"). */
-var STARTERS_BY_GEN = [
-  [1, 4, 7],       // Bulbasaur, Charmander, Squirtle
-  [152, 155, 158], // Chikorita, Cyndaquil, Totodile
-  [252, 255, 258], // Treecko, Torchic, Mudkip
-  [387, 390, 393], // Turtwig, Chimchar, Piplup
-  [495, 498, 501], // Snivy, Tepig, Oshawott
-  [650, 653, 656], // Chespin, Fennekin, Froakie
-  [722, 725, 728], // Rowlet, Litten, Popplio
-  [810, 813, 816], // Grookey, Scorbunny, Sobble
-  [906, 909, 912]  // Sprigatito, Fuecoco, Quaxly
-];
-function rollStarterNum(){
-  var gen = STARTERS_BY_GEN[Math.floor(Math.random()*STARTERS_BY_GEN.length)];
-  return gen[Math.floor(Math.random()*gen.length)];
-}
+/* Cap. leva desta sessão ("o pokémon inicial tem que ser escolhido um
+   dos 3 de Kanto. O jogador escolhe... Não é pra ser mais aleatório"):
+   removido -- `STARTERS_BY_GEN`/`rollStarterNum()` sorteavam um
+   inicial aleatório entre as 9 Gerações na criação de conta/reset.
+   Substituído pela escolha real do jogador entre os 3 iniciais de
+   Kanto (`KANTO_STARTERS`, ver kantoCarvalhoEscolhaPopupHTML). */
 
 /* Mestres Especialistas (Cap. "enfrentando Mestres Especialistas e
    ganhando as insígnias deles") -- 8 Mestres, cada um temático de um
@@ -8643,12 +8626,19 @@ function freshState(trainerName){
     kantoGymLastBeatenDay: {}, // {[locId]: periodoDoJogoIndex() da última vez que desafiou} -- mesmo padrão de poketicketsLastGameDay
     kantoTrainersLastBeatenDay: {}, // {[trainerId]: periodoDoJogoIndex()} -- Treinadores de Rota, mesmo padrão
     kantoPos: { col:2, row:10 }, // Parte 4 do redesenho do mapa -- posição REAL do jogador no grid de Kanto (célula de Vila Pallet), só recebe esse valor na CRIAÇÃO da conta, nunca reseta sozinha depois (só via Admin -- ver DT.gaAdminResetarPosicaoKanto)
-    pokebolas: { pokebola:10, greatball:0, ultraball:0 },
+    /* Cap. leva desta sessão ("Ao iniciar uma conta nova... o treinador
+       ganha 5 pokéballs 5 potions" -- ver DT.gaEscolherInicialReal):
+       zerado aqui de propósito -- o kit inicial de verdade (5
+       Pokébolas + 5 Poções) só é concedido no exato momento em que o
+       jogador ESCOLHE o Pokémon inicial com o Professor Carvalho, não
+       antes. Uma conta nunca fica "pronta pra jogar" sem ter passado
+       por essa escolha (ver o gate global em screenHTML). */
+    pokebolas: { pokebola:0, greatball:0, ultraball:0 },
     poketickets: 100, // Cap. leva desta sessão: "Novos jogadores começam com 100 tickets"
     poketicketsLastGameDay: periodoDoJogoIndex(), // Cap. leva desta sessão (esquema de Dia/Noite) -- substitui poketicketsUpdatedAt, ver tickPoketickets
     pokedolares: 200,
     tms: {},
-    itens: { pocao:5, superpocao:2, hiperpocao:0 },
+    itens: { pocao:0, superpocao:0, hiperpocao:0 },
     dex: {},
     party: [],
     box: [],
@@ -12830,10 +12820,16 @@ DT.gaCriar = function(nomeEl, pinEl, pin2El){
       render();
       return;
     }
-    var num = rollStarterNum();
+    /* Cap. leva desta sessão ("o pokémon inicial tem que ser escolhido
+       um dos 3 de Kanto. O jogador escolhe... Não é pra ser mais
+       aleatório"): `state.party` nasce VAZIO de propósito (era
+       `[spawnPoke(rollStarterNum(),5)]`, sorteado entre TODAS as
+       Gerações) -- o gate global em `screenHTML()` detecta a Equipe
+       vazia e abre o popup do Professor Carvalho pro jogador escolher
+       de verdade entre os 3 iniciais REAIS de Kanto (ver
+       kantoCarvalhoEscolhaPopupHTML/DT.gaEscolherInicialReal), antes
+       de qualquer outra tela. */
     var state = freshState(nome);
-    state.party = [spawnPoke(num, 5)];
-    state.dex[num] = {seen:true, caught:true, caughtAt:Date.now()};
     savesCol.doc(docId).set({ nameLower:docId, pin:pin, banido:false, state: sanitizeForFirestore(state), updatedAt: Date.now() }).then(function(){
       SESSION.loginBusy=false;
       cacheSession(docId, pin);
@@ -12848,6 +12844,88 @@ DT.gaCriar = function(nomeEl, pinEl, pin2El){
     SESSION.error='Não consegui conectar ao banco de dados. Verifique sua internet.';
     render();
   });
+};
+
+/* Cap. leva desta sessão ("Ao iniciar uma conta nova ou resetar ela, o
+   pokémon inicial tem que ser escolhido um dos 3 de Kanto. O jogador
+   escolhe. Então, ao entrar, abra um popup com a imagem do professor
+   carvalho... Ao escolher, um popup entra informando do pokémon
+   escolhido, nivel 5, perguntando se deseja dar um apelido ou não. O
+   treinador ganha 5 pokéballs 5 potions e pode seguir na aventura"):
+   fluxo REAL de início de jogo, pra QUALQUER conta (não Admin-only, ao
+   contrário do mapa de Kanto em si, que continua fechado pro público)
+   -- disparado pelo gate global em screenHTML() sempre que
+   `STATE.party` estiver vazia. "Professor Carvalho" é o nome oficial
+   em português do Professor Oak (sprite real da Bulbapedia, self-
+   hosted em assets/trainers/Spr_FRLG_Oak.png, mesmo padrão dos outros
+   Treinadores/Líderes de Kanto). 2 popups em sequência: primeiro
+   escolhe a Espécie (kantoCarvalhoEscolhaPopupHTML/
+   DT.gaEscolherInicialReal), depois -- só então -- pergunta o apelido
+   (kantoApelidoInicialPopupHTML/DT.gaConfirmarApelidoInicial/
+   DT.gaPularApelidoInicial). */
+function carvalhoTelaFundoHTML(){
+  return '<div class="ga-card" style="text-align:center;"><h2>🟢 Green Área</h2><p class="ga-hint">Sua jornada Pokémon está prestes a começar...</p></div>';
+}
+function kantoCarvalhoEscolhaPopupHTML(){
+  return '<div class="ga-overlay"><div class="ga-overlay-card wide" style="text-align:center;">'+
+    '<img src="assets/trainers/Spr_FRLG_Oak.png" alt="Professor Carvalho" style="width:96px;height:96px;image-rendering:pixelated;">'+
+    '<h2>Professor Carvalho</h2>'+
+    '<p class="ga-hint">Olá, '+esc2(STATE.trainerName)+'! Escolha seu Pokémon inicial.</p>'+
+    '<div class="ga-poke-grid">'+KANTO_STARTERS.map(function(num){
+      var sp = speciesByNum(num);
+      return '<div class="ga-poke-card"><img src="'+spriteUrl(num)+'" alt="'+esc2(sp.name)+'">'+
+        '<div class="ga-poke-name">'+esc2(sp.name)+'</div>'+typeTagsHTML(sp)+
+        '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaEscolherInicialReal('+num+')">Escolher</button></div>';
+    }).join('')+'</div>'+
+  '</div></div>';
+}
+DT.gaEscolherInicialReal = function(num){
+  if(!STATE || STATE.party.length>0) return; // já escolheu -- não dá pra escolher de novo (mesmo espírito de qualquer trava "só 1 vez" do jogo)
+  if(KANTO_STARTERS.indexOf(num)===-1) return;
+  var poke = spawnPoke(num, 5);
+  STATE.party.push(poke);
+  STATE.dex[num] = {seen:true, caught:true, caughtAt:Date.now()};
+  // Cap. "O treinador ganha 5 pokéballs 5 potions" -- kit inicial de
+  // verdade só é concedido AQUI (ver freshState, que nasce zerado de
+  // propósito nesta leva).
+  STATE.pokebolas.pokebola = (STATE.pokebolas.pokebola||0)+5;
+  STATE.itens.pocao = (STATE.itens.pocao||0)+5;
+  SESSION.pendingApelidoInicial = { partyId: poke.id };
+  logAction('inicial', 'Escolheu '+speciesByNum(num).name+' como Pokémon inicial com o Professor Carvalho -- ganhou 5 Pokébolas + 5 Poções.');
+  mutate();
+};
+function kantoApelidoInicialPopupHTML(){
+  var pend = SESSION.pendingApelidoInicial; if(!pend) return '';
+  var poke = STATE.party.filter(function(p){ return p.id===pend.partyId; })[0];
+  if(!poke){ SESSION.pendingApelidoInicial = null; return ''; } // rede de segurança -- não deveria acontecer no fluxo normal
+  var sp = speciesByNum(poke.num);
+  return '<div class="ga-overlay"><div class="ga-overlay-card" style="text-align:center;">'+
+    '<img src="'+spriteUrl(poke.num)+'" alt="'+esc2(sp.name)+'" style="width:96px;height:96px;image-rendering:pixelated;">'+
+    '<h2>'+esc2(sp.name)+' -- Nv. 5</h2>'+
+    '<p class="ga-hint">Esse é o seu Pokémon inicial! Quer dar um apelido pra ele? (só dá pra colocar UMA vez -- depois fica travado, mesma regra de sempre)</p>'+
+    '<div class="ga-field"><input type="text" id="gaApelidoInicialInput" maxlength="20" placeholder="ex: '+esc2(sp.name)+'"></div>'+
+    '<div class="ga-btn-row">'+
+      '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaConfirmarApelidoInicial(document.getElementById(\'gaApelidoInicialInput\'))">✔️ Confirmar apelido</button>'+
+      '<button type="button" class="ga-btn-sm" onclick="DT.gaPularApelidoInicial()">Não, obrigado</button>'+
+    '</div>'+
+  '</div></div>';
+}
+DT.gaConfirmarApelidoInicial = function(inputEl){
+  var pend = SESSION.pendingApelidoInicial; if(!pend) return;
+  var poke = STATE.party.filter(function(p){ return p.id===pend.partyId; })[0];
+  if(!poke){ SESSION.pendingApelidoInicial = null; render(); return; }
+  var v = (inputEl && inputEl.value || '').trim().slice(0,20);
+  if(!v){ SESSION.error = 'Digite um apelido antes de confirmar (ou clique em "Não, obrigado").'; render(); return; }
+  poke.apelido = v; // mesma trava "só 1 vez" de DT.gaSetApelido -- p.apelido truthy nunca mais deixa reabrir/reeditar
+  SESSION.pendingApelidoInicial = null;
+  logAction('inicial', 'Deu o apelido "'+v+'" pro Pokémon inicial.');
+  mutate();
+};
+DT.gaPularApelidoInicial = function(){
+  var pend = SESSION.pendingApelidoInicial; if(!pend) return;
+  SESSION.pendingApelidoInicial = null;
+  logAction('inicial', 'Não deu apelido pro Pokémon inicial.');
+  mutate();
 };
 
 DT.gaMigrarLocal = function(pinEl, pin2El){
@@ -15957,34 +16035,20 @@ DT.gaSetKantoMercadoCategoria = function(key){ SESSION.kantoMercadoCategoria = k
    (nunca em outro local) e só enquanto `STATE.party` estiver vazia --
    a escolha acontece 1 vez só, igual o jogo de verdade (depois que
    escolhe, o Pokémon vai pra Equipe e o bloco some sozinho, porque a
-   condição `party.length===0` deixa de bater). Fica testável AGORA só
-   pelo Admin (a tela de Kanto inteira já é admin-only, ver
-   kantoScreenHTML) -- a criação de conta NOVA (`DT.gaCriar`) continua
-   100% intocada, sorteando um inicial aleatório de qualquer Geração
-   como sempre, até o jogador decidir "liberar o mapa pro jogo" de
-   verdade (aí sim essa escolha vira o fluxo real de conta nova, ligar
-   isso é trabalho de uma leva futura, não desta). */
+   condição `party.length===0` deixa de bater). Cap. leva desta sessão
+   ("Ao iniciar uma conta nova ou resetar ela, o pokémon inicial tem
+   que ser escolhido... Não é pra ser mais aleatório"): esse admin-only
+   picker de Vila Pallet virou tecnicamente INALCANÇÁVEL -- a escolha
+   real agora acontece num gate GLOBAL (ver `screenHTML()`,
+   `kantoCarvalhoEscolhaPopupHTML`, perto de `DT.gaCriar`), disparado
+   pra QUALQUER conta (não só Admin) assim que `STATE.party` estiver
+   vazia, antes de qualquer tela, inclusive antes da própria tela de
+   Kanto -- então `loc.id==='pallet' && party vazia` nunca mais
+   acontece ao mesmo tempo que a tela de Kanto está renderizando.
+   `KANTO_STARTERS` continua existindo (reaproveitada pelo gate real
+   abaixo); o bloco/botão específicos de Vila Pallet foram removidos
+   daqui pra não deixar 2 fluxos de escolha coexistindo. */
 var KANTO_STARTERS = [1, 4, 7]; // Bulbasaur, Charmander, Squirtle -- únicos 3 iniciais REAIS de Kanto (FRLG)
-function kantoInicialBlocoHTML(loc){
-  if(loc.id!=='pallet' || (STATE.party&&STATE.party.length)) return '';
-  return '<div class="ga-kanto-lider"><h3 class="ga-subhead">🧪 Escolha seu Pokémon inicial</h3>'+
-    '<p class="ga-hint">O Professor Oak te oferece 1 dos 3 iniciais clássicos de Kanto -- essa escolha só acontece 1 vez.</p>'+
-    '<div class="ga-poke-grid">'+KANTO_STARTERS.map(function(num){
-      var sp = speciesByNum(num);
-      return '<div class="ga-friend-card"><img src="'+spriteUrl(num)+'" alt="" loading="lazy" style="width:72px;height:72px;image-rendering:pixelated;">'+
-        '<strong>'+esc2(sp.name)+'</strong>'+typeTagsHTML(sp)+
-        '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoEscolherInicial('+num+')">Escolher</button></div>';
-    }).join('')+'</div></div>';
-}
-DT.gaKantoEscolherInicial = function(num){
-  if(!SESSION.isAdmin || !STATE) return;
-  if(STATE.party && STATE.party.length) return; // já escolheu -- não dá pra escolher de novo
-  if(KANTO_STARTERS.indexOf(num)===-1) return;
-  STATE.party = [spawnPoke(num, 5)]; // Nível 5, mesmo padrão de DT.gaCriar (criação de conta)
-  STATE.dex[num] = {seen:true, caught:true, caughtAt:Date.now()};
-  logAction('kanto', 'Escolheu '+speciesByNum(num).name+' como Pokémon inicial em Vila Pallet.');
-  mutate();
-};
 /* Cap. mesma leva ("cada centro pokémon é único... chat, pvp e troca
    só poderão ser feitos se os jogadores estiverem no mesmo centro
    pokémon"): mesmo padrão visual/toggle do Mercado logo abaixo, só que
@@ -16228,7 +16292,7 @@ function kantoInfoPainelHTML(){
     var touching = kantoRoutesTouching(loc.id);
     var conecta = touching.length ? '<div class="ga-hint">Rotas conectadas: '+touching.map(function(r){ return '<button type="button" class="ga-linklike" onclick="DT.gaKantoSelecionar(\'route\',\''+r.id+'\')">'+(r.water?'🌊':'🛤️')+' '+esc2(r.nome)+'</button>'; }).join(', ')+'</div>' : '';
     return '<div class="ga-kanto-info-head"><span class="ga-kanto-info-ic">'+kantoOwnerIcon(loc)+'</span><div><h3>'+esc2(loc.nome)+'</h3></div></div>'+badge+
-      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoInicialBlocoHTML(loc)+kantoGinasioBlocoHTML(loc)+kantoMercadoBlocoHTML(loc)+kantoCentroBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+kantoTreinadoresBlocoHTML(loc, 'loc')+conecta;
+      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoGinasioBlocoHTML(loc)+kantoMercadoBlocoHTML(loc)+kantoCentroBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+kantoTreinadoresBlocoHTML(loc, 'loc')+conecta;
   }
   var route = KANTO_MAP.routes.filter(function(r){ return r.id===sel.id; })[0];
   if(!route) return '';
@@ -17557,10 +17621,10 @@ DT.gaDebugReset = function(){
   if(!currentSaveRef || !STATE) return;
   var nome = STATE.trainerName;
   var logAntigo = STATE.actionLog; // preserva o histórico de ações -- resetar o progresso não devia apagar o log do Admin
-  var num = rollStarterNum();
+  // Cap. leva desta sessão ("ao iniciar uma conta nova OU resetar ela...
+  // Não é pra ser mais aleatório"): mesma mudança de DT.gaCriar -- nasce
+  // sem Equipe, o gate global do Professor Carvalho cuida da escolha.
   var novo = freshState(nome);
-  novo.party = [spawnPoke(num, 5)];
-  novo.dex[num] = {seen:true, caught:true, caughtAt:Date.now()};
   novo.actionLog = logAntigo || [];
   STATE = novo;
   SESSION.screen = 'hub';
@@ -18984,6 +19048,23 @@ function bannersHTML(){
 
 function screenHTML(){
   if(!STATE) return wrap(loginScreenHTML());
+  /* Cap. leva desta sessão ("Ao iniciar uma conta nova ou resetar ela,
+     o pokémon inicial tem que ser escolhido um dos 3 de Kanto. O
+     jogador escolhe. Então, ao entrar, abra um popup com a imagem do
+     professor carvalho"): gate GLOBAL, antes de QUALQUER outra tela --
+     toda conta sem Equipe (recém-criada OU recém-resetada, ver
+     DT.gaCriar/DT.gaDebugReset, que pararam de sortear o inicial
+     sozinhas) cai aqui, pra QUALQUER jogador (não só Admin -- ao
+     contrário do mapa de Kanto, que continua fechado pro público,
+     escolher o inicial já É o fluxo real de início de jogo agora).
+     Fundo minimalista de propósito (`carvalhoTelaFundoHTML`, sem
+     Sidebar assumir nada de `STATE.party[0]`) -- o resto do jogo nunca
+     precisou rodar com a Equipe vazia antes desta leva. */
+  if(STATE.party.length===0 && !SESSION.pendingApelidoInicial) return wrap(carvalhoTelaFundoHTML()) + kantoCarvalhoEscolhaPopupHTML();
+  /* Escolher a Espécie (acima) já põe 1 Pokémon na Equipe -- então essa
+     2ª etapa (apelido) precisa do PRÓPRIO check, fora do `party.length
+     ===0` de cima (que nesse ponto já é falso). */
+  if(SESSION.pendingApelidoInicial) return wrap(carvalhoTelaFundoHTML()) + kantoApelidoInicialPopupHTML();
   /* Cap. leva desta sessão ("tudo tem que ser resolvido no popup...
      muda pra seleção e depois ocorre a luta"): uma luta que começou
      pela tela de Kanto (SESSION.screen só fica 'kanto' até o fim da
