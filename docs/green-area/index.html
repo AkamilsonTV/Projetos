@@ -15273,7 +15273,23 @@ DT.gaKantoConfirmarAndar = function(){
   mutate();
   if(alvo.tipo==='loc') DT.gaKantoSelecionar('loc', alvo.id);
   else if(alvo.tipo==='route-tile') DT.gaKantoSelecionarTile(alvo.routeId, alvo.tileIndex);
+  else if(alvo.tipo==='route') DT.gaKantoSelecionar('route', alvo.id);
   else render();
+};
+/* Clicar no pino/rótulo de uma Rota NO MAPA (o quadradinho com o
+   número/ícone no meio da trilha) -- esse pino fica LITERALMENTE em
+   cima de uma célula da trilha (a mesma que já é clicável como
+   route-tile, ver kantoMapaHTML), então precisa do MESMO gate de
+   movimento -- senão clicar bem em cima do número abre o painel de
+   graça enquanto clicar 1px ao lado (fora do pino) pede pra andar,
+   inconsistência reportada pelo jogador. Links internos (ex. "Rotas
+   conectadas"/"Ver a Rota inteira" dentro de um popup já aberto)
+   continuam chamando `gaKantoSelecionar('route',...)` direto, sem
+   gate -- não são um clique físico no mapa. */
+DT.gaKantoSelecionarRotaPino = function(routeId, col, row){
+  if(!SESSION.isAdmin) return;
+  if(kantoTentarAndarPara({col:col,row:row}, {tipo:'route', id:routeId})) return;
+  DT.gaKantoSelecionar('route', routeId);
 };
 DT.gaKantoSelecionar = function(tipo, id){
   if(!SESSION.isAdmin) return;
@@ -15882,7 +15898,7 @@ function kantoMapaHTML(){
     var ativo = sel && sel.tipo==='route' && sel.id===route.id;
     var curto = route.nome.replace(/^Rota /,'');
     if(curto.length>3) curto = (route.water?'🌊':'🛤️');
-    out += '<button type="button" class="ga-kanto-pin-rota'+(route.water?' agua':'')+(ativo?' ativo':'')+(route.areas&&route.areas.length?' tem-area':'')+'" style="left:'+((mid[0]+0.5)*STEP)+'px;top:'+((mid[1]+0.5)*STEP)+'px;" title="'+esc2(route.nome)+'" onclick="DT.gaKantoSelecionar(\'route\',\''+route.id+'\')">'+esc2(curto)+'</button>';
+    out += '<button type="button" class="ga-kanto-pin-rota'+(route.water?' agua':'')+(ativo?' ativo':'')+(route.areas&&route.areas.length?' tem-area':'')+'" style="left:'+((mid[0]+0.5)*STEP)+'px;top:'+((mid[1]+0.5)*STEP)+'px;" title="'+esc2(route.nome)+'" onclick="DT.gaKantoSelecionarRotaPino(\''+route.id+'\','+mid[0]+','+mid[1]+')">'+esc2(curto)+'</button>';
   });
   KANTO_MAP.locs.forEach(function(loc){
     var sel = SESSION.kantoSelecionado;
