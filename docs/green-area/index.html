@@ -16012,7 +16012,9 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
     out += '<div class="ga-kanto-lider"><p class="ga-hint">Escolha quem vai liderar essa luta:</p><div class="ga-poke-grid">'+
       STATE.party.map(function(p){
         var sp = speciesByNum(p.num);
-        return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarCaptura(\''+p.id+'\')">Escolher</button></div>';
+        var hpMax = kantoHpMaxDoPoke(p);
+        var hpAtual = (p.kantoHpAtual!=null) ? clampInt(p.kantoHpAtual,0,hpMax) : hpMax;
+        return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div>'+hpBarHTML(hpAtual, hpMax)+'<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarCaptura(\''+p.id+'\')">Escolher</button></div>';
       }).join('')+
       '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button></div>';
   }
