@@ -809,15 +809,15 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-kanto-tile.agua{
   background-color:#1d5580;
   background-image:
-    radial-gradient(circle at 26% 30%, rgba(255,255,255,.24) 0 2px, transparent 3px),
-    radial-gradient(circle at 68% 62%, rgba(255,255,255,.18) 0 2px, transparent 3px),
-    repeating-linear-gradient(125deg, rgba(255,255,255,.11) 0 2px, transparent 2px 9px),
+    radial-gradient(circle at 26% 30%, rgba(255,255,255,.24) 0 4px, transparent 6px),
+    radial-gradient(circle at 68% 62%, rgba(255,255,255,.18) 0 4px, transparent 6px),
+    repeating-linear-gradient(125deg, rgba(255,255,255,.11) 0 4px, transparent 4px 17px),
     linear-gradient(155deg, #3576a8 0%, #1f5c8c 60%, #143f60 100%);
 }
 .ga-kanto-tile.agua-rota{
   background-color:#215d8a;
   background-image:
-    repeating-linear-gradient(125deg, rgba(255,255,255,.10) 0 2px, transparent 2px 8px),
+    repeating-linear-gradient(125deg, rgba(255,255,255,.10) 0 4px, transparent 4px 15px),
     linear-gradient(155deg, #3070a2 0%, #21567f 100%);
 }
 /* Floresta com "mini-árvores" de verdade -- copas verdes vivas em 2
@@ -826,10 +826,10 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-kanto-tile.floresta{
   background-color:#1c421f;
   background-image:
-    radial-gradient(circle at 28% 32%, #5a9c53 0 5px, transparent 6px),
-    radial-gradient(circle at 62% 22%, #457a3f 0 4px, transparent 5px),
-    radial-gradient(circle at 45% 62%, #5a9c53 0 6px, transparent 7px),
-    radial-gradient(circle at 75% 55%, #457a3f 0 4px, transparent 5px),
+    radial-gradient(circle at 28% 32%, #5a9c53 0 9px, transparent 11px),
+    radial-gradient(circle at 62% 22%, #457a3f 0 8px, transparent 9px),
+    radial-gradient(circle at 45% 62%, #5a9c53 0 11px, transparent 13px),
+    radial-gradient(circle at 75% 55%, #457a3f 0 8px, transparent 9px),
     linear-gradient(#245029, #1c421f);
 }
 /* Textura "rochosa" pras células de caverna/montanha (que antes não
@@ -838,8 +838,8 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-kanto-tile.rocha{
   background-color:#443c30;
   background-image:
-    repeating-linear-gradient(135deg, #574c3a 0 4px, #3e3628 4px 9px),
-    repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 2px, transparent 2px 7px);
+    repeating-linear-gradient(135deg, #574c3a 0 8px, #3e3628 8px 17px),
+    repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 4px, transparent 4px 13px);
 }
 /* Parte 3 do redesenho do mapa ("todos os quadrados da rota vão ser
    clicáveis"): célula de trilha/água-rota agora é um <button> de
@@ -853,8 +853,8 @@ button.ga-kanto-tile.ativo{ box-shadow:0 0 0 2px var(--accent) inset; filter:bri
    pontinha triangular embaixo, sombra suave) no lugar do quadrado
    arredondado antigo -- mesmo espírito de um pino de Google Maps,
    parado em pé sobre o terreno em vez de flutuar num chip quadrado. */
-.ga-kanto-pin-local{ position:absolute; transform:translate(-50%,-62%); width:30px; height:30px; border-radius:50%; border:2.5px solid var(--line); background:var(--panel3); display:flex; align-items:center; justify-content:center; font-size:1rem; padding:0; z-index:2; filter:drop-shadow(0 3px 3px rgba(0,0,0,.55)); }
-.ga-kanto-pin-local::after{ content:''; position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:7px solid var(--line); }
+.ga-kanto-pin-local{ position:absolute; transform:translate(-50%,-62%); width:56px; height:56px; border-radius:50%; border:4.5px solid var(--line); background:var(--panel3); display:flex; align-items:center; justify-content:center; font-size:1.85rem; padding:0; z-index:2; filter:drop-shadow(0 6px 6px rgba(0,0,0,.55)); }
+.ga-kanto-pin-local::after{ content:''; position:absolute; left:50%; bottom:-11px; transform:translateX(-50%); width:0; height:0; border-left:11px solid transparent; border-right:11px solid transparent; border-top:13px solid var(--line); }
 .ga-kanto-pin-local:hover{ transform:translate(-50%,-62%) scale(1.12); }
 .ga-kanto-pin-local.ativo{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(52,211,153,.28); }
 .ga-kanto-pin-local.ativo::after{ border-top-color:var(--accent); }
@@ -873,16 +873,16 @@ button.ga-kanto-tile.ativo{ box-shadow:0 0 0 2px var(--accent) inset; filter:bri
 /* "Tem Pokémon selvagem" mudou de ::after pro ::before -- o ::after
    agora é a pontinha do pino (ver acima), os dois não podem dividir o
    mesmo pseudo-elemento. */
-.ga-kanto-pin-local.tem-area::before{ content:''; position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:var(--accent); border:1px solid var(--bg2); z-index:1; }
-.ga-kanto-pin-rota{ position:absolute; transform:translate(-50%,-50%); min-width:20px; height:20px; padding:0 4px; border-radius:50%; background:rgba(24,18,10,.92); border:1.5px solid #a3823f; color:#f0e2bb; font-size:.56rem; font-weight:800; display:flex; align-items:center; justify-content:center; z-index:1; white-space:nowrap; filter:drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
+.ga-kanto-pin-local.tem-area::before{ content:''; position:absolute; top:-5px; right:-5px; width:17px; height:17px; border-radius:50%; background:var(--accent); border:2px solid var(--bg2); z-index:1; }
+.ga-kanto-pin-rota{ position:absolute; transform:translate(-50%,-50%); min-width:38px; height:38px; padding:0 7px; border-radius:50%; background:rgba(24,18,10,.92); border:2.8px solid #a3823f; color:#f0e2bb; font-size:1.05rem; font-weight:800; display:flex; align-items:center; justify-content:center; z-index:1; white-space:nowrap; filter:drop-shadow(0 4px 4px rgba(0,0,0,.5)); }
 .ga-kanto-pin-rota:hover{ border-color:var(--accent); color:var(--accent); }
 .ga-kanto-pin-rota.ativo{ border-color:var(--accent); color:var(--accent); background:var(--panel2); box-shadow:0 0 0 2px rgba(52,211,153,.28); }
 .ga-kanto-pin-rota.agua{ border-color:#5fa8e0; color:#bcdcf7; }
 .ga-kanto-pin-rota.tem-area{ box-shadow:0 0 0 2px rgba(52,211,153,.35); }
 /* Parte 4 do redesenho do mapa -- marcador "você está aqui", CSS puro
    (círculo pulsante), sempre acima de qualquer pino na mesma célula. */
-.ga-kanto-voce-aqui{ position:absolute; transform:translate(-50%,-50%); width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid #fff; z-index:3; pointer-events:none; box-shadow:0 0 0 0 rgba(52,211,153,.6); animation:ga-kanto-pulso 1.6s ease-out infinite; }
-@keyframes ga-kanto-pulso{ 0%{ box-shadow:0 0 0 0 rgba(52,211,153,.6); } 70%{ box-shadow:0 0 0 10px rgba(52,211,153,0); } 100%{ box-shadow:0 0 0 0 rgba(52,211,153,0); } }
+.ga-kanto-voce-aqui{ position:absolute; transform:translate(-50%,-50%); width:26px; height:26px; border-radius:50%; background:var(--accent); border:4px solid #fff; z-index:3; pointer-events:none; box-shadow:0 0 0 0 rgba(52,211,153,.6); animation:ga-kanto-pulso 1.6s ease-out infinite; }
+@keyframes ga-kanto-pulso{ 0%{ box-shadow:0 0 0 0 rgba(52,211,153,.6); } 70%{ box-shadow:0 0 0 19px rgba(52,211,153,0); } 100%{ box-shadow:0 0 0 0 rgba(52,211,153,0); } }
 .ga-kanto-legenda{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; font-size:.74rem; color:var(--ink-dim); }
 .ga-kanto-legenda span{ display:inline-flex; align-items:center; gap:6px; }
 .ga-kanto-legenda i{ display:inline-block; width:14px; height:14px; border-radius:4px; }
@@ -15865,8 +15865,15 @@ function kantoMapaHTML(){
      você fizesse ele mais bonito... mais parecido com natural"): GAP
      zerado -- as células agora ficam coladas (terreno contínuo, sem
      as frestas escuras que faziam o mapa parecer uma grade de
-     quadradinhos soltos em vez de um mapa de verdade). */
-  var CELL = 34, GAP = 0, STEP = CELL+GAP;
+     quadradinhos soltos em vez de um mapa de verdade). Cap. seguinte
+     ("Aumenta esse mapa proporcionalmente, aumentando o tamanho dos
+     quadrados também. Umas 4 polegadas."): CELL subiu de 34 pra 64
+     (~1.88x) -- ajustarEscalaMapaKanto() só ENCOLHE o mapa quando não
+     cabe na tela (nunca aumenta além do tamanho nativo), então um
+     CELL maior deixa o mapa fisicamente maior sempre que a tela
+     comportar. 13 colunas * 64px = 832px, ~390px (~4.06pol a 96px/pol)
+     a mais que os 442px de antes -- bate com o pedido. */
+  var CELL = 64, GAP = 0, STEP = CELL+GAP;
   var byId = kantoLocsById();
   var cells = {};
   function key(c,r){ return c+','+r; }
@@ -15965,6 +15972,14 @@ function kantoScreenHTML(){
   var comArea = KANTO_MAP.locs.filter(function(l){ return l.areas&&l.areas.length; }).length + KANTO_MAP.routes.filter(function(r){ return r.areas&&r.areas.length; }).length;
   return '<div class="ga-card"><h2>🗾 Kanto -- protótipo de captura por rota</h2>'+
     '<p class="ga-hint">Só Admin vê essa aba. Cada cidade/rota/caverna do mapa tem seu PRÓPRIO elenco de Pokémon selvagem, igual os jogos originais -- clique num ponto pra ver quem aparece lá e testar a captura num popup (usa o mesmo motor de luta de sempre). '+KANTO_MAP.locs.length+' locais, '+KANTO_MAP.routes.length+' rotas/atalhos, '+comArea+' com Pokémon selvagem, '+gyms+' Ginásios.</p>'+
+    '<div class="ga-hint">🔋 '+STATE.energy+'/1000 de Energia · 🎫 '+(STATE.poketickets||0)+' Pokéticket(s)</div>'+
+    /* Cap. leva desta sessão ("Colocar a opção de recarregar energia
+       com ticket em kanto também"): mesmo widget reaproveitado nas
+       outras telas que gastam Energia (Início/Captura/Mestres) --
+       aqui Energia é gasta tanto pra andar no mapa (10/quadrado)
+       quanto pra lutar, então faz sentido poder completar ANTES de
+       clicar em qualquer um dos dois. */
+    ticketParaEnergiaWidgetHTML('kanto')+
     '<div class="ga-kanto-mapawrap">'+kantoMapaHTML()+
       '<div class="ga-kanto-legenda">'+
         '<span><i class="campo"></i> Campo</span>'+
