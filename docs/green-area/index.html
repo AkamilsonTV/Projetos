@@ -243,6 +243,14 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    o botão sempre gruda no fundo do card, alinhado com os vizinhos da
    mesma linha nunca importa quanto texto tem acima. */
 .ga-poke-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
+/* Cap. pedido do jogador ("Os 6 pokémon tem que ficar numa linha só,
+   está quebrando e ficando feio"): picker de líder do popup de área
+   de Kanto (ver kantoAreasListaHTML) -- cartões um pouco mais
+   estreitos (só AQUI, não mexe no `.ga-poke-grid` genérico usado em
+   Equipe/Caixa/Mestres) pra caber até 6 numa linha só dentro do
+   `.ga-overlay-card.wide` (900px) sem quebrar linha nem precisar
+   alargar o popup inteiro. */
+.ga-poke-grid-kanto-lider{ grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); }
 /* Cap. leva desta sessão: "os cards tem que ser sempre do mesmo
    tamanho, caso não caiba na tela ele não tem que diminuir, e sim
    ativar uma rolagem lateral" + depois "o padrão tem que ser esse [6
@@ -591,6 +599,18 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-capqtd-row{ display:flex; gap:4px; width:100%; }
 .ga-capqtd-input{ width:56px; text-align:center; flex:0 0 auto; }
 .ga-capqtd-row button{ flex:1; }
+/* Cap. pedido do jogador ("Esses botões estão desiguais e feios.
+   Diminui a largura do 'Lutar várias vezes'... deixe eles do mesmo
+   tamanho"): variante usada só no popup de área do mapa de Kanto (ver
+   kantoAreasListaHTML) -- MESMA input+botão de `.ga-capqtd-row`, mas
+   sem esticar o botão até preencher a linha (aqui ele tem mais 2
+   botões abaixo, esticar só ele deixava tudo torto). "Usar Toda a
+   Energia"/"Cancelar" viram 1 linha com os 2 do MESMO tamanho
+   (`flex:1` nos dois) e um respiro de verdade entre eles. */
+.ga-kanto-capqtd-row{ display:flex; gap:6px; width:100%; }
+.ga-kanto-capqtd-row button{ flex:0 0 auto; }
+.ga-kanto-acoes-row{ display:flex; gap:10px; margin-top:8px; }
+.ga-kanto-acoes-row button{ flex:1; }
 /* Cap. leva desta sessão ("carregar múltiplos tickets... nas áreas
    que usam energia"): mesmo padrão do input+botão de quantidade
    acima, reaproveitado no widget de trocar Pokéticket por Energia
@@ -669,7 +689,20 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-kanto-popup-flex > .ga-overlay-card{ max-height:none; overflow-y:visible; width:100%; margin:0; }
 .ga-kanto-centro-chat-painel{ background:var(--panel); border:1px solid var(--accent-dim); border-radius:var(--radius); padding:16px; text-align:left; }
 @media (min-width:900px){
-  .ga-kanto-popup-flex{ flex-direction:row; align-items:flex-start; max-width:1260px; max-height:none; overflow:visible; }
+  /* Cap. pedido do jogador ("Esses popups precisam ser centralizados
+     está torto e feio assim"): `max-width:1260px` reserva espaço pro
+     card (até 900px, `.wide`) + o painel de chat (340px fixo) lado a
+     lado quando o Centro Pokémon está aberto -- mas a GRANDE maioria
+     dos popups de Kanto (Rota/Ginásio/Treinador/Mercado etc.) não tem
+     chat nenhum, só o card sozinho, que nunca preenche os 1260px
+     inteiros (trava em 900px). Sem `justify-content`, o padrão
+     `flex-start` empurra esse card sozinho pra ESQUERDA da caixa
+     invisível de 1260px, deixando até 360px de vazio à direita -- daí
+     o popup parecer torto/fora do centro. `justify-content:center`
+     resolve os dois casos: sem chat, centraliza o card sozinho dentro
+     da caixa; COM chat, os dois já preenchem quase todo o espaço
+     (900+340+gap ≈ 1260px), então centralizar não muda nada ali. */
+  .ga-kanto-popup-flex{ flex-direction:row; align-items:flex-start; justify-content:center; max-width:1260px; max-height:none; overflow:visible; }
   .ga-kanto-popup-flex > .ga-overlay-card{ max-height:85vh; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto; min-width:0; }
   .ga-kanto-centro-chat-painel{ width:340px; flex:0 0 340px; max-height:85vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
 }
@@ -16525,36 +16558,54 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
   var esc = SESSION.kantoEscolhendoArea;
   if(esc && esc.ownerType===ownerType && esc.ownerId===ownerId){
     var area = kantoAreaById(esc.ownerType, esc.ownerId, esc.areaId);
-    out += '<div class="ga-kanto-lider"><p class="ga-hint">Escolha quem vai liderar essa luta:</p><div class="ga-poke-grid">'+
+    out += '<div class="ga-kanto-lider"><p class="ga-hint">Escolha quem vai liderar essa luta:</p><div class="ga-poke-grid ga-poke-grid-kanto-lider">'+
       STATE.party.map(function(p){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarCaptura('"+p.id+"')"); }).join('')+
-      '</div>'+
-      /* Cap. leva desta sessão ("Colocar nos mapas a possibilidade de
-         lutar mais de uma vez com pokémon selvagem. Aquele esquema
-         parecido que fazemos na área de caça"): MESMO padrão visual
-         (`.ga-capqtd-row`/`.ga-capqtd-input`) da Área de Captura --
-         só que lá o "líder" é sempre STATE.party[0] (o 🎯 Ativo,
-         convenção já usada em toda tela de Equipe); aqui reusa a MESMA
-         convenção em vez de abrir um segundo picker só pra isso (o
-         picker de cima já serve pra escolher outro líder pra 1 luta só
-         -- pra sequência, sempre o Ativo). Fora em área de pesca
-         (`metodo==='pesca'`): tem uma etapa de "fisgou ou não" antes
-         de cada luta que a sequência automática não sabe lidar ainda. */
-      (area && area.metodo!=='pesca' && STATE.party.length ? (function(){
-        var leadAtivo = STATE.party[0];
-        var custo = kantoAreaCustoEnergia(area);
-        var maxComEnergia = Math.floor((STATE.energy||0)/custo);
-        var inputId = 'gaKantoCapQtd_'+area.id;
-        var qs = SESSION.kantoCapturaQtdSugerida;
-        var qtdSugerida = (qs && qs.ownerType===esc.ownerType && qs.ownerId===esc.ownerId && qs.areaId===esc.areaId) ? qs.qtd : null;
-        return '<div class="ga-kanto-lider"><p class="ga-hint">Lutar várias vezes seguidas (usa '+esc2(kantoNomeExibicaoPoke(leadAtivo))+', o 🎯 Ativo, como líder -- ⚡'+custo+' por luta):</p>'+
-          '<div class="ga-capqtd-row">'+
-            '<input type="number" min="1" max="'+Math.max(1,maxComEnergia)+'" step="1" id="'+inputId+'"'+(qtdSugerida?' value="'+qtdSugerida+'"':'')+' placeholder="Qtd (máx '+maxComEnergia+')" title="Sua Energia atual trava a sequência em, no máximo, '+maxComEnergia+' luta(s) nessa área" class="ga-capqtd-input">'+
-            '<button class="ga-btn-sm" onclick="DT.gaKantoIniciarLutasVarias(\''+leadAtivo.id+'\',\''+esc.ownerType+'\',\''+esc.ownerId+'\',\''+esc.areaId+'\',document.getElementById(\''+inputId+'\'))">🔁 Lutar Várias Vezes</button>'+
-          '</div>'+
+      '</div>';
+    /* Cap. leva desta sessão ("Colocar nos mapas a possibilidade de
+       lutar mais de uma vez com pokémon selvagem. Aquele esquema
+       parecido que fazemos na área de caça"): mesma ideia da Área de
+       Captura -- só que lá o "líder" é sempre STATE.party[0] (o 🎯
+       Ativo, convenção já usada em toda tela de Equipe); aqui reusa a
+       MESMA convenção em vez de abrir um segundo picker só pra isso (o
+       picker de cima já serve pra escolher outro líder pra 1 luta só
+       -- pra sequência, sempre o Ativo). Fora em área de pesca
+       (`metodo==='pesca'`): tem uma etapa de "fisgou ou não" antes de
+       cada luta que a sequência automática não sabe lidar ainda.
+       Cap. leva desta sessão ("Esses botões estão desiguais e feios.
+       Diminui a largura do 'Lutar várias vezes' Espaça os botões
+       abaixo dele um pouco mais também. E deixe eles do mesmo
+       tamanho."): `.ga-kanto-capqtd-row` (em vez de reusar
+       `.ga-capqtd-row`) NÃO estica o botão "Lutar Várias Vezes" até
+       preencher a linha toda (a Área de Captura normal quer isso lá,
+       onde é o ÚNICO botão da linha -- aqui, com mais 2 botões
+       logo abaixo, esticar só ele deixava tudo desalinhado). "Usar
+       Toda a Energia" e "Cancelar" viraram uma linha só
+       (`.ga-kanto-acoes-row`, `flex:1` nos dois -- MESMO tamanho,
+       com respiro de verdade entre eles) -- Cancelar sai do rodapé
+       solto de sempre e entra nessa linha só quando a sequência
+       automática está disponível (pesca/Equipe vazia continuam com o
+       Cancelar sozinho, como sempre foi). */
+    if(area && area.metodo!=='pesca' && STATE.party.length){
+      var leadAtivo = STATE.party[0];
+      var custoSeq = kantoAreaCustoEnergia(area);
+      var maxComEnergia = Math.floor((STATE.energy||0)/custoSeq);
+      var inputId = 'gaKantoCapQtd_'+area.id;
+      var qs = SESSION.kantoCapturaQtdSugerida;
+      var qtdSugerida = (qs && qs.ownerType===esc.ownerType && qs.ownerId===esc.ownerId && qs.areaId===esc.areaId) ? qs.qtd : null;
+      out += '<div class="ga-kanto-lider"><p class="ga-hint">Lutar várias vezes seguidas (usa '+esc2(kantoNomeExibicaoPoke(leadAtivo))+', o 🎯 Ativo, como líder -- ⚡'+custoSeq+' por luta):</p>'+
+        '<div class="ga-kanto-capqtd-row">'+
+          '<input type="number" min="1" max="'+Math.max(1,maxComEnergia)+'" step="1" id="'+inputId+'"'+(qtdSugerida?' value="'+qtdSugerida+'"':'')+' placeholder="Qtd (máx '+maxComEnergia+')" title="Sua Energia atual trava a sequência em, no máximo, '+maxComEnergia+' luta(s) nessa área" class="ga-capqtd-input">'+
+          '<button class="ga-btn-sm" onclick="DT.gaKantoIniciarLutasVarias(\''+leadAtivo.id+'\',\''+esc.ownerType+'\',\''+esc.ownerId+'\',\''+esc.areaId+'\',document.getElementById(\''+inputId+'\'))">🔁 Lutar Várias Vezes</button>'+
+        '</div>'+
+        '<div class="ga-kanto-acoes-row">'+
           '<button class="ga-btn-sm" '+(maxComEnergia<1?'disabled':'')+' title="Sua Energia atual dá pra '+maxComEnergia+' luta(s) nessa área" onclick="DT.gaKantoIniciarLutasComTodaEnergia(\''+leadAtivo.id+'\',\''+esc.ownerType+'\',\''+esc.ownerId+'\',\''+esc.areaId+'\')">⚡ Usar Toda a Energia ('+maxComEnergia+' luta'+(maxComEnergia===1?'':'s')+')</button>'+
-        '</div>';
-      })() : '')+
-      '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button></div>';
+          '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button>'+
+        '</div>'+
+      '</div>';
+    } else {
+      out += '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button>';
+    }
+    out += '</div>';
   }
   return out;
 }
