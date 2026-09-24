@@ -9834,6 +9834,25 @@ function kantoHpAtualDoPoke(poke){
   return (poke.kantoHpAtual!=null) ? clampInt(poke.kantoHpAtual,0,hpMax) : hpMax;
 }
 function kantoPokeEstaDesmaiado(poke){ return kantoHpAtualDoPoke(poke)<=0; }
+/* Cap. leva desta sessão ("Se o pokémon lider desmaiar ele não sai de
+   líder da equipe mas o sistema tem que reconhecer, antes de mandar
+   ele, que ele está desmaiado e mandar o segundo e assim sucessivamente.
+   Ou seja, mandar o pokémon que estiver apto a lutar."): diferente da
+   Área de Captura normal (PV sempre reseta cheio a cada luta nova --
+   nunca fica persistentemente desmaiado fora de luta), o mapa de Kanto
+   TEM PV persistente (`kantoHpAtual`) -- então o "🎯 Ativo"
+   (`STATE.party[0]`) pode muito bem já estar desmaiado de uma luta
+   anterior quando o jogador dispara "Lutar Várias Vezes"/"Usar Toda a
+   Energia" de novo. `STATE.party[0]` continua sendo o Ativo pra tudo
+   mais (Início, Equipe, a convenção geral do jogo) -- só QUEM ENTRA EM
+   COMBATE automaticamente aqui muda: primeiro membro vivo, na ordem da
+   Equipe. `null` só quando a Equipe inteira está desmaiada. */
+function kantoPrimeiroApto(){
+  for(var i=0;i<STATE.party.length;i++){
+    if(!kantoPokeEstaDesmaiado(STATE.party[i])) return STATE.party[i];
+  }
+  return null;
+}
 /* Card compartilhado pelos 3 seletores de líder de Kanto (Área de
    Captura, Ginásio, Treinador de Rota) -- sprite/nome/Nível/barra de
    PV, com o botão "Escolher" trocado por um aviso travado quando o
@@ -16346,6 +16365,28 @@ DT.gaKantoIniciarCaptura = function(leadId){
    ficam de fora (tem uma etapa a mais de "fisgou ou não" que a Área de
    Captura nunca teve), só single-luta continua funcionando nelas. */
 function kantoAreaCustoEnergia(area){ return custoEnergiaZona(kantoZonaIdxDaArea(area)); }
+/* Cap. leva desta sessão ("Se o pokémon lider desmaiar ele não sai de
+   líder da equipe mas o sistema tem que reconhecer, antes de mandar
+   ele, que ele está desmaiado e mandar o segundo e assim
+   sucessivamente"): roda em TODO tick da sequência (inclusive o 1º),
+   ANTES de cada luta -- mesmo padrão de `trocaAutomaticaLiderSeNecessario`
+   (Área de Captura normal, troca por Faixa de Nível). Aqui o gatilho é
+   ficar desmaiado, não Faixa -- e, diferente daquela (que usa o
+   over-leveled como último recurso, porque lutar com ele ainda
+   FUNCIONA, só rende menos XP), aqui NÃO tem último recurso possível:
+   um desmaiado não pode lutar de jeito nenhum, então devolve `false`
+   quando a Equipe inteira está desmaiada, pro tick parar a sequência
+   em vez de tentar iniciar uma luta que não pode acontecer. */
+function kantoTrocarLiderSeDesmaiado(cs){
+  var atual = STATE.party.filter(function(p){ return p.id===cs.leadId; })[0];
+  if(!atual) return true; // líder saiu da Equipe -- o próprio tick trata (kantoIniciarLutaDeArea falha e finaliza)
+  if(!kantoPokeEstaDesmaiado(atual)) return true;
+  var substituto = STATE.party.filter(function(p){ return p.id!==cs.leadId && !kantoPokeEstaDesmaiado(p); })[0];
+  if(!substituto) return false;
+  cs.leadId = substituto.id;
+  logAction('batalha', '🔄 '+kantoNomeExibicaoPoke(atual)+' está desmaiado -- '+kantoNomeExibicaoPoke(substituto)+' assumiu a liderança da sequência automática no lugar dele.');
+  return true;
+}
 function kantoCaptureSequenceTick(){
   var cs = STATE.kantoCaptureSequence;
   if(!cs || cs.finished) return;
@@ -16361,6 +16402,12 @@ function kantoCaptureSequenceTick(){
   var custo = area ? kantoAreaCustoEnergia(area) : Infinity;
   if(!area || STATE.energy < custo){
     cs.pararSemEnergia = true;
+    finalizarSequencia(cs);
+    mutate();
+    return;
+  }
+  if(!kantoTrocarLiderSeDesmaiado(cs)){
+    cs.pararSemAptos = true;
     finalizarSequencia(cs);
     mutate();
     return;
@@ -16410,6 +16457,17 @@ function kantoIniciarSequenciaDeCaptura(leadId, ownerType, ownerId, areaId, qtd)
     return;
   }
   if(qtd===1){
+    /* Cap. leva desta sessão ("mandar o pokémon que estiver apto a
+       lutar"): esse atalho (1 luta só) nunca passa pelo tick da
+       sequência (só cria `STATE.kantoCaptureSequence` a partir de 2),
+       então checa aqui direto -- mesma defesa que `kantoTrocarLiderSeDesmaiado`
+       aplica dentro da sequência. */
+    var liderReal = STATE.party.filter(function(p){ return p.id===leadId; })[0];
+    if(!liderReal || kantoPokeEstaDesmaiado(liderReal)){
+      var apto = kantoPrimeiroApto();
+      if(!apto){ SESSION.error='Toda a sua Equipe está desmaiada -- cure com uma Poção/Revive antes de lutar.'; render(); return; }
+      leadId = apto.id;
+    }
     logAction('batalha', 'Iniciou uma luta selvagem no mapa de Kanto.');
     kantoIniciarLutaDeArea(leadId, ownerType, ownerId, areaId, false);
     return;
@@ -16487,7 +16545,7 @@ function kantoSequenciaFimPopupHTML(){
   var aprenderPend = SESSION.pendingAprenderMovimentoSequencia;
   var out = '<div class="ga-overlay"><div class="ga-overlay-card wide">'+
     '<h2>🔁 Sequência automática terminou — '+esc2(area?area.nome:'?')+'</h2>'+
-    '<p class="ga-hint">'+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' -- parou sem Energia suficiente pra continuar':'')+'.</p>'+
+    '<p class="ga-hint">'+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' -- parou sem Energia suficiente pra continuar':(cs.pararSemAptos?' -- parou porque toda a Equipe desmaiou':''))+'.</p>'+
     sequenciaRelatorioHTML(cs);
   if(pendentes.length || aprenderPend){
     out += '<p class="ga-hint">✨ Algum Pokémon pode evoluir (ou aprender um Movimento novo) agora -- decida no popup antes de fechar o resumo.</p>';
@@ -16700,8 +16758,16 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
        solto de sempre e entra nessa linha só quando a sequência
        automática está disponível (pesca/Equipe vazia continuam com o
        Cancelar sozinho, como sempre foi). */
-    if(area && area.metodo!=='pesca' && STATE.party.length){
-      var leadAtivo = STATE.party[0];
+    /* Cap. leva desta sessão ("mandar o pokémon que estiver apto a
+       lutar"): `leadAtivo` deixou de ser sempre `STATE.party[0]` --
+       agora é `kantoPrimeiroApto()` (primeiro vivo na ordem da Equipe),
+       já que aqui o 🎯 Ativo pode estar desmaiado de uma luta anterior
+       (PV persiste no mapa de Kanto, diferente da Área de Captura
+       normal). `STATE.party[0]` continua o Ativo de verdade -- só quem
+       essa tela OFERECE como líder automático muda. */
+    var leadApto = kantoPrimeiroApto();
+    if(area && area.metodo!=='pesca' && leadApto){
+      var leadAtivo = leadApto;
       var custoSeq = kantoAreaCustoEnergia(area);
       var maxComEnergia = Math.floor((STATE.energy||0)/custoSeq);
       var inputId = 'gaKantoCapQtd_'+area.id;
@@ -16717,6 +16783,8 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
           '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button>'+
         '</div>'+
       '</div>';
+    } else if(area && area.metodo!=='pesca' && STATE.party.length && !leadApto){
+      out += '<div class="ga-kanto-lider"><p class="ga-hint">💀 Toda a sua Equipe está desmaiada -- cure com uma Poção/Revive (Bolsa ou Centro Pokémon) antes de lutar de novo.</p><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button></div>';
     } else {
       out += '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button>';
     }
