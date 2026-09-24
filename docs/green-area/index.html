@@ -5810,8 +5810,27 @@ var DUELO_CURA_PCT = 0.5;
 var GA_ITEMS = [
   { key:'pocao', nome:'Potion', emoji:'💊', icon:'potion', curaPct:0.30, preco:15, desc:'Restaura 30% do PV Máximo do Pokémon.' },
   { key:'superpocao', nome:'Super Potion', emoji:'💉', icon:'super-potion', curaPct:0.60, preco:35, desc:'Restaura 60% do PV Máximo do Pokémon.' },
-  { key:'hiperpocao', nome:'Hyper Potion', emoji:'🧪', icon:'hyper-potion', curaPct:1.00, preco:60, desc:'Restaura 100% do PV Máximo do Pokémon (cura total).' }
+  { key:'hiperpocao', nome:'Hyper Potion', emoji:'🧪', icon:'hyper-potion', curaPct:1.00, preco:60, desc:'Restaura 100% do PV Máximo do Pokémon (cura total).' },
+  /* Cap. leva desta sessão ("pokémon com 0 de vida não pode ser
+     revivido com poção. Só com revive. Crie os itens de reviver"):
+     Revive/Max Revive são o ÚNICO jeito de reanimar um Pokémon
+     desmaiado (0 PV) -- `reviveOnly:true` os separa dos 3 acima em
+     TODO consumidor de `curaPct` do jogo (gatilho de cura no meio de
+     luta, recomendação automática, Caça em Grupo etc. -- ver
+     `gaEhItemDeCuraNormal` mais abaixo), porque eles só têm sentido
+     FORA de luta, no widget de Kanto ("Estado da Equipe"), nunca
+     durante uma luta ativa (um Pokémon que desmaia numa luta já sai
+     dela pelo fluxo de sempre, nunca fica "vivo e desmaiado" ao mesmo
+     tempo dentro de uma luta em andamento). Preços reais (Bulbapedia,
+     Loja padrão): Revive ₽1500, Max Revive ₽4000. */
+  { key:'revive', nome:'Revive', emoji:'✨', icon:'revive', curaPct:0.50, reviveOnly:true, preco:1500, desc:'Reanima um Pokémon desmaiado, devolvendo 50% do PV Máximo. Só funciona em quem está com 0 de PV.' },
+  { key:'maxrevive', nome:'Max Revive', emoji:'💫', icon:'max-revive', curaPct:1.00, reviveOnly:true, preco:4000, desc:'Reanima um Pokémon desmaiado, devolvendo 100% do PV Máximo. Só funciona em quem está com 0 de PV.' }
 ];
+/* Filtro compartilhado por TODO gatilho de cura em luta ativa
+   (mid-battle, Caça em Grupo, recomendação automática) -- exclui os
+   `reviveOnly` de propósito, porque Reviver só faz sentido fora de
+   luta (ver comentário acima de GA_ITEMS). */
+function gaEhItemDeCuraNormal(it){ return !!it && it.curaPct>0 && !it.reviveOnly; }
 function itemByKey(key){ return GA_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
 /* Cap. leva desta sessão ("Na lista de recompensas da raid, deixe
    qualquer item que tenhamos no jogo disponível, assim posso escolher
@@ -9554,6 +9573,34 @@ function kantoSalvarPersistenciaSaida(battler, hpObj, origemMapa){
    nada dele. */
 function kantoHpMaxDoPoke(poke){ return gaHpMax(buildBattlerFromParty(poke)); }
 function kantoNomeExibicaoPoke(poke){ var sp = speciesByNum(poke.num); return poke.apelido || (sp?sp.name:('#'+poke.num)); }
+/* Cap. leva desta sessão ("Se o pokémon estiver com 0 de vida, não é
+   pra deixar ele entrar"): PV Atual de verdade (persistência de Kanto,
+   `null`/`undefined` sempre significando "cheio") -- um Pokémon
+   "desmaiado" aqui é sempre 0 de PV, igual ao jogo oficial (nunca um
+   valor negativo, `clampInt` já trava isso). */
+function kantoHpAtualDoPoke(poke){
+  var hpMax = kantoHpMaxDoPoke(poke);
+  return (poke.kantoHpAtual!=null) ? clampInt(poke.kantoHpAtual,0,hpMax) : hpMax;
+}
+function kantoPokeEstaDesmaiado(poke){ return kantoHpAtualDoPoke(poke)<=0; }
+/* Card compartilhado pelos 3 seletores de líder de Kanto (Área de
+   Captura, Ginásio, Treinador de Rota) -- sprite/nome/Nível/barra de
+   PV, com o botão "Escolher" trocado por um aviso travado quando o
+   Pokémon está desmaiado (0 PV): nunca deixa entrar numa luta nova
+   assim, precisa reanimar com um Revive primeiro (ver changelog
+   "Kanto: bloqueia Pokémon desmaiado" mais abaixo). `onclickJs` é a
+   chamada pronta (já com aspas) do botão de escolher -- cada tela tem
+   o próprio DT.gaKanto...(id) diferente. */
+function kantoPokeCardLiderHTML(p, onclickJs){
+  var sp = speciesByNum(p.num);
+  var hpMax = kantoHpMaxDoPoke(p);
+  var hpAtual = kantoHpAtualDoPoke(p);
+  var desmaiado = hpAtual<=0;
+  var botao = desmaiado
+    ? '<button class="ga-btn-sm" disabled title="Desmaiado -- reanime com um Revive antes de lutar">💀 Desmaiado</button>'
+    : '<button class="ga-btn-sm ga-btn-primary" onclick="'+onclickJs+'">Escolher</button>';
+  return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div>'+hpBarHTML(hpAtual, hpMax)+botao+'</div>';
+}
 /* Cap. leva desta sessão ("o wooper tem que aparecer na versão certa
    pra o jogador saber"): `forma` opcional -- já vem PRONTA de
    `iniciarLutaDeZona` (sorteada no exato instante do encontro, ver
@@ -10120,7 +10167,7 @@ function runBattleUntilPause(){
       if(user.side!=='player' && target.side==='player'){
         var hpPct = b.hp[target.key] / gaHpMax(target);
         if(hpPct <= HEAL_TRIGGER_PCT && hpPct>0 && !b.healedThisFaint[target.key+':'+Math.ceil(hpPct*100)]){
-          var temItem = GA_ITEMS.some(function(it){ return (STATE.itens[it.key]||0)>0; });
+          var temItem = GA_ITEMS.some(function(it){ return gaEhItemDeCuraNormal(it) && (STATE.itens[it.key]||0)>0; });
           if(temItem){
             b.healedThisFaint[target.key+':'+Math.ceil(hpPct*100)] = true;
             b.pendingHeal = { pokeKey: target.key };
@@ -14665,7 +14712,7 @@ function processarCacadasAtivas(lista){
        e, se não tiver nenhuma poção, responde recusa sozinho aqui --
        nunca chega a desenhar o popup perguntando pra ele. */
     if(c.status==='lutando' && c.battle && c.battle.pendingHealFor===SESSION.currentDocId && !c.battle.pendingHealDecisao && !cacadasAutoCuraLocal[c.id]){
-      var temItemCura = GA_ITEMS.some(function(it){ return (STATE.itens[it.key]||0)>0; });
+      var temItemCura = GA_ITEMS.some(function(it){ return gaEhItemDeCuraNormal(it) && (STATE.itens[it.key]||0)>0; });
       if(!temItemCura){
         cacadasAutoCuraLocal[c.id] = true;
         var bAuto = c.battle;
@@ -15214,19 +15261,19 @@ var KANTO_MAP = {
       areas:[{id:'headbutt', nome:'Usar Headbutt nas árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:165,peso:3},{num:167,peso:3},{num:204,peso:3},{num:265,peso:1}]}]},
     {id:'viridian', nome:'Cidade Viridian', col:2,row:7, kind:'gym', gymType:'Ground', desc:'Última cidade antes da Liga -- o Ginásio mais escondido de Kanto, só abre depois de zerar o resto.',
       pokecenter:true,
-      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-lua','baga-oran'],
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','revive','pedra-lua','baga-oran'],
       areas:[{id:'headbutt', nome:'Usar Headbutt nas árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:165,peso:3},{num:167,peso:3},{num:204,peso:3},{num:265,peso:1}]}]},
     {id:'pewter', nome:'Cidade Pewter', col:2,row:1, kind:'gym', gymType:'Rock', desc:'Cidade de pedra encostada no Monte Moon, primeira parada de quem sai de Pallet.',
       pokecenter:true,
-      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-lua','capacete-rochoso','baga-oran'],
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','revive','pedra-lua','capacete-rochoso','baga-oran'],
       areas:[{id:'headbutt', nome:'Usar Headbutt nas árvores', metodo:'headbutt', nivelMin:2, nivelMax:19, encontros:[{num:163,peso:10},{num:204,peso:5},{num:265,peso:3},{num:396,peso:2}]}]},
     {id:'cerulean', nome:'Cidade Cerulean', col:8,row:1, kind:'gym', gymType:'Water', desc:'Cercada de riachos -- sede do Ginásio de Água, com Nugget Bridge e a Caverna Cerúlea por perto.',
       pokecenter:true,
-      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-agua','baga-oran'],
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','revive','pedra-agua','baga-oran'],
       areas:[{id:'headbutt', nome:'Usar Headbutt nas árvores', metodo:'headbutt', nivelMin:2, nivelMax:20, encontros:[{num:163,peso:10},{num:204,peso:5},{num:415,peso:3}]}]},
     {id:'vermilion', nome:'Cidade Vermilion', col:7,row:8, kind:'gym', gymType:'Electric', desc:'Porto badalado, com o Ginásio Elétrico, a Caverna Diglett e um navio enorme atracado no cais.',
       pokecenter:true,
-      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-trovao','garra-rapida','baga-oran'],
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','revive','pedra-trovao','garra-rapida','baga-oran'],
       areas:[{id:'headbutt', nome:'Usar Headbutt nas árvores', metodo:'headbutt', nivelMin:10, nivelMax:20, encontros:[{num:21,peso:5},{num:214,peso:5},{num:415,peso:5}]}]},
     {id:'lavender', nome:'Vila Lavender', col:9,row:4, kind:'start', icon:'👻', desc:'Vila pequena vivendo à sombra da Torre Pokémon, onde ninguém entra sem um bom motivo.',
       pokecenter:true,
@@ -15237,14 +15284,14 @@ var KANTO_MAP = {
       areas:[{id:'headbutt', nome:'Usar Headbutt nas árvores', metodo:'headbutt', nivelMin:10, nivelMax:20, encontros:[{num:214,peso:5},{num:415,peso:5}]}]},
     {id:'fuchsia', nome:'Cidade Fuchsia', col:4,row:10, kind:'gym', gymType:'Poison', desc:'Lar de uma zona de safári só dela e do Ginásio Venenoso.',
       pokecenter:true,
-      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','lama-negra','baga-oran'],
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','revive','lama-negra','baga-oran'],
       areas:[{id:'headbutt', nome:'Usar Headbutt nas árvores', metodo:'headbutt', nivelMin:21, nivelMax:34, encontros:[{num:163,peso:10},{num:165,peso:5},{num:167,peso:5},{num:265,peso:3}]}]},
     {id:'saffron', nome:'Cidade Saffron', col:7,row:4, kind:'gym', gymType:'Psychic', desc:'Bem no meio do mapa -- cidade grande, movimentada, com o Ginásio Psíquico no centro.',
       pokecenter:true,
-      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-alvorada','pedra-crepusculo','oculos-sabios']},
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','revive','pedra-alvorada','pedra-crepusculo','oculos-sabios']},
     {id:'cinnabar', nome:'Ilha Cinnabar', col:0,row:10, kind:'gym', gymType:'Fire', island:true, desc:'Ilha vulcânica isolada, com o Ginásio de Fogo e uma mansão abandonada cheia de histórias.',
       pokecenter:true,
-      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','pedra-fogo','baga-oran']},
+      mercado:['pokebola','greatball','ultraball','pocao','superpocao','hiperpocao','revive','pedra-fogo','baga-oran']},
     {id:'viridianforest', nome:'Floresta Viridian', col:2,row:4, kind:'forest', icon:'🌲', desc:'Floresta densa entre Viridian e Pewter, cheia de Pokémon do tipo Inseto.',
       areas:[{id:'grama', nome:'Grama da Floresta', metodo:'grama', nivelMin:3, nivelMax:7, encontros:[{num:10,peso:25},{num:13,peso:25},{num:16,peso:15},{num:11,peso:8},{num:14,peso:8},{num:43,peso:8},{num:69,peso:8},{num:25,peso:5},{num:12,peso:1},{num:15,peso:1},{num:1,peso:1}]}],
       trainers:[{id:"viridianforest_bugcatcherrick0",classe:"Bug Catcher",nome:"Rick",emoji:"🐛",sprite:"assets/trainers/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:13,level:6},{num:10,level:6}],recompensaBase:72},{id:"viridianforest_bugcatcherdoug1",classe:"Bug Catcher",nome:"Doug",emoji:"🐛",sprite:"assets/trainers/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:13,level:7},{num:14,level:7},{num:13,level:7}],recompensaBase:84},{id:"viridianforest_bugcatcheranthony2",classe:"Bug Catcher",nome:"Anthony",emoji:"🐛",sprite:"assets/trainers/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:10,level:7},{num:10,level:8}],recompensaBase:96},{id:"viridianforest_bugcatchercharlie3",classe:"Bug Catcher",nome:"Charlie",emoji:"🐛",sprite:"assets/trainers/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:11,level:7},{num:10,level:7},{num:11,level:7}],recompensaBase:84},{id:"viridianforest_bugcatchersammy4",classe:"Bug Catcher",nome:"Sammy",emoji:"🐛",sprite:"assets/trainers/Spr_FRLG_Bug_Catcher.png",rosterCanonico:[{num:13,level:9}],recompensaBase:108}]},
@@ -15844,6 +15891,7 @@ DT.gaKantoIniciarCaptura = function(leadId){
   if(!area){ SESSION.kantoEscolhendoArea = null; render(); return; }
   var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
   if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar a luta.'; render(); return; }
+  if(kantoPokeEstaDesmaiado(lead)){ SESSION.error = kantoNomeExibicaoPoke(lead)+' está desmaiado -- reanime com um Revive antes de lutar.'; render(); return; }
   if(area.metodo==='headbutt' && !(lead.moves||[]).some(function(m){ return m.name==='Headbutt'; })){
     SESSION.error = 'Esse Pokémon não conhece Headbutt.';
     render();
@@ -15901,6 +15949,7 @@ DT.gaKantoIniciarGinasio = function(leadId){
   if(!variacao){ SESSION.kantoEscolhendoGinasio = null; render(); return; }
   var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
   if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar a luta.'; render(); return; }
+  if(kantoPokeEstaDesmaiado(lead)){ SESSION.error = kantoNomeExibicaoPoke(lead)+' está desmaiado -- reanime com um Revive antes de lutar.'; render(); return; }
   var zonaIdx = kantoGymZonaIdx(variacao.roster);
   SESSION.kantoEscolhendoGinasio = null;
   /* Parte 4 do redesenho do mapa de Kanto ("achado bônus" -- cooldown
@@ -15969,6 +16018,7 @@ DT.gaKantoIniciarTreinadorRota = function(leadId){
   if(!variacao){ SESSION.kantoEscolhendoTreinador = null; render(); return; }
   var lead = STATE.party.filter(function(p){ return p.id===leadId; })[0];
   if(!lead){ SESSION.error='Escolha um Pokémon da Equipe pra liderar a luta.'; render(); return; }
+  if(kantoPokeEstaDesmaiado(lead)){ SESSION.error = kantoNomeExibicaoPoke(lead)+' está desmaiado -- reanime com um Revive antes de lutar.'; render(); return; }
   var zonaIdx = kantoGymZonaIdx(variacao.roster);
   SESSION.kantoEscolhendoTreinador = null;
   var nomeCompleto = trainer.emoji+' '+trainer.classe+(trainer.nome?' '+trainer.nome:'');
@@ -16010,12 +16060,7 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
   if(esc && esc.ownerType===ownerType && esc.ownerId===ownerId){
     var lead = kantoAreaById(esc.ownerType, esc.ownerId, esc.areaId);
     out += '<div class="ga-kanto-lider"><p class="ga-hint">Escolha quem vai liderar essa luta:</p><div class="ga-poke-grid">'+
-      STATE.party.map(function(p){
-        var sp = speciesByNum(p.num);
-        var hpMax = kantoHpMaxDoPoke(p);
-        var hpAtual = (p.kantoHpAtual!=null) ? clampInt(p.kantoHpAtual,0,hpMax) : hpMax;
-        return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div>'+hpBarHTML(hpAtual, hpMax)+'<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarCaptura(\''+p.id+'\')">Escolher</button></div>';
-      }).join('')+
+      STATE.party.map(function(p){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarCaptura('"+p.id+"')"); }).join('')+
       '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button></div>';
   }
   return out;
@@ -16077,10 +16122,7 @@ function kantoDesafioLiderViewHTML(){
       '</div>';
   } else {
     out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid">'+
-      STATE.party.map(function(p){
-        var sp = speciesByNum(p.num);
-        return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarGinasio(\''+p.id+'\')">Escolher</button></div>';
-      }).join('')+
+      STATE.party.map(function(p){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarGinasio('"+p.id+"')"); }).join('')+
       '</div>';
   }
   return out;
@@ -16312,10 +16354,7 @@ function kantoDesafioTreinadorViewHTML(){
       '</div>';
   } else {
     out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid">'+
-      STATE.party.map(function(p){
-        var sp = speciesByNum(p.num);
-        return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div><button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoIniciarTreinadorRota(\''+p.id+'\')">Escolher</button></div>';
-      }).join('')+
+      STATE.party.map(function(p){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarTreinadorRota('"+p.id+"')"); }).join('')+
       '</div>';
   }
   return out;
@@ -16578,23 +16617,31 @@ function kantoZoomControleHTML(){
    lá em cima perto de buildBattlerFromParty) -- recolhido por padrão
    (mesmo padrão de "Como funciona"), pra não roubar altura do mapa
    sem necessidade (a tela inteira é travada pra caber sem rolagem, ver
-   ajustarEscalaMapaKanto). Poção/Super Poção/Hiper Poção (as 3 únicas
-   que o jogo tem) podem ser usadas AQUI, fora de luta -- Status e PP só
-   voltam num 🏥 Centro Pokémon (nenhum item deste jogo cura Condição
-   ou PP, igual o catálogo real de GA_ITEMS). */
+   ajustarEscalaMapaKanto). Poção/Super Poção/Hiper Poção podem ser
+   usadas AQUI, fora de luta -- Status e PP só voltam num 🏥 Centro
+   Pokémon. Cap. leva desta sessão ("pokémon com 0 de vida não pode ser
+   revivido com poção. Só com revive"): um Pokémon DESMAIADO (0 PV) só
+   mostra os Revive/Max Revive em estoque (nunca Poção normal, mesmo
+   que a Equipe tenha) -- quem está vivo mas ferido é o oposto, só vê
+   Poção normal (Revive nunca aparece pra quem não desmaiou). */
 function kantoEstadoEquipePokeCardHTML(poke){
   var sp = speciesByNum(poke.num);
   var hpMax = kantoHpMaxDoPoke(poke);
-  var hpAtual = (poke.kantoHpAtual!=null) ? clampInt(poke.kantoHpAtual,0,hpMax) : hpMax;
+  var hpAtual = kantoHpAtualDoPoke(poke);
+  var desmaiado = hpAtual<=0;
   var statusTag = poke.kantoStatus ? '<div class="ga-hint">🤒 '+STATUS_LABELS_PT[poke.kantoStatus.status]+'</div>' : '';
-  var pocoes = hpAtual<hpMax ? GA_ITEMS.filter(function(it){ return it.curaPct>0 && (STATE.itens[it.key]||0)>0; }) : [];
-  var pocoesBtns = pocoes.length
-    ? '<div class="ga-btn-row">'+pocoes.map(function(it){
+  var itensCura = hpAtual<hpMax ? GA_ITEMS.filter(function(it){
+    if(!(it.curaPct>0) || (STATE.itens[it.key]||0)<=0) return false;
+    return desmaiado ? !!it.reviveOnly : !it.reviveOnly;
+  }) : [];
+  var pocoesBtns = itensCura.length
+    ? '<div class="ga-btn-row">'+itensCura.map(function(it){
         return '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoUsarPocao(\''+poke.id+'\',\''+it.key+'\')">'+it.emoji+' '+it.nome+'</button>';
       }).join('')+'</div>'
-    : (hpAtual<hpMax ? '<div class="ga-hint">Sem Poção no estoque.</div>' : '');
+    : (hpAtual<hpMax ? '<div class="ga-hint">'+(desmaiado?'Sem Revive no estoque.':'Sem Poção no estoque.')+'</div>' : '');
+  var desmaiadoTag = desmaiado ? '<div class="ga-hint" style="color:var(--danger);">💀 Desmaiado -- só um Revive reanima.</div>' : '';
   return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(poke))+'" alt=""><div class="ga-poke-name">'+esc2(kantoNomeExibicaoPoke(poke))+'</div><div class="ga-poke-meta">Nv. '+poke.level+'</div>'+
-    hpBarHTML(hpAtual, hpMax)+statusTag+pocoesBtns+
+    hpBarHTML(hpAtual, hpMax)+desmaiadoTag+statusTag+pocoesBtns+
   '</div>';
 }
 function kantoEstadoEquipeHTML(){
@@ -16610,8 +16657,15 @@ DT.gaKantoUsarPocao = function(partyId, itemKey){
   var it = itemByKey(itemKey); if(!it || !(it.curaPct>0)) return;
   if((STATE.itens[itemKey]||0)<=0){ SESSION.error = 'Você não tem mais '+it.nome+'.'; render(); return; }
   var hpMax = kantoHpMaxDoPoke(poke);
-  var atual = (poke.kantoHpAtual!=null) ? clampInt(poke.kantoHpAtual,0,hpMax) : hpMax;
+  var atual = kantoHpAtualDoPoke(poke);
   if(atual>=hpMax){ SESSION.error = kantoNomeExibicaoPoke(poke)+' já está com o PV cheio.'; render(); return; }
+  /* Cap. leva desta sessão ("pokémon com 0 de vida não pode ser
+     revivido com poção. Só com revive"): as 2 direções da trava --
+     Poção normal nunca funciona em quem desmaiou (0 PV), e Revive
+     nunca funciona em quem NÃO desmaiou (sem sentido "reanimar" quem
+     já está de pé). */
+  if(atual===0 && !it.reviveOnly){ SESSION.error = kantoNomeExibicaoPoke(poke)+' desmaiou -- Poção não funciona, use um Revive.'; render(); return; }
+  if(atual>0 && it.reviveOnly){ SESSION.error = kantoNomeExibicaoPoke(poke)+' não está desmaiado -- Revive só funciona em quem está com 0 de PV.'; render(); return; }
   var cura = Math.round(hpMax*it.curaPct);
   poke.kantoHpAtual = Math.min(hpMax, atual+cura);
   STATE.itens[itemKey]--;
@@ -16890,7 +16944,7 @@ DT.gaCancelarSequencia = function(){ SESSION.pendingSequenciaConfirm = null; ren
    AGORA (nunca estoura uma Hiperpoção numa arranhadura), e só cai pro
    melhor disponível se nenhum cobrir tudo sozinho. */
 function itemCuraRecomendado(faltaPct){
-  var disponiveis = GA_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0; });
+  var disponiveis = GA_ITEMS.filter(function(it){ return gaEhItemDeCuraNormal(it) && (STATE.itens[it.key]||0)>0; });
   if(!disponiveis.length) return null;
   var cobrem = disponiveis.filter(function(it){ return it.curaPct>=faltaPct; });
   if(cobrem.length){
@@ -21644,7 +21698,7 @@ function cacadaBatalhaHTML(c){
 
   if(b.pendingHealFor===meuId && !b.pendingHealDecisao){
     var alvoCura = b.ativos[meuId];
-    var pocoesDisponiveisCacada = GA_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0; });
+    var pocoesDisponiveisCacada = GA_ITEMS.filter(function(it){ return gaEhItemDeCuraNormal(it) && (STATE.itens[it.key]||0)>0; });
     out += '<div class="ga-battle-prompt"><p>💊 '+esc2(displayName(alvoCura))+' está com PV baixo! Usar uma poção da Mochila agora?</p><div class="ga-btn-row">'+
       (pocoesDisponiveisCacada.length
         ? pocoesDisponiveisCacada.map(function(it){ return '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaCacadaResponderCura(\''+it.key+'\')">'+itemIconHTML(it)+' '+it.nome+' ('+STATE.itens[it.key]+')</button>'; }).join('')
@@ -21787,7 +21841,7 @@ function battleCorpoHTML(){
     '<div class="ga-battle-log">'+b.log.map(function(l){ return '<div>'+esc2(l)+'</div>'; }).join('')+'</div>';
 
   if(b.pendingHeal){
-    var disponiveis = GA_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0; });
+    var disponiveis = GA_ITEMS.filter(function(it){ return gaEhItemDeCuraNormal(it) && (STATE.itens[it.key]||0)>0; });
     out += '<div class="ga-battle-prompt"><p>💊 '+esc2(playerSp.name)+' está com PV baixo! Usar um item de cura?</p><div class="ga-btn-row">'+
       disponiveis.map(function(it){ return '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaUsarItemCura(\''+it.key+'\')">'+itemIconHTML(it)+' '+it.nome+' ('+STATE.itens[it.key]+')</button>'; }).join('')+
       '<button class="ga-btn-sm" onclick="DT.gaRecusarItemCura()">➡️ Não usar</button>'+
