@@ -80,6 +80,15 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-nav button:hover{ background:var(--bg2); border-color:var(--line); }
 .ga-nav button.active{ background:var(--accent-dim); color:#04170c; border-color:var(--accent-dim); font-weight:700; }
 .ga-nav-ic{ font-size:1.05rem; }
+/* Cap. leva desta sessão ("Mude o icone de EQUIPE... pra uma pokébola
+   igual a dos jogos, pixelada"): ícone inline pra substituir um emoji
+   de texto por uma imagem -- `width/height:1em` faz ele acompanhar o
+   `font-size` do elemento pai automaticamente (funciona tanto dentro
+   de `.ga-nav-ic` quanto de qualquer `<h2>`/botão de texto comum, sem
+   precisar de uma regra por contexto), `vertical-align` alinha com a
+   linha de base do texto ao lado, e `image-rendering:pixelated`
+   mantém a arte em pixel nítida (sem borrão) mesmo ampliada. */
+.ga-icon-pixel{ width:1em; height:1em; vertical-align:-0.15em; image-rendering:pixelated; }
 /* Cap. leva desta sessão (Centro Pokémon): selo numérico de pedidos de
    amizade pendentes, ao lado do nome do item de menu -- vermelho
    chamativo de propósito (é uma notificação de verdade). */
@@ -6824,6 +6833,21 @@ function itemIconHTML(def, cls){
   if(!def.icon) return '<span class="ga-item-icon ga-item-icon-emoji'+(cls?' '+cls:'')+'" title="'+esc2(def.nome)+'">'+(def.emoji||'❔')+'</span>';
   return '<img class="ga-item-icon'+(cls?' '+cls:'')+'" src="'+itemIconUrl(def.icon)+'" alt="'+esc2(def.nome)+'" loading="lazy">';
 }
+/* Cap. leva desta sessão ("Mude o icone de EQUIPE no site todo pra uma
+   pokébola... igual a dos jogos, pixelada"): reusa o MESMO ícone
+   OFICIAL de Poké Ball já usado no marcador de captura do mapa
+   (`itemIconUrl('poke-ball')`, PokeAPI/sprites/items -- pixel art de
+   verdade, não emoji) em vez de desenhar ou hospedar um novo -- troca
+   só o ícone de "Equipe" (nav/telas), nunca os outros usos do emoji
+   🎒 no jogo que representam OUTRA coisa (Bolsa, Item Segurado,
+   Mochila, "Começar a jornada" etc., propositalmente intocados). */
+/* Cap. leva desta sessão: `loading="lazy"` de propósito FORA daqui --
+   `itemIconHTML` usa lazy porque aparece em listas longas (Mochila,
+   Loja), mas esse ícone vira parte fixa da navegação/cabeçalhos (nav
+   lateral, abas do celular, título da tela Equipe) -- sempre "acima da
+   dobra", nunca some da tela, então carregar sem atraso evita o
+   "pisca vazio" de um ícone de UI permanente que só aparece depois. */
+function pokebolaIconHTML(cls){ return '<img class="ga-icon-pixel'+(cls?' '+cls:'')+'" src="'+itemIconUrl('poke-ball')+'" alt="">'; }
 
 /* Pokébolas (Cap. "aproveita e adiciona as outras pokébolas
    compráveis no jogo: great, super e ultra... e nelas as descrição
@@ -17124,7 +17148,7 @@ function kantoScreenHTML(){
            em toda a navegação pra "Equipe") abre kantoEquipePopupHTML,
            🧳 (mesmo emoji da Mochila) abre kantoBolsaPopupHTML. */
         '<div class="ga-kanto-icon-row">'+
-          '<button type="button" class="ga-icon-btn-lg" title="Estado da Equipe" onclick="DT.gaKantoAbrirEquipe()">🎒</button>'+
+          '<button type="button" class="ga-icon-btn-lg" title="Estado da Equipe" onclick="DT.gaKantoAbrirEquipe()">'+pokebolaIconHTML()+'</button>'+
           '<button type="button" class="ga-icon-btn-lg" title="Bolsa" onclick="DT.gaKantoAbrirBolsa()">🧳</button>'+
         '</div>'+
       '</div>'+
@@ -19550,7 +19574,7 @@ var NAV_GRUPOS = [
       { id:'wiki', ic:'📖', nome:'Wiki' }
     ] },
   { id:'jogador', ic:'🎒', nome:'Jogador', itens:[
-      { id:'equipe', ic:'🎒', nome:'Equipe' },
+      { id:'equipe', ic:pokebolaIconHTML(), nome:'Equipe' },
       { id:'mochila', ic:'🧳', nome:'Mochila' }
     ] }
 ];
@@ -19670,7 +19694,7 @@ function mobileTabbarHTML(){
   }
   return '<nav class="ga-tabbar">'+
     item(SESSION.screen==='hub','🏠','Início',"DT.gaGoto('hub')")+
-    item(SESSION.screen==='equipe','🎒','Equipe',"DT.gaGoto('equipe')")+
+    item(SESSION.screen==='equipe',pokebolaIconHTML(),'Equipe',"DT.gaGoto('equipe')")+
     item(SESSION.screen==='captura','🌿','Caçada',"DT.gaGoto('captura')")+
     item(SESSION.screen==='centro','🏥','Centro',"DT.gaAbrirCentro()",qtdPedidos)+
     item(SESSION.sidebarOpen,'☰','Mais',"DT.gaToggleSidebar()",qtdDm)+
@@ -20069,12 +20093,12 @@ function hubScreenHTML(){
         '<p class="ga-hub-hero-sub">'+STATE.badges.length+' Insígnia(s) · '+counts.caught+'/'+counts.total+' na Pokédex. Sua Equipe está pronta -- parta direto pra Caçada Solo ou dê uma olhada em quem te acompanha.</p>'+
         '<div class="ga-hub-hero-cta">'+
           '<button class="ga-btn ga-btn-primary" onclick="DT.gaGoto(\'captura\')">🌿 Caçada Solo</button>'+
-          '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')">🎒 Ver Equipe</button>'+
+          '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')">'+pokebolaIconHTML()+' Ver Equipe</button>'+
         '</div>'+
       '</div>'+
       '<img class="ga-trainer-sprite" src="'+spriteUrl(spriteNumEfetivo(lead))+'" alt="">'+
     '</div>'+
-    (STATE.party.length ? '<div class="ga-card"><h2>🎒 Equipe ativa</h2><div class="ga-hub-partystrip">'+
+    (STATE.party.length ? '<div class="ga-card"><h2>'+pokebolaIconHTML()+' Equipe ativa</h2><div class="ga-hub-partystrip">'+
       STATE.party.map(function(p, i){
         var sp = speciesByNum(p.num);
         return '<div class="ga-hub-party-mini'+(i===0?' ativo':'')+'" title="'+esc2(p.apelido||sp.name)+' -- Nv. '+p.level+'" onclick="DT.gaGoto(\'equipe\')">'+
@@ -20114,7 +20138,7 @@ function hubScreenHTML(){
     '<div class="ga-quicknav">'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'captura\')"><span class="ga-quicknav-ic">🌿</span>Caçada Solo</button>'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'ginasios\')"><span class="ga-quicknav-ic">🎖️</span>Mestres Especialistas</button>'+
-      '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')"><span class="ga-quicknav-ic">🎒</span>Sua Equipe</button>'+
+      '<button class="ga-btn" onclick="DT.gaGoto(\'equipe\')"><span class="ga-quicknav-ic">'+pokebolaIconHTML()+'</span>Sua Equipe</button>'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'dex\')"><span class="ga-quicknav-ic">📕</span>Pokédex</button>'+
       '<button class="ga-btn" onclick="DT.gaGoto(\'mochila\')"><span class="ga-quicknav-ic">🧳</span>Mochila</button>'+
     '</div>'+
@@ -20419,7 +20443,7 @@ function escolherDaCaixaPopupHTML(){
 function equipeScreenHTML(){
   var timeAtivo = timeAtivoAgora();
   var out = timesBarHTML()+
-    '<div class="ga-card"><h2>🎒 '+(timeAtivo ? esc2(timeAtivo.nome) : 'Equipe')+' ('+STATE.party.length+'/6)</h2>'+
+    '<div class="ga-card"><h2>'+pokebolaIconHTML()+' '+(timeAtivo ? esc2(timeAtivo.nome) : 'Equipe')+' ('+STATE.party.length+'/6)</h2>'+
     (STATE.party.length>1 ? '<p class="ga-hint">🎯 O primeiro da lista é o Pokémon <b>ativo</b> (o retrato do Início) -- é ele quem entra primeiro na Caçada Solo, e quem entra depois de um desmaio segue a MESMA ordem, da esquerda pra direita -- arraste um card pra reordenar, ou use ⬅️/➡️ no celular.</p>' : '')+
     '<div class="ga-poke-grid ga-poke-grid-equipe">'+
     STATE.party.map(function(p, i){
@@ -21297,7 +21321,7 @@ function lojaSecaoTmHTML(){
   var moves = tmMovesDisponiveis().filter(function(nome){ return !q || nome.toLowerCase().indexOf(q)!==-1; });
   if(!moves.length) return '';
   return '<div class="ga-card"><h2>💿 TMs</h2>'+
-    '<p class="ga-hint">Ensina um Movimento pra qualquer Pokémon que a Espécie aprenda por TM (grátis, na tela 🎒 Equipe → 🔁 Movimentos) -- comprada aqui ou ganha de graça vencendo um Mestre Especialista.</p>'+
+    '<p class="ga-hint">Ensina um Movimento pra qualquer Pokémon que a Espécie aprenda por TM (grátis, na tela '+pokebolaIconHTML()+' Equipe → 🔁 Movimentos) -- comprada aqui ou ganha de graça vencendo um Mestre Especialista.</p>'+
     '<div class="ga-btn-row">'+
       '<select id="gaTmSelect">'+moves.map(function(nome){
         var qtd = STATE.tms[nome]||0;
@@ -21388,7 +21412,7 @@ function mochilaScreenHTML(){
   ];
   var vazia = secoes.every(function(s){ return !s; });
   return '<div class="ga-card"><h2>🧳 Mochila</h2>'+
-    '<p class="ga-hint">Todos os itens que você já tem, agrupados por categoria. Pra usar um item, vá direto no Pokémon (🎒 Equipe/Caixa) ou compre mais na 🏪 Loja.</p></div>'+
+    '<p class="ga-hint">Todos os itens que você já tem, agrupados por categoria. Pra usar um item, vá direto no Pokémon ('+pokebolaIconHTML()+' Equipe/Caixa) ou compre mais na 🏪 Loja.</p></div>'+
     (vazia ? '<div class="ga-card"><p class="ga-hint">Sua Mochila está vazia -- ainda não comprou nenhum item na 🏪 Loja.</p></div>' : secoes.join(''));
 }
 function lojaScreenHTML(){
@@ -21625,7 +21649,7 @@ function fichaAdminPopupHTML(docId){
     '<p class="ga-hint">🔋 Energia: '+(s.energy||0)+'/1000 · 💰 Pokédólares: '+(s.pokedolares||0)+' · 🎫 Pokétickets: '+(s.poketickets||0)+'/'+POKETICKETS_MAX+' · 🎖️ Insígnias: '+((s.badges||[]).length)+'/8 '+
       '<button class="ga-btn-sm danger" onclick="DT.gaAdminZerarGinasios(\''+docId+'\')" title="Zera as Insígnias -- libera refazer todos os 8 Mestres do 1º ao último de novo, sem mexer no resto da conta">🥊 Zerar lutas de ginásio</button></p>'+
     '<p class="ga-hint">🎒 Mochila: '+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+((s.pokebolas||{})[bl.key]||0); }).join(' ')+' · '+GA_ITEMS.map(function(it){ return itemIconHTML(it)+' '+((s.itens||{})[it.key]||0); }).join(' ')+'</p>'+
-    '<h3 class="ga-subhead">🎒 Equipe ('+(s.party||[]).length+')</h3>'+
+    '<h3 class="ga-subhead">'+pokebolaIconHTML()+' Equipe ('+(s.party||[]).length+')</h3>'+
     '<div class="ga-poke-grid">'+(s.party||[]).map(function(p){ return pokeCardMini(p, '<div class="ga-hint">Papel: '+esc2(PAPEL_COMBATE_LABEL[p.papelCombate]||p.papelCombate||'—')+'</div>'); }).join('')+'</div>'+
     ((s.box||[]).length ? '<h3 class="ga-subhead">📦 Caixa ('+s.box.length+')</h3><div class="ga-poke-grid">'+s.box.map(function(p){ return pokeCardMini(p,''); }).join('')+'</div>' : '')+
     '<h3 class="ga-subhead">📜 Log de ações ('+log.length+', mais recente primeiro)</h3>'+
@@ -21680,7 +21704,7 @@ function wikiScreenHTML(){
     '<p>Botão "👁️ Ver Time" mostra o elenco de qualquer Mestre (mesmo os que você ainda não pode desafiar), Nível incluso.</p>'+
     '<p>Vencer dá a Insígnia dele -- e, se sobrar alguma Espécie do time vencido com Movimento de TM, também 1 TM de graça.</p>');
 
-  out += wikiSecao('🔁 Troca de Movimento e 💿 TMs', '<p>Na tela 🎒 Equipe, troca qualquer Movimento do slot por outro que a Espécie JÁ tem liberado por Nível (custa 10 Energia) ou por uma TM que você tem em estoque (grátis, mas consome 1 da Mochila). Nunca um Movimento fora do Learnset real da Espécie. Subir de Nível sozinho NUNCA muda os Movimentos -- é sempre por aqui.</p>');
+  out += wikiSecao('🔁 Troca de Movimento e 💿 TMs', '<p>Na tela '+pokebolaIconHTML()+' Equipe, troca qualquer Movimento do slot por outro que a Espécie JÁ tem liberado por Nível (custa 10 Energia) ou por uma TM que você tem em estoque (grátis, mas consome 1 da Mochila). Nunca um Movimento fora do Learnset real da Espécie. Subir de Nível sozinho NUNCA muda os Movimentos -- é sempre por aqui.</p>');
 
   out += wikiSecao('🗡️ Movimentos (catálogo)', '<p>A tela 🗡️ Movimentos (menu lateral) lista os 847 Movimentos do jogo com o dado OFICIAL real -- Tipo, categoria, Poder/Precisão/PP de verdade (não a escala comprimida do Papel de Combate) e o efeito em português -- com busca por nome e filtro de Tipo/categoria/papel.</p>');
 
