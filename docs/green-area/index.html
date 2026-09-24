@@ -837,6 +837,14 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-kanto-card{ display:flex; flex-direction:column; min-height:0; }
 .ga-kanto-viewport{ display:flex; flex-direction:column; min-height:260px; gap:10px; }
 .ga-kanto-header{ flex:0 0 auto; display:flex; flex-direction:column; gap:8px; }
+/* Cap. leva desta sessão ("quero que deixe um icone grande de equipe e
+   bolsa sem texto. Assim abrindo um popup do menu escolhido mostrando
+   o estado da equipe ou os itens a depender do menu escolhido"): 2
+   botões grandes, só emoji, lado a lado -- cada um abre o popup certo
+   (Equipe -> kantoEquipePopupHTML, Bolsa -> kantoBolsaPopupHTML). */
+.ga-kanto-icon-row{ display:flex; gap:10px; }
+.ga-icon-btn-lg{ font-size:1.8rem; line-height:1; padding:10px 16px; border-radius:var(--radius); border:1px solid var(--accent-dim); background:var(--panel2); cursor:pointer; }
+.ga-icon-btn-lg:hover{ border-color:var(--accent); }
 .ga-kanto-info-details{ font-size:.86rem; color:var(--ink-dim); }
 .ga-kanto-info-details summary{ cursor:pointer; color:var(--ink); font-weight:600; }
 .ga-kanto-info-details p{ margin:8px 0 0; }
@@ -8741,7 +8749,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false };
 
 function freshState(trainerName){
   return {
@@ -13204,7 +13212,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false };
   render();
 };
 
@@ -16825,12 +16833,35 @@ function kantoEstadoEquipePokeCardHTML(poke){
     hpBarHTML(hpAtual, hpMax)+desmaiadoTag+statusTag+kantoItensCuraBotoesHTML(poke)+kantoItensPPBotoesHTML(poke)+
   '</div>';
 }
-function kantoEstadoEquipeHTML(){
-  if(!STATE.party.length) return '';
-  return '<details class="ga-kanto-info-details"><summary>🩺 Estado da Equipe (Kanto)</summary>'+
+/* Cap. leva desta sessão ("quero que deixe um icone grande de equipe e
+   bolsa sem texto. Assim abrindo um popup do menu escolhido mostrando
+   o estado da equipe ou os itens a depender do menu escolhido"): o
+   widget "Estado da Equipe" deixou de ser um `<details>` recolhido
+   sempre visível no cabeçalho e virou um popup igual o da Bolsa --
+   `SESSION.kantoEquipeAberta` controla a visibilidade, `DT.gaKanto
+   AbrirEquipe`/`DT.gaKantoFecharEquipe` abrem/fecham, e o conteúdo
+   (mesmo texto/`ga-poke-grid`/`kantoEstadoEquipePokeCardHTML` de
+   sempre) mora em `kantoEquipePopupHTML`. */
+DT.gaKantoAbrirEquipe = function(){
+  if(!SESSION.isAdmin) return;
+  SESSION.kantoEquipeAberta = true;
+  render();
+};
+DT.gaKantoFecharEquipe = function(){
+  SESSION.kantoEquipeAberta = false;
+  render();
+};
+function kantoEquipePopupHTML(){
+  if(!SESSION.kantoEquipeAberta) return '';
+  var conteudo = STATE.party.length
+    ? '<div class="ga-poke-grid">'+STATE.party.map(kantoEstadoEquipePokeCardHTML).join('')+'</div>'
+    : '<p class="ga-hint">Você não tem nenhum Pokémon na Equipe.</p>';
+  return '<div class="ga-overlay" onclick="DT.gaKantoFecharEquipe()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaKantoFecharEquipe()">✕</button>'+
+    '<h2>🩺 Estado da Equipe (Kanto)</h2>'+
     '<p class="ga-hint">Fora do mapa de Kanto, PV/PP/Condição continuam sendo restaurados 100% ao fim de toda luta, como sempre foi. SÓ AQUI, no mapa, o desgaste fica de verdade -- cure com uma Poção/Ether/Elixir (PV/PP na hora) ou visite um 🏥 Centro Pokémon (PV+PP+Condição de uma vez, de graça).</p>'+
-    '<div class="ga-poke-grid">'+STATE.party.map(kantoEstadoEquipePokeCardHTML).join('')+'</div>'+
-  '</details>';
+    conteudo+
+  '</div></div>';
 }
 DT.gaKantoUsarPocao = function(partyId, itemKey){
   if(!SESSION.isAdmin) return;
@@ -17060,12 +17091,18 @@ function kantoScreenHTML(){
            quanto pra lutar, então faz sentido poder completar ANTES de
            clicar em qualquer um dos dois. */
         ticketParaEnergiaWidgetHTML('kanto')+
-        /* Cap. leva desta sessão ("menu escrito bolsa... pra qualquer
-           lugar que o jogador estiver"): botão sempre visível aqui no
-           cabeçalho do mapa, fora de qualquer popup de captura/
-           Ginásio/Treinador -- ver kantoBolsaPopupHTML. */
-        '<div class="ga-btn-row"><button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoAbrirBolsa()">🎒 Bolsa</button></div>'+
-        kantoEstadoEquipeHTML()+
+        /* Cap. leva desta sessão ("quero que deixe um icone grande de
+           equipe e bolsa sem texto. Assim abrindo um popup do menu
+           escolhido mostrando o estado da equipe ou os itens a
+           depender do menu escolhido"): 2 ícones grandes, sem texto,
+           sempre visíveis aqui no cabeçalho do mapa, fora de qualquer
+           popup de captura/Ginásio/Treinador -- 🎒 (mesmo emoji usado
+           em toda a navegação pra "Equipe") abre kantoEquipePopupHTML,
+           🧳 (mesmo emoji da Mochila) abre kantoBolsaPopupHTML. */
+        '<div class="ga-kanto-icon-row">'+
+          '<button type="button" class="ga-icon-btn-lg" title="Estado da Equipe" onclick="DT.gaKantoAbrirEquipe()">🎒</button>'+
+          '<button type="button" class="ga-icon-btn-lg" title="Bolsa" onclick="DT.gaKantoAbrirBolsa()">🧳</button>'+
+        '</div>'+
       '</div>'+
       /* `.ga-kanto-map-outer` só existe pra ancorar o controle de zoom
          no canto (`position:absolute`) SEM ele rolar junto com o mapa
@@ -19727,7 +19764,7 @@ function screenHTML(){
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
-    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() : hubScreenHTML());
+    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() + kantoEquipePopupHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
