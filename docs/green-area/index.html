@@ -20031,16 +20031,22 @@ function hubScreenHTML(){
          recarregarmos a energia com ticket": antes o contador de
          Pokétickets só aparecia pequeno na barra lateral, e o botão
          de trocar ficava escondido dentro do card de Energia -- agora
-         ganha o PRÓPRIO card no Início, igual Energia/Mochila/
-         Insígnias, com o número grande (o "contador") e um botão
-         independente só dele. */
+         ganha o PRÓPRIO card no Início, igual Energia/Insígnias, com
+         o número grande (o "contador") e um botão independente só
+         dele. */
       '<div class="ga-card ga-stat-card" title="'+esc2(TOOLTIPS.poketickets)+'"><div class="ga-stat-label">🎫 Pokétickets</div><div class="ga-stat-val">'+(STATE.poketickets||0)+'/'+POKETICKETS_MAX+'</div>'+
         '<div class="ga-hint">+'+POKETICKETS_POR_DIA+' em <span id="ga-ticket-countdown">'+formatHHMMSS(secondsToNextPoketicketTick())+'</span> (próximo Dia do jogo)</div>'+
         ticketParaEnergiaWidgetHTML('hub')+'</div>'+
-      '<div class="ga-card ga-stat-card" style="cursor:pointer;" title="Itens que a luta automática usa -- Pokébolas pra capturar (depois de vencer um selvagem) e Poções pro gatilho de cura em PV baixo. Clique pra ver a Mochila inteira." onclick="DT.gaGoto(\'mochila\')"><div class="ga-stat-label">🧳 Mochila</div>'+
-        '<div class="ga-hint ga-item-row">'+POKEBALLS.map(function(bl){ return itemIconHTML(bl)+' '+(STATE.pokebolas[bl.key]||0); }).join('')+'</div>'+
-        '<div class="ga-hint ga-item-row">'+GA_ITEMS.map(function(it){ return itemIconHTML(it)+' '+(STATE.itens[it.key]||0); }).join('')+'</div>'+
-        '<div class="ga-hint" style="color:var(--accent);font-weight:700;">Ver tudo →</div></div>'+
+      /* Cap. leva desta sessão ("essa mochila aí onde estão as poções e
+         etc aparecendo, não precisa ter, tira ela e divida o espaço
+         bem entre os 3 que sobrarem"): o card de prévia da Mochila
+         (Pokébolas/Poções em miniatura) saiu daqui -- a Mochila
+         continua acessível pelo botão dela mesma no `.ga-quicknav`
+         logo abaixo, só não precisa MAIS de um card próprio nesta
+         grade. `.ga-grid3` já é `repeat(auto-fit,minmax(220px,1fr))`
+         (ver CSS), então os 3 cards que sobraram (Energia/Pokétickets/
+         Insígnias) se redistribuem sozinhos pra preencher a largura,
+         sem precisar de nenhum ajuste extra de CSS. */
       '<div class="ga-card ga-stat-card"><div class="ga-stat-label">🎖️ Insígnias</div>'+
         '<div class="ga-badges">'+GYM_LEADERS.map(function(l){ return '<img class="ga-badge-icon'+(STATE.badges.indexOf(l.id)!==-1?' on':'')+'" title="'+esc2(l.nome)+' ('+esc2(l.insignia)+')" src="'+spriteUrl(gymAceNum(l))+'" alt="'+esc2(l.insignia)+'" loading="lazy">'; }).join('')+'</div></div>'+
     '</div>'+
