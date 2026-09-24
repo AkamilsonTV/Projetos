@@ -8856,11 +8856,23 @@ var cacadasCol = null;
        (`STATE.kantoPos` mudando), não só ao entrar numa cidade com
        Centro Pokémon. Só existe dentro de Kanto -- é o único lugar do
        jogo com coordenada de quadrado pra comparar. Ver
-       entrarNaPresencaDoAreaKanto mais abaixo pro desenho completo. */
+       entrarNaPresencaDoAreaKanto mais abaixo pro desenho completo.
+     - green_area_kanto_area_chat/{col_row} -- Cap. leva desta sessão
+       ("Toda área pode ter seu chat também"): MESMO padrão exato de
+       kantoCentroChatCol (1 doc por "lugar", mensagens sempre via
+       arrayUnion), só que a chave do doc é o PRÓPRIO quadrado
+       (`col+'_'+row`) em vez de `centroId` -- então funciona em
+       QUALQUER quadrado do mapa (rota, caverna, cidade sem Centro
+       Pokémon...), não só nas 10 cidades com Centro. Mesmo ciclo de
+       vida da presença por área (assina/desassina junto com
+       entrarNaPresencaDoAreaKanto/sairDaPresencaDoAreaKanto, sempre
+       reassinado no quadrado novo a cada passo). */
 var gruposCol = null;
 var kantoAreaPresencaCol = null;
+var kantoAreaChatCol = null;
 var unsubscribeGrupos = null;
 var unsubscribeKantoAreaPresenca = null;
+var unsubscribeKantoAreaChat = null;
 var kantoAreaHeartbeatTimer = null;
 var GRUPO_MAX_MEMBROS = 6; // Cap. leva desta sessão ("grupo máximo é de 6 jogadores")
 /* Cap. leva desta sessão ("Cria uma função no admin que me permita
@@ -8950,7 +8962,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false, gruposAtivos:[], grupoAberto:false, kantoAreaDiretorio:null, kantoAreaDiretorioCarregando:false, kantoAreaAberta:false };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false, gruposAtivos:[], grupoAberto:false, kantoAreaDiretorio:null, kantoAreaDiretorioCarregando:false, kantoAreaAberta:false, kantoAreaChat:null };
 
 function freshState(trainerName){
   return {
@@ -9567,6 +9579,7 @@ function bootApp(){
     cacadasCol = db.collection('green_area_cacadas_grupo');
     gruposCol = db.collection('green_area_grupos');
     kantoAreaPresencaCol = db.collection('green_area_kanto_area_presenca');
+    kantoAreaChatCol = db.collection('green_area_kanto_area_chat');
     configCol = db.collection('green_area_config');
     raidsCol = db.collection('green_area_raids');
     raidChatCol = db.collection('green_area_raid_chat');
@@ -13631,7 +13644,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false, gruposAtivos:[], grupoAberto:false, kantoAreaDiretorio:null, kantoAreaDiretorioCarregando:false, kantoAreaAberta:false };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false, gruposAtivos:[], grupoAberto:false, kantoAreaDiretorio:null, kantoAreaDiretorioCarregando:false, kantoAreaAberta:false, kantoAreaChat:null };
   render();
 };
 
@@ -13810,6 +13823,14 @@ function sairDaPresencaDoKantoCentro(){
    pra QUALQUER quadrado, não só cidade com Centro Pokémon. */
 var KANTO_AREA_PRESENCA_HEARTBEAT_MS = 25000;
 var KANTO_AREA_PRESENCA_TIMEOUT_MS = 75000;
+/* Chave do "lugar" pro chat por área (Cap. leva desta sessão: "Toda
+   área pode ter seu chat também") -- 1 quadrado = 1 doc de chat,
+   sempre derivado de `STATE.kantoPos` na hora (nunca guardado à
+   parte, pra nunca dessincronizar da posição real). */
+function kantoAreaChatKey(){
+  var kp = kantoPosAtual();
+  return kp.col+'_'+kp.row;
+}
 function entrarNaPresencaDoAreaKanto(){
   if(!STATE || !kantoAreaPresencaCol) return;
   var meuId = SESSION.currentDocId, meuNome = STATE.trainerName;
@@ -13844,14 +13865,26 @@ function entrarNaPresencaDoAreaKanto(){
     SESSION.error = 'Não consegui ver quem está nesse quadrado agora ('+erroFirestoreMsg(err)+').';
     render();
   });
+  /* Chat do quadrado atual -- MESMO padrão de entrarNaPresencaDoKantoCentro
+     com kantoCentroChatCol, só que reassinado a CADA passo (igual a
+     presença acima), já que a chave (col_row) muda a cada quadrado. */
+  if(kantoAreaChatCol){
+    if(unsubscribeKantoAreaChat) unsubscribeKantoAreaChat();
+    unsubscribeKantoAreaChat = kantoAreaChatCol.doc(kantoAreaChatKey()).onSnapshot(function(doc){
+      SESSION.kantoAreaChat = (doc.exists && doc.data().mensagens) || [];
+      render();
+    }, function(err){ SESSION.error = 'Não consegui carregar o chat deste quadrado ('+erroFirestoreMsg(err)+').'; render(); });
+  }
 }
 function sairDaPresencaDoAreaKanto(){
   if(kantoAreaHeartbeatTimer){ clearInterval(kantoAreaHeartbeatTimer); kantoAreaHeartbeatTimer=null; }
   if(unsubscribeKantoAreaPresenca){ unsubscribeKantoAreaPresenca(); unsubscribeKantoAreaPresenca=null; }
+  if(unsubscribeKantoAreaChat){ unsubscribeKantoAreaChat(); unsubscribeKantoAreaChat=null; }
   if(kantoAreaPresencaCol && SESSION.currentDocId){ kantoAreaPresencaCol.doc(SESSION.currentDocId).delete().catch(function(){}); }
   SESSION.kantoAreaDiretorio = null;
   SESSION.kantoAreaDiretorioCarregando = false;
   SESSION.kantoAreaAberta = false;
+  SESSION.kantoAreaChat = null;
 }
 /* Cap. leva desta sessão ("faça um botão maior... quando clicar ele
    abre o popup com os menus dentro" + "o chat já fica ativo... só
@@ -14072,6 +14105,30 @@ DT.gaSairDoGrupo = function(grupoId, outroDocId){
     else logAction('grupo','Removeu '+(g.membros[outroDocId]?g.membros[outroDocId].nome:outroDocId)+' do Grupo.');
     mutate();
   }).catch(function(err){ SESSION.error='Não consegui sair do Grupo ('+erroFirestoreMsg(err)+').'; render(); });
+};
+
+/* Chat de UM QUADRADO de Kanto (Cap. leva desta sessão -- "Toda área
+   pode ter seu chat também"): MESMO padrão exato de
+   DT.gaEnviarMensagemChatKantoCentro (chat por Centro Pokémon), só
+   que a chave do documento é `kantoAreaChatKey()` (col_row) em vez de
+   `centroId` -- por isso funciona em QUALQUER quadrado do mapa, não
+   só nas 10 cidades com Centro Pokémon. */
+var KANTO_AREA_CHAT_MAX = 50;
+var KANTO_AREA_CHAT_MSG_MAX_LEN = 300;
+DT.gaEnviarMensagemChatKantoArea = function(inputEl){
+  if(!STATE || !kantoAreaChatCol) return;
+  var texto = ((inputEl && inputEl.value)||'').trim();
+  if(!texto) return;
+  if(texto.length>KANTO_AREA_CHAT_MSG_MAX_LEN) texto = texto.slice(0,KANTO_AREA_CHAT_MSG_MAX_LEN);
+  var msg = { autor: STATE.trainerName, docId: SESSION.currentDocId, texto: texto, ts: Date.now() };
+  var key = kantoAreaChatKey();
+  kantoAreaChatCol.doc(key).set({ mensagens: firebase.firestore.FieldValue.arrayUnion(msg) }, {merge:true}).then(function(){
+    if(inputEl) inputEl.value='';
+    logAction('area', 'Mandou uma mensagem no chat do quadrado '+key+'.');
+    mutate();
+    var atuais = SESSION.kantoAreaChat||[];
+    if(atuais.length>KANTO_AREA_CHAT_MAX) kantoAreaChatCol.doc(key).update({ mensagens: atuais.slice(atuais.length-KANTO_AREA_CHAT_MAX) }).catch(function(){});
+  }).catch(function(err){ SESSION.error = 'Não consegui mandar a mensagem ('+erroFirestoreMsg(err)+').'; render(); });
 };
 
 /* ---- Chat público do Centro Pokémon ----
@@ -17362,6 +17419,25 @@ function kantoCentroChatConteudoHTML(loc){
       '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemChatKantoCentro(\''+loc.id+'\',document.getElementById(\'gaKantoCentroChatInput\'))">Enviar</button>'+
     '</div>';
 }
+/* MESMO padrão exato de kantoCentroChatConteudoHTML acima, só que pro
+   chat de QUALQUER quadrado (Cap. leva desta sessão: "Toda área pode
+   ter seu chat também") -- vive dentro do popup "Jogadores na Área"
+   (`kantoAreaPopupHTML`), já que é ali que o jogador vê quem mais
+   está no mesmo lugar pra conversar. */
+function kantoAreaChatConteudoHTML(){
+  return '<h4 class="ga-subhead">💬 Chat deste quadrado</h4>'+
+    '<div class="ga-chat-log ga-chat-log-fixo" id="gaKantoAreaChatLog">'+
+      (!SESSION.kantoAreaChat || !SESSION.kantoAreaChat.length
+        ? '<div class="ga-hint">Nenhuma mensagem ainda -- seja o primeiro a falar!</div>'
+        : SESSION.kantoAreaChat.slice(-KANTO_AREA_CHAT_MAX).map(function(m){
+            return '<div class="ga-chat-msg'+(m.docId===SESSION.currentDocId?' mine':'')+'"><strong>'+esc2(m.autor)+':</strong> '+esc2(m.texto)+'</div>';
+          }).join(''))+
+    '</div>'+
+    '<div class="ga-capqtd-row">'+
+      '<input type="text" maxlength="'+KANTO_AREA_CHAT_MSG_MAX_LEN+'" id="gaKantoAreaChatInput" placeholder="Escreva uma mensagem..." class="ga-chat-input" onkeydown="if(event.key===\'Enter\')DT.gaEnviarMensagemChatKantoArea(document.getElementById(\'gaKantoAreaChatInput\'))">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemChatKantoArea(document.getElementById(\'gaKantoAreaChatInput\'))">Enviar</button>'+
+    '</div>';
+}
 /* Cap. leva desta sessão ("faça um botão maior. No mercado deixe só o
    ícone... quando clicar ele abre o popup com os menus dentro"): mesmo
    tratamento do Centro Pokémon logo acima -- ícone grande sem texto,
@@ -18060,6 +18136,8 @@ function kantoAreaPopupHTML(){
     '<h2>👥 Jogadores na Área</h2>'+
     '<p class="ga-hint">Só mostra quem está no MESMO quadrado do mapa que você agora -- ande até perto de alguém pra aparecer aqui.'+(souHost?' Você é o líder do seu Grupo -- pode convidar quem estiver listado abaixo.':(meuGrupo?'':' Crie um Grupo (🏥 Centro Pokémon) pra poder convidar.'))+'</p>'+
     conteudo+
+    '<hr>'+
+    kantoAreaChatConteudoHTML()+
   '</div></div>';
 }
 function kantoScreenHTML(){
