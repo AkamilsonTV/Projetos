@@ -691,6 +691,21 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
 .ga-move-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; text-align:left; }
 .ga-move-row:last-child{ border-bottom:none; }
 .ga-move-atual{ min-width:170px; }
+/* Cap. leva desta sessão (menu Bolsa -- "deixa só 'usar' e alinha no
+   canto direito do popup, pra não ficar assim assimétrico" + "Aqui
+   também, em 'escolher' alinha no canto"): sem `justify-content`,
+   `.ga-move-row` deixa o botão colado no texto à esquerda -- como cada
+   linha (item ou Pokémon) tem um nome de tamanho diferente, os botões
+   ficavam em colunas tortas. `space-between` empurra o botão pro canto
+   direito do card em toda linha, alinhado de verdade -- só nas linhas
+   da Bolsa (`.ga-bolsa-linha`), sem mexer no visual do popup de escolha
+   de Movimento (Ether/PP Up) nem do popup de Movimentos, que reusam o
+   mesmo `.ga-move-row` sem essa reclamação. */
+.ga-move-row.ga-bolsa-linha{ justify-content:space-between; }
+/* "Aumenta um pouco a bolsa": um pouco mais larga que o `.ga-overlay-card`
+   padrão (360px), sem ir pro `.wide` (900px, feito pra conteúdo bem
+   maior como o popup de luta). */
+.ga-overlay-card.bolsa{ max-width:440px; }
 
 .ga-leader-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
 .ga-leader-row:last-child{ border-bottom:none; }
@@ -16992,11 +17007,11 @@ function kantoBolsaPopupHTML(){
             : (it.ppRestore || it.ppBoost)
               ? ' <span class="ga-hint">('+(p.moves||[]).map(function(m){ return esc2(m.name)+' '+kantoPPAtualDoMove(p,m)+'/'+ppMaxDoMovimento(m,p.ppBoost); }).join(', ')+')</span>'
               : '';
-          return '<div class="ga-move-row"><div class="ga-move-atual"><strong>'+esc2(kantoNomeExibicaoPoke(p))+'</strong> <span class="ga-hint">Nv. '+p.level+'</span>'+infoExtra+'</div>'+
-            '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoBolsaUsarEmPokemon(\''+p.id+'\')">Usar aqui</button>'+
+          return '<div class="ga-move-row ga-bolsa-linha"><div class="ga-move-atual"><strong>'+esc2(kantoNomeExibicaoPoke(p))+'</strong> <span class="ga-hint">Nv. '+p.level+'</span>'+infoExtra+'</div>'+
+            '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoBolsaUsarEmPokemon(\''+p.id+'\')">Usar</button>'+
           '</div>';
         }).join('');
-    return '<div class="ga-overlay" onclick="DT.gaKantoFecharBolsa()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    return '<div class="ga-overlay" onclick="DT.gaKantoFecharBolsa()"><div class="ga-overlay-card bolsa" onclick="event.stopPropagation()">'+
       '<button class="ga-overlay-close" onclick="DT.gaKantoFecharBolsa()">✕</button>'+
       '<h2>'+it.emoji+' '+esc2(it.nome)+'</h2>'+
       '<p class="ga-hint">'+esc2(it.desc||'')+'</p>'+
@@ -17008,12 +17023,12 @@ function kantoBolsaPopupHTML(){
   var itensComEstoque = GA_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0; });
   var linhasItem = itensComEstoque.length
     ? itensComEstoque.map(function(it){
-        return '<div class="ga-move-row"><div class="ga-move-atual"><strong>'+it.emoji+' '+esc2(it.nome)+'</strong> <span class="ga-hint">x'+STATE.itens[it.key]+'</span></div>'+
+        return '<div class="ga-move-row ga-bolsa-linha"><div class="ga-move-atual"><strong>'+it.emoji+' '+esc2(it.nome)+'</strong> <span class="ga-hint">x'+STATE.itens[it.key]+'</span></div>'+
           '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoBolsaEscolherItem(\''+it.key+'\')">Escolher</button>'+
         '</div>';
       }).join('')
     : '<p class="ga-hint">Você não tem nenhum item de uso em Pokémon no estoque.</p>';
-  return '<div class="ga-overlay" onclick="DT.gaKantoFecharBolsa()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+  return '<div class="ga-overlay" onclick="DT.gaKantoFecharBolsa()"><div class="ga-overlay-card bolsa" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaKantoFecharBolsa()">✕</button>'+
     '<h2>🎒 Bolsa</h2>'+
     '<p class="ga-hint">Escolha o item que quer usar.</p>'+
