@@ -9894,14 +9894,22 @@ function kantoPrimeiroApto(){
    dando Poção/Ether/Elixir normalmente (a FUNÇÃO fica), só o
    `silencioso=true` tira os avisos de "Sem X no estoque" quando não
    tem nada pra dar. */
-function kantoPokeCardLiderHTML(p, onclickJs, i){
+/* Cap. leva desta sessão ("Essa tela aqui é pra ficar igual o outro
+   que modificamos também. Pode usar o mesmo modelo, mas só com os
+   cards e as funções do card."): corpo do `.ga-team-card` fatorado
+   pra fora de `kantoPokeCardLiderHTML` -- tudo que os 2 cards de Kanto
+   que usam esse visual (picker de líder E "Estado da Equipe") têm em
+   comum (topbar/Pokébola clicável/sprite/Tipo/Felicidade/nameplate/
+   subrow/Exp/PV/status/Movimentos verticais com PP/Roles/Miscelânea)
+   mora AQUI, sem o `<div class="ga-team-card">` de fora (cada
+   chamador abre/fecha o próprio, porque cada um cola algo DIFERENTE
+   depois do corpo -- o picker cola o botão "Escolher", o Estado da
+   Equipe não cola nada extra). */
+function kantoTeamCardCorpoHTML(p, i){
   var sp = speciesByNum(p.num);
   var hpMax = kantoHpMaxDoPoke(p);
   var hpAtual = kantoHpAtualDoPoke(p);
   var desmaiado = hpAtual<=0;
-  var botao = desmaiado
-    ? '<button type="button" class="ga-btn-sm" disabled title="Desmaiado -- reanime com um Revive antes de lutar" style="width:100%;margin-top:8px;">💀 Desmaiado</button>'
-    : '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="'+onclickJs+'" style="width:100%;margin-top:8px;">Escolher</button>';
   var maxed = p.level>=NIVEL_MAX;
   var xpRowHTML = maxed
     ? '<div class="ga-team-xprow maxed"><span class="ga-team-nivel-inline">Nv. '+p.level+'</span></div>'
@@ -9939,8 +9947,7 @@ function kantoPokeCardLiderHTML(p, onclickJs, i){
   var pokeball = i===0
     ? '<span class="ga-team-pokeball" aria-hidden="true"></span>'
     : '<span class="ga-team-pokeball clicavel" role="button" tabindex="0" title="Tornar este o Pokémon Ativo (líder das lutas)" onclick="event.stopPropagation();DT.gaKantoTornarAtivo(\''+p.id+'\')"></span>';
-  return '<div class="ga-team-card'+(i===0?' ativo':'')+'">'+
-    '<div class="ga-team-topbar">'+pokeball+
+  return '<div class="ga-team-topbar">'+pokeball+
       '<div class="ga-team-vd" title="Vitórias / Derrotas desse Pokémon"><b class="v">'+(p.vitorias||0)+'V</b><span class="sep">|</span><b class="d">'+(p.derrotas||0)+'D</b></div>'+
     '</div>'+
     '<div class="ga-team-stage"><div class="ga-team-sprite-wrap"><img class="ga-team-sprite" src="'+spriteUrl(spriteNumEfetivo(p))+'" loading="lazy" alt=""></div></div>'+
@@ -9964,10 +9971,41 @@ function kantoPokeCardLiderHTML(p, onclickJs, i){
     '<div class="ga-team-roles-label">Miscelânea</div>'+
     '<div class="ga-team-itemcaixa">'+
       '<button type="button" class="ga-team-item" aria-label="Item" onclick="DT.gaAskItemSegurado(\''+p.id+'\')" title="'+(p.itemSegurado?'Item: '+esc2(heldItemByKey(p.itemSegurado).nome):'Nenhum item segurado')+'">🎒</button>'+
-    '</div>'+
+    '</div>';
+}
+function kantoPokeCardLiderHTML(p, onclickJs, i){
+  var desmaiado = kantoPokeEstaDesmaiado(p);
+  var botao = desmaiado
+    ? '<button type="button" class="ga-btn-sm" disabled title="Desmaiado -- reanime com um Revive antes de lutar" style="width:100%;margin-top:8px;">💀 Desmaiado</button>'
+    : '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="'+onclickJs+'" style="width:100%;margin-top:8px;">Escolher</button>';
+  return '<div class="ga-team-card'+(i===0?' ativo':'')+'">'+
+    kantoTeamCardCorpoHTML(p, i)+
     kantoItensCuraBotoesHTML(p, true)+
     kantoItensPPBotoesHTML(p, true, true)+
     botao+
+  '</div>';
+}
+/* Cap. leva desta sessão ("Essa tela aqui é pra ficar igual o outro
+   que modificamos também. Pode usar o mesmo modelo, mas só com os
+   cards e as funções do card."): "Estado da Equipe (Kanto)" trocou o
+   `.ga-poke-card` simples de antes pelo MESMO `.ga-team-card` do
+   picker de líder -- reaproveita literalmente o mesmo corpo
+   (`kantoTeamCardCorpoHTML`: sprite/Tipo/nameplate/Roles/Miscelânea/
+   Movimentos com PP ao lado/etc.), só sem o botão "Escolher" -- essa
+   tela não escolhe líder de luta nenhuma, é só consulta/cura.
+   DIFERENTE do picker de líder (que silencia os avisos de estoque
+   vazio, `silencioso=true`, porque lá são só ruído): AQUI os avisos
+   "Sem Poção/Revive/Ether/Elixir no estoque" continuam aparecendo
+   (`silencioso` de fora, `false`) -- essa tela É o checkup da Equipe,
+   então saber que falta item no estoque é informação útil de
+   propósito, exatamente como já era antes dessa leva. Só o resumo de
+   PP em texto avulso (`omitirResumo=true`) que saiu -- virou redundante
+   agora que o corpo do card já mostra o PP ao lado de cada Movimento. */
+function kantoEstadoEquipePokeCardHTML(p, i){
+  return '<div class="ga-team-card'+(i===0?' ativo':'')+'">'+
+    kantoTeamCardCorpoHTML(p, i)+
+    kantoItensCuraBotoesHTML(p)+
+    kantoItensPPBotoesHTML(p, false, true)+
   '</div>';
 }
 /* Cap. leva desta sessão ("o wooper tem que aparecer na versão certa
@@ -16731,16 +16769,13 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
   var esc = SESSION.kantoEscolhendoArea;
   if(esc && esc.ownerType===ownerType && esc.ownerId===ownerId){
     var area = kantoAreaById(esc.ownerType, esc.ownerId, esc.areaId);
-    out += '<div class="ga-kanto-lider"><p class="ga-hint">Escolha quem vai liderar essa luta:</p><div class="ga-poke-grid ga-poke-grid-kanto-lider">'+
-      STATE.party.map(function(p,i){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarCaptura('"+p.id+"')", i); }).join('')+
-      '</div>';
     /* Cap. leva desta sessão ("Colocar nos mapas a possibilidade de
        lutar mais de uma vez com pokémon selvagem. Aquele esquema
        parecido que fazemos na área de caça"): mesma ideia da Área de
        Captura -- só que lá o "líder" é sempre STATE.party[0] (o 🎯
        Ativo, convenção já usada em toda tela de Equipe); aqui reusa a
        MESMA convenção em vez de abrir um segundo picker só pra isso (o
-       picker de cima já serve pra escolher outro líder pra 1 luta só
+       picker de baixo já serve pra escolher outro líder pra 1 luta só
        -- pra sequência, sempre o Ativo). Fora em área de pesca
        (`metodo==='pesca'`): tem uma etapa de "fisgou ou não" antes de
        cada luta que a sequência automática não sabe lidar ainda.
@@ -16757,23 +16792,35 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
        com respiro de verdade entre eles) -- Cancelar sai do rodapé
        solto de sempre e entra nessa linha só quando a sequência
        automática está disponível (pesca/Equipe vazia continuam com o
-       Cancelar sozinho, como sempre foi). */
-    /* Cap. leva desta sessão ("mandar o pokémon que estiver apto a
+       Cancelar sozinho, como sempre foi).
+       Cap. leva desta sessão ("mandar o pokémon que estiver apto a
        lutar"): `leadAtivo` deixou de ser sempre `STATE.party[0]` --
        agora é `kantoPrimeiroApto()` (primeiro vivo na ordem da Equipe),
        já que aqui o 🎯 Ativo pode estar desmaiado de uma luta anterior
        (PV persiste no mapa de Kanto, diferente da Área de Captura
        normal). `STATE.party[0]` continua o Ativo de verdade -- só quem
-       essa tela OFERECE como líder automático muda. */
+       essa tela OFERECE como líder automático muda.
+       Cap. leva desta sessão ("Na hora da luta, os menus de lutar
+       várias vezes, em vez de ficar no fim da página, deixa no topo,
+       fica melhor"): o bloco de sequência automática subiu pra ANTES
+       do grid de "Escolha quem vai liderar" -- quem só quer repetir a
+       mesma área não precisa mais rolar a tela toda pra achar o botão.
+       `temSequencia` guarda se o bloco de cima foi mostrado (e já traz
+       o Cancelar embutido no `.ga-kanto-acoes-row`) -- só entra o
+       Cancelar avulso no fim quando ele NÃO apareceu (pesca/Equipe
+       vazia/Equipe inteira desmaiada), exatamente como antes, só que
+       relido na ordem nova. */
     var leadApto = kantoPrimeiroApto();
-    if(area && area.metodo!=='pesca' && leadApto){
+    var temSequencia = !!(area && area.metodo!=='pesca' && leadApto);
+    out += '<div class="ga-kanto-lider">';
+    if(temSequencia){
       var leadAtivo = leadApto;
       var custoSeq = kantoAreaCustoEnergia(area);
       var maxComEnergia = Math.floor((STATE.energy||0)/custoSeq);
       var inputId = 'gaKantoCapQtd_'+area.id;
       var qs = SESSION.kantoCapturaQtdSugerida;
       var qtdSugerida = (qs && qs.ownerType===esc.ownerType && qs.ownerId===esc.ownerId && qs.areaId===esc.areaId) ? qs.qtd : null;
-      out += '<div class="ga-kanto-lider"><p class="ga-hint">Lutar várias vezes seguidas (usa '+esc2(kantoNomeExibicaoPoke(leadAtivo))+', o 🎯 Ativo, como líder -- ⚡'+custoSeq+' por luta):</p>'+
+      out += '<p class="ga-hint">Lutar várias vezes seguidas (usa '+esc2(kantoNomeExibicaoPoke(leadAtivo))+', o 🎯 Ativo, como líder -- ⚡'+custoSeq+' por luta):</p>'+
         '<div class="ga-kanto-capqtd-row">'+
           '<input type="number" min="1" max="'+Math.max(1,maxComEnergia)+'" step="1" id="'+inputId+'"'+(qtdSugerida?' value="'+qtdSugerida+'"':'')+' placeholder="Qtd (máx '+maxComEnergia+')" title="Sua Energia atual trava a sequência em, no máximo, '+maxComEnergia+' luta(s) nessa área" class="ga-capqtd-input">'+
           '<button class="ga-btn-sm" onclick="DT.gaKantoIniciarLutasVarias(\''+leadAtivo.id+'\',\''+esc.ownerType+'\',\''+esc.ownerId+'\',\''+esc.areaId+'\',document.getElementById(\''+inputId+'\'))">🔁 Lutar Várias Vezes</button>'+
@@ -16782,10 +16829,14 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
           '<button class="ga-btn-sm" '+(maxComEnergia<1?'disabled':'')+' title="Sua Energia atual dá pra '+maxComEnergia+' luta(s) nessa área" onclick="DT.gaKantoIniciarLutasComTodaEnergia(\''+leadAtivo.id+'\',\''+esc.ownerType+'\',\''+esc.ownerId+'\',\''+esc.areaId+'\')">⚡ Usar Toda a Energia ('+maxComEnergia+' luta'+(maxComEnergia===1?'':'s')+')</button>'+
           '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button>'+
         '</div>'+
-      '</div>';
+        '<hr class="ga-rule">';
     } else if(area && area.metodo!=='pesca' && STATE.party.length && !leadApto){
-      out += '<div class="ga-kanto-lider"><p class="ga-hint">💀 Toda a sua Equipe está desmaiada -- cure com uma Poção/Revive (Bolsa ou Centro Pokémon) antes de lutar de novo.</p><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button></div>';
-    } else {
+      out += '<p class="ga-hint">💀 Toda a sua Equipe está desmaiada -- cure com uma Poção/Revive (Bolsa ou Centro Pokémon) antes de lutar de novo.</p>';
+    }
+    out += '<p class="ga-hint">Escolha quem vai liderar essa luta:</p><div class="ga-poke-grid ga-poke-grid-kanto-lider">'+
+      STATE.party.map(function(p,i){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarCaptura('"+p.id+"')", i); }).join('')+
+      '</div>';
+    if(!temSequencia){
       out += '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button>';
     }
     out += '</div>';
@@ -17410,17 +17461,6 @@ function kantoItensPPBotoesHTML(poke, silencioso, omitirResumo){
         }).join('')+'</div>'
       : (silencioso ? '' : '<div class="ga-hint">Sem Ether/Elixir no estoque.</div>'));
 }
-function kantoEstadoEquipePokeCardHTML(poke){
-  var sp = speciesByNum(poke.num);
-  var hpMax = kantoHpMaxDoPoke(poke);
-  var hpAtual = kantoHpAtualDoPoke(poke);
-  var desmaiado = hpAtual<=0;
-  var statusTag = poke.kantoStatus ? '<div class="ga-hint">🤒 '+STATUS_LABELS_PT[poke.kantoStatus.status]+'</div>' : '';
-  var desmaiadoTag = desmaiado ? '<div class="ga-hint" style="color:var(--danger);">💀 Desmaiado -- só um Revive reanima.</div>' : '';
-  return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(poke))+'" alt=""><div class="ga-poke-name">'+esc2(kantoNomeExibicaoPoke(poke))+'</div><div class="ga-poke-meta">Nv. '+poke.level+'</div>'+
-    hpBarHTML(hpAtual, hpMax)+desmaiadoTag+statusTag+kantoItensCuraBotoesHTML(poke)+kantoItensPPBotoesHTML(poke)+
-  '</div>';
-}
 /* Cap. leva desta sessão ("quero que deixe um icone grande de equipe e
    bolsa sem texto. Assim abrindo um popup do menu escolhido mostrando
    o estado da equipe ou os itens a depender do menu escolhido"): o
@@ -17441,8 +17481,14 @@ DT.gaKantoFecharEquipe = function(){
 };
 function kantoEquipePopupHTML(){
   if(!SESSION.kantoEquipeAberta) return '';
+  /* Cap. leva desta sessão ("Essa tela aqui é pra ficar igual o outro
+     que modificamos também"): reaproveita a MESMA classe de grid do
+     picker de líder (`.ga-poke-grid-kanto-lider`) -- 3 colunas fixas
+     (3+3 com a Equipe cheia) e o popup estreitando sozinho pra 700px
+     (`.ga-overlay-card.wide:has(.ga-poke-grid-kanto-lider)`, ver CSS),
+     de graça, sem duplicar nenhuma regra nova. */
   var conteudo = STATE.party.length
-    ? '<div class="ga-poke-grid">'+STATE.party.map(kantoEstadoEquipePokeCardHTML).join('')+'</div>'
+    ? '<div class="ga-poke-grid ga-poke-grid-kanto-lider">'+STATE.party.map(kantoEstadoEquipePokeCardHTML).join('')+'</div>'
     : '<p class="ga-hint">Você não tem nenhum Pokémon na Equipe.</p>';
   return '<div class="ga-overlay" onclick="DT.gaKantoFecharEquipe()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaKantoFecharEquipe()">✕</button>'+
