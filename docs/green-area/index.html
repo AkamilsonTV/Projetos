@@ -1002,6 +1002,8 @@ button.ga-kanto-tile.ativo{ box-shadow:0 0 0 2px var(--accent) inset; filter:bri
 .ga-kanto-info-empty span{ font-size:1.7rem; }
 .ga-kanto-info-head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
 .ga-kanto-info-ic{ width:38px; height:38px; border-radius:10px; background:var(--panel3); display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex:0 0 auto; }
+.ga-kanto-badge-icon{ width:34px; height:34px; image-rendering:pixelated; }
+.ga-kanto-info-ic .ga-kanto-badge-icon{ width:24px; height:24px; }
 .ga-kanto-gymbadge{ display:inline-flex; align-items:center; gap:5px; font-size:.76rem; font-weight:700; padding:4px 10px; border-radius:999px; color:#0d1c2b; background:var(--gold); margin-bottom:8px; }
 .ga-kanto-areas{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
 .ga-kanto-lider{ margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
@@ -16223,16 +16225,37 @@ DT.gaKantoIniciarTreinadorRota = function(leadId){
 function kantoRoutesTouching(locId){
   return KANTO_MAP.routes.filter(function(r){ return r.from===locId || r.to===locId; });
 }
+/* Insígnias reais dos 8 Ginásios de Kanto -- baixadas da Bulbapedia
+   (ícones da geração FireRed/LeafGreen, a mesma geração já usada pros
+   sprites de Treinador/Líder do mapa) e salvas localmente em
+   assets/badges/. Só o pino da CIDADE que tem Líder de Ginásio de
+   verdade troca o emoji genérico pela insígnia real -- o resto do
+   mapa (Rotas, cavernas, florestas, pontos sem Líder) continua com
+   emoji porque não existe ícone oficial pra eles. Isso é diferente do
+   sistema de "Mestre" (título inventado, mais abaixo no arquivo) que
+   reusa o sprite do Pokémon Ás porque não existe insígnia oficial pra
+   um título que não existe no jogo de verdade. */
+var GA_GYM_BADGE_ICON_KANTO = {
+  viridian:'FRLG_Earth_Badge.png', pewter:'FRLG_Boulder_Badge.png', cerulean:'FRLG_Cascade_Badge.png',
+  vermilion:'FRLG_Thunder_Badge.png', celadon:'FRLG_Rainbow_Badge.png', fuchsia:'FRLG_Soul_Badge.png',
+  saffron:'FRLG_Marsh_Badge.png', cinnabar:'FRLG_Volcano_Badge.png'
+};
+function kantoGymBadgeIconHTML(locId){
+  var arq = GA_GYM_BADGE_ICON_KANTO[locId];
+  return arq ? '<img class="ga-kanto-badge-icon" src="assets/badges/'+arq+'" alt="">' : '';
+}
 function kantoOwnerIcon(owner){
-  if(owner.kind==='gym') return GA_GYM_ICON_KANTO[owner.gymType] || '🎖️';
+  if(owner.kind==='gym') return kantoGymBadgeIconHTML(owner.id) || GA_GYM_ICON_KANTO[owner.gymType] || '🎖️';
   return owner.icon || '📍';
 }
 /* TEAM_CARD_TYPE_COLOR (mais abaixo no arquivo) só tem COR por Tipo,
    nunca ícone -- mapa pequeno só com os 8 Tipos que os Ginásios de
-   Kanto realmente usam, pro emoji do pino/badge. A COR do badge
-   reusa TEAM_CARD_TYPE_COLOR de verdade (chamado de dentro de uma
-   função, sempre depois do arquivo inteiro já ter carregado -- ordem
-   de declaração de `var` no arquivo não importa aqui). */
+   Kanto realmente usam, pro emoji do pino/badge (usado como reserva se
+   a insígnia real não carregar, e ainda usado sozinho no chip "Tipo X"
+   do cabeçalho do popup). A COR do badge reusa TEAM_CARD_TYPE_COLOR de
+   verdade (chamado de dentro de uma função, sempre depois do arquivo
+   inteiro já ter carregado -- ordem de declaração de `var` no arquivo
+   não importa aqui). */
 var GA_GYM_ICON_KANTO = { 'Rock':'🪨','Water':'💧','Electric':'⚡','Grass':'🌿','Poison':'☠️','Psychic':'🔮','Fire':'🔥','Ground':'🌍' };
 function kantoAreaBotaoHTML(ownerType, ownerId, area){
   var ativo = SESSION.kantoEscolhendoArea && SESSION.kantoEscolhendoArea.ownerType===ownerType && SESSION.kantoEscolhendoArea.ownerId===ownerId && SESSION.kantoEscolhendoArea.areaId===area.id;
