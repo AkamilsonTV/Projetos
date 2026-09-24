@@ -243,14 +243,18 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    o botão sempre gruda no fundo do card, alinhado com os vizinhos da
    mesma linha nunca importa quanto texto tem acima. */
 .ga-poke-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
-/* Cap. pedido do jogador ("Os 6 pokémon tem que ficar numa linha só,
-   está quebrando e ficando feio"): picker de líder do popup de área
-   de Kanto (ver kantoAreasListaHTML) -- cartões um pouco mais
-   estreitos (só AQUI, não mexe no `.ga-poke-grid` genérico usado em
-   Equipe/Caixa/Mestres) pra caber até 6 numa linha só dentro do
-   `.ga-overlay-card.wide` (900px) sem quebrar linha nem precisar
-   alargar o popup inteiro. */
-.ga-poke-grid-kanto-lider{ grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); }
+/* Cap. leva desta sessão ("esse card, ele pode ficar parecido com o
+   card que usamos no menu de Equipe"): picker de líder do popup de
+   área de Kanto (ver kantoAreasListaHTML) passou a reaproveitar o
+   `.ga-team-card` cheio (bem mais largo/alto que o `.ga-poke-card`
+   simples de antes) -- por isso a coluna mínima subiu de 130px pra
+   200px (só AQUI, não mexe no `.ga-poke-grid` genérico usado em
+   Equipe/Caixa/Mestres). Com o card novo não cabem mais 6 numa linha
+   só dentro do `.ga-overlay-card.wide` (900px) -- e forçar isso exigiria
+   um popup quase do tamanho da tela inteira -- então agora quebra em 3-4
+   colunas por linha, de forma organizada (grid centralizado, sem sobra
+   torta como a versão antiga tinha ao quebrar). */
+.ga-poke-grid-kanto-lider{ grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); justify-content:center; }
 /* Cap. leva desta sessão: "os cards tem que ser sempre do mesmo
    tamanho, caso não caiba na tela ele não tem que diminuir, e sim
    ativar uma rolagem lateral" + depois "o padrão tem que ser esse [6
@@ -343,6 +347,19 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-team-move{ position:relative; border:none; border-radius:11px; padding:0; height:34px; cursor:pointer; overflow:hidden; -webkit-tap-highlight-color:transparent; }
 .ga-team-move-fill{ position:absolute; inset:0; opacity:.85; }
 .ga-team-move-label{ position:relative; display:flex; align-items:center; justify-content:center; height:100%; padding:0 6px; font-size:.7rem; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(0,0,0,.22)); }
+/* Cap. leva desta sessão ("com as habilidades uma embaixo da outra com
+   a quantidade de PP ao lado de cada uma delas"): variante vertical do
+   `.ga-team-moves`/`.ga-team-move` -- pro picker de líder de Kanto, que
+   reaproveita o resto do `.ga-team-card` mas troca a grade 2x2 por 4
+   linhas empilhadas (1 Movimento cada), com nome à esquerda e PP à
+   direita na MESMA linha (`.ga-team-move-label` vira `space-between`
+   só aqui, sem mexer no `justify-content:center` da grade 2x2 normal
+   usada na Equipe). */
+.ga-team-moves.vertical{ grid-template-columns:1fr; }
+.ga-team-move.vertical{ height:30px; }
+.ga-team-move.vertical .ga-team-move-label{ justify-content:space-between; padding:0 10px; gap:8px; }
+.ga-team-move-nome{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ga-team-move-pp{ flex:0 0 auto; font-size:.62rem; font-weight:700; opacity:.85; }
 .ga-team-roles-label{ text-align:center; font-size:.64rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim); margin-top:6px; }
 .ga-team-roles{ display:flex; justify-content:center; align-items:center; gap:8px; margin-top:2px; }
 /* Cap. leva desta sessão ("Os botões de role e miscelânea podem ter a
@@ -9826,15 +9843,98 @@ function kantoPokeEstaDesmaiado(poke){ return kantoHpAtualDoPoke(poke)<=0; }
    abrir o widget "Estado da Equipe" à parte. Usar um item aqui
    re-renderiza o MESMO popup (PV/PP atualizados na hora, inclusive
    destravando o botão "Escolher" se acabou de reanimar). */
-function kantoPokeCardLiderHTML(p, onclickJs){
+/* Cap. leva desta sessão ("esse card, ele pode ficar parecido com o
+   card que usamos no menu de Equipe. Mas com as habilidades uma
+   embaixo da outra com a quantidade de PP ao lado de cada uma delas.
+   Tirando só a box e deixando o restante das coisas ... tira esses
+   avisos de PP não é pra tá, a função fica mas os avisos saem"):
+   reaproveita o MESMO visual/estrutura do `.ga-team-card`
+   (`pokeCardEquipeHTML`, já usado na Equipe -- e já reaproveitado
+   parcialmente em `kantoInicialPreviewCardHTML`) pro escolhedor de
+   líder de Kanto -- só troca a grade 2x2 de Movimentos por uma lista
+   vertical com o PP atual/máximo ao lado de cada um (o resumo de PP em
+   texto avulso saiu, virou redundante), e tira só o botão "📦 Mandar
+   pra Caixa" da linha de Miscelânea (não faz sentido mandar pra Caixa
+   quem se está escolhendo pra lutar) -- todo o resto (Papel de
+   Combate, Item Segurado, apelido/favorito, V/D, Felicidade) fica
+   igual ao card da Equipe. Barra de HP/Status entra logo depois do
+   Nível, já que aqui -- diferente da Equipe -- o HP decide quem pode
+   lutar. `kantoItensCuraBotoesHTML`/`kantoItensPPBotoesHTML` continuam
+   dando Poção/Ether/Elixir normalmente (a FUNÇÃO fica), só o
+   `silencioso=true` tira os avisos de "Sem X no estoque" quando não
+   tem nada pra dar. */
+function kantoPokeCardLiderHTML(p, onclickJs, i){
   var sp = speciesByNum(p.num);
   var hpMax = kantoHpMaxDoPoke(p);
   var hpAtual = kantoHpAtualDoPoke(p);
   var desmaiado = hpAtual<=0;
   var botao = desmaiado
-    ? '<button class="ga-btn-sm" disabled title="Desmaiado -- reanime com um Revive antes de lutar">💀 Desmaiado</button>'
-    : '<button class="ga-btn-sm ga-btn-primary" onclick="'+onclickJs+'">Escolher</button>';
-  return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div>'+hpBarHTML(hpAtual, hpMax)+kantoItensCuraBotoesHTML(p)+kantoItensPPBotoesHTML(p)+botao+'</div>';
+    ? '<button type="button" class="ga-btn-sm" disabled title="Desmaiado -- reanime com um Revive antes de lutar" style="width:100%;margin-top:8px;">💀 Desmaiado</button>'
+    : '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="'+onclickJs+'" style="width:100%;margin-top:8px;">Escolher</button>';
+  var maxed = p.level>=NIVEL_MAX;
+  var xpRowHTML = maxed
+    ? '<div class="ga-team-xprow maxed"><span class="ga-team-nivel-inline">Nv. '+p.level+'</span></div>'
+    : '<div class="ga-team-xprow"><span class="ga-team-exp">Exp: '+(p.xpNivel||0)+'/'+xpParaProximoNivel(p,p.level)+'</span><span class="ga-team-nivel-inline">Nv. '+p.level+'</span></div>';
+  var lapis = p.apelido
+    ? ' <span class="ga-apelido-lapis travado" title="Apelido já definido -- travado por enquanto">✏️</span>'
+    : ' <span class="ga-apelido-lapis" title="Definir apelido (só uma vez)" onclick="event.stopPropagation();DT.gaAskApelido(\''+p.id+'\')">✏️</span>';
+  var estrela = ' <span class="ga-favorito-estrela'+(p.favorito?' on':'')+'" title="'+(p.favorito?'Favorito -- clique pra tirar':'Marcar como favorito')+'" onclick="event.stopPropagation();DT.gaToggleFavorito(\''+p.id+'\')">'+(p.favorito?'⭐':'☆')+'</span>';
+  var moves = p.moves||[];
+  var movesHTML = [0,1,2,3].map(function(idx){
+    var m = moves[idx];
+    if(!m) return '<div class="ga-team-move vertical" title="Espaço de Movimento vazio"><span class="ga-team-move-fill" style="background:#3a4750;"></span><span class="ga-team-move-label"><span class="ga-team-move-nome">—</span></span></div>';
+    var mTipo = moveTipoAtual(m);
+    var cor = TEAM_CARD_TYPE_COLOR[mTipo]||'#8fb3a2';
+    var ppAtual = kantoPPAtualDoMove(p, m);
+    var ppMax = ppMaxDoMovimento(m, p.ppBoost);
+    return '<button type="button" class="ga-team-move vertical" title="'+esc2(m.name+' ('+mTipo+' · '+m.categoria+')')+'" onclick="DT.gaOpenMoves(\''+p.id+'\','+idx+')">'+
+      '<span class="ga-team-move-fill" style="background:'+cor+';"></span>'+
+      '<span class="ga-team-move-label"><span class="ga-team-move-nome">'+esc2(m.name)+'</span><span class="ga-team-move-pp">PP '+ppAtual+'/'+ppMax+'</span></span>'+
+    '</button>';
+  }).join('');
+  var papelAtual = p.papelCombate||'ataque';
+  var rolesHTML = ROLES_COMBATE.map(function(papel){
+    var ativo = papelAtual===papel;
+    var icone = PAPEL_COMBATE_LABEL[papel].split(' ')[0];
+    return '<button type="button" class="ga-team-role ga-team-role-'+papel+(ativo?' ativo':'')+'" title="'+esc2(TOOLTIPS.papelCombate)+' -- '+esc2(PAPEL_COMBATE_LABEL[papel])+'" aria-label="'+esc2(PAPEL_COMBATE_LABEL[papel])+'" aria-pressed="'+ativo+'" onclick="DT.gaSetPapelCombate(\''+p.id+'\',\''+papel+'\')">'+icone+'</button>';
+  }).join('');
+  var tiposObj = tiposEfetivos(p);
+  var tiposArr = [tiposObj.tipo1].concat(tiposObj.tipo2 ? [tiposObj.tipo2] : []);
+  var tiposHTML = tiposArr.map(function(t){
+    return '<span class="ga-team-type-pill" style="background:'+(TEAM_CARD_TYPE_COLOR[t]||'#8fb3a2')+';">'+esc2(t)+'</span>';
+  }).join('');
+  var statusTag = p.kantoStatus ? '<div class="ga-hint">🤒 '+STATUS_LABELS_PT[p.kantoStatus.status]+'</div>' : '';
+  var desmaiadoTag = desmaiado ? '<div class="ga-hint" style="color:var(--danger);">💀 Desmaiado -- só um Revive reanima.</div>' : '';
+  return '<div class="ga-team-card'+(i===0?' ativo':'')+'">'+
+    '<div class="ga-team-topbar"><span class="ga-team-pokeball" aria-hidden="true"'+(i===0?'':' style="visibility:hidden;"')+'></span>'+
+      '<div class="ga-team-vd" title="Vitórias / Derrotas desse Pokémon"><b class="v">'+(p.vitorias||0)+'V</b><span class="sep">|</span><b class="d">'+(p.derrotas||0)+'D</b></div>'+
+    '</div>'+
+    '<div class="ga-team-stage"><div class="ga-team-sprite-wrap"><img class="ga-team-sprite" src="'+spriteUrl(spriteNumEfetivo(p))+'" loading="lazy" alt=""></div></div>'+
+    '<div class="ga-team-typerow">'+tiposHTML+
+      '<span class="ga-team-felic" title="Felicidade -- sobe com Nível/vitória, desce ao desmaiar; algumas evoluções dependem dela">❤️ '+(p.felicidade!=null?p.felicidade:FELICIDADE_INICIAL)+'/'+FELICIDADE_MAX+'</span>'+
+    '</div>'+
+    '<div class="ga-team-nameplate">'+
+      (p.deRaid ? '<span class="ga-raid-badge" title="Capturado numa Raid">R</span>' : '')+
+      (p.deAlfa ? '<span class="ga-alfa-badge" title="Capturado de um Alfa (Caçada em Grupo)">A</span>' : '')+
+      '<span class="ga-team-dexnum">#'+String(p.num).padStart(4,'0')+'</span>'+
+      '<span class="ga-team-nome">'+esc2((p.apelido||sp.name).toUpperCase())+'</span>'+
+      lapis+estrela+
+    '</div>'+
+    '<div class="ga-team-subrow"><span class="ga-team-habilidade">'+esc2(p.habilidade||'—')+'</span><span class="ga-team-growthrate" title="Growth Rate -- velocidade de subida de Nível desta Espécie">'+esc2(GROWTH_RATE_LABEL[sp.growthRate]||'—')+'</span><span class="ga-team-natureza">'+esc2(p.natureza||'—')+'</span></div>'+
+    xpRowHTML+
+    hpBarHTML(hpAtual, hpMax)+
+    desmaiadoTag+statusTag+
+    '<div class="ga-team-moves vertical">'+movesHTML+'</div>'+
+    '<div class="ga-team-roles-label">Roles</div>'+
+    '<div class="ga-team-roles">'+rolesHTML+'</div>'+
+    '<div class="ga-team-roles-label">Miscelânea</div>'+
+    '<div class="ga-team-itemcaixa">'+
+      '<button type="button" class="ga-team-item" aria-label="Item" onclick="DT.gaAskItemSegurado(\''+p.id+'\')" title="'+(p.itemSegurado?'Item: '+esc2(heldItemByKey(p.itemSegurado).nome):'Nenhum item segurado')+'">🎒</button>'+
+    '</div>'+
+    kantoItensCuraBotoesHTML(p, true)+
+    kantoItensPPBotoesHTML(p, true, true)+
+    botao+
+  '</div>';
 }
 /* Cap. leva desta sessão ("o wooper tem que aparecer na versão certa
    pra o jogador saber"): `forma` opcional -- já vem PRONTA de
@@ -16559,7 +16659,7 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
   if(esc && esc.ownerType===ownerType && esc.ownerId===ownerId){
     var area = kantoAreaById(esc.ownerType, esc.ownerId, esc.areaId);
     out += '<div class="ga-kanto-lider"><p class="ga-hint">Escolha quem vai liderar essa luta:</p><div class="ga-poke-grid ga-poke-grid-kanto-lider">'+
-      STATE.party.map(function(p){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarCaptura('"+p.id+"')"); }).join('')+
+      STATE.party.map(function(p,i){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarCaptura('"+p.id+"')", i); }).join('')+
       '</div>';
     /* Cap. leva desta sessão ("Colocar nos mapas a possibilidade de
        lutar mais de uma vez com pokémon selvagem. Aquele esquema
@@ -16666,7 +16766,7 @@ function kantoDesafioLiderViewHTML(){
       '</div>';
   } else {
     out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid">'+
-      STATE.party.map(function(p){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarGinasio('"+p.id+"')"); }).join('')+
+      STATE.party.map(function(p,i){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarGinasio('"+p.id+"')", i); }).join('')+
       '</div>';
   }
   return out;
@@ -16903,7 +17003,7 @@ function kantoDesafioTreinadorViewHTML(){
       '</div>';
   } else {
     out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid">'+
-      STATE.party.map(function(p){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarTreinadorRota('"+p.id+"')"); }).join('')+
+      STATE.party.map(function(p,i){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarTreinadorRota('"+p.id+"')", i); }).join('')+
       '</div>';
   }
   return out;
@@ -17193,7 +17293,7 @@ function kantoPPAtualDoMove(poke, move){
    Captura/Rota, Ginásio, Treinador de Rota), pra nunca duplicar a
    regra de quem pode usar o quê (Poção nunca em quem desmaiou, Revive
    só em quem desmaiou). */
-function kantoItensCuraBotoesHTML(poke){
+function kantoItensCuraBotoesHTML(poke, silencioso){
   var hpMax = kantoHpMaxDoPoke(poke);
   var hpAtual = kantoHpAtualDoPoke(poke);
   if(hpAtual>=hpMax) return '';
@@ -17206,7 +17306,7 @@ function kantoItensCuraBotoesHTML(poke){
     ? '<div class="ga-btn-row">'+itensCura.map(function(it){
         return '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoUsarPocao(\''+poke.id+'\',\''+it.key+'\')">'+it.emoji+' '+it.nome+'</button>';
       }).join('')+'</div>'
-    : '<div class="ga-hint">'+(desmaiado?'Sem Revive no estoque.':'Sem Poção no estoque.')+'</div>';
+    : (silencioso ? '' : '<div class="ga-hint">'+(desmaiado?'Sem Revive no estoque.':'Sem Poção no estoque.')+'</div>');
 }
 /* Ether/Max Ether/Elixir/Max Elixir -- mesma extração, mesmo motivo.
    Só aparece quando faz alguma diferença (pelo menos 1 Movimento com
@@ -17214,18 +17314,18 @@ function kantoItensCuraBotoesHTML(poke){
    (`targetOneMove:true`) abrem o popup de escolha de Movimento;
    Elixir/Max Elixir aplicam direto nos 4 de uma vez
    (`DT.gaKantoUsarPP(...,null)`). */
-function kantoItensPPBotoesHTML(poke){
+function kantoItensPPBotoesHTML(poke, silencioso, omitirResumo){
   var movesPP = (poke.moves||[]).map(function(m){ return { m:m, atual:kantoPPAtualDoMove(poke,m), max:ppMaxDoMovimento(m, poke.ppBoost) }; });
   if(!movesPP.some(function(x){ return x.atual<x.max; })) return '';
   var itensPP = GA_ITEMS.filter(function(it){ return it.ppRestore && (STATE.itens[it.key]||0)>0; });
-  return '<div class="ga-hint">PP: '+movesPP.map(function(x){ return esc2(x.m.name)+' '+x.atual+'/'+x.max; }).join(' · ')+'</div>'+
+  return (omitirResumo ? '' : '<div class="ga-hint">PP: '+movesPP.map(function(x){ return esc2(x.m.name)+' '+x.atual+'/'+x.max; }).join(' · ')+'</div>')+
     (itensPP.length
       ? '<div class="ga-btn-row">'+itensPP.map(function(it){
           return it.targetOneMove
             ? '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoEscolherMovePP(\''+poke.id+'\',\''+it.key+'\')">'+it.emoji+' '+it.nome+'</button>'
             : '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoUsarPP(\''+poke.id+'\',\''+it.key+'\',null)">'+it.emoji+' '+it.nome+'</button>';
         }).join('')+'</div>'
-      : '<div class="ga-hint">Sem Ether/Elixir no estoque.</div>');
+      : (silencioso ? '' : '<div class="ga-hint">Sem Ether/Elixir no estoque.</div>'));
 }
 function kantoEstadoEquipePokeCardHTML(poke){
   var sp = speciesByNum(poke.num);
