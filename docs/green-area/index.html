@@ -244,17 +244,20 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
    mesma linha nunca importa quanto texto tem acima. */
 .ga-poke-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
 /* Cap. leva desta sessão ("esse card, ele pode ficar parecido com o
-   card que usamos no menu de Equipe"): picker de líder do popup de
-   área de Kanto (ver kantoAreasListaHTML) passou a reaproveitar o
-   `.ga-team-card` cheio (bem mais largo/alto que o `.ga-poke-card`
-   simples de antes) -- por isso a coluna mínima subiu de 130px pra
-   200px (só AQUI, não mexe no `.ga-poke-grid` genérico usado em
-   Equipe/Caixa/Mestres). Com o card novo não cabem mais 6 numa linha
-   só dentro do `.ga-overlay-card.wide` (900px) -- e forçar isso exigiria
-   um popup quase do tamanho da tela inteira -- então agora quebra em 3-4
-   colunas por linha, de forma organizada (grid centralizado, sem sobra
-   torta como a versão antiga tinha ao quebrar). */
-.ga-poke-grid-kanto-lider{ grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); justify-content:center; }
+   card que usamos no menu de Equipe" ... depois "Coloca 3 em cima e 3
+   embaixo que aí fica melhor. E aí deixa o pop menos largo"): picker de
+   líder do popup de área de Kanto (ver kantoAreasListaHTML) passou a
+   reaproveitar o `.ga-team-card` cheio (bem mais largo/alto que o
+   `.ga-poke-card` simples de antes, só AQUI, não mexe no `.ga-poke-grid`
+   genérico usado em Equipe/Caixa/Mestres) -- 3 colunas FIXAS (não
+   `auto-fill`, pra sempre fechar 3+3 com os 6 da Equipe em vez de
+   deixar o navegador decidir 3/4/5 por linha conforme a largura) e o
+   `:has()` logo abaixo estreita só ESSE popup (os outros popups de
+   Kanto -- Rota/Ginásio/Mercado etc. -- continuam nos 900px de sempre,
+   já que a MESMA casca `.ga-overlay-card.wide` é compartilhada por
+   todos eles). */
+.ga-poke-grid-kanto-lider{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+.ga-overlay-card.wide:has(.ga-poke-grid-kanto-lider){ max-width:700px; }
 /* Cap. leva desta sessão: "os cards tem que ser sempre do mesmo
    tamanho, caso não caiba na tela ele não tem que diminuir, e sim
    ativar uma rolagem lateral" + depois "o padrão tem que ser esse [6
@@ -299,6 +302,15 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-team-topbar{ display:flex; align-items:center; justify-content:space-between; }
 .ga-team-pokeball{ width:20px; height:20px; border-radius:50%; background:linear-gradient(180deg,#eef3f6 0%,#eef3f6 48%,#1c2a33 48%,#1c2a33 52%,#ef4444 52%,#ef4444 100%); box-shadow:0 0 0 2px #0a1420; opacity:.85; position:relative; }
 .ga-team-pokeball::after{ content:''; position:absolute; inset:6px; border-radius:50%; background:#0a1420; box-shadow:0 0 0 2px #eef3f6; }
+/* Cap. leva desta sessão ("E me permita trocar o lider nessa
+   janela"): no picker de líder de Kanto (`kantoPokeCardLiderHTML`) a
+   Pokébola do topo deixou de ser só decorativa nos cards que NÃO são o
+   Ativo -- vira um botão (opaca, com contorno tracejado pra diferenciar
+   da Pokébola cheia do Ativo) que manda esse Pokémon pro topo da
+   Equipe (`DT.gaKantoTornarAtivo`). Na Equipe normal a Pokébola
+   continua só decorativa (reordenar lá já tem arrastar/⬅️➡️). */
+.ga-team-pokeball.clicavel{ opacity:.4; cursor:pointer; border:1px dashed rgba(255,255,255,.5); -webkit-tap-highlight-color:transparent; }
+.ga-team-pokeball.clicavel:hover{ opacity:.85; }
 .ga-team-vd{ display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:10px; background:linear-gradient(160deg,#2d5a86,#1a3550); box-shadow:0 3px 8px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.16); font-weight:800; font-size:.72rem; letter-spacing:.2px; line-height:1; }
 .ga-team-vd .v{ color:#7cf0a8; } .ga-team-vd .d{ color:#ff8080; } .ga-team-vd .sep{ opacity:.35; color:#eaf6ff; }
 .ga-team-stage{ display:flex; justify-content:center; padding:2px 0 4px; }
@@ -9905,8 +9917,11 @@ function kantoPokeCardLiderHTML(p, onclickJs, i){
   }).join('');
   var statusTag = p.kantoStatus ? '<div class="ga-hint">🤒 '+STATUS_LABELS_PT[p.kantoStatus.status]+'</div>' : '';
   var desmaiadoTag = desmaiado ? '<div class="ga-hint" style="color:var(--danger);">💀 Desmaiado -- só um Revive reanima.</div>' : '';
+  var pokeball = i===0
+    ? '<span class="ga-team-pokeball" aria-hidden="true"></span>'
+    : '<span class="ga-team-pokeball clicavel" role="button" tabindex="0" title="Tornar este o Pokémon Ativo (líder das lutas)" onclick="event.stopPropagation();DT.gaKantoTornarAtivo(\''+p.id+'\')"></span>';
   return '<div class="ga-team-card'+(i===0?' ativo':'')+'">'+
-    '<div class="ga-team-topbar"><span class="ga-team-pokeball" aria-hidden="true"'+(i===0?'':' style="visibility:hidden;"')+'></span>'+
+    '<div class="ga-team-topbar">'+pokeball+
       '<div class="ga-team-vd" title="Vitórias / Derrotas desse Pokémon"><b class="v">'+(p.vitorias||0)+'V</b><span class="sep">|</span><b class="d">'+(p.derrotas||0)+'D</b></div>'+
     '</div>'+
     '<div class="ga-team-stage"><div class="ga-team-sprite-wrap"><img class="ga-team-sprite" src="'+spriteUrl(spriteNumEfetivo(p))+'" loading="lazy" alt=""></div></div>'+
@@ -20685,6 +20700,20 @@ DT.gaMoverEquipe = function(pid, direcao){
   STATE.party[idx] = STATE.party[novoIdx];
   STATE.party[novoIdx] = tmp;
   logAction('equipe', 'Reordenou a Equipe.');
+  mutate();
+};
+/* Cap. leva desta sessão ("E me permita trocar o lider nessa janela"):
+   picker de líder de Kanto (`kantoPokeCardLiderHTML`) precisa trocar o
+   Pokémon Ativo (`STATE.party[0]`, o líder da sequência de lutas) SEM
+   sair do popup pra ir na aba Equipe -- manda o escolhido direto pro
+   topo da Equipe (`splice`+`unshift`, mais direto que chamar
+   `DT.gaMoverEquipe` repetidas vezes pra "andar" posição por posição). */
+DT.gaKantoTornarAtivo = function(pid){
+  var idx = STATE.party.map(function(p){ return p.id; }).indexOf(pid);
+  if(idx<=0) return;
+  var p = STATE.party.splice(idx,1)[0];
+  STATE.party.unshift(p);
+  logAction('equipe', 'Trocou o Pokémon Ativo pra '+(p.apelido||speciesByNum(p.num).name)+' (pelo picker de líder de Kanto).');
   mutate();
 };
 DT.gaArrastarEquipe = function(pidArrastado, pidAlvo){
