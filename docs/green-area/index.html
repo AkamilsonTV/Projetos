@@ -144,6 +144,14 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-banner.err{ background:#3a1414; border:1px solid var(--danger); color:#fecaca; }
 .ga-banner.ok{ background:#0f2e1c; border:1px solid var(--accent); color:#bbf7d0; }
 .ga-banner button{ background:transparent; border:1px solid currentColor; color:inherit; border-radius:6px; padding:2px 8px; font-size:.72rem; }
+/* Cap. pedido do jogador ("Avisos... podem ficar apenas 5 segundos e
+   depois sairem suavemente"): `animation` (não `transition`) porque
+   render() troca o innerHTML inteiro -- o banner "saindo" já NASCE com
+   essa classe, sem nenhum frame anterior pra transicionar A PARTIR
+   dele, então só uma animação com keyframe próprio consegue sumir
+   suave mesmo assim (ver gaAgendarBannerAutoDismiss). */
+.ga-banner.ga-saindo{ animation:gaBannerSaida .4s ease forwards; }
+@keyframes gaBannerSaida{ from{ opacity:1; transform:translateY(0); } to{ opacity:0; transform:translateY(-6px); } }
 
 .ga-card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 28px rgba(0,0,0,.28); }
 .ga-hint{ color:var(--ink-dim); font-size:.76rem; }
@@ -9202,7 +9210,7 @@ function attachSaveListener(docId){
        vez que esse snapshot dispara depois de uma entrada de verdade,
        nunca nos disparos seguintes causados por qualquer outra
        mutação salva). */
-    if(SESSION.screen==='login'){ SESSION.screen = 'hub'; logAction('conta', 'Entrou na conta.'); catchUpCaptureSequence(); queueSave(); }
+    if(SESSION.screen==='login'){ SESSION.screen = 'hub'; logAction('conta', 'Entrou na conta.'); catchUpCaptureSequence(); catchUpKantoCaptureSequence(); queueSave(); }
     render();
   }, function(err){
     SESSION.error = 'Não consegui conectar ao banco de dados. Verifique sua internet e recarregue a página. (' + (err && err.message ? err.message : 'erro desconhecido') + ')';
@@ -11066,6 +11074,44 @@ function grantXpAndMaybeEvolve(b, partyId, xpGain){
       if(b.hp[key]!==undefined) b.hp[key] = Math.min(newMax, b.hp[key] + (newMax-oldMax));
     }
     b.log.push('🌟 '+(p.apelido||speciesByNum(p.num).name)+' subiu para o Nível '+p.level+'!');
+    /* Cap. leva desta sessão ("Em KANTO o pokémon ao subir de nível não
+       aprendeu moves... esse aprendizado ou troca (no ato da evolução
+       ou passagem de Nível) é grátis... o popup tem que aparecer
+       perguntando se deseja trocar [se já tiver 4 Movimentos]... caso
+       tenha espaço livre o popup só informa que o pokémon aprendeu o
+       move"): Movimento de NÍVEL nunca foi ensinado sozinho em lugar
+       NENHUM do jogo até esta leva (só o golpe de EVOLUÇÃO já era
+       automático/grátis, ver ensinarGolpesDeEvolucao logo abaixo) --
+       agora sim, igual o jogo oficial: cada Nível cruzado aqui checa
+       LEARNSETS[*].levelup da Espécie ATUAL (antes da evolução, que
+       pode trocar a Espécie) e, pra cada golpe novo daquele Nível
+       exato ainda não conhecido, ensina direto se sobrar espaço (só
+       INFORMA, sem perguntar -- mesmo padrão real dos jogos) ou
+       enfileira a pergunta de troca (MESMA fila/popup do golpe de
+       evolução -- `enfileirarGolpesTrocaEvolucao`/`pendingTrocarGolpeEvolucao`
+       -- só o `origem:'nivel'` muda o texto do popup) se a Equipe já
+       estiver com 4 Movimentos. Sempre GRÁTIS -- só a troca MANUAL
+       fora de luta (tela Equipe/Movimentos) continua custando Energia
+       (`DT.gaTrocarMovimento`, intocado). Escopo desta leva: só o
+       caminho de luta normal (grantXpAndMaybeEvolve, usado por
+       Área de Captura/Kanto/Caça em Grupo/Treinador -- todo mundo que
+       passa por aqui); grantXpSemPausarEvolucao (recompensa de Raid
+       FORA de luta, sem `b`/log pra escrever) fica de fora por ora. */
+    var lsNivel = learnsetForma(p.num, p.forma);
+    (lsNivel && lsNivel.levelup || []).forEach(function(pair){
+      if(pair[1]!==p.level) return;
+      if((p.moves||[]).some(function(m){ return m.name===pair[0]; })) return;
+      if((p.moves||[]).length<4){
+        var moveObj = findMoveByName(pair[0]);
+        if(moveObj){
+          p.moves[p.moves.length] = moveObj;
+          b.log.push('📖 '+(p.apelido||speciesByNum(p.num).name)+' aprendeu '+moveObj.name+' (Movimento de Nível, grátis)!');
+          logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' aprendeu '+moveObj.name+' (Movimento de Nível, grátis).');
+        }
+      } else {
+        enfileirarGolpesTrocaEvolucao(b, p.id, [pair[0]], 'nivel');
+      }
+    });
     var evoOpt = eligibleEvolution(p);
     if(evoOpt){
       b.pendingEvolution = { partyId: p.id, fromNum: p.num, toNum: evoOpt.to, atLevel: p.level };
@@ -11122,16 +11168,25 @@ function grantXpSemPausarEvolucao(p, xpGain){
    tomou o lugar. Chamada depois de CADA resposta (evolução/aprender
    Movimento/trocar golpe) -- pra luta normal (sem fila, ver init de
    STATE.battle) isso não faz nada, é 100% Raid-only. */
-/* Enfileira golpe(s) de evolução que NÃO couberam (Equipe já com 4
-   Movimentos) -- o primeiro vira a pergunta ATIVA (`pendingTrocarGolpeEvolucao`,
-   o que a tela realmente lê), o resto espera em `pendingTrocarGolpeEvolucaoQueue`
+/* Enfileira golpe(s) que NÃO couberam (Equipe já com 4 Movimentos) --
+   o primeiro vira a pergunta ATIVA (`pendingTrocarGolpeEvolucao`, o que
+   a tela realmente lê), o resto espera em `pendingTrocarGolpeEvolucaoQueue`
    e é promovido 1 por 1 conforme o Treinador responde (ver
    DT.gaResponderTrocarGolpeEvolucao). Sem isso, evoluir pra uma Espécie
    com 2+ golpes de evolução de uma vez só perguntava sobre o primeiro
-   e perdia os outros pra sempre. */
-function enfileirarGolpesTrocaEvolucao(b, partyId, nomes){
+   e perdia os outros pra sempre.
+   `origem` ('evolucao'|'nivel', default 'evolucao') só muda o TEXTO do
+   popup (trocarGolpeEvolucaoPopupHTML) -- Cap. leva desta sessão ("o
+   sistema de evolução moves e etc que tinhamos antes do mapa, tem que
+   ser usado no mapa também... [subir de Nível] tem que popar
+   perguntando se deseja trocar [quando já tem 4 Movimentos]"): Movimento
+   de NÍVEL passou a reusar esta MESMA fila/popup (ver
+   grantXpAndMaybeEvolve), sempre grátis igual o de evolução -- só o
+   rótulo muda pra não confundir "aprendeu isso evoluindo" com "aprendeu
+   isso subindo de Nível". */
+function enfileirarGolpesTrocaEvolucao(b, partyId, nomes, origem){
   (nomes||[]).forEach(function(nome){
-    var item = { partyId: partyId, moveName: nome };
+    var item = { partyId: partyId, moveName: nome, origem: origem||'evolucao' };
     if(!b.pendingTrocarGolpeEvolucao) b.pendingTrocarGolpeEvolucao = item;
     else { b.pendingTrocarGolpeEvolucaoQueue = b.pendingTrocarGolpeEvolucaoQueue || []; b.pendingTrocarGolpeEvolucaoQueue.push(item); }
   });
@@ -11263,25 +11318,28 @@ DT.gaResponderAprenderMovimento = function(moveName){
   avancarFilaEvolucao(b); // Raid-only -- ver comentário em grantXpSemPausarEvolucao/avancarFilaEvolucao
   mutate();
 };
-/* Responde o popup "trocar Movimento pelo golpe de evolução" (ver
-   DT.gaResponderEvolucao/ensinarGolpesDeEvolucao acima -- só aparece
-   quando a Equipe JÁ tem 4 Movimentos, então o bônus não coube
-   direto). `slotIndex` vazio/nulo = recusou; um índice válido troca
-   esse Movimento pelo golpe de evolução, sempre GRÁTIS. */
+/* Responde o popup "trocar Movimento pelo golpe novo" (ver
+   DT.gaResponderEvolucao/ensinarGolpesDeEvolucao E
+   grantXpAndMaybeEvolve acima -- só aparece quando a Equipe JÁ tem 4
+   Movimentos, então o golpe novo -- de evolução OU de Nível, ver
+   `pt.origem` -- não coube direto). `slotIndex` vazio/nulo = recusou;
+   um índice válido troca esse Movimento pelo golpe novo, sempre
+   GRÁTIS nos dois casos. */
 DT.gaResponderTrocarGolpeEvolucao = function(slotIndex){
   var b = STATE.battle; if(!b || !b.pendingTrocarGolpeEvolucao) return;
   var pt = b.pendingTrocarGolpeEvolucao;
+  var rotuloOrigem = pt.origem==='nivel' ? 'Movimento de Nível' : 'golpe de evolução';
   var p = STATE.party.filter(function(x){ return x.id===pt.partyId; })[0];
   if(p && slotIndex!=null && slotIndex!==''){
     var moveObj = findMoveByName(pt.moveName);
     if(moveObj){
       var nomeAntigo = p.moves[slotIndex] ? p.moves[slotIndex].name : '(vazio)';
       p.moves[slotIndex] = moveObj;
-      b.log.push('📖 '+(p.apelido||speciesByNum(p.num).name)+' esqueceu '+nomeAntigo+' e aprendeu '+pt.moveName+' (golpe de evolução, grátis)!');
-      logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou '+nomeAntigo+' por '+pt.moveName+' (golpe de evolução, grátis).');
+      b.log.push('📖 '+(p.apelido||speciesByNum(p.num).name)+' esqueceu '+nomeAntigo+' e aprendeu '+pt.moveName+' ('+rotuloOrigem+', grátis)!');
+      logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou '+nomeAntigo+' por '+pt.moveName+' ('+rotuloOrigem+', grátis).');
     }
   } else if(p){
-    logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' optou por não aprender '+pt.moveName+' (golpe de evolução).');
+    logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' optou por não aprender '+pt.moveName+' ('+rotuloOrigem+').');
   }
   b.pendingTrocarGolpeEvolucao = null;
   if(b.pendingTrocarGolpeEvolucaoQueue && b.pendingTrocarGolpeEvolucaoQueue.length){
@@ -16078,8 +16136,29 @@ DT.gaKantoCancelarArea = function(){
   SESSION.kantoEscolhendoArea = null;
   render();
 };
+/* Extraído de DT.gaKantoIniciarCaptura (Cap. leva desta sessão --
+   "Colocar nos mapas a possibilidade de lutar mais de uma vez com
+   pokémon selvagem... aquele esquema parecido que fazemos na área de
+   caça"): o sorteio de encontro + startBattle('wild',...) em si, sem
+   nenhuma checagem de SESSION.kantoEscolhendoArea/popup -- reusado
+   tanto pelo clique manual (1 luta) quanto por cada tick da sequência
+   automática de Kanto (kantoCaptureSequenceTick, ver mais abaixo).
+   Quem chama já validou lead/Headbutt antes -- essa função só faz a
+   parte que muda a cada luta (Espécie/Nível/forma sorteados). */
+function kantoIniciarLutaDeArea(leadId, ownerType, ownerId, areaId, skipDiscrepancia){
+  var area = kantoAreaById(ownerType, ownerId, areaId);
+  if(!area) return false;
+  var encontro = kantoRolarEncontro(area);
+  var level = area.nivelMin + Math.floor(Math.random()*(area.nivelMax-area.nivelMin+1));
+  var zonaIdx = kantoZonaIdxDaArea(area);
+  markSeen(encontro.num);
+  var forma = rollFormaDeEncontro(encontro.num);
+  startBattle('wild', { leadPartyId: leadId, wildNum: encontro.num, wildLevel: level, wildForma: forma, zonaIdx: zonaIdx, origemMapa: true }, skipDiscrepancia);
+  return true;
+}
 DT.gaKantoIniciarCaptura = function(leadId){
   if(!SESSION.isAdmin || !SESSION.kantoEscolhendoArea) return;
+  if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar.'; render(); return; }
   var escolha = SESSION.kantoEscolhendoArea;
   var area = kantoAreaById(escolha.ownerType, escolha.ownerId, escolha.areaId);
   if(!area){ SESSION.kantoEscolhendoArea = null; render(); return; }
@@ -16091,14 +16170,186 @@ DT.gaKantoIniciarCaptura = function(leadId){
     render();
     return;
   }
-  var encontro = kantoRolarEncontro(area);
-  var level = area.nivelMin + Math.floor(Math.random()*(area.nivelMax-area.nivelMin+1));
-  var zonaIdx = kantoZonaIdxDaArea(area);
-  markSeen(encontro.num);
-  var forma = rollFormaDeEncontro(encontro.num);
   SESSION.kantoEscolhendoArea = null;
-  startBattle('wild', { leadPartyId: leadId, wildNum: encontro.num, wildLevel: level, wildForma: forma, zonaIdx: zonaIdx, origemMapa: true }, false);
+  kantoIniciarLutaDeArea(leadId, escolha.ownerType, escolha.ownerId, escolha.areaId, false);
 };
+
+/* ============================================================
+   Kanto -- sequência automática de lutas selvagens (Cap. leva desta
+   sessão: "Colocar nos mapas a possibilidade de lutar mais de uma vez
+   com pokémon selvagem. Aquele esquema parecido que fazemos na área
+   de caça. Com treinador não, pois é só uma vez por dia"). MESMO
+   motor/UX da sequência da Área de Captura normal (STATE.captureSequence)
+   -- só troca DE ONDE a luta vem: em vez de uma Zona abstrata
+   (`zonaId`), usa uma área de Kanto (`ownerType`+`ownerId`+`areaId`,
+   ver kantoAreaById). Reaproveita DIRETO (sem duplicar) as peças
+   genéricas que já não tinham nada de Zona-específico:
+   resolverLutaAutomaticamente/fecharLutaDaSequencia/finalizarSequencia/
+   battleReportEntry/sequenciaRelatorioHTML (motor+relatório) e
+   elegiveisParaEvoluirAgora/DT.gaEvoluirPosSequencia/
+   aprenderMovimentoSequenciaPopupHTML/DT.gaAprenderMovimentoSequencia
+   (evolução/Movimento adiados pro fim, já que a Equipe é uma só,
+   independente de qual sequência rodou). Só Treinador NUNCA entra
+   aqui de propósito -- luta 1x por Dia não combina com "lutar várias
+   vezes seguidas". Escopo desta leva (documentado, não escondido):
+   sem a troca automática de líder por Faixa que a Área de Captura
+   ganhou numa leva bem posterior (trocaAutomaticaLiderSeNecessario) --
+   dá pra adicionar depois se pedirem; e áreas de pesca (`metodo==='pesca'`)
+   ficam de fora (tem uma etapa a mais de "fisgou ou não" que a Área de
+   Captura nunca teve), só single-luta continua funcionando nelas. */
+function kantoAreaCustoEnergia(area){ return custoEnergiaZona(kantoZonaIdxDaArea(area)); }
+function kantoCaptureSequenceTick(){
+  var cs = STATE.kantoCaptureSequence;
+  if(!cs || cs.finished) return;
+  cs.lastTickAt = Date.now();
+  if(STATE.battle){
+    resolverLutaAutomaticamente(cs);
+    if(STATE.battle && STATE.battle.finished) fecharLutaDaSequencia(cs);
+    mutate();
+    return;
+  }
+  if(cs.remaining<=0){ finalizarSequencia(cs); mutate(); return; }
+  var area = kantoAreaById(cs.ownerType, cs.ownerId, cs.areaId);
+  var custo = area ? kantoAreaCustoEnergia(area) : Infinity;
+  if(!area || STATE.energy < custo){
+    cs.pararSemEnergia = true;
+    finalizarSequencia(cs);
+    mutate();
+    return;
+  }
+  cs.remaining--;
+  if(!kantoIniciarLutaDeArea(cs.leadId, cs.ownerType, cs.ownerId, cs.areaId, true) || !STATE.battle){
+    cs.pararSemEnergia = false;
+    finalizarSequencia(cs);
+    mutate();
+    return;
+  }
+  resolverLutaAutomaticamente(cs);
+  if(STATE.battle && STATE.battle.finished) fecharLutaDaSequencia(cs);
+  mutate();
+}
+/* Catch-up retroativo pra sequência de Kanto (F5/aba escondida) --
+   mesma lógica de catchUpCaptureSequence, campo próprio pra não
+   misturar os 2 checkpoints (cada sequência tem seu próprio
+   lastTickAt). Chamada de dentro dos MESMOS 2 gatilhos que já existiam
+   (ver attachSaveListener/visibilitychange). */
+function catchUpKantoCaptureSequence(){
+  var cs = STATE && STATE.kantoCaptureSequence;
+  if(!cs || cs.finished) return;
+  var agora = Date.now();
+  var ticksElapsed = Math.floor((agora - (cs.lastTickAt||agora)) / 1500);
+  var ticksAFazer = Math.min(Math.max(ticksElapsed,0), CATCHUP_MAX_TICKS);
+  for(var i=0; i<ticksAFazer; i++){
+    if(!STATE.kantoCaptureSequence || STATE.kantoCaptureSequence.finished) break;
+    kantoCaptureSequenceTick();
+  }
+  if(STATE.kantoCaptureSequence) STATE.kantoCaptureSequence.lastTickAt = agora;
+}
+function kantoIniciarSequenciaDeCaptura(leadId, ownerType, ownerId, areaId, qtd){
+  if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar.'; render(); return; }
+  var area = kantoAreaById(ownerType, ownerId, areaId);
+  if(!area){ SESSION.error='Área inválida.'; render(); return; }
+  if(area.metodo==='pesca'){ SESSION.error='Pesca não tem sequência automática (é preciso fisgar antes de cada luta) -- lute uma de cada vez aqui.'; render(); return; }
+  qtd = Math.floor(Number(qtd));
+  if(!qtd || qtd<1){ SESSION.error='Digite uma quantidade de lutas válida (1 ou mais).'; render(); return; }
+  var custo = kantoAreaCustoEnergia(area);
+  var maxComEnergia = Math.floor((STATE.energy||0)/custo);
+  if(maxComEnergia<1){ SESSION.error='Energia insuficiente pra nem 1 luta nessa área (custa '+custo+', você tem '+(STATE.energy||0)+').'; render(); return; }
+  if(qtd>maxComEnergia){
+    SESSION.error = '⚠️ Você pediu '+qtd+' luta(s), mas sua Energia atual ('+STATE.energy+') só paga '+maxComEnergia+' nessa área (custa '+custo+' cada). Ajustei o campo pra '+maxComEnergia+' -- clique em "Lutar Várias Vezes" de novo pra confirmar.';
+    SESSION.kantoCapturaQtdSugerida = { ownerType: ownerType, ownerId: ownerId, areaId: areaId, qtd: maxComEnergia };
+    render();
+    return;
+  }
+  if(qtd===1){
+    logAction('batalha', 'Iniciou uma luta selvagem no mapa de Kanto.');
+    kantoIniciarLutaDeArea(leadId, ownerType, ownerId, areaId, false);
+    return;
+  }
+  SESSION.pendingKantoSequenciaConfirm = { leadId: leadId, ownerType: ownerType, ownerId: ownerId, areaId: areaId, qtd: qtd };
+  render();
+}
+DT.gaKantoIniciarLutasVarias = function(leadId, ownerType, ownerId, areaId, inputEl){
+  kantoIniciarSequenciaDeCaptura(leadId, ownerType, ownerId, areaId, inputEl && inputEl.value);
+};
+DT.gaKantoIniciarLutasComTodaEnergia = function(leadId, ownerType, ownerId, areaId){
+  if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar.'; render(); return; }
+  var area = kantoAreaById(ownerType, ownerId, areaId);
+  if(!area) return;
+  if(area.metodo==='pesca'){ SESSION.error='Pesca não tem sequência automática -- lute uma de cada vez aqui.'; render(); return; }
+  var custo = kantoAreaCustoEnergia(area);
+  var qtd = Math.floor((STATE.energy||0) / custo);
+  if(qtd<1){ SESSION.error = 'Energia insuficiente pra nem 1 luta nessa área (custa '+custo+', você tem '+(STATE.energy||0)+').'; render(); return; }
+  kantoIniciarSequenciaDeCaptura(leadId, ownerType, ownerId, areaId, qtd);
+};
+DT.gaKantoConfirmarSequencia = function(autoCapEl, autoCurEl, ignorarPossuidosEl, ignorarJaCapturadosEl, favoritarCapturaEl){
+  var psc = SESSION.pendingKantoSequenciaConfirm; if(!psc) return;
+  SESSION.pendingKantoSequenciaConfirm = null;
+  var autoCapturar = !!(autoCapEl && autoCapEl.checked);
+  var autoCurar = !!(autoCurEl && autoCurEl.checked);
+  var ignorarPossuidos = autoCapturar && !!(ignorarPossuidosEl && ignorarPossuidosEl.checked);
+  var ignorarJaCapturados = autoCapturar && !!(ignorarJaCapturadosEl && ignorarJaCapturadosEl.checked);
+  var favoritarCaptura = autoCapturar && !!(favoritarCapturaEl && favoritarCapturaEl.checked);
+  var area = kantoAreaById(psc.ownerType, psc.ownerId, psc.areaId);
+  STATE.kantoCaptureSequence = { leadId: psc.leadId, ownerType: psc.ownerType, ownerId: psc.ownerId, areaId: psc.areaId, total: psc.qtd, remaining: psc.qtd, vitorias:0, derrotas:0, autoCapturar: autoCapturar, autoCurar: autoCurar, ignorarPossuidos: ignorarPossuidos, ignorarJaCapturados: ignorarJaCapturados, favoritarCaptura: favoritarCaptura, finished:false, pararSemEnergia:false, relatorio:[], lastTickAt: Date.now() };
+  logAction('batalha', 'Iniciou uma sequência automática de '+psc.qtd+' luta(s) selvagens no mapa de Kanto ('+esc2(area?area.nome:'?')+', captura automática '+(autoCapturar?'LIGADA':'desligada')+', cura automática '+(autoCurar?'LIGADA':'desligada')+').');
+  mutate();
+  var guardInstantaneo = 0;
+  while(STATE.kantoCaptureSequence && !STATE.kantoCaptureSequence.finished && guardInstantaneo<CATCHUP_MAX_TICKS){
+    kantoCaptureSequenceTick();
+    guardInstantaneo++;
+  }
+};
+DT.gaKantoCancelarSequencia = function(){ SESSION.pendingKantoSequenciaConfirm = null; render(); };
+/* Mesmo padrão de DT.gaFecharResumoSequencia -- os campos que limpa
+   (SESSION.evolucaoSequenciaDecididos/pendingAprenderMovimentoSequencia)
+   são COMPARTILHADOS com a sequência normal de propósito (a Equipe é
+   uma só, não faz sentido ter 2 filas de evolução pendente). */
+DT.gaKantoFecharResumoSequencia = function(){ STATE.kantoCaptureSequence = null; SESSION.evolucaoSequenciaDecididos = []; SESSION.pendingAprenderMovimentoSequencia = null; mutate(); };
+function kantoPendingSequenciaConfirmPopupHTML(){
+  var psc = SESSION.pendingKantoSequenciaConfirm;
+  if(!psc) return '';
+  var area = kantoAreaById(psc.ownerType, psc.ownerId, psc.areaId);
+  return '<div class="ga-overlay" onclick="DT.gaKantoCancelarSequencia()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaKantoCancelarSequencia()">✕</button>'+
+    '<h2>🔁 Sequência de '+psc.qtd+' lutas — '+esc2(area?area.nome:'?')+'</h2>'+
+    '<p class="ga-hint">Isso roda '+psc.qtd+' luta(s) seguidas de forma AUTOMÁTICA, sem parar nem pra evolução (a decisão de evoluir fica pra perguntar só no FINAL da sequência inteira). Escolha, de forma independente, o que o jogo pode resolver sozinho no meio de cada luta:</p>'+
+    '<label class="ga-check-row"><input type="checkbox" id="gaKantoSeqAutoCap"> 🎯 Tentar capturar automaticamente (usa a Pokébola mais recomendada pra situação)</label>'+
+    '<label class="ga-check-row" style="margin-left:22px"><input type="checkbox" id="gaKantoSeqIgnorarPossuidos"> 🚫 Não tentar capturar quem eu já tenho (Equipe ou Caixa)</label>'+
+    '<label class="ga-check-row" style="margin-left:22px"><input type="checkbox" id="gaKantoSeqIgnorarJaCapturados"> 📕 Não tentar capturar quem eu já capturei alguma vez (mesmo fora da Equipe/Caixa hoje)</label>'+
+    '<label class="ga-check-row" style="margin-left:22px"><input type="checkbox" id="gaKantoSeqFavoritarCaptura"> ⭐ Se for um Pokémon dos meus favoritos, pode capturar mesmo assim (ignora as 2 opções acima só pra favoritos)</label>'+
+    '<label class="ga-check-row"><input type="checkbox" id="gaKantoSeqAutoCur"> 💊 Curar automaticamente (usa o item de cura mais recomendado pra situação)</label>'+
+    '<p class="ga-hint">Se deixar as duas primeiras desmarcadas, a sequência roda do mesmo jeito, só que sem gastar nenhum item nem Pokébola.</p>'+
+    '<p class="ga-hint">⚡ A sequência inteira roda de uma vez e o resumo final já aparece sozinho assim que terminar.</p>'+
+    '<div class="ga-btn-row">'+
+      '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoConfirmarSequencia(document.getElementById(\'gaKantoSeqAutoCap\'),document.getElementById(\'gaKantoSeqAutoCur\'),document.getElementById(\'gaKantoSeqIgnorarPossuidos\'),document.getElementById(\'gaKantoSeqIgnorarJaCapturados\'),document.getElementById(\'gaKantoSeqFavoritarCaptura\'))">▶️ Começar sequência</button>'+
+      '<button class="ga-btn-sm" onclick="DT.gaKantoCancelarSequencia()">Cancelar</button>'+
+    '</div>'+
+  '</div></div>';
+}
+/* Resumo final -- MESMO padrão visual/conteúdo de sequenciaFimScreenHTML
+   (relatório + pergunta de evolução/Movimento adiada), só num popup
+   overlay comum em vez de tela dedicada (Kanto não tem uma "tela"
+   própria pra isso, é tudo popup em cima do mapa). */
+function kantoSequenciaFimPopupHTML(){
+  var cs = STATE.kantoCaptureSequence;
+  if(!cs || !cs.finished) return '';
+  var area = kantoAreaById(cs.ownerType, cs.ownerId, cs.areaId);
+  var pendentes = elegiveisParaEvoluirAgora().filter(function(p){ return (SESSION.evolucaoSequenciaDecididos||[]).indexOf(p.id)===-1; });
+  var aprenderPend = SESSION.pendingAprenderMovimentoSequencia;
+  var out = '<div class="ga-overlay"><div class="ga-overlay-card wide">'+
+    '<h2>🔁 Sequência automática terminou — '+esc2(area?area.nome:'?')+'</h2>'+
+    '<p class="ga-hint">'+cs.vitorias+' vitória(s), '+cs.derrotas+' derrota(s) em '+(cs.vitorias+cs.derrotas)+' de '+cs.total+' luta(s) pedidas'+(cs.pararSemEnergia?' -- parou sem Energia suficiente pra continuar':'')+'.</p>'+
+    sequenciaRelatorioHTML(cs);
+  if(pendentes.length || aprenderPend){
+    out += '<p class="ga-hint">✨ Algum Pokémon pode evoluir (ou aprender um Movimento novo) agora -- decida no popup antes de fechar o resumo.</p>';
+  }
+  out += '<div class="ga-btn-row"><button class="ga-btn ga-btn-primary" onclick="DT.gaKantoFecharResumoSequencia()">'+((pendentes.length||aprenderPend)?'✔️ Terminei, fechar resumo':'✔️ Fechar')+'</button></div>'+
+    '</div></div>';
+  if(aprenderPend) out += aprenderMovimentoSequenciaPopupHTML(aprenderPend);
+  else if(pendentes.length) out += evolucaoSequenciaPopupHTML(pendentes[0]);
+  return out;
+}
 /* Cap. leva desta sessão (faixas de Nível + 1x/dia): abrir o desafio
    agora é em 2 passos -- primeiro escolhe a FAIXA (`SESSION.
    kantoEscolhendoGinasio = {locId, faixaIdx:null}`, ver
@@ -16273,10 +16524,37 @@ function kantoAreasListaHTML(ownerType, ownerId, owner){
   var out = '<div class="ga-kanto-areas">'+owner.areas.map(function(a){ return kantoAreaBotaoHTML(ownerType, ownerId, a); }).join('')+'</div>';
   var esc = SESSION.kantoEscolhendoArea;
   if(esc && esc.ownerType===ownerType && esc.ownerId===ownerId){
-    var lead = kantoAreaById(esc.ownerType, esc.ownerId, esc.areaId);
+    var area = kantoAreaById(esc.ownerType, esc.ownerId, esc.areaId);
     out += '<div class="ga-kanto-lider"><p class="ga-hint">Escolha quem vai liderar essa luta:</p><div class="ga-poke-grid">'+
       STATE.party.map(function(p){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarCaptura('"+p.id+"')"); }).join('')+
-      '</div><button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button></div>';
+      '</div>'+
+      /* Cap. leva desta sessão ("Colocar nos mapas a possibilidade de
+         lutar mais de uma vez com pokémon selvagem. Aquele esquema
+         parecido que fazemos na área de caça"): MESMO padrão visual
+         (`.ga-capqtd-row`/`.ga-capqtd-input`) da Área de Captura --
+         só que lá o "líder" é sempre STATE.party[0] (o 🎯 Ativo,
+         convenção já usada em toda tela de Equipe); aqui reusa a MESMA
+         convenção em vez de abrir um segundo picker só pra isso (o
+         picker de cima já serve pra escolher outro líder pra 1 luta só
+         -- pra sequência, sempre o Ativo). Fora em área de pesca
+         (`metodo==='pesca'`): tem uma etapa de "fisgou ou não" antes
+         de cada luta que a sequência automática não sabe lidar ainda. */
+      (area && area.metodo!=='pesca' && STATE.party.length ? (function(){
+        var leadAtivo = STATE.party[0];
+        var custo = kantoAreaCustoEnergia(area);
+        var maxComEnergia = Math.floor((STATE.energy||0)/custo);
+        var inputId = 'gaKantoCapQtd_'+area.id;
+        var qs = SESSION.kantoCapturaQtdSugerida;
+        var qtdSugerida = (qs && qs.ownerType===esc.ownerType && qs.ownerId===esc.ownerId && qs.areaId===esc.areaId) ? qs.qtd : null;
+        return '<div class="ga-kanto-lider"><p class="ga-hint">Lutar várias vezes seguidas (usa '+esc2(kantoNomeExibicaoPoke(leadAtivo))+', o 🎯 Ativo, como líder -- ⚡'+custo+' por luta):</p>'+
+          '<div class="ga-capqtd-row">'+
+            '<input type="number" min="1" max="'+Math.max(1,maxComEnergia)+'" step="1" id="'+inputId+'"'+(qtdSugerida?' value="'+qtdSugerida+'"':'')+' placeholder="Qtd (máx '+maxComEnergia+')" title="Sua Energia atual trava a sequência em, no máximo, '+maxComEnergia+' luta(s) nessa área" class="ga-capqtd-input">'+
+            '<button class="ga-btn-sm" onclick="DT.gaKantoIniciarLutasVarias(\''+leadAtivo.id+'\',\''+esc.ownerType+'\',\''+esc.ownerId+'\',\''+esc.areaId+'\',document.getElementById(\''+inputId+'\'))">🔁 Lutar Várias Vezes</button>'+
+          '</div>'+
+          '<button class="ga-btn-sm" '+(maxComEnergia<1?'disabled':'')+' title="Sua Energia atual dá pra '+maxComEnergia+' luta(s) nessa área" onclick="DT.gaKantoIniciarLutasComTodaEnergia(\''+leadAtivo.id+'\',\''+esc.ownerType+'\',\''+esc.ownerId+'\',\''+esc.areaId+'\')">⚡ Usar Toda a Energia ('+maxComEnergia+' luta'+(maxComEnergia===1?'':'s')+')</button>'+
+        '</div>';
+      })() : '')+
+      '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoCancelarArea()">✕ Cancelar</button></div>';
   }
   return out;
 }
@@ -17289,8 +17567,14 @@ function kantoGuardaBloqueioPopupHTML(){
    pode começar por fora dela -- senão o tick da sequência (que roda
    sozinho, sem esperar clique nenhum) e um clique manual do jogador
    podiam disputar a MESMA STATE.battle ao mesmo tempo. */
+/* Cap. leva desta sessão ("Colocar nos mapas a possibilidade de lutar
+   mais de uma vez com pokémon selvagem"): checa as DUAS sequências
+   automáticas que existem no jogo (Área de Captura normal E o mapa de
+   Kanto, ver STATE.kantoCaptureSequence mais abaixo) -- só uma pode
+   rodar de cada vez, nunca as duas ao mesmo tempo (disputariam a
+   MESMA STATE.battle). */
 function sequenciaAtivaBloqueando(){
-  return !!(STATE.captureSequence && !STATE.captureSequence.finished);
+  return !!(STATE.captureSequence && !STATE.captureSequence.finished) || !!(STATE.kantoCaptureSequence && !STATE.kantoCaptureSequence.finished);
 }
 DT.gaEntrarCaptura = function(leadId, zonaId){
   if(sequenciaAtivaBloqueando()){ SESSION.error='Já tem uma sequência automática de lutas rodando -- espere ela terminar (o progresso aparece aqui mesmo, na Caçada Solo).'; render(); return; }
@@ -17773,6 +18057,7 @@ function catchUpCaptureSequence(){
    visível ou não. */
 function backgroundTick(){
   if(STATE && STATE.captureSequence && !STATE.captureSequence.finished) captureSequenceTick();
+  if(STATE && STATE.kantoCaptureSequence && !STATE.kantoCaptureSequence.finished) kantoCaptureSequenceTick();
   duelTick();
   cacadaTick();
 }
@@ -17801,7 +18086,7 @@ startCaptureSequenceTicker();
    rolou enquanto o jogador estava noutra aba. */
 if(typeof document!=='undefined' && document.addEventListener){
   document.addEventListener('visibilitychange', function(){
-    if(!document.hidden){ catchUpCaptureSequence(); backgroundTick(); }
+    if(!document.hidden){ catchUpCaptureSequence(); catchUpKantoCaptureSequence(); backgroundTick(); }
   });
 }
 
@@ -19441,6 +19726,8 @@ var GA_SCROLL_PRESERVE_IDS = ['gaCaixaScroll','gaDexScroll','gaMovDexScroll',
   'gaKantoPopupCard','gaKantoPopupCardInner','gaKantoCentroChatPainel'];
 function render(){
   if(!appEl_) appEl_ = document.getElementById('app');
+  gaAgendarBannerAutoDismiss('error');
+  gaAgendarBannerAutoDismiss('notice');
   var scrollPos = {};
   GA_SCROLL_PRESERVE_IDS.forEach(function(id){
     var el = document.getElementById(id);
@@ -19743,9 +20030,44 @@ DT.gaGotoDoGrupo = function(screenId){
 };
 function bannersHTML(){
   var out = '';
-  if(SESSION.error) out += '<div class="ga-banner err">⚠️ '+esc2(SESSION.error)+' <button onclick="DT.gaDismiss()">fechar</button></div>';
-  if(SESSION.notice) out += '<div class="ga-banner ok">✅ '+esc2(SESSION.notice)+' <button onclick="DT.gaDismiss()">fechar</button></div>';
+  if(SESSION.error) out += '<div class="ga-banner err'+(SESSION._errorSaindo?' ga-saindo':'')+'">⚠️ '+esc2(SESSION.error)+' <button onclick="DT.gaDismiss()">fechar</button></div>';
+  if(SESSION.notice) out += '<div class="ga-banner ok'+(SESSION._noticeSaindo?' ga-saindo':'')+'">✅ '+esc2(SESSION.notice)+' <button onclick="DT.gaDismiss()">fechar</button></div>';
   return out;
+}
+/* Cap. pedido do jogador ("Avisos... podem ficar apenas 5 segundos e
+   depois sairem suavemente. É melhor."): timers dedicados (fora de
+   SESSION -- id de setTimeout não é estado, nunca precisa sobreviver a
+   um re-render) por campo ('error'/'notice'), reiniciados só quando a
+   MENSAGEM muda de verdade -- 2 avisos iguais em sequência não
+   reiniciam o relógio à toa, e um aviso NOVO enquanto o anterior ainda
+   está na tela cancela o timer velho e recomeça os 5s do zero. Depois
+   de 5s liga `_saindo` (a classe `.ga-saindo` acima assume a animação
+   de sumir) e, 400ms depois (mesma duração do keyframe), limpa a
+   mensagem de vez -- mesmo botão "fechar" (`DT.gaDismiss`) continua
+   funcionando a qualquer momento e cancela os timers pendentes. */
+var _gaBannerTimers = {};
+function gaAgendarBannerAutoDismiss(campo){
+  var msgCampo = '_'+campo+'MsgTexto', saindoCampo = '_'+campo+'Saindo';
+  var atual = SESSION[campo];
+  if(atual){
+    if(SESSION[msgCampo]===atual) return; // mesma mensagem de sempre, timer já rodando
+    SESSION[msgCampo] = atual;
+    SESSION[saindoCampo] = false;
+    if(_gaBannerTimers[campo+'Show']) clearTimeout(_gaBannerTimers[campo+'Show']);
+    if(_gaBannerTimers[campo+'Fade']) clearTimeout(_gaBannerTimers[campo+'Fade']);
+    _gaBannerTimers[campo+'Show'] = setTimeout(function(){
+      SESSION[saindoCampo] = true;
+      render();
+      _gaBannerTimers[campo+'Fade'] = setTimeout(function(){
+        if(SESSION[campo]===atual){ SESSION[campo]=''; SESSION[msgCampo]=''; SESSION[saindoCampo]=false; render(); }
+      }, 400);
+    }, 5000);
+  } else if(SESSION[msgCampo]){
+    // mensagem sumiu por outro caminho (botão "fechar", nova tela etc.) -- cancela os timers e reseta
+    SESSION[msgCampo] = ''; SESSION[saindoCampo] = false;
+    if(_gaBannerTimers[campo+'Show']) clearTimeout(_gaBannerTimers[campo+'Show']);
+    if(_gaBannerTimers[campo+'Fade']) clearTimeout(_gaBannerTimers[campo+'Fade']);
+  }
 }
 
 function screenHTML(){
@@ -19840,7 +20162,7 @@ function screenHTML(){
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
-    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() + kantoEquipePopupHTML() : hubScreenHTML());
+    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() + kantoEquipePopupHTML() + kantoPendingSequenciaConfirmPopupHTML() + kantoSequenciaFimPopupHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
@@ -22576,25 +22898,31 @@ function aprenderMovimentoPopupHTML(pa){
     '</div>'+
   '</div></div>';
 }
-/* Popup "trocar Movimento pelo golpe de evolução" (ver
+/* Popup "trocar Movimento pelo golpe novo" (ver
    DT.gaResponderTrocarGolpeEvolucao) -- só aparece quando a Equipe já
-   está com os 4 Movimentos cheios, então o golpe de evolução (SEMPRE
-   grátis) não coube direto; deixa escolher QUAL dos 4 esquecer. */
+   está com os 4 Movimentos cheios, então o golpe novo (SEMPRE grátis,
+   de evolução OU de Nível -- ver `pt.origem`) não coube direto; deixa
+   escolher QUAL dos 4 esquecer. Cap. leva desta sessão (Movimento de
+   Nível passou a reusar este MESMO popup, ver enfileirarGolpesTrocaEvolucao
+   em grantXpAndMaybeEvolve): `pt.origem==='nivel'` só troca o texto
+   ("Movimento de Nível" em vez de "Golpe de evolução"), o resto do
+   popup (grátis, escolher slot, fila) é idêntico pros dois casos. */
 function trocarGolpeEvolucaoPopupHTML(pt, restantes){
   var p = STATE.party.filter(function(x){ return x.id===pt.partyId; })[0];
   if(!p) return '';
   var sp = speciesByNum(p.num);
+  var rotuloOrigem = pt.origem==='nivel' ? 'Movimento de Nível' : 'Golpe de evolução';
   var opts = (p.moves||[]).map(function(m,i){ return '<option value="'+i+'">'+esc2(m.name)+'</option>'; }).join('');
   return '<div class="ga-overlay" onclick="DT.gaResponderTrocarGolpeEvolucao(\'\')"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaResponderTrocarGolpeEvolucao(\'\')">✕</button>'+
     '<h2>📖 '+esc2(p.apelido||sp.name)+' quer aprender '+esc2(pt.moveName)+'!</h2>'+
-    '<p class="ga-hint">Golpe de evolução -- grátis. Mas '+esc2(p.apelido||sp.name)+' já conhece 4 Movimentos -- esquecer qual deles?</p>'+
+    '<p class="ga-hint">'+esc2(rotuloOrigem)+' -- grátis. Mas '+esc2(p.apelido||sp.name)+' já conhece 4 Movimentos -- esquecer qual deles?</p>'+
     '<select id="gaTrocarGolpeEvo">'+opts+'</select>'+
     '<div class="ga-btn-row">'+
       '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaResponderTrocarGolpeEvolucao(document.getElementById(\'gaTrocarGolpeEvo\').value)">📖 Trocar e aprender</button>'+
       '<button class="ga-btn-sm" onclick="DT.gaResponderTrocarGolpeEvolucao(\'\')">Não, obrigado</button>'+
     '</div>'+
-    (restantes>0 ? '<p class="ga-hint">e mais '+restantes+' golpe(s) de evolução esperando resposta depois deste.</p>' : '')+
+    (restantes>0 ? '<p class="ga-hint">e mais '+restantes+' golpe(s) esperando resposta depois deste.</p>' : '')+
   '</div></div>';
 }
 
