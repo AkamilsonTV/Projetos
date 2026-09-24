@@ -854,7 +854,31 @@ input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin
    morasse DENTRO do `.ga-kanto-mapawrap` (que é quem rola), ele
    rolaria junto com o mapa em vez de ficar fixo no canto. */
 .ga-kanto-map-outer{ position:relative; flex:1 1 auto; min-height:0; display:flex; }
-.ga-kanto-mapawrap{ background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:16px; flex:1 1 auto; min-height:0; width:100%; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; scroll-behavior:smooth; touch-action:pan-x pan-y; }
+/* Cap. leva desta sessão ("Centraliza essa caixa do mapa também, fica
+   um espaço muito grande de azul ali, diminui ela sem diminuir o
+   mapa deixando mais no centro pra ficar mais bonito"): antes, `width:
+   100%` + `flex:1 1 auto` forçava a caixa azul (`.ga-kanto-mapawrap`)
+   a sempre ocupar a largura TODA do `.ga-kanto-map-outer`, mesmo
+   quando o mapa (936px fixos, `.ga-kanto-mapa`) é bem mais estreito
+   que a tela -- sobrava fundo azul vazio à direita. Trocado `flex:1 1
+   auto` por `flex:0 1 auto` (não força crescer -- flex-basis:auto usa
+   o tamanho do CONTEÚDO, sem alterar o mapa em si) + `margin:0 auto`
+   (as margens automáticas de um item flex ABSORVEM o espaço livre da
+   linha, centralizando -- exatamente o mesmo truque de "margin:auto"
+   de layout em bloco comum). O `flex:0 1 auto` continua PODENDO
+   encolher (`flex-shrink:1`) quando a tela é menor que o mapa --
+   como `overflow:auto` já deixa o mínimo automático desse item virar
+   0 (regra do próprio Flexbox pra itens com overflow != visible), as
+   margens automáticas somem sozinhas nesse caso (sem espaço livre pra
+   absorver) e a caixa volta a ficar colada na borda esquerda, exatamente
+   o comportamento de rolagem no celular de sempre ("Kanto: mapa
+   responsivo sem rolagem lateral no mobile", changelog mais abaixo) --
+   ninguém mexeu nisso. O controle de zoom (`.ga-kanto-zoom-ctrl`)
+   continua ancorado no canto do `.ga-kanto-map-outer` (não do wrap,
+   de propósito, ver comentário logo acima) -- ele já era "sempre no
+   mesmo canto da TELA", não colado na borda do mapa, então nada muda
+   aí. */
+.ga-kanto-mapawrap{ background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:16px; flex:0 1 auto; min-height:0; max-width:100%; margin:0 auto; overflow:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; scroll-behavior:smooth; touch-action:pan-x pan-y; }
 .ga-kanto-mapa-fit{ display:inline-block; }
 .ga-kanto-zoom-ctrl{ position:absolute; top:10px; right:10px; z-index:5; display:flex; align-items:center; gap:6px; background:rgba(15,23,20,.85); border:1px solid var(--line); border-radius:999px; padding:4px 8px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
 .ga-kanto-zoom-ctrl button{ width:26px; height:26px; padding:0; border-radius:50%; font-weight:800; line-height:1; }
