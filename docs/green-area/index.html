@@ -6031,6 +6031,28 @@ function raidRecompensaCatalogoCompleto(){
 }
 function itemByKeyQualquer(key){ return raidRecompensaCatalogoCompleto().filter(function(i){ return i.key===key; })[0] || null; }
 function raidItemEhPokebola(key){ return POKEBALLS.some(function(b){ return b.key===key; }); }
+/* Cap. leva desta sessão ("No pokémon é pra segurar qualquer tipo de
+   item... quero que todos sejam possíveis de segurar"): Item Segurado
+   deixou de aceitar só o catálogo curado de HELD_ITEMS/
+   EVOLUTION_HELD_ITEMS -- agora aceita QUALQUER item do jogo (mesmo
+   catálogo de `raidRecompensaCatalogoCompleto`, TMs de fora igual lá,
+   mesma justificativa: guardadas por nome do Movimento em STATE.tms,
+   não em STATE.itens/STATE.pokebolas por `key` como todo o resto).
+   Pokébola é o único catálogo com estoque numa gaveta separada
+   (STATE.pokebolas em vez de STATE.itens, ver raidItemEhPokebola) --
+   estas 2 funções escondem essa diferença de quem só quer ler/ajustar
+   "quantos eu tenho desse item", igual DT.gaEquiparItem/
+   DT.gaDesequiparItem precisam fazer pro item genérico que for
+   equipado. Item SEM gatilho de combate codificado (uma Potion, uma
+   Pedra do Trovão, uma Poké Bola) fica parado no slot sem fazer nada
+   -- exatamente como no jogo oficial, onde só os itens com efeito de
+   item segurado REAL (bagas, Choice Band, Leftovers etc., ver
+   HELD_ITEMS) reagem sozinhos em luta. */
+function itemQualquerQtdEstoque(key){ return raidItemEhPokebola(key) ? (STATE.pokebolas[key]||0) : (STATE.itens[key]||0); }
+function itemQualquerAjustarEstoque(key, delta){
+  if(raidItemEhPokebola(key)) STATE.pokebolas[key] = Math.max(0, (STATE.pokebolas[key]||0) + delta);
+  else STATE.itens[key] = Math.max(0, (STATE.itens[key]||0) + delta);
+}
 /* Cap. leva desta sessão (tarefa #183 -- "evoluções não-por-Nível de
    verdade"): as 10 pedras de evolução "clássicas" (cada uma usada por
    2 ou mais Espécies, ver fetch_evolution_details.js) -- as outras
@@ -9970,7 +9992,7 @@ function kantoTeamCardCorpoHTML(p, i){
     '<div class="ga-team-roles">'+rolesHTML+'</div>'+
     '<div class="ga-team-roles-label">Miscelânea</div>'+
     '<div class="ga-team-itemcaixa">'+
-      '<button type="button" class="ga-team-item" aria-label="Item" onclick="DT.gaAskItemSegurado(\''+p.id+'\')" title="'+(p.itemSegurado?'Item: '+esc2(heldItemByKey(p.itemSegurado).nome):'Nenhum item segurado')+'">🎒</button>'+
+      '<button type="button" class="ga-team-item" aria-label="Item" onclick="DT.gaAskItemSegurado(\''+p.id+'\')" title="'+(p.itemSegurado?'Item: '+esc2(itemByKeyQualquer(p.itemSegurado).nome):'Nenhum item segurado')+'">🎒</button>'+
     '</div>';
 }
 function kantoPokeCardLiderHTML(p, onclickJs, i){
@@ -19785,15 +19807,31 @@ function editApelidoPopupHTML(pid){
     '</div>'+
   '</div></div>';
 }
-/* Itens Segurados (Cap. leva desta sessão -- tarefa #195): equipar/
-   desequipar num Pokémon da Equipe. EQUIPAR troca 1 unidade do
-   catálogo (STATE.itens, comprado na Loja) pro slot único do Pokémon
-   -- se já tinha OUTRO item equipado, o antigo volta pra Mochila (o
-   jogo oficial só tem 1 slot de item por Pokémon, nunca 2 ao mesmo
-   tempo). DESEQUIPAR devolve o item atual pra Mochila e limpa o slot.
-   `itemSegurado` é permanente (persiste no Pokémon salvo, igual
-   Habilidade/Natureza) -- nunca reseta sozinho entre lutas; só reseta
-   se CONSUMIDO em batalha (ver consomeItemSegurado). */
+/* Itens Segurados (Cap. leva desta sessão -- tarefa #195; ampliado
+   numa leva posterior -- "No pokémon é pra segurar qualquer tipo de
+   item. E alguns possuem gatilhos, quero que todos sejam possíveis de
+   segurar e os que tem gatilhos que sejam ativados como no jogo
+   real"): equipar/desequipar num Pokémon da Equipe. QUALQUER item do
+   jogo pode ser equipado agora (`itemByKeyQualquer`/
+   `raidRecompensaCatalogoCompleto`, mesmo catálogo completo que a
+   recompensa de Raid já usa -- TMs de fora, mesma exceção de sempre),
+   não só o catálogo curado de HELD_ITEMS/EVOLUTION_HELD_ITEMS de
+   antes. EQUIPAR troca 1 unidade da gaveta certa (`STATE.itens` pra
+   quase tudo, `STATE.pokebolas` só pras Pokébolas -- ver
+   itemQualquerQtdEstoque/itemQualquerAjustarEstoque) pro slot único
+   do Pokémon -- se já tinha OUTRO item equipado, o antigo volta pra
+   Mochila (o jogo oficial só tem 1 slot de item por Pokémon, nunca 2
+   ao mesmo tempo). DESEQUIPAR devolve o item atual pra Mochila e
+   limpa o slot. `itemSegurado` é permanente (persiste no Pokémon
+   salvo, igual Habilidade/Natureza) -- nunca reseta sozinho entre
+   lutas; só reseta se CONSUMIDO em batalha (ver consomeItemSegurado).
+   Segurar um item SEM gatilho codificado (uma Potion, uma Pedra do
+   Trovão, uma Poké Bola) não faz NADA sozinho em luta -- exatamente
+   como no jogo oficial, onde só os itens com efeito de item segurado
+   real (`itemTemEfeitoSegurado`, ver HELD_ITEMS/EVOLUTION_HELD_ITEMS)
+   reagem sozinhos; o popup avisa isso por item pra não confundir quem
+   espera uma Potion curar sozinha. */
+function itemTemEfeitoSegurado(key){ return HELD_ITEMS.some(function(it){ return it.key===key; }) || EVOLUTION_HELD_ITEMS.some(function(it){ return it.key===key; }); }
 DT.gaAskItemSegurado = function(pid){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0];
   if(!p) return;
@@ -19803,11 +19841,11 @@ DT.gaCancelItemSegurado = function(){ SESSION.editItemFor = null; render(); };
 DT.gaEquiparItem = function(pid, key){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0];
   if(!p) return;
-  var def = heldItemByKey(key);
-  if(!def || (STATE.itens[key]||0)<=0){ SESSION.error='Você não tem esse item na Mochila.'; render(); return; }
+  var def = itemByKeyQualquer(key);
+  if(!def || itemQualquerQtdEstoque(key)<=0){ SESSION.error='Você não tem esse item na Mochila.'; render(); return; }
   if(p.itemSegurado===key){ SESSION.editItemFor = null; render(); return; } // já é esse mesmo -- nada a fazer
-  STATE.itens[key]--;
-  if(p.itemSegurado) STATE.itens[p.itemSegurado] = (STATE.itens[p.itemSegurado]||0)+1; // devolve o antigo pra Mochila
+  itemQualquerAjustarEstoque(key, -1);
+  if(p.itemSegurado) itemQualquerAjustarEstoque(p.itemSegurado, 1); // devolve o antigo pra Mochila
   p.itemSegurado = key;
   SESSION.editItemFor = null;
   logAction('equipe', 'Equipou '+def.nome+' em '+(p.apelido||speciesByNum(p.num).name)+'.');
@@ -19816,8 +19854,8 @@ DT.gaEquiparItem = function(pid, key){
 DT.gaDesequiparItem = function(pid){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0];
   if(!p || !p.itemSegurado) return;
-  var def = heldItemByKey(p.itemSegurado);
-  STATE.itens[p.itemSegurado] = (STATE.itens[p.itemSegurado]||0)+1;
+  var def = itemByKeyQualquer(p.itemSegurado);
+  itemQualquerAjustarEstoque(p.itemSegurado, 1);
   p.itemSegurado = null;
   SESSION.editItemFor = null;
   logAction('equipe', 'Desequipou '+(def?def.nome:'um item')+' de '+(p.apelido||speciesByNum(p.num).name)+'.');
@@ -19827,22 +19865,23 @@ function itemSeguradoPopupHTML(pid){
   var p = STATE.party.filter(function(x){ return x.id===pid; })[0];
   if(!p) return '';
   var sp = speciesByNum(p.num);
-  var disponiveis = HELD_ITEMS.concat(EVOLUTION_HELD_ITEMS).filter(function(it){ return (STATE.itens[it.key]||0)>0 || p.itemSegurado===it.key; }); // Cap. leva desta sessão -- os 2 catálogos dividem o MESMO slot único (ver p.itemSegurado), então aparecem juntos aqui
+  var disponiveis = raidRecompensaCatalogoCompleto().filter(function(it){ return itemQualquerQtdEstoque(it.key)>0 || p.itemSegurado===it.key; });
   return '<div class="ga-overlay" onclick="DT.gaCancelItemSegurado()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaCancelItemSegurado()">✕</button>'+
     '<img class="ga-dex-popup-img" src="'+spriteUrl(spriteNumEfetivo(p))+'" alt="">'+
     '<h2>🎒 Item Segurado -- '+esc2(sp.name)+'</h2>'+
-    '<p class="ga-hint">Equipado agora: '+(p.itemSegurado ? itemIconHTML(heldItemByKey(p.itemSegurado))+' '+esc2(heldItemByKey(p.itemSegurado).nome) : 'Nenhum')+'</p>'+
+    '<p class="ga-hint">Equipado agora: '+(p.itemSegurado ? itemIconHTML(itemByKeyQualquer(p.itemSegurado))+' '+esc2(itemByKeyQualquer(p.itemSegurado).nome) : 'Nenhum')+'</p>'+
     (p.itemSegurado ? '<button class="ga-btn-sm" onclick="DT.gaDesequiparItem(\''+pid+'\')">Desequipar (volta pra Mochila)</button>' : '')+
     (disponiveis.length ? '<div class="ga-loja-grid">'+disponiveis.map(function(it){
-      var qtd = STATE.itens[it.key]||0;
+      var qtd = itemQualquerQtdEstoque(it.key);
       return '<div class="ga-loja-card">'+
         '<div class="ga-loja-nome">'+itemIconHTML(it)+' '+esc2(it.nome)+'</div>'+
         '<div class="ga-hint">'+esc2(it.desc)+'</div>'+
+        (itemTemEfeitoSegurado(it.key) ? '' : '<div class="ga-hint">Sem gatilho em luta -- fica só guardado, igual no jogo oficial.</div>')+
         '<div class="ga-hint">Você tem: '+qtd+'</div>'+
         '<button class="ga-btn-sm '+(p.itemSegurado===it.key?'active':'ga-btn-primary')+'" '+(qtd<=0&&p.itemSegurado!==it.key?'disabled':'')+' onclick="DT.gaEquiparItem(\''+pid+'\',\''+it.key+'\')">'+(p.itemSegurado===it.key?'Equipado':'Equipar')+'</button>'+
       '</div>';
-    }).join('')+'</div>' : '<p class="ga-hint">Você ainda não tem nenhum Item Segurado na Mochila -- compre na 🏪 Loja.</p>')+
+    }).join('')+'</div>' : '<p class="ga-hint">Você ainda não tem nenhum item na Mochila pra segurar -- compre na 🏪 Loja.</p>')+
     '<button class="ga-btn-sm" onclick="DT.gaCancelItemSegurado()">Fechar</button>'+
   '</div></div>';
 }
@@ -20755,7 +20794,7 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
     '<div class="ga-team-roles">'+rolesHTML+'</div>'+
     '<div class="ga-team-roles-label">Miscelânea</div>'+
     '<div class="ga-team-itemcaixa">'+
-      '<button type="button" class="ga-team-item" aria-label="Item" onclick="DT.gaAskItemSegurado(\''+poke.id+'\')" title="'+(poke.itemSegurado?'Item: '+esc2(heldItemByKey(poke.itemSegurado).nome):'Nenhum item segurado')+'">🎒</button>'+
+      '<button type="button" class="ga-team-item" aria-label="Item" onclick="DT.gaAskItemSegurado(\''+poke.id+'\')" title="'+(poke.itemSegurado?'Item: '+esc2(itemByKeyQualquer(poke.itemSegurado).nome):'Nenhum item segurado')+'">🎒</button>'+
       '<button type="button" class="ga-team-caixa'+(podeCaixa?'':' disabled')+'" aria-label="Caixa" '+(podeCaixa?'onclick="DT.gaMandarPraCaixa(\''+poke.id+'\')"':'')+' title="'+(podeCaixa?'Mandar pra Caixa':'Não dá pra mandar o único Pokémon da Equipe pra Caixa')+'">📦</button>'+
     '</div>'+
     (orderControls||'')+
