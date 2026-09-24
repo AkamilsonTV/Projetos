@@ -300,8 +300,18 @@ select,input{ font-family:inherit; background:var(--bg2); color:var(--ink); bord
 .ga-team-ghost-ic{ font-size:1.8rem; opacity:.28; transition:opacity .15s ease; }
 .ga-team-ghost-txt{ font-size:.78rem; font-weight:700; color:var(--ink-dim); opacity:.6; text-transform:uppercase; letter-spacing:.06em; transition:opacity .15s ease; }
 .ga-team-topbar{ display:flex; align-items:center; justify-content:space-between; }
+/* Cap. leva desta sessão ("Insira a imagem do item segurado ali
+   embaixo da pokébola. Quando houver item segurado. Não precisa
+   escrever nada. Só o ícone"): a Pokébola sozinha era o único filho
+   do lado esquerdo do topbar -- agora empilha verticalmente com o
+   selo do item segurado (`itemSeguradoBadgeHTML`) embaixo dela,
+   quando existe algum equipado; sem item, o selo nem é renderizado
+   (nenhum espaço extra reservado). */
+.ga-team-topbar-left{ display:flex; flex-direction:column; align-items:center; gap:4px; }
 .ga-team-pokeball{ width:20px; height:20px; border-radius:50%; background:linear-gradient(180deg,#eef3f6 0%,#eef3f6 48%,#1c2a33 48%,#1c2a33 52%,#ef4444 52%,#ef4444 100%); box-shadow:0 0 0 2px #0a1420; opacity:.85; position:relative; }
 .ga-team-pokeball::after{ content:''; position:absolute; inset:6px; border-radius:50%; background:#0a1420; box-shadow:0 0 0 2px #eef3f6; }
+.ga-team-held-badge{ width:16px; height:16px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+.ga-team-held-badge.ga-item-icon-emoji{ width:16px; height:16px; line-height:16px; font-size:11px; }
 /* Cap. leva desta sessão ("E me permita trocar o lider nessa
    janela"): no picker de líder de Kanto (`kantoPokeCardLiderHTML`) a
    Pokébola do topo deixou de ser só decorativa nos cards que NÃO são o
@@ -6053,6 +6063,21 @@ function itemQualquerAjustarEstoque(key, delta){
   if(raidItemEhPokebola(key)) STATE.pokebolas[key] = Math.max(0, (STATE.pokebolas[key]||0) + delta);
   else STATE.itens[key] = Math.max(0, (STATE.itens[key]||0) + delta);
 }
+/* Cap. leva desta sessão ("Insira a imagem do item segurado ali
+   embaixo da pokébola. Quando houver item segurado. Não precisa
+   escrever nada. Só o ícone"): selo pequeno com o ÍCONE do item
+   segurado (sem nome/texto nenhum -- ver itemIconHTML, já cai no
+   emoji de fallback quando o item não tem sprite oficial), pra
+   colar embaixo da Pokébola no canto superior esquerdo do card
+   (`.ga-team-topbar-left`, ver kantoTeamCardCorpoHTML/
+   pokeCardEquipeHTML) -- vazio (nenhum selo) quando o Pokémon não
+   tem item nenhum equipado. */
+function itemSeguradoBadgeHTML(p){
+  if(!p.itemSegurado) return '';
+  var def = itemByKeyQualquer(p.itemSegurado);
+  if(!def) return '';
+  return itemIconHTML(def, 'ga-team-held-badge');
+}
 /* Cap. leva desta sessão (tarefa #183 -- "evoluções não-por-Nível de
    verdade"): as 10 pedras de evolução "clássicas" (cada uma usada por
    2 ou mais Espécies, ver fetch_evolution_details.js) -- as outras
@@ -9969,7 +9994,7 @@ function kantoTeamCardCorpoHTML(p, i){
   var pokeball = i===0
     ? '<span class="ga-team-pokeball" aria-hidden="true"></span>'
     : '<span class="ga-team-pokeball clicavel" role="button" tabindex="0" title="Tornar este o Pokémon Ativo (líder das lutas)" onclick="event.stopPropagation();DT.gaKantoTornarAtivo(\''+p.id+'\')"></span>';
-  return '<div class="ga-team-topbar">'+pokeball+
+  return '<div class="ga-team-topbar"><div class="ga-team-topbar-left">'+pokeball+itemSeguradoBadgeHTML(p)+'</div>'+
       '<div class="ga-team-vd" title="Vitórias / Derrotas desse Pokémon"><b class="v">'+(p.vitorias||0)+'V</b><span class="sep">|</span><b class="d">'+(p.derrotas||0)+'D</b></div>'+
     '</div>'+
     '<div class="ga-team-stage"><div class="ga-team-sprite-wrap"><img class="ga-team-sprite" src="'+spriteUrl(spriteNumEfetivo(p))+'" loading="lazy" alt=""></div></div>'+
@@ -20773,7 +20798,7 @@ function pokeCardEquipeHTML(poke, i, orderControls, dragAttrs){
        em vez de sumir o `<span>` de vez -- mantém o V/D sempre no
        MESMO canto direito nos 6 cards (`justify-content:space-
        between` precisa dos 2 lados preenchidos pra alinhar igual). */
-    '<div class="ga-team-topbar"><span class="ga-team-pokeball" aria-hidden="true"'+(i===0?'':' style="visibility:hidden;"')+'></span>'+
+    '<div class="ga-team-topbar"><div class="ga-team-topbar-left"><span class="ga-team-pokeball" aria-hidden="true"'+(i===0?'':' style="visibility:hidden;"')+'></span>'+itemSeguradoBadgeHTML(poke)+'</div>'+
       '<div class="ga-team-vd" title="Vitórias / Derrotas desse Pokémon"><b class="v">'+(poke.vitorias||0)+'V</b><span class="sep">|</span><b class="d">'+(poke.derrotas||0)+'D</b></div>'+
     '</div>'+
     '<div class="ga-team-stage"><div class="ga-team-sprite-wrap"><img class="ga-team-sprite" src="'+spriteUrl(spriteNumEfetivo(poke))+'" loading="lazy" alt=""></div></div>'+
