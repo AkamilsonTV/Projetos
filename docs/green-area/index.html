@@ -8869,7 +8869,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false };
 
 function freshState(trainerName){
   return {
@@ -13525,7 +13525,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false };
   render();
 };
 
@@ -13686,14 +13686,17 @@ function sairDaPresencaDoKantoCentro(){
   SESSION.kantoCentroDiretorioCarregando = false;
   SESSION.kantoCentroChat = null;
 }
-DT.gaKantoToggleCentro = function(centroId){
-  if(!SESSION.isAdmin || !centroId) return;
-  if(SESSION.kantoCentroAberto===centroId){ sairDaPresencaDoKantoCentro(); render(); return; }
-  if(SESSION.kantoCentroAberto) sairDaPresencaDoKantoCentro(); // defensivo -- não deveria acontecer no fluxo normal (só 1 popup de cidade aberto por vez)
-  SESSION.kantoCentroAberto = centroId;
-  SESSION.kantoCentroDiretorioCarregando = true;
+/* Cap. leva desta sessão ("faça um botão maior... quando clicar ele
+   abre o popup com os menus dentro" + "o chat já fica ativo... só
+   deixar sempre ativo quando entrar na cidade"): a presença/chat NÃO
+   depende mais deste botão (ver `DT.gaKantoSelecionar`, entra sozinha
+   ao selecionar a cidade) -- esse botão agora só abre/fecha o popup de
+   INFO do Centro (Curar Equipe + Treinadores aqui agora), puro liga/
+   desliga de UI, sem nenhuma chamada de presença/Firestore aqui. */
+DT.gaKantoToggleCentroInfo = function(){
+  if(!SESSION.isAdmin) return;
+  SESSION.kantoCentroInfoAberto = !SESSION.kantoCentroInfoAberto;
   render();
-  entrarNaPresencaDoKantoCentro(centroId);
 };
 /* Cap. leva desta sessão ("status, vida e PP agora são gastos e só
    recuperam... ou centro pokémon"): cura de graça e instantânea, igual
@@ -16274,6 +16277,15 @@ DT.gaKantoSelecionarRotaPino = function(routeId, col, row){
   if(kantoTentarAndarPara({col:col,row:row}, {tipo:'route', id:routeId})) return;
   DT.gaKantoSelecionar('route', routeId);
 };
+/* Cap. leva desta sessão ("O chat do centro pokémon já fica ativo pra
+   área que ele estives então só deixar ali do lado ele sempre ativo
+   quando entrar na cidade"): a presença/chat do Centro Pokémon (
+   `SESSION.kantoCentroAberto`, ver entrarNaPresencaDoKantoCentro)
+   deixou de depender de abrir o popup de info do Centro (ver
+   `kantoCentroInfoPopupHTML`/`DT.gaKantoToggleCentroInfo` mais abaixo)
+   -- agora entra sozinha aqui, assim que o jogador seleciona/anda até
+   uma cidade com `pokecenter:true`, e o painel de chat (ver
+   `kantoPopupHTML`) já aparece do lado, sem precisar clicar em nada. */
 DT.gaKantoSelecionar = function(tipo, id){
   if(!SESSION.isAdmin) return;
   if(tipo==='loc'){
@@ -16286,6 +16298,15 @@ DT.gaKantoSelecionar = function(tipo, id){
   SESSION.kantoEscolhendoGinasio = null;
   SESSION.kantoEscolhendoTreinador = null;
   SESSION.kantoMercadoAberto = false;
+  SESSION.kantoCentroInfoAberto = false;
+  var locSel = tipo==='loc' ? kantoLocsById()[id] : null;
+  if(locSel && locSel.pokecenter){
+    SESSION.kantoCentroAberto = id;
+    SESSION.kantoCentroDiretorioCarregando = true;
+    render();
+    entrarNaPresencaDoKantoCentro(id);
+    return;
+  }
   render();
 };
 /* Fecha o popup de local/rota (clique fora ou ✕) -- limpa os 5 campos
@@ -16299,6 +16320,7 @@ DT.gaKantoFecharPopup = function(){
   SESSION.kantoEscolhendoGinasio = null;
   SESSION.kantoEscolhendoTreinador = null;
   SESSION.kantoMercadoAberto = false;
+  SESSION.kantoCentroInfoAberto = false;
   render();
 };
 /* Cap. leva desta sessão ("Cada lugar onde possa ter mercado no mapa,
@@ -16987,55 +17009,63 @@ DT.gaSetKantoMercadoCategoria = function(key){ SESSION.kantoMercadoCategoria = k
    abaixo); o bloco/botão específicos de Vila Pallet foram removidos
    daqui pra não deixar 2 fluxos de escolha coexistindo. */
 var KANTO_STARTERS = [1, 4, 7]; // Bulbasaur, Charmander, Squirtle -- únicos 3 iniciais REAIS de Kanto (FRLG)
-/* Cap. mesma leva ("cada centro pokémon é único... chat, pvp e troca
-   só poderão ser feitos se os jogadores estiverem no mesmo centro
-   pokémon"): mesmo padrão visual/toggle do Mercado logo abaixo, só que
-   com presença AO VIVO (ver entrarNaPresencaDoKantoCentro) em vez de
-   uma lista estática de itens. */
+/* Cap. leva desta sessão ("faça um botão maior. No mercado deixe só o
+   ícone, no Centro pokémon também. Lado a lado. E quando clicar ele
+   abre o popup com os menus dentro"): trocou o botão de texto com
+   seta ▼/▲ (que expandia inline, empurrando o resto do popup pra
+   baixo) por um ícone grande sem texto (`.ga-icon-btn-lg`, MESMO
+   padrão já usado pros ícones de Equipe/Bolsa no cabeçalho do mapa) --
+   ver `kantoMercadoCentroBotoesHTML` logo abaixo, que junta este botão
+   com o do Mercado numa linha só (`.ga-kanto-icon-row`). Clicar não
+   expande mais nada aqui dentro -- abre `kantoCentroInfoPopupHTML`
+   (popup próprio, empilhado por cima). O CHAT não depende mais deste
+   botão nem desse popup (ver comentário na leva "chat sempre ativo" em
+   `DT.gaKantoSelecionar`/`kantoPopupHTML`). */
 function kantoCentroBlocoHTML(loc){
   if(!loc.pokecenter) return '';
-  var aberto = SESSION.kantoCentroAberto===loc.id;
-  var out = '<div class="ga-kanto-lider">'+
-    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoToggleCentro(\''+loc.id+'\')">🏥 Centro Pokémon'+(aberto?' ▲':' ▼')+'</button>';
-  if(aberto){
-    out += '<p class="ga-hint">Cada Centro Pokémon é um lugar À PARTE -- só dá pra conversar, trocar e duelar com quem estiver NESTE MESMO Centro agora. Faça amizade primeiro no 🏥 Centro Pokémon global (menu lateral) pra poder Trocar/Desafiar por aqui.</p>';
+  return '<button type="button" class="ga-icon-btn-lg" title="Centro Pokémon" onclick="DT.gaKantoToggleCentroInfo()">🏥</button>';
+}
+/* Extraído de kantoCentroBlocoHTML (ver comentário acima) -- o
+   conteúdo que antes expandia inline (Curar Equipe + Treinadores aqui
+   agora) virou um popup próprio, empilhado por cima do popup da
+   cidade (mesmo padrão de `kantoEquipePopupHTML`/`kantoBolsaPopupHTML`).
+   O CHAT não mora mais aqui -- continua num painel à parte
+   (`kantoCentroChatConteudoHTML`, anexado por `kantoPopupHTML`),
+   agora sempre visível assim que a cidade é selecionada, sem depender
+   deste popup estar aberto. */
+function kantoCentroInfoPopupHTML(){
+  if(!SESSION.kantoCentroInfoAberto) return '';
+  var loc = (SESSION.kantoSelecionado && SESSION.kantoSelecionado.tipo==='loc') ? kantoLocsById()[SESSION.kantoSelecionado.id] : null;
+  if(!loc || !loc.pokecenter) return '';
+  return '<div class="ga-overlay" onclick="DT.gaKantoToggleCentroInfo()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaKantoToggleCentroInfo()">✕</button>'+
+    '<h2>🏥 Centro Pokémon -- '+esc2(loc.nome)+'</h2>'+
+    '<p class="ga-hint">Cada Centro Pokémon é um lugar À PARTE -- só dá pra conversar, trocar e duelar com quem estiver NESTE MESMO Centro agora. Faça amizade primeiro no 🏥 Centro Pokémon global (menu lateral) pra poder Trocar/Desafiar por aqui.</p>'+
     /* Cap. leva desta sessão ("status, vida e PP agora são gastos e só
        recuperam... ou centro pokémon"): igual o jogo de verdade, entrar
        num Centro Pokémon de Kanto cura a Equipe INTEIRA de graça --
        PV+PP+Condição de uma vez (zera os 3 campos persistentes, ver
        kantoAplicarPersistenciaEntrada/kantoSalvarPersistenciaSaida lá em
        cima). Poção sozinha (ver kantoEstadoEquipeHTML) só cobre PV. */
-    out += '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoCurarEquipe()">💊 Curar Equipe (grátis)</button>';
-    out += '<h4 class="ga-subhead" style="margin-top:8px;">🧑‍🤝‍🧑 Treinadores aqui agora</h4>'+
-      (SESSION.kantoCentroDiretorioCarregando
-        ? '<p class="ga-hint">Vendo quem está aqui agora...</p>'
-        : (!SESSION.kantoCentroDiretorio || !SESSION.kantoCentroDiretorio.length
-            ? '<p class="ga-hint">Nenhum outro Treinador está neste Centro Pokémon agora.</p>'
-            : '<div class="ga-poke-grid">'+SESSION.kantoCentroDiretorio.map(function(p){
-                var jaAmigo = (SESSION.amigos||[]).some(function(a){ return a.outro===p.docId; });
-                var trocaComEle = (SESSION.trocasAtivas||[]).filter(function(t){ return t.a===p.docId || t.b===p.docId; })[0];
-                var duelComEle = (SESSION.duelosAtivos||[]).filter(function(d){ return (d.a===p.docId || d.b===p.docId) && d.status!=='fim'; })[0];
-                var acoes = jaAmigo
-                  ? '<div class="ga-btn-row"><button class="ga-btn-sm" onclick="DT.gaIniciarTroca(\''+p.docId+'\')">🔄 '+(trocaComEle?'Continuar troca':'Trocar')+'</button>'+
-                    '<button class="ga-btn-sm" onclick="DT.gaDesafiarDuelo(\''+p.docId+'\')">⚔️ '+(duelComEle?'Continuar Duelo':'Desafiar')+'</button></div>'
-                  : '<span class="ga-hint">Adicione amizade no Centro Pokémon global pra Trocar/Desafiar</span>';
-                return '<div class="ga-friend-card"><strong>'+esc2(p.nome)+'</strong>'+acoes+'</div>';
-              }).join('')+'</div>'
-        )
-      );
-    /* Cap. leva desta sessão ("Quando eu clicar em centro pokémon quero
-       que o chat abra assim, na lateral"): o CHAT em si saiu daqui --
-       vira um painel separado, renderizado por kantoPopupHTML como
-       IRMÃO do card principal (ver kantoCentroChatConteudoHTML abaixo),
-       não mais dentro deste bloco. Em telas largas isso empurra o chat
-       pra uma caixa à direita (`.ga-kanto-centro-chat-painel`); em
-       telas estreitas (celular) o wrapper `.ga-kanto-popup-flex` empilha
-       os 2 em coluna (ver CSS) -- visualmente continua aparecendo logo
-       depois da lista de Treinadores, exatamente como antes.
-       "No celular pode deixar como está fica melhor" -- por isso o
-       empilhamento em coluna no celular, sem nenhuma outra mudança lá. */
-  }
-  return out+'</div>';
+    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoCurarEquipe()">💊 Curar Equipe (grátis)</button>'+
+    '<h4 class="ga-subhead" style="margin-top:8px;">🧑‍🤝‍🧑 Treinadores aqui agora</h4>'+
+    (SESSION.kantoCentroDiretorioCarregando
+      ? '<p class="ga-hint">Vendo quem está aqui agora...</p>'
+      : (!SESSION.kantoCentroDiretorio || !SESSION.kantoCentroDiretorio.length
+          ? '<p class="ga-hint">Nenhum outro Treinador está neste Centro Pokémon agora.</p>'
+          : '<div class="ga-poke-grid">'+SESSION.kantoCentroDiretorio.map(function(p){
+              var jaAmigo = (SESSION.amigos||[]).some(function(a){ return a.outro===p.docId; });
+              var trocaComEle = (SESSION.trocasAtivas||[]).filter(function(t){ return t.a===p.docId || t.b===p.docId; })[0];
+              var duelComEle = (SESSION.duelosAtivos||[]).filter(function(d){ return (d.a===p.docId || d.b===p.docId) && d.status!=='fim'; })[0];
+              var acoes = jaAmigo
+                ? '<div class="ga-btn-row"><button class="ga-btn-sm" onclick="DT.gaIniciarTroca(\''+p.docId+'\')">🔄 '+(trocaComEle?'Continuar troca':'Trocar')+'</button>'+
+                  '<button class="ga-btn-sm" onclick="DT.gaDesafiarDuelo(\''+p.docId+'\')">⚔️ '+(duelComEle?'Continuar Duelo':'Desafiar')+'</button></div>'
+                : '<span class="ga-hint">Adicione amizade no Centro Pokémon global pra Trocar/Desafiar</span>';
+              return '<div class="ga-friend-card"><strong>'+esc2(p.nome)+'</strong>'+acoes+'</div>';
+            }).join('')+'</div>'
+      )
+    )+
+  '</div></div>';
 }
 /* Extraído de kantoCentroBlocoHTML (ver comentário acima) -- só o
    pedaço do CHAT (título + caixa de mensagens + campo de enviar), pra
@@ -17062,20 +17092,40 @@ function kantoCentroChatConteudoHTML(loc){
       '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEnviarMensagemChatKantoCentro(\''+loc.id+'\',document.getElementById(\'gaKantoCentroChatInput\'))">Enviar</button>'+
     '</div>';
 }
+/* Cap. leva desta sessão ("faça um botão maior. No mercado deixe só o
+   ícone... quando clicar ele abre o popup com os menus dentro"): mesmo
+   tratamento do Centro Pokémon logo acima -- ícone grande sem texto,
+   sem expandir nada inline; o conteúdo (filtros + itens) virou
+   `kantoMercadoPopupHTML`, popup próprio empilhado por cima. */
 function kantoMercadoBlocoHTML(loc){
   if(!loc.mercado) return '';
+  return '<button type="button" class="ga-icon-btn-lg" title="Mercado" onclick="DT.gaKantoToggleMercado()">'+(loc.mercado==='todos'?'🏬':'🏪')+'</button>';
+}
+/* Junta os 2 ícones (Mercado + Centro Pokémon) numa linha só, lado a
+   lado -- reaproveita `.ga-kanto-icon-row` (MESMA classe já usada nos
+   ícones de Equipe/Bolsa do cabeçalho do mapa). Cada bloco já devolve
+   '' sozinho quando não se aplica (loc sem mercado/sem pokecenter),
+   então a linha toda some se nenhum dos 2 existir aqui. */
+function kantoMercadoCentroBotoesHTML(loc){
+  var btns = kantoMercadoBlocoHTML(loc)+kantoCentroBlocoHTML(loc);
+  return btns ? '<div class="ga-kanto-icon-row">'+btns+'</div>' : '';
+}
+function kantoMercadoPopupHTML(){
+  if(!SESSION.kantoMercadoAberto) return '';
+  var loc = (SESSION.kantoSelecionado && SESSION.kantoSelecionado.tipo==='loc') ? kantoLocsById()[SESSION.kantoSelecionado.id] : null;
+  if(!loc || !loc.mercado) return '';
   var itens = kantoMercadoItensDoLocal(loc);
   var titulo = loc.mercado==='todos' ? '🏬 Central de Compras Celadon (tudo do jogo)' : '🏪 Mercado';
-  var out = '<div class="ga-kanto-lider">'+
-    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoToggleMercado()">'+titulo+' -- '+itens.length+' iten'+(itens.length===1?'':'s')+(SESSION.kantoMercadoAberto?' ▲':' ▼')+'</button>';
-  if(SESSION.kantoMercadoAberto){
-    var filtrados = kantoMercadoItensFiltrados(loc);
-    out += kantoMercadoFiltrosHTML();
-    out += filtrados.length
+  var filtrados = kantoMercadoItensFiltrados(loc);
+  return '<div class="ga-overlay" onclick="DT.gaKantoToggleMercado()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaKantoToggleMercado()">✕</button>'+
+    '<h2>'+titulo+'</h2>'+
+    '<p class="ga-hint">'+itens.length+' iten'+(itens.length===1?'':'s')+' disponível'+(itens.length===1?'':'is')+' aqui.</p>'+
+    kantoMercadoFiltrosHTML()+
+    (filtrados.length
       ? '<div class="ga-loja-grid" style="margin-top:8px;">'+filtrados.map(lojaCardHTML).join('')+'</div>'
-      : '<p class="ga-hint">Nenhum item bate com esse filtro/busca.</p>';
-  }
-  return out+'</div>';
+      : '<p class="ga-hint">Nenhum item bate com esse filtro/busca.</p>')+
+  '</div></div>';
 }
 /* Cap. leva desta sessão ("quero que tenha um menu onde eu possa ver
    os treinadores e selecionar quem que quero batalhar, no popup de
@@ -17199,6 +17249,7 @@ DT.gaKantoSelecionarTile = function(routeId, tileIndex){
   SESSION.kantoEscolhendoGinasio = null;
   SESSION.kantoEscolhendoTreinador = null;
   SESSION.kantoMercadoAberto = false;
+  SESSION.kantoCentroInfoAberto = false;
   render();
 };
 function kantoInfoPainelHTML(){
@@ -17232,7 +17283,7 @@ function kantoInfoPainelHTML(){
     var touching = kantoRoutesTouching(loc.id);
     var conecta = touching.length ? '<div class="ga-hint">Rotas conectadas: '+touching.map(function(r){ return '<button type="button" class="ga-linklike" onclick="DT.gaKantoSelecionar(\'route\',\''+r.id+'\')">'+(r.water?'🌊':'🛤️')+' '+esc2(r.nome)+'</button>'; }).join(', ')+'</div>' : '';
     return '<div class="ga-kanto-info-head"><span class="ga-kanto-info-ic">'+kantoOwnerIcon(loc)+'</span><div><h3>'+esc2(loc.nome)+'</h3></div></div>'+badge+
-      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoGinasioBlocoHTML(loc)+kantoMercadoBlocoHTML(loc)+kantoCentroBlocoHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+kantoTreinadoresBlocoHTML(loc, 'loc')+conecta;
+      '<p class="ga-hint">'+esc2(loc.desc)+'</p>'+kantoGinasioBlocoHTML(loc)+kantoMercadoCentroBotoesHTML(loc)+kantoAreasListaHTML('loc', loc.id, loc)+kantoTreinadoresBlocoHTML(loc, 'loc')+conecta;
   }
   var route = KANTO_MAP.routes.filter(function(r){ return r.id===sel.id; })[0];
   if(!route) return '';
@@ -17792,6 +17843,14 @@ function kantoPopupHTML(){
      zero e a rolagem voltava pro topo, mesmo sem o jogador ter pedido
      nada disso -- exatamente o "sobe pro topo a toda mensagem que
      mandar" reportado. */
+  /* Cap. leva desta sessão ("O chat do centro pokémon já fica ativo
+     pra área que ele estives então só deixar ali do lado ele sempre
+     ativo quando entrar na cidade"): `SESSION.kantoCentroAberto` não
+     depende mais de clicar no ícone do Centro Pokémon (ver
+     `kantoCentroBlocoHTML`/`kantoCentroInfoPopupHTML` -- esse ícone só
+     abre um popup à parte com Curar Equipe/Treinadores) -- entra
+     sozinho assim que a cidade é selecionada (ver `DT.gaKantoSelecionar`),
+     então esse painel de chat já aparece do lado automaticamente. */
   var centroLoc = (SESSION.kantoSelecionado.tipo==='loc' && SESSION.kantoCentroAberto) ? kantoLocsById()[SESSION.kantoCentroAberto] : null;
   var chatPainel = centroLoc ? '<div class="ga-kanto-centro-chat-painel" id="gaKantoCentroChatPainel">'+kantoCentroChatConteudoHTML(centroLoc)+'</div>' : '';
   return '<div class="ga-overlay" onclick="DT.gaKantoFecharPopup()"><div class="ga-kanto-popup-flex" id="gaKantoPopupCard" onclick="event.stopPropagation()">'+
@@ -18893,6 +18952,7 @@ DT.gaGoto = function(screen){
      sair do Centro antigo. */
   if(SESSION.kantoCentroAberto && screen!=='kanto'){
     sairDaPresencaDoKantoCentro();
+    SESSION.kantoCentroInfoAberto = false;
   }
   /* Cap. leva desta sessão (Raids): mesmo espírito acima -- o chat de
      uma sala de Raid só fica ao vivo enquanto essa sala específica
@@ -20442,7 +20502,7 @@ function screenHTML(){
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
-    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() + kantoEquipePopupHTML() + kantoPendingSequenciaConfirmPopupHTML() + kantoSequenciaFimPopupHTML() : hubScreenHTML());
+    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoMercadoPopupHTML() + kantoCentroInfoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() + kantoEquipePopupHTML() + kantoPendingSequenciaConfirmPopupHTML() + kantoSequenciaFimPopupHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
