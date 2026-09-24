@@ -16554,7 +16554,12 @@ function kantoDesafioTreinadorViewHTML(){
   var escolha = SESSION.kantoEscolhendoTreinador;
   var trainer = kantoTrainerById(escolha.ownerType, escolha.ownerId, escolha.trainerId);
   if(!trainer){ SESSION.kantoEscolhendoTreinador = null; return kantoInfoPainelHTML(); }
-  var nomeTxt = trainer.emoji+' '+esc2(trainer.classe)+(trainer.nome?' '+esc2(trainer.nome):'');
+  /* Sem trainer.emoji aqui de propósito (Cap. "a imagem de inseto do
+     texto decorativo do bug catcher pode tirar"): o sprite REAL da
+     classe já aparece do lado (kantoTrainerSpriteUrl) -- o emoji era
+     decoração redundante, não só pro Bug Catcher, pra QUALQUER classe
+     mostrada nesta view. */
+  var nomeTxt = esc2(trainer.classe)+(trainer.nome?' '+esc2(trainer.nome):'');
   var out = '<div class="ga-kanto-info-head"><button type="button" class="ga-btn-sm" onclick="DT.gaKantoVoltarTreinador()">← Voltar</button></div>'+
     '<div class="ga-trainer-detail-head"><img src="'+kantoTrainerSpriteUrl(trainer)+'" alt="'+esc2(trainer.classe)+'"><div><h3>'+nomeTxt+'</h3></div></div>';
   if(escolha.faixaIdx==null){
