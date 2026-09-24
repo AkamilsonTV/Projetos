@@ -5807,10 +5807,17 @@ var DUELO_CURA_PCT = 0.5;
    array) -- preços na mesma ordem relativa do jogo oficial
    (Bulbapedia: Potion < Super Potion < Hyper Potion), escalados pro
    tamanho pequeno de número que o resto do protótipo já usa. */
+/* Cap. leva desta sessão ("Sobre os demais itens pode colocar o valor
+   de acordo com o original. Falo de pokébolas, pedra de evolução e
+   qualquer outro tipo de item"): Potion/Super Potion/Hyper Potion
+   estavam com valor INVENTADO (15/35/60) -- corrigidos pro preço real
+   de Loja (Bulbapedia, FireRed/LeafGreen -- mesma referência já usada
+   pra Revive/Max Revive abaixo, que já estavam certos): Potion ₽300,
+   Super Potion ₽700, Hyper Potion ₽1200. */
 var GA_ITEMS = [
-  { key:'pocao', nome:'Potion', emoji:'💊', icon:'potion', curaPct:0.30, preco:15, desc:'Restaura 30% do PV Máximo do Pokémon.' },
-  { key:'superpocao', nome:'Super Potion', emoji:'💉', icon:'super-potion', curaPct:0.60, preco:35, desc:'Restaura 60% do PV Máximo do Pokémon.' },
-  { key:'hiperpocao', nome:'Hyper Potion', emoji:'🧪', icon:'hyper-potion', curaPct:1.00, preco:60, desc:'Restaura 100% do PV Máximo do Pokémon (cura total).' },
+  { key:'pocao', nome:'Potion', emoji:'💊', icon:'potion', curaPct:0.30, preco:300, desc:'Restaura 30% do PV Máximo do Pokémon.' },
+  { key:'superpocao', nome:'Super Potion', emoji:'💉', icon:'super-potion', curaPct:0.60, preco:700, desc:'Restaura 60% do PV Máximo do Pokémon.' },
+  { key:'hiperpocao', nome:'Hyper Potion', emoji:'🧪', icon:'hyper-potion', curaPct:1.00, preco:1200, desc:'Restaura 100% do PV Máximo do Pokémon (cura total).' },
   /* Cap. leva desta sessão ("pokémon com 0 de vida não pode ser
      revivido com poção. Só com revive. Crie os itens de reviver"):
      Revive/Max Revive são o ÚNICO jeito de reanimar um Pokémon
@@ -5824,7 +5831,48 @@ var GA_ITEMS = [
      tempo dentro de uma luta em andamento). Preços reais (Bulbapedia,
      Loja padrão): Revive ₽1500, Max Revive ₽4000. */
   { key:'revive', nome:'Revive', emoji:'✨', icon:'revive', curaPct:0.50, reviveOnly:true, preco:1500, desc:'Reanima um Pokémon desmaiado, devolvendo 50% do PV Máximo. Só funciona em quem está com 0 de PV.' },
-  { key:'maxrevive', nome:'Max Revive', emoji:'💫', icon:'max-revive', curaPct:1.00, reviveOnly:true, preco:4000, desc:'Reanima um Pokémon desmaiado, devolvendo 100% do PV Máximo. Só funciona em quem está com 0 de PV.' }
+  { key:'maxrevive', nome:'Max Revive', emoji:'💫', icon:'max-revive', curaPct:1.00, reviveOnly:true, preco:4000, desc:'Reanima um Pokémon desmaiado, devolvendo 100% do PV Máximo. Só funciona em quem está com 0 de PV.' },
+  /* Cap. leva desta sessão ("Também tem que preparar os itens de
+     recuperar PP aumentar PP etc... pra ficar igual no jogo"):
+     mecânica oficial exata (Bulbapedia) --
+       Ether: restaura 10 PP de 1 Movimento ESCOLHIDO.
+       Max Ether: restaura o PP de 1 Movimento ESCOLHIDO pro Máximo.
+       Elixir: restaura 10 PP de TODOS os Movimentos de uma vez.
+       Max Elixir: restaura o PP de TODOS os Movimentos pro Máximo.
+     `ppRestore` é o número fixo (10) ou 'max' (Max Ether/Max Elixir);
+     `targetOneMove:true` marca os 2 que pedem ESCOLHER 1 Movimento
+     (Ether/Max Ether) -- Elixir/Max Elixir não têm essa flag, afetam
+     os 4 de uma vez. Nenhum dos 4 é vendido numa Loja de verdade em
+     jogo nenhum (só achado no mapa) -- preço aqui é o de VENDA oficial
+     (Bulbapedia, Geração 3, mesma era de Potion/Revive acima): Ether
+     ₽600, Max Ether ₽1000, Elixir ₽1500, Max Elixir ₽2250. Igual
+     Revive/Max Revive, só ficam disponíveis fora de luta no widget
+     "Estado da Equipe" de Kanto (PP só é rastreado de verdade ali --
+     fora do mapa, PP sempre volta 100% sozinho no fim de toda luta,
+     ver cabeçalho de kantoAplicarPersistenciaEntrada). */
+  { key:'ether', nome:'Ether', emoji:'🔷', icon:'ether', ppRestore:10, targetOneMove:true, preco:600, desc:'Restaura 10 PP de UM Movimento escolhido.' },
+  { key:'maxether', nome:'Max Ether', emoji:'💠', icon:'max-ether', ppRestore:'max', targetOneMove:true, preco:1000, desc:'Restaura o PP de UM Movimento escolhido pro Máximo.' },
+  { key:'elixir', nome:'Elixir', emoji:'🧉', icon:'elixir', ppRestore:10, preco:1500, desc:'Restaura 10 PP de TODOS os Movimentos de uma vez.' },
+  { key:'maxelixir', nome:'Max Elixir', emoji:'🍶', icon:'max-elixir', ppRestore:'max', preco:2250, desc:'Restaura o PP de TODOS os Movimentos pro Máximo de uma vez.' },
+  /* Cap. leva desta sessão (continuação -- "aumentar PP"): mecânica
+     oficial exata -- PP Up aumenta o PP MÁXIMO de 1 Movimento
+     ESCOLHIDO em 1/5 (20%) do valor BASE dele, arredondado pra baixo,
+     empilhando até 3 VEZES no mesmo Movimento (`poke.ppBoost[nome] `,
+     0-3, PERMANENTE -- ao contrário de Ether/Elixir, isso não é
+     "estado de luta", segue o Pokémon pra QUALQUER luta futura, dentro
+     ou fora de Kanto, exatamente como um Movimento aprendido). PP Max
+     preenche esse contador DIRETO pro teto (3) numa única aplicação --
+     mesmo efeito final de 3 PP Up de uma vez, nunca "empilha em cima"
+     de PP Up já aplicado (só define o contador pro máximo, ver
+     `ppMaxDoMovimento`/`DT.gaUsarPPUp` mais abaixo). Preço de venda
+     oficial (Bulbapedia, Geração 3 -- também nunca vendido numa Loja
+     de verdade, só achado ou ganho no Cassino de Celadon): PP Up e PP
+     Max ₽4900 os dois (mesmo valor oficial pros 2). Usados no popup de
+     Movimentos (Equipe/Caixa) -- ao contrário de Ether/Elixir, valem
+     em QUALQUER luta (não só Kanto), então ficam fora do widget de
+     Kanto de propósito. */
+  { key:'ppup', nome:'PP Up', emoji:'🔵', icon:'pp-up', ppBoost:1, preco:4900, desc:'Aumenta o PP Máximo de UM Movimento escolhido em 20% do valor base -- empilha até 3 vezes no mesmo Movimento.' },
+  { key:'ppmax', nome:'PP Max', emoji:'🟦', icon:'pp-max', ppBoost:'max', preco:4900, desc:'Preenche de uma vez o PP Máximo de UM Movimento escolhido pro teto (equivale a aplicar 3 PP Up nele).' }
 ];
 /* Filtro compartilhado por TODO gatilho de cura em luta ativa
    (mid-battle, Caça em Grupo, recomendação automática) -- exclui os
@@ -5869,17 +5917,30 @@ function raidItemEhPokebola(key){ return POKEBALLS.some(function(b){ return b.ke
    PokeAPI (bate com `EVOLUTIONS_DEX[num][].item` pra achar quem cada
    pedra evolui) -- e É TAMBÉM o nome do arquivo do ícone oficial
    (ver itemIconUrl), então não precisa de nenhum mapeamento à parte. */
+/* Cap. leva desta sessão ("...pedra de evolução e qualquer outro tipo
+   de item" -- preço de acordo com o original): pesquisa Bulbapedia
+   por pedra -- Fire/Water/Thunder/Leaf Stone são as 4 "clássicas",
+   vendidas desde sempre (FireRed/LeafGreen, Loja de Departamentos de
+   Celadon) por ₽2100 cada. As outras 6 (Moon/Sun/Ice/Shiny/Dusk/Dawn)
+   NUNCA foram vendidas em FRLG nem no Scarlet/Violet (só achadas) --
+   o único jogo que vende as 6 juntas numa loja de verdade é Legends:
+   Z-A (Empório de Pedras), ₽3000 cada, valor usado aqui por
+   consistência entre as 6 (em vez de picotar preço avulso e
+   inconsistente por jogo -- Black/B2W2 tinham valores bem mais altos
+   e nada padronizados entre si). Prism Scale nunca teve preço de
+   COMPRA em jogo nenhum -- usado o de VENDA mais atual (Scarlet/
+   Violet, ₽750). */
 var EVOLUTION_STONES = [
-  { key:'pedra-fogo', item:'fire-stone', icon:'fire-stone', nome:'Fire Stone', preco:300 },
-  { key:'pedra-agua', item:'water-stone', icon:'water-stone', nome:'Water Stone', preco:300 },
-  { key:'pedra-trovao', item:'thunder-stone', icon:'thunder-stone', nome:'Thunder Stone', preco:300 },
-  { key:'pedra-folha', item:'leaf-stone', icon:'leaf-stone', nome:'Leaf Stone', preco:300 },
-  { key:'pedra-lua', item:'moon-stone', icon:'moon-stone', nome:'Moon Stone', preco:300 },
-  { key:'pedra-sol', item:'sun-stone', icon:'sun-stone', nome:'Sun Stone', preco:300 },
-  { key:'pedra-gelo', item:'ice-stone', icon:'ice-stone', nome:'Ice Stone', preco:300 },
-  { key:'pedra-brilhante', item:'shiny-stone', icon:'shiny-stone', nome:'Shiny Stone', preco:400 },
-  { key:'pedra-crepusculo', item:'dusk-stone', icon:'dusk-stone', nome:'Dusk Stone', preco:400 },
-  { key:'pedra-alvorada', item:'dawn-stone', icon:'dawn-stone', nome:'Dawn Stone', preco:400 },
+  { key:'pedra-fogo', item:'fire-stone', icon:'fire-stone', nome:'Fire Stone', preco:2100 },
+  { key:'pedra-agua', item:'water-stone', icon:'water-stone', nome:'Water Stone', preco:2100 },
+  { key:'pedra-trovao', item:'thunder-stone', icon:'thunder-stone', nome:'Thunder Stone', preco:2100 },
+  { key:'pedra-folha', item:'leaf-stone', icon:'leaf-stone', nome:'Leaf Stone', preco:2100 },
+  { key:'pedra-lua', item:'moon-stone', icon:'moon-stone', nome:'Moon Stone', preco:3000 },
+  { key:'pedra-sol', item:'sun-stone', icon:'sun-stone', nome:'Sun Stone', preco:3000 },
+  { key:'pedra-gelo', item:'ice-stone', icon:'ice-stone', nome:'Ice Stone', preco:3000 },
+  { key:'pedra-brilhante', item:'shiny-stone', icon:'shiny-stone', nome:'Shiny Stone', preco:3000 },
+  { key:'pedra-crepusculo', item:'dusk-stone', icon:'dusk-stone', nome:'Dusk Stone', preco:3000 },
+  { key:'pedra-alvorada', item:'dawn-stone', icon:'dawn-stone', nome:'Dawn Stone', preco:3000 },
   /* Cap. leva desta sessão (pedido explícito do jogador, fechando o
      grupo 🟡 do checklist -- Feebas/Magneton/Nosepass/Eevee×2/
      Charjabug/Crabrawler, que exigiam Beleza/Afeto/Localização, 3
@@ -5890,8 +5951,8 @@ var EVOLUTION_STONES = [
      oficiais -- item novo criado só pra este protótipo, mesmo espírito
      de "degrau extra" documentado no resto do arquivo, sem sprite
      nenhum disponível (cai pro emoji, ver itemIconHTML). */
-  { key:'escama-prisma', item:'prism-scale', icon:'prism-scale', nome:'Prism Scale', preco:300 },
-  { key:'pedra-rocha', icon:null, emoji:'🪨', nome:'Rock Stone', preco:300, desc:'Use fora de luta pra evoluir Nosepass em Probopass (item NÃO oficial, criado só pra este protótipo -- a evolução real usa Localização, que este jogo não simula).' }
+  { key:'escama-prisma', item:'prism-scale', icon:'prism-scale', nome:'Prism Scale', preco:750 },
+  { key:'pedra-rocha', icon:null, emoji:'🪨', nome:'Rock Stone', preco:300, desc:'Use fora de luta pra evoluir Nosepass em Probopass (item NÃO oficial, criado só pra este protótipo -- a evolução real usa Localização, que este jogo não simula -- preço mantido, não existe "original" pra copiar).' }
 ];
 /* Cap. leva desta sessão: decisão de design do jogador SUBSTITUINDO a
    condição real de 7 arestas (Beleza/Localização, ambas impraticáveis
@@ -6229,17 +6290,25 @@ function giroElegivelPara(p){
    de verdade. Em vez de arriscar um ícone ERRADO (de outro item) ou
    uma URL que sempre dá 404, `itemIconHTML` (ver abaixo) cai pro
    `emoji` como fallback honesto só quando `icon` for null. */
+/* Cap. leva desta sessão (preço de acordo com o original, itens
+   exclusivos Gen 8/9): a maioria nunca foi vendida numa Loja de
+   verdade em jogo nenhum (achados/prêmio/troca) -- usado o preço de
+   COMPRA quando existe algum (Legends: Arceus/Scarlet-Violet), senão
+   o de VENDA mais atual documentado no Bulbapedia (nunca inventado).
+   Scroll of Darkness/Scroll of Waters são os 2 únicos SEM preço
+   nenhum, nem de compra nem de venda, em jogo algum -- mantido o
+   valor anterior (300) por não existir nenhum "original" pra copiar. */
 var EVOLUTION_EXCLUSIVE_ITEMS = [
-  { key:'augurita-negra', item:'black-augurite', icon:null, emoji:'🪨', nome:'Black Augurite', preco:300, desc:'Use fora de luta pra evoluir Scyther em Kleavor.' },
-  { key:'bloco-de-turfa', item:'peat-block', icon:null, emoji:'🟫', nome:'Peat Block', preco:300, desc:'Use fora de luta DE NOITE (aproximação de "lua cheia" -- este protótipo não simula fases da lua) pra evoluir Ursaring em Ursaluna.' },
-  { key:'maca-azeda', item:'tart-apple', icon:null, emoji:'🍏', nome:'Tart Apple', preco:300, desc:'Use fora de luta pra evoluir Applin em Flapple.' },
-  { key:'maca-doce', item:'sweet-apple', icon:null, emoji:'🍎', nome:'Sweet Apple', preco:300, desc:'Use fora de luta pra evoluir Applin em Appletun.' },
-  { key:'maca-melada', item:'syrupy-apple', icon:null, emoji:'🍯', nome:'Syrupy Apple', preco:300, desc:'Use fora de luta pra evoluir Applin em Dipplin.' },
-  { key:'pote-rachado', item:'cracked-pot', icon:null, emoji:'🫖', nome:'Cracked Pot', preco:300, desc:'Use fora de luta pra evoluir Sinistea em Polteageist (jogo oficial só deixa a forma "Antiga" evoluir; este protótipo não distingue formas Falsa/Antiga, aproximação documentada).' },
-  { key:'liga-metalica', item:'metal-alloy', icon:null, emoji:'🔩', nome:'Metal Alloy', preco:300, desc:'Use fora de luta pra evoluir Duraludon em Archaludon.' },
-  { key:'armadura-auspiciosa', item:'auspicious-armor', icon:null, emoji:'🛡️', nome:'Auspicious Armor', preco:300, desc:'Use fora de luta pra evoluir Charcadet em Armarouge.' },
-  { key:'armadura-maligna', item:'malicious-armor', icon:null, emoji:'🖤', nome:'Malicious Armor', preco:300, desc:'Use fora de luta pra evoluir Charcadet em Ceruledge.' },
-  { key:'xicara-comum', item:'unremarkable-teacup', icon:null, emoji:'🍵', nome:'Unremarkable Teacup', preco:300, desc:'Use fora de luta pra evoluir Poltchageist em Sinistcha.' },
+  { key:'augurita-negra', item:'black-augurite', icon:null, emoji:'🪨', nome:'Black Augurite', preco:8000, desc:'Use fora de luta pra evoluir Scyther em Kleavor.' },
+  { key:'bloco-de-turfa', item:'peat-block', icon:null, emoji:'🟫', nome:'Peat Block', preco:10000, desc:'Use fora de luta DE NOITE (aproximação de "lua cheia" -- este protótipo não simula fases da lua) pra evoluir Ursaring em Ursaluna.' },
+  { key:'maca-azeda', item:'tart-apple', icon:null, emoji:'🍏', nome:'Tart Apple', preco:2200, desc:'Use fora de luta pra evoluir Applin em Flapple.' },
+  { key:'maca-doce', item:'sweet-apple', icon:null, emoji:'🍎', nome:'Sweet Apple', preco:2200, desc:'Use fora de luta pra evoluir Applin em Appletun.' },
+  { key:'maca-melada', item:'syrupy-apple', icon:null, emoji:'🍯', nome:'Syrupy Apple', preco:500, desc:'Use fora de luta pra evoluir Applin em Dipplin.' },
+  { key:'pote-rachado', item:'cracked-pot', icon:null, emoji:'🫖', nome:'Cracked Pot', preco:3000, desc:'Use fora de luta pra evoluir Sinistea em Polteageist (jogo oficial só deixa a forma "Antiga" evoluir; este protótipo não distingue formas Falsa/Antiga, aproximação documentada).' },
+  { key:'liga-metalica', item:'metal-alloy', icon:null, emoji:'🔩', nome:'Metal Alloy', preco:1500, desc:'Use fora de luta pra evoluir Duraludon em Archaludon.' },
+  { key:'armadura-auspiciosa', item:'auspicious-armor', icon:null, emoji:'🛡️', nome:'Auspicious Armor', preco:1500, desc:'Use fora de luta pra evoluir Charcadet em Armarouge.' },
+  { key:'armadura-maligna', item:'malicious-armor', icon:null, emoji:'🖤', nome:'Malicious Armor', preco:1500, desc:'Use fora de luta pra evoluir Charcadet em Ceruledge.' },
+  { key:'xicara-comum', item:'unremarkable-teacup', icon:null, emoji:'🍵', nome:'Unremarkable Teacup', preco:400, desc:'Use fora de luta pra evoluir Poltchageist em Sinistcha.' },
   /* Cap. leva desta sessão ("Milcery pode seguir sua dica [botão fora
      de luta, evolui na hora]... Mas o Milcery tem que estar segurando
      Sweet... se não tiver o item, cria ele"): oficial tem 7 Doces
@@ -6252,14 +6321,14 @@ var EVOLUTION_EXCLUSIVE_ITEMS = [
      (Mochila -- comprar na Loja, usar fora de luta, consome 1 e evolui
      na hora), documentado como aproximação de "segurar E girar": aqui
      vira só "ter e usar", igual todo o resto desta lista. */
-  { key:'doce', item:'strawberry-sweet', icon:null, emoji:'🍬', nome:'Sweet', preco:300, desc:'Use fora de luta (representa segurar um Doce e girar) pra evoluir Milcery em Alcremie -- as 7 variedades oficiais viram 1 item só, já que este protótipo não modela as formas cosméticas do Alcremie.' },
+  { key:'doce', item:'strawberry-sweet', icon:null, emoji:'🍬', nome:'Sweet', preco:250, desc:'Use fora de luta (representa segurar um Doce e girar) pra evoluir Milcery em Alcremie -- as 7 variedades oficiais viram 1 item só, já que este protótipo não modela as formas cosméticas do Alcremie (Strawberry Sweet nunca foi vendido em jogo nenhum -- preço de VENDA oficial, Bulbapedia, usado no lugar do de compra que não existe).' },
   /* Cap. leva desta sessão ("Grupo A" do checklist -- ver EVOLUTION_
      STONE_OVERRIDE[892] acima pro porquê): confirmado por curl que
      NENHUM dos 2 tem sprite oficial na PokeAPI/sprites -- mesmo
      tratamento dos outros 10 acima. Qualquer um dos 2 evolui Kubfu em
      Urshifu (só 1 forma aqui, sem Single/Rapid Strike distintos). */
-  { key:'pergaminho-trevas', item:'scroll-of-darkness', icon:null, emoji:'📜', nome:'Scroll of Darkness', preco:300, desc:'Use fora de luta pra evoluir Kubfu em Urshifu.' },
-  { key:'pergaminho-aguas', item:'scroll-of-waters', icon:null, emoji:'📜', nome:'Scroll of Waters', preco:300, desc:'Use fora de luta pra evoluir Kubfu em Urshifu.' },
+  { key:'pergaminho-trevas', item:'scroll-of-darkness', icon:null, emoji:'📜', nome:'Scroll of Darkness', preco:300, desc:'Use fora de luta pra evoluir Kubfu em Urshifu (sem preço oficial nenhum -- nem compra nem venda -- em jogo algum; valor mantido).' },
+  { key:'pergaminho-aguas', item:'scroll-of-waters', icon:null, emoji:'📜', nome:'Scroll of Waters', preco:300, desc:'Use fora de luta pra evoluir Kubfu em Urshifu (sem preço oficial nenhum -- nem compra nem venda -- em jogo algum; valor mantido).' },
   /* Cap. leva desta sessão (Meltan->Melmetal, ver EVOLUTION_ITEM_COUNT_
      REQUIRED[809] acima pro mecanismo): DIFERENTE de todo o resto
      desta lista -- não é "usar fora de luta, evolui na hora" (nunca
@@ -6335,23 +6404,31 @@ function pedrasElegiveisPara(p){
    TAMBÉM exigem item segurado no jogo oficial e caíam no mesmo bug
    de heldItem=null -- por isso o mapa é indexado pela Espécie
    DESTINO (`to`), não pelo gatilho: serve pros 2 call sites. */
+/* Cap. leva desta sessão (preço de acordo com o original, itens de
+   evolução por Troca): nenhum jogo antigo vende esses -- preferido o
+   preço de Legends: Arceus (Carroça Ginkgo) quando existe, por cobrir
+   a maioria deles junto num catálogo só; os que a Arceus não vende
+   usam o único outro preço de compra real que existe em algum jogo
+   (B2W2/Scarlet-Violet/Sword-Shield, ver changelog). Sachet/Whipped
+   Dream nunca tiveram preço de compra em Pokédólar em jogo nenhum (só
+   32 Pontos de Batalha) -- usado o preço de VENDA oficial no lugar. */
 var EVOLUTION_HELD_ITEMS = [
-  { key:'revestimento-metal', item:'metal-coat', icon:'metal-coat', nome:'Metal Coat', preco:250, desc:'Segure durante uma Troca pra evoluir Onix (Steelix) ou Scyther (Scizor).' },
-  { key:'escama-dragao', item:'dragon-scale', icon:'dragon-scale', nome:'Dragon Scale', preco:250, desc:'Segure durante uma Troca pra evoluir Seadra em Kingdra.' },
-  { key:'pedra-do-rei', item:'kings-rock', icon:'kings-rock', nome:"King's Rock", preco:250, desc:'Segure durante uma Troca pra evoluir Poliwhirl (Politoed) ou Slowpoke (Slowking).' },
-  { key:'dente-abissal', item:'deep-sea-tooth', icon:'deep-sea-tooth', nome:'Deep Sea Tooth', preco:250, desc:'Segure durante uma Troca pra evoluir Clamperl em Huntail.' },
-  { key:'escama-abissal', item:'deep-sea-scale', icon:'deep-sea-scale', nome:'Deep Sea Scale', preco:250, desc:'Segure durante uma Troca pra evoluir Clamperl em Gorebyss.' },
-  { key:'protetor', item:'protector', icon:'protector', nome:'Protector', preco:250, desc:'Segure durante uma Troca pra evoluir Rhydon em Rhyperior.' },
-  { key:'eletrizador', item:'electirizer', icon:'electirizer', nome:'Electirizer', preco:250, desc:'Segure durante uma Troca pra evoluir Electabuzz em Electivire.' },
-  { key:'magmatizador', item:'magmarizer', icon:'magmarizer', nome:'Magmarizer', preco:250, desc:'Segure durante uma Troca pra evoluir Magmar em Magmortar.' },
-  { key:'upgrade', item:'up-grade', icon:'up-grade', nome:'Up-Grade', preco:250, desc:'Segure durante uma Troca pra evoluir Porygon em Porygon2.' },
-  { key:'disco-duvidoso', item:'dubious-disc', icon:'dubious-disc', nome:'Dubious Disc', preco:250, desc:'Segure durante uma Troca pra evoluir Porygon2 em Porygon-Z.' },
-  { key:'manto-ceifador', item:'reaper-cloth', icon:'reaper-cloth', nome:'Reaper Cloth', preco:250, desc:'Segure durante uma Troca pra evoluir Dusclops em Dusknoir.' },
-  { key:'sache', item:'sachet', icon:'sachet', nome:'Sachet', preco:250, desc:'Segure durante uma Troca pra evoluir Spritzee em Aromatisse.' },
-  { key:'chantili-sonhos', item:'whipped-dream', icon:'whipped-dream', nome:'Whipped Dream', preco:250, desc:'Segure durante uma Troca pra evoluir Swirlix em Slurpuff.' },
-  { key:'presa-afiada', item:'razor-fang', icon:'razor-fang', nome:'Razor Fang', preco:250, desc:'Segure e suba de Nível durante a NOITE pra evoluir Gligar em Gliscor.' },
-  { key:'garra-afiada', item:'razor-claw', icon:'razor-claw', nome:'Razor Claw', preco:250, desc:'Segure e suba de Nível durante a NOITE pra evoluir Sneasel em Weavile.' },
-  { key:'pedra-oval', item:'oval-stone', icon:'oval-stone', nome:'Oval Stone', preco:250, desc:'Segure e suba de Nível durante o DIA pra evoluir Happiny em Chansey.' }
+  { key:'revestimento-metal', item:'metal-coat', icon:'metal-coat', nome:'Metal Coat', preco:8000, desc:'Segure durante uma Troca pra evoluir Onix (Steelix) ou Scyther (Scizor).' },
+  { key:'escama-dragao', item:'dragon-scale', icon:'dragon-scale', nome:'Dragon Scale', preco:4000, desc:'Segure durante uma Troca pra evoluir Seadra em Kingdra.' },
+  { key:'pedra-do-rei', item:'kings-rock', icon:'kings-rock', nome:"King's Rock", preco:10000, desc:'Segure durante uma Troca pra evoluir Poliwhirl (Politoed) ou Slowpoke (Slowking).' },
+  { key:'dente-abissal', item:'deep-sea-tooth', icon:'deep-sea-tooth', nome:'Deep Sea Tooth', preco:1000, desc:'Segure durante uma Troca pra evoluir Clamperl em Huntail.' },
+  { key:'escama-abissal', item:'deep-sea-scale', icon:'deep-sea-scale', nome:'Deep Sea Scale', preco:2000, desc:'Segure durante uma Troca pra evoluir Clamperl em Gorebyss.' },
+  { key:'protetor', item:'protector', icon:'protector', nome:'Protector', preco:10000, desc:'Segure durante uma Troca pra evoluir Rhydon em Rhyperior.' },
+  { key:'eletrizador', item:'electirizer', icon:'electirizer', nome:'Electirizer', preco:10000, desc:'Segure durante uma Troca pra evoluir Electabuzz em Electivire.' },
+  { key:'magmatizador', item:'magmarizer', icon:'magmarizer', nome:'Magmarizer', preco:10000, desc:'Segure durante uma Troca pra evoluir Magmar em Magmortar.' },
+  { key:'upgrade', item:'up-grade', icon:'up-grade', nome:'Up-Grade', preco:8000, desc:'Segure durante uma Troca pra evoluir Porygon em Porygon2.' },
+  { key:'disco-duvidoso', item:'dubious-disc', icon:'dubious-disc', nome:'Dubious Disc', preco:10000, desc:'Segure durante uma Troca pra evoluir Porygon2 em Porygon-Z.' },
+  { key:'manto-ceifador', item:'reaper-cloth', icon:'reaper-cloth', nome:'Reaper Cloth', preco:10000, desc:'Segure durante uma Troca pra evoluir Dusclops em Dusknoir.' },
+  { key:'sache', item:'sachet', icon:'sachet', nome:'Sachet', preco:1000, desc:'Segure durante uma Troca pra evoluir Spritzee em Aromatisse.' },
+  { key:'chantili-sonhos', item:'whipped-dream', icon:'whipped-dream', nome:'Whipped Dream', preco:1000, desc:'Segure durante uma Troca pra evoluir Swirlix em Slurpuff.' },
+  { key:'presa-afiada', item:'razor-fang', icon:'razor-fang', nome:'Razor Fang', preco:10000, desc:'Segure e suba de Nível durante a NOITE pra evoluir Gligar em Gliscor.' },
+  { key:'garra-afiada', item:'razor-claw', icon:'razor-claw', nome:'Razor Claw', preco:15000, desc:'Segure e suba de Nível durante a NOITE pra evoluir Sneasel em Weavile.' },
+  { key:'pedra-oval', item:'oval-stone', icon:'oval-stone', nome:'Oval Stone', preco:6000, desc:'Segure e suba de Nível durante o DIA pra evoluir Happiny em Chansey.' }
 ];
 function evoItemByKey(key){ return EVOLUTION_HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
 var EVOLUTION_HELD_ITEM_REQUIRED = {
@@ -6715,12 +6792,18 @@ function itemIconHTML(def, cls){
    catálogo por pedido explícito do jogador -- ver migrateState pra
    como saves antigos com Super Ball em estoque são tratados (devolve
    o valor em Pokédólares, nunca só apaga). */
+/* Cap. leva desta sessão ("Sobre os demais itens pode colocar o valor
+   de acordo com o original. Falo de pokébolas..."): preço real de
+   Loja (Bulbapedia, FireRed/LeafGreen) -- estava inventado (10/25/60),
+   corrigido pro valor oficial: Poké Ball ₽200, Great Ball ₽600, Ultra
+   Ball ₽1200 (Master Ball nunca é vendida em jogo nenhum -- não faz
+   parte deste catálogo comprável, mesmo de antes desta leva). */
 var POKEBALLS = [
-  { key:'pokebola', nome:"Poké Ball", emoji:'⚪', icon:'poke-ball', preco:10, mult:1.00,
+  { key:'pokebola', nome:"Poké Ball", emoji:'⚪', icon:'poke-ball', preco:200, mult:1.00,
     desc:'Multiplicador de captura: ×1,00 sobre a Taxa de Captura da Espécie.' },
-  { key:'greatball', nome:'Great Ball', emoji:'🟡', icon:'great-ball', preco:25, mult:1.50,
+  { key:'greatball', nome:'Great Ball', emoji:'🟡', icon:'great-ball', preco:600, mult:1.50,
     desc:'Multiplicador de captura: ×1,50 sobre a Taxa de Captura da Espécie.' },
-  { key:'ultraball', nome:'Ultra Ball', emoji:'🟣', icon:'ultra-ball', preco:60, mult:2.00,
+  { key:'ultraball', nome:'Ultra Ball', emoji:'🟣', icon:'ultra-ball', preco:1200, mult:2.00,
     desc:'Multiplicador de captura: ×2,00 sobre a Taxa de Captura da Espécie.' }
 ];
 
@@ -7933,27 +8016,38 @@ function aplicarHabilidadeDeEntrada(entrando, oponente, b){
    equipado, igual Sino Encanto/Chá de Amizade oficial. Fica aqui (e
    não num catálogo à parte) porque compartilha o MESMO slot único de
    item segurado de todo o resto -- exatamente como no jogo oficial. */
+/* Cap. leva desta sessão (preço de acordo com o original, itens
+   segurados): quase nenhum desses é vendido em Pokédólar nos jogos
+   mais antigos -- a maioria só virou comprável de verdade no Scarlet/
+   Violet (Delibird Presents), preço usado aqui por ser o catálogo mais
+   completo e consistente entre eles. Oran Berry é a ÚNICA das 3 Bagas
+   com preço de COMPRA real (Sword/Shield) -- Sitrus/Lum nunca foram
+   vendidas em Pokédólar em jogo nenhum, usado o preço de VENDA oficial
+   no lugar. Expert Belt nunca teve preço em Pokédólar (só 48 Pontos de
+   Batalha no Battle Maison) -- sem "original" em Pokédólar pra copiar,
+   mantido no mesmo patamar de Faixa de Força/Óculos Sábios (itens de
+   força parecida). */
 var HELD_ITEMS = [
-  { key:'cha-amizade', nome:'Soothe Bell', icon:'soothe-bell', preco:150, desc:'Dobra todo ganho de Felicidade do Pokémon enquanto estiver equipado.' },
-  { key:'restos', nome:'Leftovers', icon:'leftovers', preco:200, desc:'Cura 1/16 do PV Máximo no fim de cada Rodada.' },
-  { key:'lama-negra', nome:'Black Sludge', icon:'black-sludge', preco:200, desc:'Cura 1/16 do PV Máximo por Rodada em Pokémon do Tipo Venenoso -- qualquer outro Tipo PERDE 1/8 do PV Máximo por Rodada.' },
-  { key:'pedra-vida', nome:'Life Orb', icon:'life-orb', preco:250, desc:'Aumenta o dano causado em 30%, mas causa recuo de 1/10 do PRÓPRIO PV Máximo a cada golpe que causa dano.' },
-  { key:'faixa-escolha', nome:'Choice Band', icon:'choice-band', preco:250, desc:'Aumenta o Ataque em 50%, mas trava no PRIMEIRO Movimento usado até trocar de campo.' },
-  { key:'oculos-escolha', nome:'Choice Specs', icon:'choice-specs', preco:250, desc:'Aumenta o Ataque Especial em 50%, mesma trava do Choice Band.' },
-  { key:'lenco-escolha', nome:'Choice Scarf', icon:'choice-scarf', preco:250, desc:'Aumenta a Velocidade em 50%, mesma trava do Choice Band.' },
-  { key:'cinto-foco', nome:'Focus Sash', icon:'focus-sash', preco:200, desc:'Sobrevive com 1 PV de um golpe que desmaiaria, saindo de PV cheio (inclusive Nocaute em 1 Golpe) -- ativa só 1x por luta, mas continua equipado pra sempre (disponível de novo na próxima luta).' },
-  { key:'baga-oran', nome:'Oran Berry', icon:'oran-berry', preco:60, desc:'Cura 10 PV sozinha quando o PV cai pra 50% ou menos -- some depois de usar.' },
-  { key:'baga-sitrus', nome:'Sitrus Berry', icon:'sitrus-berry', preco:120, desc:'Cura 25% do PV Máximo sozinha quando o PV cai pra 50% ou menos -- some depois de usar.' },
+  { key:'cha-amizade', nome:'Soothe Bell', icon:'soothe-bell', preco:5000, desc:'Dobra todo ganho de Felicidade do Pokémon enquanto estiver equipado.' },
+  { key:'restos', nome:'Leftovers', icon:'leftovers', preco:20000, desc:'Cura 1/16 do PV Máximo no fim de cada Rodada.' },
+  { key:'lama-negra', nome:'Black Sludge', icon:'black-sludge', preco:3000, desc:'Cura 1/16 do PV Máximo por Rodada em Pokémon do Tipo Venenoso -- qualquer outro Tipo PERDE 1/8 do PV Máximo por Rodada.' },
+  { key:'pedra-vida', nome:'Life Orb', icon:'life-orb', preco:50000, desc:'Aumenta o dano causado em 30%, mas causa recuo de 1/10 do PRÓPRIO PV Máximo a cada golpe que causa dano.' },
+  { key:'faixa-escolha', nome:'Choice Band', icon:'choice-band', preco:100000, desc:'Aumenta o Ataque em 50%, mas trava no PRIMEIRO Movimento usado até trocar de campo.' },
+  { key:'oculos-escolha', nome:'Choice Specs', icon:'choice-specs', preco:100000, desc:'Aumenta o Ataque Especial em 50%, mesma trava do Choice Band.' },
+  { key:'lenco-escolha', nome:'Choice Scarf', icon:'choice-scarf', preco:100000, desc:'Aumenta a Velocidade em 50%, mesma trava do Choice Band.' },
+  { key:'cinto-foco', nome:'Focus Sash', icon:'focus-sash', preco:50000, desc:'Sobrevive com 1 PV de um golpe que desmaiaria, saindo de PV cheio (inclusive Nocaute em 1 Golpe) -- ativa só 1x por luta, mas continua equipado pra sempre (disponível de novo na próxima luta).' },
+  { key:'baga-oran', nome:'Oran Berry', icon:'oran-berry', preco:80, desc:'Cura 10 PV sozinha quando o PV cai pra 50% ou menos -- some depois de usar.' },
+  { key:'baga-sitrus', nome:'Sitrus Berry', icon:'sitrus-berry', preco:200, desc:'Cura 25% do PV Máximo sozinha quando o PV cai pra 50% ou menos -- some depois de usar.' },
   { key:'baga-lum', nome:'Lum Berry', icon:'lum-berry', preco:150, desc:'Cura QUALQUER Condição (inclusive Confusão) assim que é infligida -- some depois de usar.' },
-  { key:'capacete-rochoso', nome:'Rocky Helmet', icon:'rocky-helmet', preco:200, desc:'Golpe de CONTATO recebido causa 1/6 do PRÓPRIO PV Máximo de recuo em quem atacou.' },
-  { key:'evolite', nome:'Eviolite', icon:'eviolite', preco:300, desc:'Aumenta Defesa E Defesa Especial em 50% -- só funciona em Pokémon que ainda PODE evoluir.' },
-  { key:'cinto-especialista', nome:'Expert Belt', icon:'expert-belt', preco:200, desc:'Aumenta em 20% o dano de golpe Super Efetivo.' },
-  { key:'faixa-poder', nome:'Muscle Band', icon:'muscle-band', preco:150, desc:'Aumenta em 10% o dano de golpe Físico.' },
-  { key:'oculos-sabios', nome:'Wise Glasses', icon:'wise-glasses', preco:150, desc:'Aumenta em 10% o dano de golpe Especial.' },
-  { key:'garra-rapida', nome:'Quick Claw', icon:'quick-claw', preco:200, desc:'20% de chance de agir PRIMEIRO na Rodada, ignorando Prioridade e Velocidade.' },
-  { key:'politica-fraqueza', nome:'Weakness Policy', icon:'weakness-policy', preco:200, desc:'Sobe +2 Ataque E +2 Ataque Especial ao ser atingido por um golpe Super Efetivo -- ativa só 1x por luta, mas continua equipado pra sempre (disponível de novo na próxima luta).' },
-  { key:'sino-concha', nome:'Shell Bell', icon:'shell-bell', preco:200, desc:'Cura 1/8 do dano CAUSADO de volta pro próprio PV.' },
-  { key:'balao-de-ar', nome:'Air Balloon', icon:'air-balloon', preco:150, desc:'Imune a golpes de Tipo Terra -- estoura na primeira vez que toma QUALQUER dano (some a imunidade só ATÉ o fim desta luta; continua equipado, disponível de novo na próxima).' },
+  { key:'capacete-rochoso', nome:'Rocky Helmet', icon:'rocky-helmet', preco:50000, desc:'Golpe de CONTATO recebido causa 1/6 do PRÓPRIO PV Máximo de recuo em quem atacou.' },
+  { key:'evolite', nome:'Eviolite', icon:'eviolite', preco:50000, desc:'Aumenta Defesa E Defesa Especial em 50% -- só funciona em Pokémon que ainda PODE evoluir.' },
+  { key:'cinto-especialista', nome:'Expert Belt', icon:'expert-belt', preco:8000, desc:'Aumenta em 20% o dano de golpe Super Efetivo.' },
+  { key:'faixa-poder', nome:'Muscle Band', icon:'muscle-band', preco:8000, desc:'Aumenta em 10% o dano de golpe Físico.' },
+  { key:'oculos-sabios', nome:'Wise Glasses', icon:'wise-glasses', preco:8000, desc:'Aumenta em 10% o dano de golpe Especial.' },
+  { key:'garra-rapida', nome:'Quick Claw', icon:'quick-claw', preco:3000, desc:'20% de chance de agir PRIMEIRO na Rodada, ignorando Prioridade e Velocidade.' },
+  { key:'politica-fraqueza', nome:'Weakness Policy', icon:'weakness-policy', preco:50000, desc:'Sobe +2 Ataque E +2 Ataque Especial ao ser atingido por um golpe Super Efetivo -- ativa só 1x por luta, mas continua equipado pra sempre (disponível de novo na próxima luta).' },
+  { key:'sino-concha', nome:'Shell Bell', icon:'shell-bell', preco:20000, desc:'Cura 1/8 do dano CAUSADO de volta pro próprio PV.' },
+  { key:'balao-de-ar', nome:'Air Balloon', icon:'air-balloon', preco:15000, desc:'Imune a golpes de Tipo Terra -- estoura na primeira vez que toma QUALQUER dano (some a imunidade só ATÉ o fim desta luta; continua equipado, disponível de novo na próxima).' },
   /* Cap. leva desta sessão (Grupo 1 de formas alternativas -- Ogerpon):
      as 3 Máscaras são item SEGURADO de verdade no jogo oficial (nunca
      consumidas) -- por isso entram aqui, no MESMO catálogo/slot único
@@ -7964,9 +8058,9 @@ var HELD_ITEMS = [
      hora -- ver `formaEfetivaAtual`/OGERPON_MASK_BY_ITEM mais abaixo,
      nunca precisou de código novo em DT.gaEquiparItem/DT.gaDesequiparItem
      (o slot genérico já bastou). */
-  { key:'mascara-poco', nome:'Wellspring Mask', icon:null, emoji:'💧', preco:300, desc:'Só tem efeito em Ogerpon: muda o Tipo secundário pra Água enquanto estiver equipada (desequipar volta a Grama puro).' },
-  { key:'mascara-lareira', nome:'Hearthflame Mask', icon:null, emoji:'🔥', preco:300, desc:'Só tem efeito em Ogerpon: muda o Tipo secundário pra Fogo enquanto estiver equipada.' },
-  { key:'mascara-alicerce', nome:'Cornerstone Mask', icon:null, emoji:'🪨', preco:300, desc:'Só tem efeito em Ogerpon: muda o Tipo secundário pra Pedra enquanto estiver equipada.' }
+  { key:'mascara-poco', nome:'Wellspring Mask', icon:null, emoji:'💧', preco:300, desc:'Só tem efeito em Ogerpon: muda o Tipo secundário pra Água enquanto estiver equipada (desequipar volta a Grama puro). Sem preço oficial nenhum -- nem compra nem venda -- em jogo algum (vem só com a própria Ogerpon); valor mantido.' },
+  { key:'mascara-lareira', nome:'Hearthflame Mask', icon:null, emoji:'🔥', preco:300, desc:'Só tem efeito em Ogerpon: muda o Tipo secundário pra Fogo enquanto estiver equipada. Sem preço oficial nenhum em jogo algum; valor mantido.' },
+  { key:'mascara-alicerce', nome:'Cornerstone Mask', icon:null, emoji:'🪨', preco:300, desc:'Só tem efeito em Ogerpon: muda o Tipo secundário pra Pedra enquanto estiver equipada. Sem preço oficial nenhum em jogo algum; valor mantido.' }
 ];
 function heldItemByKey(key){ return HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || EVOLUTION_HELD_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
 function temItemSegurado(battler, key){ return !!battler && battler.item===key; }
@@ -8632,7 +8726,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null };
 
 function freshState(trainerName){
   return {
@@ -9500,6 +9594,20 @@ function battlerCurrentHP(entry){ return STATE.battle.hp[entry.key]; }
    Pokémon de verdade) nunca precisa viver no registro PERSISTENTE do
    Pokémon (STATE.party/box) -- só nesse objeto efêmero, descartado no
    fim da luta. */
+/* Cap. leva desta sessão (PP Up/PP Max -- "aumentar PP... pra ficar
+   igual no jogo"): PP MÁXIMO efetivo de 1 Movimento pra 1 Pokémon
+   específico -- base oficial do Movimento (`officialMoveData`) mais
+   1/5 (20%) dela por PP Up já aplicado (0-3, `poke.ppBoost[nome]`),
+   arredondado pra baixo a cada estágio, igual o jogo oficial faz (a
+   um PP Up é sempre 20% do BASE, nunca composto em cima do estágio
+   anterior -- 3 PP Up = base + 3×floor(base×0,2), nunca base×1,2×1,2×1,2).
+   `ppBoostObj` é `poke.ppBoost` (pode vir `null`/`undefined` -- sem
+   nenhum PP Up ainda, comportamento idêntico a antes desta leva). */
+function ppMaxDoMovimento(move, ppBoostObj){
+  var base = officialMoveData(move).ppMax;
+  var boost = clampInt((ppBoostObj && ppBoostObj[move.name])||0, 0, 3);
+  return base + Math.floor(base*0.2)*boost;
+}
 function initBattlerExtras(b){
   b.estagios = {atk:0,def:0,spa:0,spd:0,spe:0,accuracy:0,evasion:0};
   b.status = null;
@@ -9507,7 +9615,7 @@ function initBattlerExtras(b){
   b.confusao = 0;
   b.flinch = false;
   b.pp = {};
-  (b.moves||[]).forEach(function(m){ b.pp[m.name] = officialMoveData(m).ppMax; });
+  (b.moves||[]).forEach(function(m){ b.pp[m.name] = ppMaxDoMovimento(m, b.ppBoost); });
   // Cap. leva desta sessão (mecânicas específicas faltando -- ver bloco
   // "Substituto (Cap. ..." acima): tudo abaixo vive só no battler,
   // igual Estágio -- reseta sozinho a cada entrada nova em campo.
@@ -9528,7 +9636,7 @@ function initBattlerExtras(b){
   return b;
 }
 function buildBattlerFromParty(poke){
-  return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade, item: poke.itemSegurado||null, forma: formaEfetivaAtual(poke) });
+  return initBattlerExtras({ key:'p_'+poke.id, side:'player', num:poke.num, level:poke.level, moves:poke.moves, apelido:poke.apelido, partyId:poke.id, papelCombate: poke.papelCombate||'ataque', natureza: poke.natureza, habilidade: poke.habilidade, item: poke.itemSegurado||null, forma: formaEfetivaAtual(poke), ppBoost: poke.ppBoost||null });
 }
 /* Cap. leva desta sessão ("agora os pokémon precisam se curar de fato
    depois dos combates... status, vida e PP agora são gastos e só
@@ -13068,7 +13176,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null };
   render();
 };
 
@@ -16624,6 +16732,16 @@ function kantoZoomControleHTML(){
    mostra os Revive/Max Revive em estoque (nunca Poção normal, mesmo
    que a Equipe tenha) -- quem está vivo mas ferido é o oposto, só vê
    Poção normal (Revive nunca aparece pra quem não desmaiou). */
+/* Cap. leva desta sessão (Ether/Elixir -- "recuperar PP... pra ficar
+   igual no jogo"): PP ATUAL de 1 Movimento fora de luta -- mesmo
+   padrão de `kantoHpAtualDoPoke` (poke.kantoPP[nome], `null`/ausente
+   sempre = PP cheio), só que o "cheio" aqui já respeita PP Up/PP Max
+   permanentes (`ppMaxDoMovimento`, ver comentário lá em cima perto de
+   initBattlerExtras). */
+function kantoPPAtualDoMove(poke, move){
+  var max = ppMaxDoMovimento(move, poke.ppBoost);
+  return (poke.kantoPP && poke.kantoPP[move.name]!=null) ? clampInt(poke.kantoPP[move.name], 0, max) : max;
+}
 function kantoEstadoEquipePokeCardHTML(poke){
   var sp = speciesByNum(poke.num);
   var hpMax = kantoHpMaxDoPoke(poke);
@@ -16640,14 +16758,34 @@ function kantoEstadoEquipePokeCardHTML(poke){
       }).join('')+'</div>'
     : (hpAtual<hpMax ? '<div class="ga-hint">'+(desmaiado?'Sem Revive no estoque.':'Sem Poção no estoque.')+'</div>' : '');
   var desmaiadoTag = desmaiado ? '<div class="ga-hint" style="color:var(--danger);">💀 Desmaiado -- só um Revive reanima.</div>' : '';
+  /* Ether/Max Ether/Elixir/Max Elixir -- mesmo padrão dos itens de PV
+     acima: só aparecem quando fazem alguma diferença (pelo menos 1
+     Movimento com PP<Máximo) e só o que tem em estoque. Ether/Max
+     Ether (`targetOneMove:true`) abrem o popup de escolha de
+     Movimento; Elixir/Max Elixir aplicam direto nos 4 de uma vez
+     (`DT.gaKantoUsarPP(...,null)`). */
+  var movesPP = (poke.moves||[]).map(function(m){ return { m:m, atual:kantoPPAtualDoMove(poke,m), max:ppMaxDoMovimento(m, poke.ppBoost) }; });
+  var precisaPP = movesPP.some(function(x){ return x.atual<x.max; });
+  var ppTag = '';
+  if(precisaPP){
+    var itensPP = GA_ITEMS.filter(function(it){ return it.ppRestore && (STATE.itens[it.key]||0)>0; });
+    ppTag = '<div class="ga-hint">PP: '+movesPP.map(function(x){ return esc2(x.m.name)+' '+x.atual+'/'+x.max; }).join(' · ')+'</div>'+
+      (itensPP.length
+        ? '<div class="ga-btn-row">'+itensPP.map(function(it){
+            return it.targetOneMove
+              ? '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoEscolherMovePP(\''+poke.id+'\',\''+it.key+'\')">'+it.emoji+' '+it.nome+'</button>'
+              : '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoUsarPP(\''+poke.id+'\',\''+it.key+'\',null)">'+it.emoji+' '+it.nome+'</button>';
+          }).join('')+'</div>'
+        : '<div class="ga-hint">Sem Ether/Elixir no estoque.</div>');
+  }
   return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(poke))+'" alt=""><div class="ga-poke-name">'+esc2(kantoNomeExibicaoPoke(poke))+'</div><div class="ga-poke-meta">Nv. '+poke.level+'</div>'+
-    hpBarHTML(hpAtual, hpMax)+desmaiadoTag+statusTag+pocoesBtns+
+    hpBarHTML(hpAtual, hpMax)+desmaiadoTag+statusTag+pocoesBtns+ppTag+
   '</div>';
 }
 function kantoEstadoEquipeHTML(){
   if(!STATE.party.length) return '';
   return '<details class="ga-kanto-info-details"><summary>🩺 Estado da Equipe (Kanto)</summary>'+
-    '<p class="ga-hint">Fora do mapa de Kanto, PV/PP/Condição continuam sendo restaurados 100% ao fim de toda luta, como sempre foi. SÓ AQUI, no mapa, o desgaste fica de verdade -- cure com uma Poção (só PV) ou visite um 🏥 Centro Pokémon (PV+PP+Condição de uma vez, de graça).</p>'+
+    '<p class="ga-hint">Fora do mapa de Kanto, PV/PP/Condição continuam sendo restaurados 100% ao fim de toda luta, como sempre foi. SÓ AQUI, no mapa, o desgaste fica de verdade -- cure com uma Poção/Ether/Elixir (PV/PP na hora) ou visite um 🏥 Centro Pokémon (PV+PP+Condição de uma vez, de graça).</p>'+
     '<div class="ga-poke-grid">'+STATE.party.map(kantoEstadoEquipePokeCardHTML).join('')+'</div>'+
   '</details>';
 }
@@ -16672,6 +16810,64 @@ DT.gaKantoUsarPocao = function(partyId, itemKey){
   logAction('item', 'Usou '+it.nome+' em '+kantoNomeExibicaoPoke(poke)+' no mapa de Kanto (+'+(poke.kantoHpAtual-atual)+' PV).');
   mutate();
 };
+/* Cap. leva desta sessão (Ether/Max Ether -- pedem ESCOLHER qual dos 4
+   Movimentos recebe o PP, ao contrário de Elixir/Max Elixir que
+   acertam os 4 de uma vez): abre um popup pequeno de escolha, mesmo
+   espírito do bloqueio do guarda/andar (`SESSION.kantoEscolhendoMovePP
+   = {partyId, itemKey}`, ver kantoEscolherMovePPPopupHTML). */
+DT.gaKantoEscolherMovePP = function(partyId, itemKey){
+  if(!SESSION.isAdmin) return;
+  var it = itemByKey(itemKey); if(!it || !it.targetOneMove) return;
+  SESSION.kantoEscolhendoMovePP = { partyId: partyId, itemKey: itemKey };
+  render();
+};
+DT.gaKantoCancelarMovePP = function(){ SESSION.kantoEscolhendoMovePP = null; render(); };
+/* `moveName` null = Elixir/Max Elixir (acerta TODOS os Movimentos de
+   uma vez); com `moveName`, só esse (Ether/Max Ether, vindo do popup
+   de escolha acima). */
+DT.gaKantoUsarPP = function(partyId, itemKey, moveName){
+  if(!SESSION.isAdmin) return;
+  var poke = STATE.party.filter(function(p){ return p.id===partyId; })[0]; if(!poke) return;
+  var it = itemByKey(itemKey); if(!it || !it.ppRestore) return;
+  if((STATE.itens[itemKey]||0)<=0){ SESSION.error = 'Você não tem mais '+it.nome+'.'; render(); return; }
+  var alvos = it.targetOneMove ? (poke.moves||[]).filter(function(m){ return m.name===moveName; }) : (poke.moves||[]);
+  if(it.targetOneMove && !alvos.length){ SESSION.error = 'Escolha um Movimento.'; render(); return; }
+  poke.kantoPP = poke.kantoPP || {};
+  var mudouAlgum = false;
+  alvos.forEach(function(m){
+    var max = ppMaxDoMovimento(m, poke.ppBoost);
+    var atual = kantoPPAtualDoMove(poke, m);
+    if(atual>=max) return;
+    poke.kantoPP[m.name] = (it.ppRestore==='max') ? max : Math.min(max, atual+it.ppRestore);
+    mudouAlgum = true;
+  });
+  if(!mudouAlgum){ SESSION.error = kantoNomeExibicaoPoke(poke)+' já está com o PP cheio.'; render(); return; }
+  STATE.itens[itemKey]--;
+  SESSION.kantoEscolhendoMovePP = null;
+  logAction('item', 'Usou '+it.nome+' em '+kantoNomeExibicaoPoke(poke)+(moveName?' ('+moveName+')':' (todos os Movimentos)')+' no mapa de Kanto.');
+  mutate();
+};
+function kantoEscolherMovePPPopupHTML(){
+  var esc = SESSION.kantoEscolhendoMovePP;
+  if(!esc) return '';
+  var poke = STATE.party.filter(function(p){ return p.id===esc.partyId; })[0];
+  var it = itemByKey(esc.itemKey);
+  if(!poke || !it){ return ''; }
+  var linhas = (poke.moves||[]).map(function(m){
+    var max = ppMaxDoMovimento(m, poke.ppBoost);
+    var atual = kantoPPAtualDoMove(poke, m);
+    var cheio = atual>=max;
+    return '<div class="ga-move-row"><div class="ga-move-atual"><strong>'+esc2(m.name)+'</strong> <span class="ga-hint">('+atual+'/'+max+' PP)</span></div>'+
+      (cheio ? '<span class="ga-hint">já cheio</span>' : '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoUsarPP(\''+poke.id+'\',\''+esc.itemKey+'\',\''+esc2(m.name)+'\')">Usar aqui</button>')+
+    '</div>';
+  }).join('');
+  return '<div class="ga-overlay" onclick="DT.gaKantoCancelarMovePP()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaKantoCancelarMovePP()">✕</button>'+
+    '<h2>'+it.emoji+' '+esc2(it.nome)+' — '+esc2(kantoNomeExibicaoPoke(poke))+'</h2>'+
+    '<p class="ga-hint">Escolha qual Movimento recebe o PP.</p>'+
+    linhas+
+  '</div></div>';
+}
 function kantoScreenHTML(){
   var gyms = KANTO_MAP.locs.filter(function(l){ return l.kind==='gym'; }).length;
   var comArea = KANTO_MAP.locs.filter(function(l){ return l.areas&&l.areas.length; }).length + KANTO_MAP.routes.filter(function(r){ return r.areas&&r.areas.length; }).length;
@@ -18561,11 +18757,16 @@ function spriteNumEfetivo(x){
    evoluir nada -- por isso também não entram em EVOLUTION_EXCLUSIVE_
    ITEMS). `icon` confirmado por curl -- os 4 TÊM sprite oficial na
    PokeAPI/sprites (diferente das Máscaras de Ogerpon acima). */
+/* Cap. leva desta sessão (preço de acordo com o original): os 4
+   Néctares são vendidos de verdade no Scarlet/Violet (Delibird
+   Presents) por ₽300 cada -- confirmado no Red Nectar via Bulbapedia,
+   os outros 3 seguem o mesmo preço por serem a mesma família de item
+   (só muda a cor/Estilo que destravam). */
 var ORICORIO_NECTAR_ITEMS = [
-  { key:'nectar-vermelho', item:'red-nectar', icon:'red-nectar', nome:'Red Nectar', preco:200, desc:'Use fora de luta em Oricorio pra trocar pro Estilo Baile (Fogo/Voador).' },
-  { key:'nectar-amarelo', item:'yellow-nectar', icon:'yellow-nectar', nome:'Yellow Nectar', preco:200, desc:'Use fora de luta em Oricorio pra trocar pro Estilo Pom-Pom (Elétrico/Voador).' },
-  { key:'nectar-rosa', item:'pink-nectar', icon:'pink-nectar', nome:'Pink Nectar', preco:200, desc:"Use fora de luta em Oricorio pra trocar pro Estilo Pa'u (Psíquico/Voador)." },
-  { key:'nectar-roxo', item:'purple-nectar', icon:'purple-nectar', nome:'Purple Nectar', preco:200, desc:'Use fora de luta em Oricorio pra trocar pro Estilo Sensu (Fantasma/Voador).' }
+  { key:'nectar-vermelho', item:'red-nectar', icon:'red-nectar', nome:'Red Nectar', preco:300, desc:'Use fora de luta em Oricorio pra trocar pro Estilo Baile (Fogo/Voador).' },
+  { key:'nectar-amarelo', item:'yellow-nectar', icon:'yellow-nectar', nome:'Yellow Nectar', preco:300, desc:'Use fora de luta em Oricorio pra trocar pro Estilo Pom-Pom (Elétrico/Voador).' },
+  { key:'nectar-rosa', item:'pink-nectar', icon:'pink-nectar', nome:'Pink Nectar', preco:300, desc:"Use fora de luta em Oricorio pra trocar pro Estilo Pa'u (Psíquico/Voador)." },
+  { key:'nectar-roxo', item:'purple-nectar', icon:'purple-nectar', nome:'Purple Nectar', preco:300, desc:'Use fora de luta em Oricorio pra trocar pro Estilo Sensu (Fantasma/Voador).' }
 ];
 function nectarByKey(key){ return ORICORIO_NECTAR_ITEMS.filter(function(i){ return i.key===key; })[0] || null; }
 var ORICORIO_FORM_BY_ITEM = { 'nectar-vermelho':'baile', 'nectar-amarelo':'pom-pom', 'nectar-rosa':'pau', 'nectar-roxo':'sensu' };
@@ -19354,7 +19555,7 @@ function screenHTML(){
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
-    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() : hubScreenHTML());
+    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
@@ -20182,6 +20383,45 @@ DT.gaTrocarMovimento = function(pid, slotIndex, moveName){
   logAction('equipe', (p.apelido||speciesByNum(p.num).name)+' trocou o Movimento '+nomeAntigo+' por '+moveObj.name+' (via '+(viaEvolucao?'golpe de evolução, grátis':(viaNivel?'Nível, 10 Energia':'TM, grátis'))+').');
   mutate();
 };
+/* Cap. leva desta sessão (PP Up/PP Max): linha de PP Máximo + botões,
+   1 por Movimento preenchido, dentro do popup de Movimentos --
+   PERMANENTE (`p.ppBoost`), então mora aqui (Equipe/Caixa, vale em
+   QUALQUER luta) e não no widget de Kanto (esse é só pro que É
+   Kanto-específico -- PV/PP ATUAL/Status, ver GA_ITEMS mais acima).
+   Sem nenhum dos 2 itens em estoque, mostra só o número (sem poluir
+   com botão que nunca vai funcionar) -- mesmo padrão de
+   kantoEstadoEquipePokeCardHTML. */
+function ppUpLinhaHTML(p, m, idx){
+  var boostAtual = clampInt((p.ppBoost && p.ppBoost[m.name])||0, 0, 3);
+  var ppMax = ppMaxDoMovimento(m, p.ppBoost);
+  var noTeto = boostAtual>=3;
+  var temPpUp = (STATE.itens.ppup||0)>0;
+  var temPpMax = (STATE.itens.ppmax||0)>0;
+  var botoes = '';
+  if(!noTeto && (temPpUp || temPpMax)){
+    botoes = '<div class="ga-btn-row">'+
+      (temPpUp ? '<button type="button" class="ga-btn-sm" onclick="DT.gaUsarPPUp(\''+p.id+'\','+idx+',\'ppup\')">🔵 Usar PP Up</button>' : '')+
+      (temPpMax ? '<button type="button" class="ga-btn-sm" onclick="DT.gaUsarPPUp(\''+p.id+'\','+idx+',\'ppmax\')">🟦 Usar PP Max</button>' : '')+
+    '</div>';
+  }
+  return '<div class="ga-hint">PP Máximo: '+ppMax+' ('+boostAtual+'/3 PP Up'+(noTeto?' -- no teto':'')+')</div>'+botoes;
+}
+DT.gaUsarPPUp = function(pid, moveIdx, itemKey){
+  if(!SESSION.isAdmin) return;
+  var p = STATE.party.filter(function(x){ return x.id===pid; })[0] || STATE.box.filter(function(x){ return x.id===pid; })[0];
+  if(!p) return;
+  var m = (p.moves||[])[moveIdx]; if(!m) return;
+  var it = itemByKey(itemKey); if(!it || !it.ppBoost) return;
+  if((STATE.itens[itemKey]||0)<=0){ SESSION.error='Você não tem mais '+it.nome+'.'; render(); return; }
+  p.ppBoost = p.ppBoost || {};
+  var atual = clampInt(p.ppBoost[m.name]||0, 0, 3);
+  if(atual>=3){ SESSION.error = 'O PP Máximo de '+m.name+' já está no teto (3 PP Up aplicados).'; render(); return; }
+  p.ppBoost[m.name] = (it.ppBoost==='max') ? 3 : atual+1;
+  STATE.itens[itemKey]--;
+  var nomeExib = p.apelido||speciesByNum(p.num).name;
+  logAction('item', 'Usou '+it.nome+' em '+m.name+' de '+nomeExib+' (PP Máximo agora '+ppMaxDoMovimento(m, p.ppBoost)+').');
+  mutate();
+};
 function movesPopupHTML(pid){
   var p = STATE.party.filter(function(x){return x.id===pid;})[0] || STATE.box.filter(function(x){return x.id===pid;})[0];
   if(!p) return '';
@@ -20210,6 +20450,7 @@ function movesPopupHTML(pid){
       var m = moves[idx];
       linhas.push('<div class="ga-move-row">'+
         '<div class="ga-move-atual"><strong>'+esc2(m.name)+'</strong> <span class="ga-hint">('+esc2(moveTipoAtual(m))+' · '+esc2(m.categoria)+')</span></div>'+
+        ppUpLinhaHTML(p, m, idx)+
         (opts ? ('<select id="gaMoveNovo-'+idx+'"><option value="">— trocar por --</option>'+opts+'</select>'+
           '<button class="ga-btn-sm" onclick="DT.gaTrocarMovimento(\''+p.id+'\','+idx+',document.getElementById(\'gaMoveNovo-'+idx+'\').value)">Trocar</button>')
           : '<span class="ga-hint">nenhum Movimento elegível pra trocar aqui agora</span>')+
