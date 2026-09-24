@@ -16959,11 +16959,25 @@ DT.gaKantoBolsaUsarEmPokemon = function(partyId){
     DT.gaKantoEscolherMovePP(partyId, itemKey);
     return;
   }
-  SESSION.kantoBolsaAberta = false;
-  SESSION.kantoBolsaItem = null;
-  if(it.curaPct>0){ DT.gaKantoUsarPocao(partyId, itemKey); return; }
-  if(it.ppRestore){ DT.gaKantoUsarPP(partyId, itemKey, null); return; }
-  render();
+  /* Cap. leva desta sessão (bug reportado -- "Usei a poção no charmander
+     e ele fechou a tela e mostrou o erro lá em cima": fechar a Bolsa
+     ANTES de chamar o handler fazia o erro de validação -- Poção em
+     quem desmaiou, PV/PP já cheio etc. -- sair sem NENHUM popup aberto
+     pra `render()` mover o banner pra dentro (mesmo mecanismo da leva
+     "Corrigido: aviso/erro... tem que aparecer no popup"), então caía
+     solto no topo da tela de novo. Só fecha a Bolsa DEPOIS de confirmar
+     que não deu erro -- enquanto ela continua aberta (passo 2, lista de
+     Pokémon), o erro de validação aparece DENTRO do popup dela, igual
+     qualquer outro popup do jogo. */
+  SESSION.error = '';
+  if(it.curaPct>0){ DT.gaKantoUsarPocao(partyId, itemKey); }
+  else if(it.ppRestore){ DT.gaKantoUsarPP(partyId, itemKey, null); }
+  else { render(); return; }
+  if(!SESSION.error){
+    SESSION.kantoBolsaAberta = false;
+    SESSION.kantoBolsaItem = null;
+    render();
+  }
 };
 function kantoBolsaPopupHTML(){
   if(!SESSION.kantoBolsaAberta) return '';
