@@ -16968,7 +16968,7 @@ function kantoDesafioLiderViewHTML(){
       }).join('')+
       '</div>';
   } else {
-    out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid">'+
+    out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid ga-poke-grid-kanto-lider">'+
       STATE.party.map(function(p,i){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarGinasio('"+p.id+"')", i); }).join('')+
       '</div>';
   }
@@ -17233,7 +17233,7 @@ function kantoDesafioTreinadorViewHTML(){
       }).join('')+
       '</div>';
   } else {
-    out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid">'+
+    out += '<h4 class="ga-subhead">Escolha seu Pokémon</h4><div class="ga-poke-grid ga-poke-grid-kanto-lider">'+
       STATE.party.map(function(p,i){ return kantoPokeCardLiderHTML(p, "DT.gaKantoIniciarTreinadorRota('"+p.id+"')", i); }).join('')+
       '</div>';
   }
