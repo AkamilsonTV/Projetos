@@ -9699,6 +9699,19 @@ function kantoPokeEstaDesmaiado(poke){ return kantoHpAtualDoPoke(poke)<=0; }
    "Kanto: bloqueia Pokémon desmaiado" mais abaixo). `onclickJs` é a
    chamada pronta (já com aspas) do botão de escolher -- cada tela tem
    o próprio DT.gaKanto...(id) diferente. */
+/* Cap. leva desta sessão ("Na rota eu preciso ter a opção de escolher
+   os itens pra dar ao pokémon, como para curar, reviver e etc... Essa
+   opção tem que ser pra qualquer lugar que o jogador estiver"): os
+   botões de item (Poção/Revive/Ether/Elixir, ver `kantoItensCura
+   BotoesHTML`/`kantoItensPPBotoesHTML` mais abaixo perto do widget de
+   Kanto -- MESMAS funções, nunca duplicadas) agora aparecem direto
+   AQUI, no card de escolha de líder -- como este card é compartilhado
+   pelas 3 telas onde o jogador seleciona quem vai lutar (Área de
+   Captura/Rota, Ginásio, Treinador de Rota), dar/usar item passa a
+   funcionar em QUALQUER lugar do mapa sem precisar fechar o popup e
+   abrir o widget "Estado da Equipe" à parte. Usar um item aqui
+   re-renderiza o MESMO popup (PV/PP atualizados na hora, inclusive
+   destravando o botão "Escolher" se acabou de reanimar). */
 function kantoPokeCardLiderHTML(p, onclickJs){
   var sp = speciesByNum(p.num);
   var hpMax = kantoHpMaxDoPoke(p);
@@ -9707,7 +9720,7 @@ function kantoPokeCardLiderHTML(p, onclickJs){
   var botao = desmaiado
     ? '<button class="ga-btn-sm" disabled title="Desmaiado -- reanime com um Revive antes de lutar">💀 Desmaiado</button>'
     : '<button class="ga-btn-sm ga-btn-primary" onclick="'+onclickJs+'">Escolher</button>';
-  return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div>'+hpBarHTML(hpAtual, hpMax)+botao+'</div>';
+  return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(p))+'" alt=""><div class="ga-poke-name">'+esc2(p.apelido||sp.name)+'</div><div class="ga-poke-meta">Nv. '+p.level+'</div>'+hpBarHTML(hpAtual, hpMax)+kantoItensCuraBotoesHTML(p)+kantoItensPPBotoesHTML(p)+botao+'</div>';
 }
 /* Cap. leva desta sessão ("o wooper tem que aparecer na versão certa
    pra o jogador saber"): `forma` opcional -- já vem PRONTA de
@@ -16742,44 +16755,59 @@ function kantoPPAtualDoMove(poke, move){
   var max = ppMaxDoMovimento(move, poke.ppBoost);
   return (poke.kantoPP && poke.kantoPP[move.name]!=null) ? clampInt(poke.kantoPP[move.name], 0, max) : max;
 }
+/* Cap. leva desta sessão ("Na rota eu preciso ter a opção de escolher
+   os itens pra dar ao pokémon, como para curar, reviver e etc... Essa
+   opção tem que ser pra qualquer lugar que o jogador estiver"): os
+   botões de Poção/Revive, extraídos do widget "Estado da Equipe"
+   abaixo pra uma função PRÓPRIA -- reusada tanto ali quanto no card de
+   escolha de líder (`kantoPokeCardLiderHTML`, compartilhado pelas 3
+   telas onde o jogador está "em algum lugar" de Kanto: Área de
+   Captura/Rota, Ginásio, Treinador de Rota), pra nunca duplicar a
+   regra de quem pode usar o quê (Poção nunca em quem desmaiou, Revive
+   só em quem desmaiou). */
+function kantoItensCuraBotoesHTML(poke){
+  var hpMax = kantoHpMaxDoPoke(poke);
+  var hpAtual = kantoHpAtualDoPoke(poke);
+  if(hpAtual>=hpMax) return '';
+  var desmaiado = hpAtual<=0;
+  var itensCura = GA_ITEMS.filter(function(it){
+    if(!(it.curaPct>0) || (STATE.itens[it.key]||0)<=0) return false;
+    return desmaiado ? !!it.reviveOnly : !it.reviveOnly;
+  });
+  return itensCura.length
+    ? '<div class="ga-btn-row">'+itensCura.map(function(it){
+        return '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoUsarPocao(\''+poke.id+'\',\''+it.key+'\')">'+it.emoji+' '+it.nome+'</button>';
+      }).join('')+'</div>'
+    : '<div class="ga-hint">'+(desmaiado?'Sem Revive no estoque.':'Sem Poção no estoque.')+'</div>';
+}
+/* Ether/Max Ether/Elixir/Max Elixir -- mesma extração, mesmo motivo.
+   Só aparece quando faz alguma diferença (pelo menos 1 Movimento com
+   PP<Máximo) e só o que tem em estoque. Ether/Max Ether
+   (`targetOneMove:true`) abrem o popup de escolha de Movimento;
+   Elixir/Max Elixir aplicam direto nos 4 de uma vez
+   (`DT.gaKantoUsarPP(...,null)`). */
+function kantoItensPPBotoesHTML(poke){
+  var movesPP = (poke.moves||[]).map(function(m){ return { m:m, atual:kantoPPAtualDoMove(poke,m), max:ppMaxDoMovimento(m, poke.ppBoost) }; });
+  if(!movesPP.some(function(x){ return x.atual<x.max; })) return '';
+  var itensPP = GA_ITEMS.filter(function(it){ return it.ppRestore && (STATE.itens[it.key]||0)>0; });
+  return '<div class="ga-hint">PP: '+movesPP.map(function(x){ return esc2(x.m.name)+' '+x.atual+'/'+x.max; }).join(' · ')+'</div>'+
+    (itensPP.length
+      ? '<div class="ga-btn-row">'+itensPP.map(function(it){
+          return it.targetOneMove
+            ? '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoEscolherMovePP(\''+poke.id+'\',\''+it.key+'\')">'+it.emoji+' '+it.nome+'</button>'
+            : '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoUsarPP(\''+poke.id+'\',\''+it.key+'\',null)">'+it.emoji+' '+it.nome+'</button>';
+        }).join('')+'</div>'
+      : '<div class="ga-hint">Sem Ether/Elixir no estoque.</div>');
+}
 function kantoEstadoEquipePokeCardHTML(poke){
   var sp = speciesByNum(poke.num);
   var hpMax = kantoHpMaxDoPoke(poke);
   var hpAtual = kantoHpAtualDoPoke(poke);
   var desmaiado = hpAtual<=0;
   var statusTag = poke.kantoStatus ? '<div class="ga-hint">🤒 '+STATUS_LABELS_PT[poke.kantoStatus.status]+'</div>' : '';
-  var itensCura = hpAtual<hpMax ? GA_ITEMS.filter(function(it){
-    if(!(it.curaPct>0) || (STATE.itens[it.key]||0)<=0) return false;
-    return desmaiado ? !!it.reviveOnly : !it.reviveOnly;
-  }) : [];
-  var pocoesBtns = itensCura.length
-    ? '<div class="ga-btn-row">'+itensCura.map(function(it){
-        return '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoUsarPocao(\''+poke.id+'\',\''+it.key+'\')">'+it.emoji+' '+it.nome+'</button>';
-      }).join('')+'</div>'
-    : (hpAtual<hpMax ? '<div class="ga-hint">'+(desmaiado?'Sem Revive no estoque.':'Sem Poção no estoque.')+'</div>' : '');
   var desmaiadoTag = desmaiado ? '<div class="ga-hint" style="color:var(--danger);">💀 Desmaiado -- só um Revive reanima.</div>' : '';
-  /* Ether/Max Ether/Elixir/Max Elixir -- mesmo padrão dos itens de PV
-     acima: só aparecem quando fazem alguma diferença (pelo menos 1
-     Movimento com PP<Máximo) e só o que tem em estoque. Ether/Max
-     Ether (`targetOneMove:true`) abrem o popup de escolha de
-     Movimento; Elixir/Max Elixir aplicam direto nos 4 de uma vez
-     (`DT.gaKantoUsarPP(...,null)`). */
-  var movesPP = (poke.moves||[]).map(function(m){ return { m:m, atual:kantoPPAtualDoMove(poke,m), max:ppMaxDoMovimento(m, poke.ppBoost) }; });
-  var precisaPP = movesPP.some(function(x){ return x.atual<x.max; });
-  var ppTag = '';
-  if(precisaPP){
-    var itensPP = GA_ITEMS.filter(function(it){ return it.ppRestore && (STATE.itens[it.key]||0)>0; });
-    ppTag = '<div class="ga-hint">PP: '+movesPP.map(function(x){ return esc2(x.m.name)+' '+x.atual+'/'+x.max; }).join(' · ')+'</div>'+
-      (itensPP.length
-        ? '<div class="ga-btn-row">'+itensPP.map(function(it){
-            return it.targetOneMove
-              ? '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoEscolherMovePP(\''+poke.id+'\',\''+it.key+'\')">'+it.emoji+' '+it.nome+'</button>'
-              : '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoUsarPP(\''+poke.id+'\',\''+it.key+'\',null)">'+it.emoji+' '+it.nome+'</button>';
-          }).join('')+'</div>'
-        : '<div class="ga-hint">Sem Ether/Elixir no estoque.</div>');
-  }
   return '<div class="ga-poke-card"><img src="'+spriteUrl(spriteNumEfetivo(poke))+'" alt=""><div class="ga-poke-name">'+esc2(kantoNomeExibicaoPoke(poke))+'</div><div class="ga-poke-meta">Nv. '+poke.level+'</div>'+
-    hpBarHTML(hpAtual, hpMax)+desmaiadoTag+statusTag+pocoesBtns+ppTag+
+    hpBarHTML(hpAtual, hpMax)+desmaiadoTag+statusTag+kantoItensCuraBotoesHTML(poke)+kantoItensPPBotoesHTML(poke)+
   '</div>';
 }
 function kantoEstadoEquipeHTML(){
