@@ -8726,7 +8726,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null };
 
 function freshState(trainerName){
   return {
@@ -13189,7 +13189,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null };
   render();
 };
 
@@ -16845,7 +16845,7 @@ DT.gaKantoUsarPocao = function(partyId, itemKey){
    = {partyId, itemKey}`, ver kantoEscolherMovePPPopupHTML). */
 DT.gaKantoEscolherMovePP = function(partyId, itemKey){
   if(!SESSION.isAdmin) return;
-  var it = itemByKey(itemKey); if(!it || !it.targetOneMove) return;
+  var it = itemByKey(itemKey); if(!it || !(it.targetOneMove || it.ppBoost)) return;
   SESSION.kantoEscolhendoMovePP = { partyId: partyId, itemKey: itemKey };
   render();
 };
@@ -16881,7 +16881,21 @@ function kantoEscolherMovePPPopupHTML(){
   var poke = STATE.party.filter(function(p){ return p.id===esc.partyId; })[0];
   var it = itemByKey(esc.itemKey);
   if(!poke || !it){ return ''; }
-  var linhas = (poke.moves||[]).map(function(m){
+  /* Cap. leva desta sessão (menu "Bolsa" -- PP Up/PP Max também
+     precisam de um seletor de Movimento, igual Ether/Max Ether, mas
+     mexem no PP MÁXIMO permanente (`poke.ppBoost`, via DT.gaUsarPPUp
+     com ÍNDICE do Movimento) em vez do PP ATUAL de Kanto (via
+     DT.gaKantoUsarPP com NOME do Movimento) -- por isso o branch
+     separado aqui em vez de reusar a mesma chamada. */
+  var linhas = (poke.moves||[]).map(function(m, idx){
+    if(it.ppBoost){
+      var boostAtual = clampInt((poke.ppBoost && poke.ppBoost[m.name])||0, 0, 3);
+      var maxAtual = ppMaxDoMovimento(m, poke.ppBoost);
+      var noTeto = boostAtual>=3;
+      return '<div class="ga-move-row"><div class="ga-move-atual"><strong>'+esc2(m.name)+'</strong> <span class="ga-hint">(PP Máximo '+maxAtual+' -- '+boostAtual+'/3 PP Up)</span></div>'+
+        (noTeto ? '<span class="ga-hint">já no teto</span>' : '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaUsarPPUp(\''+poke.id+'\','+idx+',\''+esc.itemKey+'\');DT.gaKantoCancelarMovePP();">Usar aqui</button>')+
+      '</div>';
+    }
     var max = ppMaxDoMovimento(m, poke.ppBoost);
     var atual = kantoPPAtualDoMove(poke, m);
     var cheio = atual>=max;
@@ -16894,6 +16908,102 @@ function kantoEscolherMovePPPopupHTML(){
     '<h2>'+it.emoji+' '+esc2(it.nome)+' — '+esc2(kantoNomeExibicaoPoke(poke))+'</h2>'+
     '<p class="ga-hint">Escolha qual Movimento recebe o PP.</p>'+
     linhas+
+  '</div></div>';
+}
+/* Cap. leva desta sessão ("Acho melhor que tenha um menu escrito bolsa
+   e que permita usar o item que eu quiser no pokemon desejado"): além
+   dos botões contextuais por card (que só mostram o que É PRECISO
+   naquele Pokémon específico), a Bolsa é o menu GERAL -- escolhe
+   QUALQUER item de `GA_ITEMS` com estoque PRIMEIRO, depois QUALQUER
+   Pokémon da Equipe -- mais perto do fluxo real de Bolsa→Itens dos
+   jogos. Sempre acessível pelo cabeçalho do mapa (`kantoScreenHTML`),
+   não depende de estar dentro de nenhum popup de captura/Ginásio/
+   Treinador. 2 passos guardados em `SESSION.kantoBolsaAberta`
+   (abriu o menu) + `SESSION.kantoBolsaItem` (item escolhido, mostra a
+   lista de Pokémon). A aplicação em si reusa os MESMOS handlers já
+   existentes (gaKantoUsarPocao/gaKantoUsarPP/gaKantoEscolherMovePP)
+   -- nunca duplica a validação de "pode usar isso nesse Pokémon". */
+DT.gaKantoAbrirBolsa = function(){
+  if(!SESSION.isAdmin) return;
+  SESSION.kantoBolsaAberta = true;
+  SESSION.kantoBolsaItem = null;
+  render();
+};
+DT.gaKantoFecharBolsa = function(){
+  SESSION.kantoBolsaAberta = false;
+  SESSION.kantoBolsaItem = null;
+  render();
+};
+DT.gaKantoBolsaEscolherItem = function(itemKey){
+  if(!SESSION.isAdmin) return;
+  var it = itemByKey(itemKey); if(!it || (STATE.itens[itemKey]||0)<=0) return;
+  SESSION.kantoBolsaItem = itemKey;
+  render();
+};
+DT.gaKantoBolsaVoltarItem = function(){
+  SESSION.kantoBolsaItem = null;
+  render();
+};
+/* Alvo escolhido no passo 2: cura/revive e PP-de-todos-os-Movimentos
+   (Elixir/Max Elixir) aplicam direto; itens que pedem escolher UM
+   Movimento (Ether/Max Ether via `targetOneMove`, PP Up/PP Max via
+   `ppBoost`) fecham a Bolsa e abrem o MESMO popup de escolha de
+   Movimento já usado pelos botões contextuais. */
+DT.gaKantoBolsaUsarEmPokemon = function(partyId){
+  if(!SESSION.isAdmin) return;
+  var itemKey = SESSION.kantoBolsaItem; if(!itemKey) return;
+  var it = itemByKey(itemKey); if(!it) return;
+  if(it.targetOneMove || it.ppBoost){
+    SESSION.kantoBolsaAberta = false;
+    SESSION.kantoBolsaItem = null;
+    DT.gaKantoEscolherMovePP(partyId, itemKey);
+    return;
+  }
+  SESSION.kantoBolsaAberta = false;
+  SESSION.kantoBolsaItem = null;
+  if(it.curaPct>0){ DT.gaKantoUsarPocao(partyId, itemKey); return; }
+  if(it.ppRestore){ DT.gaKantoUsarPP(partyId, itemKey, null); return; }
+  render();
+};
+function kantoBolsaPopupHTML(){
+  if(!SESSION.kantoBolsaAberta) return '';
+  if(SESSION.kantoBolsaItem){
+    var it = itemByKey(SESSION.kantoBolsaItem);
+    if(!it){ return ''; }
+    var linhasPoke = !STATE.party.length
+      ? '<p class="ga-hint">Você não tem nenhum Pokémon na Equipe.</p>'
+      : STATE.party.map(function(p){
+          var infoExtra = it.curaPct>0
+            ? ' <span class="ga-hint">('+kantoHpAtualDoPoke(p)+'/'+kantoHpMaxDoPoke(p)+' PV)</span>'
+            : (it.ppRestore || it.ppBoost)
+              ? ' <span class="ga-hint">('+(p.moves||[]).map(function(m){ return esc2(m.name)+' '+kantoPPAtualDoMove(p,m)+'/'+ppMaxDoMovimento(m,p.ppBoost); }).join(', ')+')</span>'
+              : '';
+          return '<div class="ga-move-row"><div class="ga-move-atual"><strong>'+esc2(kantoNomeExibicaoPoke(p))+'</strong> <span class="ga-hint">Nv. '+p.level+'</span>'+infoExtra+'</div>'+
+            '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoBolsaUsarEmPokemon(\''+p.id+'\')">Usar aqui</button>'+
+          '</div>';
+        }).join('');
+    return '<div class="ga-overlay" onclick="DT.gaKantoFecharBolsa()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+      '<button class="ga-overlay-close" onclick="DT.gaKantoFecharBolsa()">✕</button>'+
+      '<h2>'+it.emoji+' '+esc2(it.nome)+'</h2>'+
+      '<p class="ga-hint">'+esc2(it.desc||'')+'</p>'+
+      '<button type="button" class="ga-btn-sm" onclick="DT.gaKantoBolsaVoltarItem()">← Voltar pros itens</button>'+
+      '<p class="ga-hint">Escolha em qual Pokémon usar.</p>'+
+      linhasPoke+
+    '</div></div>';
+  }
+  var itensComEstoque = GA_ITEMS.filter(function(it){ return (STATE.itens[it.key]||0)>0; });
+  var linhasItem = itensComEstoque.length
+    ? itensComEstoque.map(function(it){
+        return '<div class="ga-move-row"><div class="ga-move-atual"><strong>'+it.emoji+' '+esc2(it.nome)+'</strong> <span class="ga-hint">x'+STATE.itens[it.key]+'</span></div>'+
+          '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoBolsaEscolherItem(\''+it.key+'\')">Escolher</button>'+
+        '</div>';
+      }).join('')
+    : '<p class="ga-hint">Você não tem nenhum item de uso em Pokémon no estoque.</p>';
+  return '<div class="ga-overlay" onclick="DT.gaKantoFecharBolsa()"><div class="ga-overlay-card" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaKantoFecharBolsa()">✕</button>'+
+    '<h2>🎒 Bolsa</h2>'+
+    '<p class="ga-hint">Escolha o item que quer usar.</p>'+
+    linhasItem+
   '</div></div>';
 }
 function kantoScreenHTML(){
@@ -16921,6 +17031,11 @@ function kantoScreenHTML(){
            quanto pra lutar, então faz sentido poder completar ANTES de
            clicar em qualquer um dos dois. */
         ticketParaEnergiaWidgetHTML('kanto')+
+        /* Cap. leva desta sessão ("menu escrito bolsa... pra qualquer
+           lugar que o jogador estiver"): botão sempre visível aqui no
+           cabeçalho do mapa, fora de qualquer popup de captura/
+           Ginásio/Treinador -- ver kantoBolsaPopupHTML. */
+        '<div class="ga-btn-row"><button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaKantoAbrirBolsa()">🎒 Bolsa</button></div>'+
         kantoEstadoEquipeHTML()+
       '</div>'+
       /* `.ga-kanto-map-outer` só existe pra ancorar o controle de zoom
@@ -19583,7 +19698,7 @@ function screenHTML(){
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
-    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() : hubScreenHTML());
+    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() : hubScreenHTML());
     case 'centro': return wrap(centroScreenHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
