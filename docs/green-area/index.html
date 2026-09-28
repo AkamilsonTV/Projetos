@@ -8993,7 +8993,8 @@ function freshState(trainerName){
     box: [],
     battle: null,
     actionLog: [],
-    teamSlots: defaultTeamSlots()
+    teamSlots: defaultTeamSlots(),
+    missoesSlots: [null,null,null,null,null] // Cap. leva desta sessão (quadro de missões diárias) -- 5 espaços fixos, preenchidos um a um (ver DT.gaPegarMissao)
   };
 }
 
@@ -9042,6 +9043,7 @@ function migrateState(){
   if(!STATE.actionLog || !Array.isArray(STATE.actionLog)) STATE.actionLog = []; // conta sem log ainda (Cap. "log pra o Admin saber o que cada jogador tá fazendo") nasce com histórico vazio, nunca tenta reconstruir o passado
   if(!STATE.kantoPos || typeof STATE.kantoPos.col!=='number' || typeof STATE.kantoPos.row!=='number') STATE.kantoPos = { col:2, row:10 }; // conta criada antes da Parte 4 do redesenho do mapa nasce em Vila Pallet, igual conta nova
   if(!STATE.tms || typeof STATE.tms!=='object') STATE.tms = {};
+  if(!STATE.missoesSlots || !Array.isArray(STATE.missoesSlots) || STATE.missoesSlots.length!==5) STATE.missoesSlots = [null,null,null,null,null]; // conta criada antes do quadro de missões nasce com os 5 slots vazios, igual conta nova
   if(typeof STATE.pokebolas==='number') STATE.pokebolas = { pokebola: STATE.pokebolas, greatball:0, ultraball:0 };
   if(!STATE.pokebolas || typeof STATE.pokebolas!=='object') STATE.pokebolas = { pokebola:0, greatball:0, ultraball:0 };
   POKEBALLS.forEach(function(b){ if(typeof STATE.pokebolas[b.key]!=='number') STATE.pokebolas[b.key] = 0; });
@@ -10921,6 +10923,18 @@ function finishBattle(result){
   if(b.kind==='raid'){
     finalizarBatalhaRaid(b, result);
     return;
+  }
+  /* Cap. leva desta sessão (quadro de missões diárias): "vencer" conta
+     TODA vitória com Zona (`b.zonaIdx` -- selvagem/Treinador/Elite da
+     Área de Captura, inclusive quando reaproveitados pelo mapa de
+     Kanto, mais Líder/Treinador de Rota de Kanto; Mestre Especialista,
+     `kind==='trainer'`, nunca carrega `zonaIdx`, então nunca bate com
+     missão nenhuma -- de propósito, Mestre não pertence a uma Zona).
+     "vencer_treinador" é o mesmo filtro só que excluindo `wild`
+     (selvagem não é Treinador). */
+  if(result==='vitoria' && typeof b.zonaIdx==='number'){
+    registrarProgressoMissao('vencer', b.zonaIdx, 1);
+    if(b.kind!=='wild') registrarProgressoMissao('vencer_treinador', b.zonaIdx, 1);
   }
   if(result==='vitoria'){
     b.log.push('🏆 Vitória!');
@@ -13354,6 +13368,7 @@ DT.gaJogarPokebola = function(ballKey){
   var sucesso = Math.random() < catchChance(num, ballKey);
   if(sucesso){
     markCaught(num);
+    registrarProgressoMissaoCaptura(num, b.zonaIdx); // Cap. leva desta sessão (quadro de missões diárias) -- só conta pra missão "capturar" se for EXATAMENTE a espécie/Zona pedidas
     /* Cap. leva desta sessão ("o wooper tem que aparecer na versão
        certa"): a forma do Pokémon capturado é EXATAMENTE a do battler
        que acabou de ser vencido (`b.oppTeam[0].forma`, já rolada no
@@ -15772,6 +15787,173 @@ function wildPoolForZona(zona){
   }
   return wildPoolForZona._cache[zona.id];
 }
+
+/* ---- Quadro de Missões Diárias (Cap. leva desta sessão: "Podemos usar
+   quadros de missões que vão ficar nos centros pokémon. Esses quadros
+   de missões diárias vão ser os mesmos em todos os centros pokémon.
+   Ou seja, pegou de 1 pegou de todos. Os níveis das missões vão ser
+   divididos iguais os niveis de enfrentamento de personagens no jogo.
+   Os jogadores vão poder selecionar 5 missões diárias... Jogadores na
+   mesma party ao pegarem o mesmo tipo de missão e dificuldade, pegam
+   exatamente o mesmo tipo de missão, se for drop, se for de captura
+   vai ser o mesmo drop e o mesmo pokemon").
+
+   Desenho: o quadro é um valor DERIVADO, nunca guardado no Firestore
+   -- `gerarQuadroMissoesDoDia()` é uma função PURA (RNG semeada pelo
+   dia, nunca Math.random()) que todo cliente calcula sozinho e chega
+   no EXATO mesmo resultado, sem precisar de nenhuma sincronização
+   nova: "mesmo em todos os Centros" e "jogadores do mesmo Grupo pegam
+   a mesma missão" saem de graça disso -- 2 jogadores pegando "captura,
+   dificuldade Aprendiz" hoje estão sempre pegando o MESMO id de
+   missão (só existe 1 concreta por combinação Zona×Tipo×dia), nunca
+   duas rolagens independentes.
+
+   `numeroDiaRealDoJogo()` -- NÃO usa `numeroDiaDoJogo()` (o "Dia"
+   exibido na tela, que cicla só 1-4 pra sempre, ver comentário grande
+   de `numeroDiaDoJogo` lá em cima) -- usar aquele semearia o quadro
+   com só 4 padrões diferentes, repetindo pra sempre. Em vez disso
+   deriva de `periodoDoJogoIndex()` (o contador de blocos de 6h que já
+   NUNCA cicla, mesma base de `kantoJaEnfrentadoHoje`/Pokéticket
+   diário) dividido por 4 -- 4 blocos de 6h = 1 dia de verdade, sempre
+   crescente, sempre igual pra todo cliente no mesmo instante real. */
+function numeroDiaRealDoJogo(){ return Math.floor(periodoDoJogoIndex()/4); }
+/* PRNG determinística simples (mulberry32) -- só inteiros até o passo
+   final, sem depender de nenhuma biblioteca externa nem de
+   `Math.random()` (que nunca poderia ser igual em 2 clientes
+   diferentes). A MESMA semente sempre devolve a MESMA sequência. */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+var MISSAO_TIPOS = ['capturar','vencer','vencer_treinador'];
+function missaoIdPara(dia, zonaIdx, tipo){ return 'd'+dia+'_z'+zonaIdx+'_'+tipo; }
+/* Quadro do dia inteiro -- 1 missão concreta por combinação Zona
+   (10, mesmas ZONAS já usadas em toda a Área de Captura -- "níveis
+   das missões iguais aos níveis de enfrentamento de personagens")
+   × Tipo (3), sempre na MESMA ordem (zonaIdx 0..9 × MISSAO_TIPOS em
+   ordem fixa) -- é essa ordem fixa que garante o mesmo resultado em
+   qualquer cliente, não algo específico do RNG em si. `wildPoolForZona`
+   é 100% derivada de dados estáticos (SPECIES_DEX), então o Pokémon-
+   alvo de "capturar" também sai igual pra todo mundo. */
+function gerarQuadroMissoesDoDia(diaOverride){
+  var dia = (typeof diaOverride==='number') ? diaOverride : numeroDiaRealDoJogo();
+  var rng = mulberry32(dia);
+  var missoes = [];
+  ZONAS.forEach(function(zona, zonaIdx){
+    MISSAO_TIPOS.forEach(function(tipo){
+      var meta = tipo==='capturar' ? 1 : (tipo==='vencer_treinador' ? 2 : 3);
+      var m = {
+        id: missaoIdPara(dia, zonaIdx, tipo), tipo: tipo, zonaIdx: zonaIdx, zonaNome: zona.nome,
+        meta: meta, alvoNum: null,
+        recompensaDolares: 50*(zonaIdx+1), recompensaPoketicket: zonaIdx+1
+      };
+      if(tipo==='capturar'){
+        var pool = wildPoolForZona(zona);
+        m.alvoNum = pool.length ? pool[Math.floor(rng()*pool.length)].num : null;
+      }
+      missoes.push(m);
+    });
+  });
+  return missoes;
+}
+function missaoPorId(missaoId){
+  if(!missaoId) return null;
+  return gerarQuadroMissoesDoDia().filter(function(m){ return m.id===missaoId; })[0] || null;
+}
+/* Soma progresso em TODO slot ativo que aponta pra essa missão exata
+   (na prática só 1 -- não dá pra pegar a mesma missão 2x, ver
+   DT.gaPegarMissao) -- percorrer os slots em vez de guardar um índice
+   evita duplicar a checagem de "qual slot é esse" em cada chamador. */
+function registrarProgressoMissao(tipo, zonaIdx, incremento){
+  if(!STATE || !STATE.missoesSlots) return;
+  var alvoId = missaoIdPara(numeroDiaRealDoJogo(), zonaIdx, tipo);
+  STATE.missoesSlots.forEach(function(slot){
+    if(!slot || slot.concluida || slot.missaoId!==alvoId) return;
+    var m = missaoPorId(slot.missaoId);
+    if(!m) return;
+    slot.progresso = Math.min(m.meta, (slot.progresso||0)+incremento);
+    if(slot.progresso>=m.meta) slot.concluida = true;
+  });
+}
+/* Captura só conta se a espécie capturada for EXATAMENTE a pedida
+   pela missão (`m.alvoNum`) -- "se for de captura vai ser o mesmo
+   drop e o mesmo pokemon", não qualquer captura na Zona. */
+function registrarProgressoMissaoCaptura(num, zonaIdx){
+  if(!STATE || !STATE.missoesSlots || typeof zonaIdx!=='number') return;
+  var alvoId = missaoIdPara(numeroDiaRealDoJogo(), zonaIdx, 'capturar');
+  var m = missaoPorId(alvoId);
+  if(!m || m.alvoNum!==num) return;
+  registrarProgressoMissao('capturar', zonaIdx, 1);
+}
+function missaoTituloTexto(m){
+  if(m.tipo==='capturar'){ var sp = speciesByNum(m.alvoNum); return 'Capturar '+(sp?sp.name:('#'+m.alvoNum)); }
+  if(m.tipo==='vencer_treinador') return 'Vencer '+m.meta+' Treinador'+(m.meta>1?'es':'');
+  return 'Vencer '+m.meta+' luta'+(m.meta>1?'s':'');
+}
+/* Limpa (silenciosamente, sem popup nenhum) todo slot cuja missão é
+   de um dia ANTERIOR e ainda NÃO foi concluída -- é isso que torna a
+   missão "diária" de verdade. Missão já CONCLUÍDA mas ainda não
+   entregue (ver DT.gaEntregarMissao) segue valendo depois da virada
+   do dia -- folga justa pra quem terminou e só não abriu o jogo a
+   tempo de retirar a recompensa antes do quadro virar. Devolve se
+   mexeu em algo (pra quem chama decidir se precisa de mutate() ou só
+   um render() normal). */
+function limparMissoesExpiradas(){
+  if(!STATE || !STATE.missoesSlots) return false;
+  var diaAtual = numeroDiaRealDoJogo();
+  var mudou = false;
+  STATE.missoesSlots.forEach(function(slot, i){
+    if(slot && !slot.concluida && slot.dia!==diaAtual){ STATE.missoesSlots[i] = null; mudou = true; }
+  });
+  return mudou;
+}
+DT.gaAbrirMissoes = function(){
+  SESSION.missoesAberto = true;
+  SESSION.error = '';
+  if(limparMissoesExpiradas()) mutate(); else render();
+};
+DT.gaFecharMissoes = function(){ SESSION.missoesAberto = false; render(); };
+/* Pega uma missão concreta do quadro do dia -- vai pro PRIMEIRO slot
+   vazio (Cap. "Antes de ir para o slot, o tipo de missão que ele
+   pegar... vai pro slot 1 e assim por diante"), nunca escolhe slot. */
+DT.gaPegarMissao = function(missaoId){
+  if(!STATE || !STATE.missoesSlots) return;
+  limparMissoesExpiradas();
+  var m = missaoPorId(missaoId);
+  if(!m){ SESSION.error='Essa missão não existe mais (o quadro pode ter virado).'; render(); return; }
+  var jaTenho = STATE.missoesSlots.some(function(s){ return s && s.missaoId===missaoId; });
+  if(jaTenho){ SESSION.error='Você já pegou essa missão.'; render(); return; }
+  var slotVazio = -1;
+  for(var i=0;i<STATE.missoesSlots.length;i++){ if(!STATE.missoesSlots[i]){ slotVazio=i; break; } }
+  if(slotVazio===-1){ SESSION.error='Seus 5 slots de missão já estão cheios -- entregue ou abandone uma pra pegar outra.'; render(); return; }
+  STATE.missoesSlots[slotVazio] = { missaoId: m.id, dia: numeroDiaRealDoJogo(), progresso:0, concluida:false };
+  logAction('missao', 'Pegou a missão "'+missaoTituloTexto(m)+'" (Zona '+m.zonaNome+').');
+  mutate();
+};
+DT.gaEntregarMissao = function(slotIdx){
+  if(!STATE || !STATE.missoesSlots) return;
+  var slot = STATE.missoesSlots[slotIdx];
+  if(!slot || !slot.concluida) return;
+  var m = missaoPorId(slot.missaoId);
+  if(!m){ STATE.missoesSlots[slotIdx] = null; mutate(); return; } // rede de segurança -- nunca deveria acontecer, mas libera o slot em vez de travar
+  STATE.pokedolares = (STATE.pokedolares||0) + m.recompensaDolares;
+  STATE.poketickets = clampInt((STATE.poketickets||0) + m.recompensaPoketicket, 0, POKETICKETS_MAX);
+  STATE.missoesSlots[slotIdx] = null;
+  logAction('missao', 'Entregou a missão "'+missaoTituloTexto(m)+'" -- ganhou '+m.recompensaDolares+' Pokédólares e '+m.recompensaPoketicket+' Pokéticket(s).');
+  SESSION.notice = '🎉 Missão entregue! +'+m.recompensaDolares+' Pokédólares, +'+m.recompensaPoketicket+' Pokéticket(s).';
+  mutate();
+};
+DT.gaAbandonarMissao = function(slotIdx){
+  if(!STATE || !STATE.missoesSlots) return;
+  var slot = STATE.missoesSlots[slotIdx];
+  if(!slot || slot.concluida) return;
+  STATE.missoesSlots[slotIdx] = null;
+  mutate();
+};
 /* Piscina de Treinador é mais larga (qualquer Espécie que não seja
    "forte demais" pra essa Zona, não só as que a Zona "esgota" nela
    mesma) -- um Treinador plausivelmente carrega um Pokémon já
@@ -20927,7 +21109,7 @@ function screenHTML(){
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
     case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoMercadoPopupHTML() + kantoCentroInfoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() + kantoEquipePopupHTML() + kantoAreaPopupHTML() + kantoPendingSequenciaConfirmPopupHTML() + kantoSequenciaFimPopupHTML() : hubScreenHTML());
-    case 'centro': return wrap(centroScreenHTML());
+    case 'centro': return wrap(centroScreenHTML() + missoesPopupHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
     case 'duelo': return wrap(dueloScreenHTML());
@@ -22881,9 +23063,55 @@ function wikiScreenHTML(){
    jogadores -- SESSION.centroDiretorio/pedidosAmizade/amigos/
    centroChat vêm todos de listeners/consultas ao vivo, ver
    attachSocialListeners/gaAbrirCentro). */
+/* Popup do Quadro de Missões Diárias (Cap. "quadros de missões que
+   vão ficar nos centros pokémon") -- reaproveita `.ga-friend-card`/
+   `.ga-poke-grid`/`.ga-overlay-card.wide` de todo o resto do jogo,
+   nenhuma classe CSS nova precisou ser escrita. */
+function missoesSlotCardHTML(slot, idx){
+  if(!slot) return '<div class="ga-friend-card"><span class="ga-hint">Slot '+(idx+1)+': vazio</span></div>';
+  var m = missaoPorId(slot.missaoId);
+  if(!m) return '<div class="ga-friend-card"><span class="ga-hint">Slot '+(idx+1)+': missão indisponível</span>'+
+    '<button class="ga-btn-sm" onclick="DT.gaAbandonarMissao('+idx+')">Liberar slot</button></div>';
+  var acao = slot.concluida
+    ? '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntregarMissao('+idx+')">🎁 Entregar</button>'
+    : '<button class="ga-btn-sm" onclick="DT.gaAbandonarMissao('+idx+')">Abandonar</button>';
+  return '<div class="ga-friend-card"><strong>'+(slot.concluida?'✅ ':'')+esc2(missaoTituloTexto(m))+'</strong>'+
+    '<span class="ga-hint">'+slot.progresso+'/'+m.meta+' -- Zona '+esc2(m.zonaNome)+'</span>'+acao+'</div>';
+}
+function missoesQuadroZonaHTML(zona, zonaIdx, board){
+  var missoesDaZona = board.filter(function(m){ return m.zonaIdx===zonaIdx; });
+  var minhasIds = (STATE.missoesSlots||[]).filter(function(s){ return s; }).map(function(s){ return s.missaoId; });
+  var slotsCheios = (STATE.missoesSlots||[]).every(function(s){ return !!s; });
+  return '<details class="ga-seq-relatorio-item"><summary>Zona '+esc2(zona.nome)+'</summary>'+
+    '<div class="ga-poke-grid">'+missoesDaZona.map(function(m){
+      var jaTenho = minhasIds.indexOf(m.id)!==-1;
+      var acao = jaTenho ? '<span class="ga-hint">✔️ Já pegou</span>'
+        : slotsCheios ? '<span class="ga-hint">Slots cheios</span>'
+        : '<button class="ga-btn-sm" onclick="DT.gaPegarMissao(\''+m.id+'\')">Pegar</button>';
+      return '<div class="ga-friend-card"><strong>'+esc2(missaoTituloTexto(m))+'</strong>'+
+        '<span class="ga-hint">Recompensa: '+m.recompensaDolares+' Pokédólares, '+m.recompensaPoketicket+' Pokéticket(s)</span>'+acao+'</div>';
+    }).join('')+'</div></details>';
+}
+function missoesPopupHTML(){
+  if(!SESSION.missoesAberto) return '';
+  var slots = STATE.missoesSlots || [null,null,null,null,null];
+  var board = gerarQuadroMissoesDoDia();
+  return '<div class="ga-overlay" onclick="DT.gaFecharMissoes()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaFecharMissoes()">✕</button>'+
+    '<h2>📋 Missões Diárias</h2>'+
+    '<p class="ga-hint">O quadro é o MESMO em todos os Centros Pokémon e muda 1x por dia -- pegue até 5 missões (preenche um slot de cada vez, na ordem que você pegar), complete e volte aqui pra entregar.</p>'+
+    '<h3 class="ga-subhead">🎒 Minhas Missões ('+slots.filter(function(s){return s;}).length+'/5)</h3>'+
+    '<div class="ga-poke-grid">'+slots.map(missoesSlotCardHTML).join('')+'</div>'+
+    '<h3 class="ga-subhead">🗺️ Quadro do Dia</h3>'+
+    ZONAS.map(function(zona, i){ return missoesQuadroZonaHTML(zona, i, board); }).join('')+
+  '</div></div>';
+}
 function centroScreenHTML(){
+  var missoesAtivas = (STATE.missoesSlots||[]).filter(function(s){ return s; }).length;
+  var missoesProntas = (STATE.missoesSlots||[]).filter(function(s){ return s && s.concluida; }).length;
   var out = '<div class="ga-card"><h2>🏥 Centro Pokémon</h2>'+
-    '<p class="ga-hint">Ponto de encontro entre Treinadores -- peça amizade, converse no chat público (visível pra TODO MUNDO), troque mensagem privada, troque Pokémon/itens/dinheiro e desafie seus amigos pra um Duelo PvP, tudo ao vivo. A lista de Treinadores abaixo só mostra quem está com ESSA tela aberta agora, igual um lugar de verdade -- sai daqui e você some da tela dos outros também.</p>';
+    '<p class="ga-hint">Ponto de encontro entre Treinadores -- peça amizade, converse no chat público (visível pra TODO MUNDO), troque mensagem privada, troque Pokémon/itens/dinheiro e desafie seus amigos pra um Duelo PvP, tudo ao vivo. A lista de Treinadores abaixo só mostra quem está com ESSA tela aberta agora, igual um lugar de verdade -- sai daqui e você some da tela dos outros também.</p>'+
+    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirMissoes()">📋 Missões Diárias ('+missoesAtivas+'/5)'+(missoesProntas>0?' <span class="ga-nav-badge">'+missoesProntas+'</span>':'')+'</button>';
 
   var pedidos = SESSION.pedidosAmizade||[];
   if(pedidos.length){
