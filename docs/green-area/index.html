@@ -8994,7 +8994,8 @@ function freshState(trainerName){
     battle: null,
     actionLog: [],
     teamSlots: defaultTeamSlots(),
-    missoesSlots: [null,null,null,null,null] // Cap. leva desta sessão (quadro de missões diárias) -- 5 espaços fixos, preenchidos um a um (ver DT.gaPegarMissao)
+    missoesSlots: [null,null,null,null,null], // Cap. leva desta sessão (quadro de missões diárias) -- 5 espaços fixos, preenchidos um a um (ver DT.gaPegarMissao)
+    missoesContadorDia: { dia: numeroDiaRealDoJogo(), usados: 0 } // Cap. correção desta sessão ("Limitar Diárias apenas a 5 por dia") -- ver contadorMissoesDoDia
   };
 }
 
@@ -9044,6 +9045,7 @@ function migrateState(){
   if(!STATE.kantoPos || typeof STATE.kantoPos.col!=='number' || typeof STATE.kantoPos.row!=='number') STATE.kantoPos = { col:2, row:10 }; // conta criada antes da Parte 4 do redesenho do mapa nasce em Vila Pallet, igual conta nova
   if(!STATE.tms || typeof STATE.tms!=='object') STATE.tms = {};
   if(!STATE.missoesSlots || !Array.isArray(STATE.missoesSlots) || STATE.missoesSlots.length!==5) STATE.missoesSlots = [null,null,null,null,null]; // conta criada antes do quadro de missões nasce com os 5 slots vazios, igual conta nova
+  if(!STATE.missoesContadorDia || typeof STATE.missoesContadorDia.usados!=='number') STATE.missoesContadorDia = { dia: numeroDiaRealDoJogo(), usados: 0 }; // conta criada antes do limite diário nasce com o contador zerado, igual conta nova
   if(typeof STATE.pokebolas==='number') STATE.pokebolas = { pokebola: STATE.pokebolas, greatball:0, ultraball:0 };
   if(!STATE.pokebolas || typeof STATE.pokebolas!=='object') STATE.pokebolas = { pokebola:0, greatball:0, ultraball:0 };
   POKEBALLS.forEach(function(b){ if(typeof STATE.pokebolas[b.key]!=='number') STATE.pokebolas[b.key] = 0; });
@@ -16023,18 +16025,48 @@ function limparMissoesExpiradas(){
   });
   return mudou;
 }
+/* Cap. correção desta sessão ("Limitar Diárias apenas a 5 por dia.
+   Se pegar, concluir ou abandonar, conta pro geral de missão por
+   dia"): teto SEPARADO dos 5 slots -- os slots limitam quantas
+   missões ficam ATIVAS ao mesmo tempo (sempre existiram, continuam
+   existindo), este contador limita quantas vezes no MESMO dia o
+   jogador consegue PEGAR uma missão nova, ponto. `DT.gaEntregarMissao`/
+   `DT.gaAbandonarMissao` liberam o SLOT de volta (pra Diário mostrar
+   certo o que está ativo agora), mas NUNCA devolvem uma vaga aqui --
+   abandonar uma missão não dá direito a pegar outra no lugar dela
+   hoje, senão o teto de 5/dia viraria só um teto de "5 ativas ao
+   mesmo tempo" de novo, exatamente o que a correção pede pra evitar.
+   Reseta sozinho a cada dia de jogo novo (mesmo padrão preguiçoso de
+   `kantoJaEnfrentadoHoje`/`tickPoketickets` -- só relê/zera quando
+   alguém pergunta, nunca precisa de um timer à parte). */
+var MISSOES_LIMITE_DIARIO = 5;
+function contadorMissoesDoDia(){
+  if(!STATE) return { dia: numeroDiaRealDoJogo(), usados: 0 };
+  var diaAtual = numeroDiaRealDoJogo();
+  if(!STATE.missoesContadorDia || STATE.missoesContadorDia.dia!==diaAtual){
+    STATE.missoesContadorDia = { dia: diaAtual, usados: 0 };
+  }
+  return STATE.missoesContadorDia;
+}
 DT.gaAbrirMissoesQuadro = function(){
   SESSION.missoesQuadroAberto = true;
   SESSION.error = '';
-  if(limparMissoesExpiradas()) mutate(); else render();
+  var contadorAntesDia = STATE && STATE.missoesContadorDia ? STATE.missoesContadorDia.dia : null;
+  var mudouSlots = limparMissoesExpiradas();
+  var contadorDepois = contadorMissoesDoDia(); // reseta sozinho se o dia já virou, mesmo sem pegar nada ainda
+  var mudouContador = !!STATE && contadorDepois.dia!==contadorAntesDia;
+  if(mudouSlots || mudouContador) mutate(); else render();
 };
 DT.gaFecharMissoesQuadro = function(){ SESSION.missoesQuadroAberto = false; render(); };
 /* Pega uma missão concreta do quadro do dia -- vai pro PRIMEIRO slot
    vazio (Cap. "Antes de ir para o slot, o tipo de missão que ele
-   pegar... vai pro slot 1 e assim por diante"), nunca escolhe slot. */
+   pegar... vai pro slot 1 e assim por diante"), nunca escolhe slot.
+   Recusa quando o teto DIÁRIO (não só o de slots) já foi atingido. */
 DT.gaPegarMissao = function(missaoId){
   if(!STATE || !STATE.missoesSlots) return;
   limparMissoesExpiradas();
+  var contador = contadorMissoesDoDia();
+  if(contador.usados>=MISSOES_LIMITE_DIARIO){ SESSION.error='Você já pegou '+MISSOES_LIMITE_DIARIO+' missões hoje -- volte no próximo Dia de jogo.'; render(); return; }
   var m = missaoPorId(missaoId);
   if(!m){ SESSION.error='Essa missão não existe mais (o quadro pode ter virado).'; render(); return; }
   var jaTenho = STATE.missoesSlots.some(function(s){ return s && s.missaoId===missaoId; });
@@ -16043,7 +16075,8 @@ DT.gaPegarMissao = function(missaoId){
   for(var i=0;i<STATE.missoesSlots.length;i++){ if(!STATE.missoesSlots[i]){ slotVazio=i; break; } }
   if(slotVazio===-1){ SESSION.error='Seus 5 slots de missão já estão cheios -- entregue ou abandone uma pra pegar outra.'; render(); return; }
   STATE.missoesSlots[slotVazio] = { missaoId: m.id, dia: numeroDiaRealDoJogo(), progresso:0, concluida:false };
-  logAction('missao', 'Pegou a missão "'+missaoTituloTexto(m)+'" (Dificuldade '+m.dificuldadeNome+').');
+  contador.usados++; // Cap. correção desta sessão -- nunca devolvido por Entregar/Abandonar, é o teto de PICKS do dia, não de slots ativos
+  logAction('missao', 'Pegou a missão "'+missaoTituloTexto(m)+'" (Dificuldade '+m.dificuldadeNome+') -- '+contador.usados+'/'+MISSOES_LIMITE_DIARIO+' hoje.');
   mutate();
 };
 DT.gaEntregarMissao = function(slotIdx){
@@ -23231,10 +23264,12 @@ function missoesQuadroDificuldadeHTML(zona, tierIdx, board){
   if(!missoesDoTier.length) return '';
   var minhasIds = (STATE.missoesSlots||[]).filter(function(s){ return s; }).map(function(s){ return s.missaoId; });
   var slotsCheios = (STATE.missoesSlots||[]).every(function(s){ return !!s; });
+  var limiteDiarioBatido = contadorMissoesDoDia().usados>=MISSOES_LIMITE_DIARIO;
   return '<details class="ga-seq-relatorio-item"><summary>Dificuldade: '+esc2(zona.nome)+'</summary>'+
     '<div class="ga-poke-grid">'+missoesDoTier.map(function(m){
       var jaTenho = minhasIds.indexOf(m.id)!==-1;
       var acao = jaTenho ? '<span class="ga-hint">✔️ Já pegou</span>'
+        : limiteDiarioBatido ? '<span class="ga-hint">Limite diário atingido</span>'
         : slotsCheios ? '<span class="ga-hint">Slots cheios</span>'
         : '<button class="ga-btn-sm" onclick="DT.gaPegarMissao(\''+m.id+'\')">Pegar</button>';
       return '<div class="ga-friend-card"><strong>'+esc2(missaoTituloTexto(m))+'</strong>'+
@@ -23251,11 +23286,12 @@ function missoesQuadroPopupHTML(){
   if(!SESSION.missoesQuadroAberto) return '';
   var slots = STATE.missoesSlots || [null,null,null,null,null];
   var ocupados = slots.filter(function(s){ return s; }).length;
+  var contador = contadorMissoesDoDia();
   var board = gerarQuadroMissoesDoDia();
   return '<div class="ga-overlay" onclick="DT.gaFecharMissoesQuadro()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaFecharMissoesQuadro()">✕</button>'+
     '<h2>📋 Quadro de Missões</h2>'+
-    '<p class="ga-hint">O mesmo quadro em TODO Centro Pokémon, muda 1x por dia de jogo -- baseado em lugares reais do mapa de Kanto. Escolha a dificuldade abaixo. Você tem '+ocupados+'/5 missões no seu Diário agora'+(ocupados>=5?' (cheio -- entregue ou abandone alguma no 📔 Diário, aba Jogador, pra pegar outra)':'')+'.</p>'+
+    '<p class="ga-hint">O mesmo quadro em TODO Centro Pokémon, muda 1x por dia de jogo -- baseado em lugares reais do mapa de Kanto. Escolha a dificuldade abaixo. Você já pegou '+contador.usados+'/'+MISSOES_LIMITE_DIARIO+' missões hoje'+(contador.usados>=MISSOES_LIMITE_DIARIO?' (limite batido -- só amanhã, mesmo que entregue ou abandone alguma agora)':'')+', com '+ocupados+' ativa'+(ocupados===1?'':'s')+' no seu 📔 Diário agora.</p>'+
     ZONAS.map(function(zona, i){ return missoesQuadroDificuldadeHTML(zona, i, board); }).join('')+
   '</div></div>';
 }
@@ -23277,8 +23313,9 @@ function missoesQuadroPopupHTML(){
 function diarioScreenHTML(){
   var slots = STATE.missoesSlots || [];
   var secundarias = slots.map(function(s, i){ return {slot:s, idx:i}; }).filter(function(x){ return x.slot; });
+  var contador = contadorMissoesDoDia();
   var out = '<div class="ga-card"><h2>📔 Diário</h2>'+
-    '<p class="ga-hint">Suas missões ativas, por categoria -- uma categoria só aparece aqui quando você tem pelo menos 1 missão dentro dela. Pegue missões novas no 📋 Quadro de Missões de qualquer Centro Pokémon (o de sempre ou qualquer cidade de Kanto).</p>';
+    '<p class="ga-hint">Suas missões ativas, por categoria -- uma categoria só aparece aqui quando você tem pelo menos 1 missão dentro dela. Você já pegou '+contador.usados+'/'+MISSOES_LIMITE_DIARIO+' missões hoje (entregar ou abandonar NÃO devolve essa contagem -- só o próximo Dia de jogo). Pegue missões novas no 📋 Quadro de Missões de qualquer Centro Pokémon (o de sempre ou qualquer cidade de Kanto).</p>';
   if(secundarias.length){
     out += '<h3 class="ga-subhead">📋 Missão Secundária ('+secundarias.length+'/5)</h3>'+
       '<div class="ga-poke-grid">'+secundarias.map(function(x){ return missoesSlotCardHTML(x.slot, x.idx); }).join('')+'</div>';
