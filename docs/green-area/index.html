@@ -8962,7 +8962,7 @@ var ADMIN_DOC_IDS = ['marcus'];
 function contaEhAdmin(docId, data){ return ADMIN_DOC_IDS.indexOf(docId)!==-1 || !!(data && data.isAdminGranted); }
 
 var STATE = null;
-var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false, gruposAtivos:[], grupoAberto:false, kantoAreaDiretorio:null, kantoAreaDiretorioCarregando:false, kantoAreaAberta:false, kantoAreaChat:null };
+var SESSION = { screen:'login', notice:'', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false, gruposAtivos:[], grupoAberto:false, kantoAreaDiretorio:null, kantoAreaDiretorioCarregando:false, kantoAreaAberta:false, kantoAreaChat:null, missoesQuadroAberto:false };
 
 function freshState(trainerName){
   return {
@@ -13659,7 +13659,7 @@ DT.gaSair = function(){
   currentSaveRef = null;
   STATE = null;
   clearCachedSession();
-  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false, gruposAtivos:[], grupoAberto:false, kantoAreaDiretorio:null, kantoAreaDiretorioCarregando:false, kantoAreaAberta:false, kantoAreaChat:null };
+  SESSION = { screen:'login', notice:'Você saiu da conta.', error:'', loginMode:'entrar', migratingLocal:false, loginBusy:false, confirmRelease:null, dexOpenNum:null, party_pickForBattle:null, capturaLeadId:null, isAdmin:false, currentDocId:null, adminContas:null, adminLoading:false, adminConfirmExcluir:null, adminFichaFor:null, movesOpenFor:null, leaderTeamOpenFor:null, pendingEnergia:null, pendingDiscrepancia:null, dexSearch:'', dexFiltroStatus:'todos', dexFiltroTipo1:'', dexFiltroTipo2:'', sidebarOpen:false, movDexSearch:'', movDexFiltroTipo:'', movDexFiltroCategoria:'', movDexFiltroPapel:'', pendingSequenciaConfirm:null, capturaQtdSugerida:null, pedidosAmizade:[], amigos:[], centroDiretorio:null, centroDiretorioCarregando:false, centroChat:null, dmMensagens:{}, dmConversaAberta:null, trocasAtivas:[], trocaId:null, duelosAtivos:[], duelId:null, evolucaoSequenciaDecididos:[], caixaSearch:'', caixaFiltroTipo1:'', caixaFiltroTipo2:'', caixaFiltroPapel:'', editApelidoFor:null, usarPedraFor:null, dexFormaAtiva:null, raidRoomId:null, raidChat:[], pendingRaidBola:null, raidAdminGerenciarId:null, confirmRaidEnd:null, raidPreview:null, caixaOrdenar:'', timesMenuOpen:false, timeEditando:null, timeEditBuffer:null, timeRenomeando:null, timeEscolhendoSlot:null, timeFaltandoAviso:null, navGroupOpen:null, kantoSelecionado:null, kantoEscolhendoArea:null, kantoEscolhendoGinasio:null, kantoEscolhendoTreinador:null, kantoMercadoAberto:false, pendingKantoAndar:null, kantoZoom:1, kantoCentroAberto:null, kantoCentroInfoAberto:false, kantoCentroDiretorio:null, kantoCentroDiretorioCarregando:false, kantoCentroChat:null, kantoGuardaBloqueio:null, kantoEscolhendoMovePP:null, kantoBolsaAberta:false, kantoBolsaItem:null, kantoEquipeAberta:false, gruposAtivos:[], grupoAberto:false, kantoAreaDiretorio:null, kantoAreaDiretorioCarregando:false, kantoAreaAberta:false, kantoAreaChat:null, missoesQuadroAberto:false };
   render();
 };
 
@@ -15808,15 +15808,21 @@ function wildPoolForZona(zona){
    missão (só existe 1 concreta por combinação Zona×Tipo×dia), nunca
    duas rolagens independentes.
 
-   `numeroDiaRealDoJogo()` -- NÃO usa `numeroDiaDoJogo()` (o "Dia"
-   exibido na tela, que cicla só 1-4 pra sempre, ver comentário grande
-   de `numeroDiaDoJogo` lá em cima) -- usar aquele semearia o quadro
-   com só 4 padrões diferentes, repetindo pra sempre. Em vez disso
-   deriva de `periodoDoJogoIndex()` (o contador de blocos de 6h que já
-   NUNCA cicla, mesma base de `kantoJaEnfrentadoHoje`/Pokéticket
-   diário) dividido por 4 -- 4 blocos de 6h = 1 dia de verdade, sempre
-   crescente, sempre igual pra todo cliente no mesmo instante real. */
-function numeroDiaRealDoJogo(){ return Math.floor(periodoDoJogoIndex()/4); }
+   `numeroDiaRealDoJogo()` -- Cap. correção desta sessão ("As missões
+   tem que resetar a cada dia DE JOGO e não real"): NÃO usa
+   `numeroDiaDoJogo()` (o "Dia" exibido na tela, que cicla só 1-4 pra
+   sempre, ver comentário grande de `numeroDiaDoJogo` lá em cima) --
+   usar aquele semearia o quadro com só 4 padrões diferentes,
+   repetindo pra sempre. A unidade de "1 dia de jogo" no resto do
+   próprio código já É `periodoDoJogoIndex()` puro (1 bloco de 6h
+   reais = 1 "Dia do jogo" completo, ver `MS_POR_PERIODO_JOGO` --
+   MESMA unidade que `kantoJaEnfrentadoHoje`/o grant diário de
+   Pokéticket em `tickPoketickets` já usam pra "hoje") -- a 1ª versão
+   desta função dividia por 4 achando que precisava de um "dia de
+   calendário" de 24h reais, mas isso contradizia a própria convenção
+   do jogo: aqui reseta junto com todo resto que já é "por dia",
+   nunca antes nem depois. */
+function numeroDiaRealDoJogo(){ return periodoDoJogoIndex(); }
 /* PRNG determinística simples (mulberry32) -- só inteiros até o passo
    final, sem depender de nenhuma biblioteca externa nem de
    `Math.random()` (que nunca poderia ser igual em 2 clientes
@@ -15911,12 +15917,12 @@ function limparMissoesExpiradas(){
   });
   return mudou;
 }
-DT.gaAbrirMissoes = function(){
-  SESSION.missoesAberto = true;
+DT.gaAbrirMissoesQuadro = function(){
+  SESSION.missoesQuadroAberto = true;
   SESSION.error = '';
   if(limparMissoesExpiradas()) mutate(); else render();
 };
-DT.gaFecharMissoes = function(){ SESSION.missoesAberto = false; render(); };
+DT.gaFecharMissoesQuadro = function(){ SESSION.missoesQuadroAberto = false; render(); };
 /* Pega uma missão concreta do quadro do dia -- vai pro PRIMEIRO slot
    vazio (Cap. "Antes de ir para o slot, o tipo de missão que ele
    pegar... vai pro slot 1 e assim por diante"), nunca escolhe slot. */
@@ -17534,6 +17540,19 @@ function kantoCentroBlocoHTML(loc){
   if(!loc.pokecenter) return '';
   return '<button type="button" class="ga-icon-btn-lg" title="Centro Pokémon" onclick="DT.gaKantoToggleCentroInfo()">🏥</button>';
 }
+/* Cap. correção desta sessão ("não achei onde pegar as missões no
+   mapa de Kanto... o quadro de missão tem que ficar DENTRO do centro
+   pokémon, todos os centros, mesmo quadro"): MESMO gate de
+   `kantoCentroBlocoHTML` (`loc.pokecenter`) -- o Quadro só existe
+   onde um Centro Pokémon de verdade existe, agora também dentro de
+   Kanto, não só na tela global de Centro Pokémon. Abre o MESMÍSSIMO
+   popup (`missoesQuadroPopupHTML`/`DT.gaAbrirMissoesQuadro`) -- não
+   existe versão "de Kanto" do quadro, é sempre o mesmo em qualquer
+   Centro, exatamente como pedido. */
+function kantoMissoesBlocoHTML(loc){
+  if(!loc.pokecenter) return '';
+  return '<button type="button" class="ga-icon-btn-lg" title="Quadro de Missões" onclick="DT.gaAbrirMissoesQuadro()">📋</button>';
+}
 /* Extraído de kantoCentroBlocoHTML (ver comentário acima) -- o
    conteúdo que antes expandia inline (Curar Equipe + Treinadores aqui
    agora) virou um popup próprio, empilhado por cima do popup da
@@ -17635,7 +17654,7 @@ function kantoMercadoBlocoHTML(loc){
    '' sozinho quando não se aplica (loc sem mercado/sem pokecenter),
    então a linha toda some se nenhum dos 2 existir aqui. */
 function kantoMercadoCentroBotoesHTML(loc){
-  var btns = kantoMercadoBlocoHTML(loc)+kantoCentroBlocoHTML(loc);
+  var btns = kantoMercadoBlocoHTML(loc)+kantoCentroBlocoHTML(loc)+kantoMissoesBlocoHTML(loc);
   return btns ? '<div class="ga-kanto-icon-row">'+btns+'</div>' : '';
 }
 function kantoMercadoPopupHTML(){
@@ -20836,13 +20855,16 @@ var NAV_GRUPOS = [
     ] },
   { id:'jogador', ic:'🎒', nome:'Jogador', itens:[
       { id:'equipe', ic:pokebolaIconHTML(), nome:'Equipe' },
-      { id:'mochila', ic:'🧳', nome:'Mochila' }
+      { id:'mochila', ic:'🧳', nome:'Mochila' },
+      { id:'diario', ic:'📔', nome:'Diário' } // Cap. correção desta sessão ("Coloque, no menu jogador uma aba de Diário onde vão ficar as missões")
     ] }
 ];
+function missoesProntasParaEntregar(){ return (STATE && STATE.missoesSlots ? STATE.missoesSlots : []).filter(function(s){ return s && s.concluida; }).length; }
 function navGrupoBadge(grupoId){
-  // só o grupo Social tem selo (mesmos 2 contadores que já existiam soltos antes)
-  if(grupoId!=='social') return 0;
-  return (SESSION.pedidosAmizade||[]).length + dmTotalNaoLidas();
+  // Social e Jogador são os 2 únicos grupos com selo (contadores que já existiam soltos antes + missões prontas)
+  if(grupoId==='social') return (SESSION.pedidosAmizade||[]).length + dmTotalNaoLidas();
+  if(grupoId==='jogador') return missoesProntasParaEntregar();
+  return 0;
 }
 function navGrupoBtnHTML(grupoId){
   var g = NAV_GRUPOS.filter(function(x){ return x.id===grupoId; })[0];
@@ -20885,7 +20907,7 @@ function navGrupoPopupHTML(){
     '<button class="ga-overlay-close" onclick="DT.gaFecharGrupoNav()">✕</button>'+
     '<h2>'+grupo.ic+' '+esc2(grupo.nome)+'</h2>'+
     '<div class="ga-navgroup-grid">'+grupo.itens.map(function(item){
-      var badge = item.id==='centro' ? qtdPedidos : (item.id==='mensagens' ? qtdDm : 0);
+      var badge = item.id==='centro' ? qtdPedidos : (item.id==='mensagens' ? qtdDm : (item.id==='diario' ? missoesProntasParaEntregar() : 0));
       return '<button class="ga-navgroup-item'+(SESSION.screen===item.id?' ativo':'')+'" onclick="DT.gaGotoDoGrupo(\''+item.id+'\')"><span class="ga-nav-ic">'+item.ic+'</span>'+esc2(item.nome)+(badge>0?' <span class="ga-nav-badge">'+badge+'</span>':'')+'</button>';
     }).join('')+
     '</div>'+
@@ -21105,11 +21127,12 @@ function screenHTML(){
     case 'raids': return wrap(raidsScreenHTML());
     case 'cacadagrupo': return wrap(cacadaGrupoScreenHTML());
     case 'mochila': return wrap(mochilaScreenHTML());
+    case 'diario': return wrap(diarioScreenHTML());
     case 'loja': return wrap(lojaScreenHTML());
     case 'wiki': return wrap(wikiScreenHTML());
     case 'admin': return wrap(SESSION.isAdmin ? adminScreenHTML() : hubScreenHTML());
-    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoMercadoPopupHTML() + kantoCentroInfoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() + kantoEquipePopupHTML() + kantoAreaPopupHTML() + kantoPendingSequenciaConfirmPopupHTML() + kantoSequenciaFimPopupHTML() : hubScreenHTML());
-    case 'centro': return wrap(centroScreenHTML() + missoesPopupHTML());
+    case 'kanto': return wrap(SESSION.isAdmin ? kantoScreenHTML() + kantoPopupHTML() + kantoMercadoPopupHTML() + kantoCentroInfoPopupHTML() + kantoAndarConfirmPopupHTML() + kantoGuardaBloqueioPopupHTML() + kantoEscolherMovePPPopupHTML() + kantoBolsaPopupHTML() + kantoEquipePopupHTML() + kantoAreaPopupHTML() + missoesQuadroPopupHTML() + kantoPendingSequenciaConfirmPopupHTML() + kantoSequenciaFimPopupHTML() : hubScreenHTML());
+    case 'centro': return wrap(centroScreenHTML() + missoesQuadroPopupHTML());
     case 'mensagens': return wrap(mensagensScreenHTML());
     case 'troca': return wrap(trocaScreenHTML());
     case 'duelo': return wrap(dueloScreenHTML());
@@ -23063,10 +23086,23 @@ function wikiScreenHTML(){
    jogadores -- SESSION.centroDiretorio/pedidosAmizade/amigos/
    centroChat vêm todos de listeners/consultas ao vivo, ver
    attachSocialListeners/gaAbrirCentro). */
-/* Popup do Quadro de Missões Diárias (Cap. "quadros de missões que
-   vão ficar nos centros pokémon") -- reaproveita `.ga-friend-card`/
-   `.ga-poke-grid`/`.ga-overlay-card.wide` de todo o resto do jogo,
-   nenhuma classe CSS nova precisou ser escrita. */
+/* Quadro de Missões Diárias -- Cap. correção desta sessão ("o quadro
+   de missão tem que ficar DENTRO do centro pokémon, todos os
+   centros, mesmo quadro" + "Coloque, no menu jogador uma aba de
+   Diário onde vão ficar as missões"): o Quadro (pegar missão nova) e
+   o Diário (ver/entregar/abandonar as que já peguei) viraram 2 telas
+   SEPARADAS de propósito -- o Quadro é o "mural físico" que só existe
+   DENTRO de um Centro Pokémon (o de sempre E cada cidade de Kanto com
+   `pokecenter:true`, ver `kantoMissoesBlocoHTML` mais abaixo), o
+   Diário é a ficha PESSOAL do jogador (nav "🎒 Jogador"), que mostra
+   as missões que ele já tem em mãos, de QUALQUER lugar que peguem no
+   futuro (secundária, principal, evento -- ver `diarioScreenHTML`).
+   `missoesSlotCardHTML` (o card de 1 missão ativa, com progresso e
+   Entregar/Abandonar) é comum aos 2 -- hoje só usado no Diário, mas
+   fica aqui, genérico, pro caso de o Quadro um dia precisar mostrar
+   o mesmo card também. Reaproveita `.ga-friend-card`/`.ga-poke-grid`/
+   `.ga-overlay-card.wide` de todo o resto do jogo, nenhuma classe CSS
+   nova precisou ser escrita. */
 function missoesSlotCardHTML(slot, idx){
   if(!slot) return '<div class="ga-friend-card"><span class="ga-hint">Slot '+(idx+1)+': vazio</span></div>';
   var m = missaoPorId(slot.missaoId);
@@ -23092,26 +23128,57 @@ function missoesQuadroZonaHTML(zona, zonaIdx, board){
         '<span class="ga-hint">Recompensa: '+m.recompensaDolares+' Pokédólares, '+m.recompensaPoketicket+' Pokéticket(s)</span>'+acao+'</div>';
     }).join('')+'</div></details>';
 }
-function missoesPopupHTML(){
-  if(!SESSION.missoesAberto) return '';
+/* Popup do Quadro em si -- só PEGAR, nunca gerenciar (entregar/
+   abandonar mora no Diário, ver diarioScreenHTML). Mesmo popup
+   reaproveitado nos 2 lugares onde um Centro Pokémon existe (o global
+   e o de cada cidade de Kanto) -- `SESSION.missoesQuadroAberto` não
+   guarda QUAL Centro abriu, de propósito: o quadro é sempre o mesmo
+   em qualquer um deles. */
+function missoesQuadroPopupHTML(){
+  if(!SESSION.missoesQuadroAberto) return '';
   var slots = STATE.missoesSlots || [null,null,null,null,null];
+  var ocupados = slots.filter(function(s){ return s; }).length;
   var board = gerarQuadroMissoesDoDia();
-  return '<div class="ga-overlay" onclick="DT.gaFecharMissoes()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
-    '<button class="ga-overlay-close" onclick="DT.gaFecharMissoes()">✕</button>'+
-    '<h2>📋 Missões Diárias</h2>'+
-    '<p class="ga-hint">O quadro é o MESMO em todos os Centros Pokémon e muda 1x por dia -- pegue até 5 missões (preenche um slot de cada vez, na ordem que você pegar), complete e volte aqui pra entregar.</p>'+
-    '<h3 class="ga-subhead">🎒 Minhas Missões ('+slots.filter(function(s){return s;}).length+'/5)</h3>'+
-    '<div class="ga-poke-grid">'+slots.map(missoesSlotCardHTML).join('')+'</div>'+
-    '<h3 class="ga-subhead">🗺️ Quadro do Dia</h3>'+
+  return '<div class="ga-overlay" onclick="DT.gaFecharMissoesQuadro()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
+    '<button class="ga-overlay-close" onclick="DT.gaFecharMissoesQuadro()">✕</button>'+
+    '<h2>📋 Quadro de Missões</h2>'+
+    '<p class="ga-hint">O mesmo quadro em TODO Centro Pokémon, muda 1x por dia de jogo. Você tem '+ocupados+'/5 missões no seu Diário agora'+(ocupados>=5?' (cheio -- entregue ou abandone alguma no 📔 Diário, aba Jogador, pra pegar outra)':'')+'.</p>'+
     ZONAS.map(function(zona, i){ return missoesQuadroZonaHTML(zona, i, board); }).join('')+
   '</div></div>';
 }
+/* Diário do jogador -- Cap. correção desta sessão ("Dentro do diário
+   Vão ficar divididas as categorias de Missão Principal, Missão
+   Secundária, Evento. As categorias só vão aparecer quando tiver
+   missão daquela categoria. Missões do Quadro são missões
+   secundárias."): tela cheia (nav 🎒 Jogador), não popup -- é a ficha
+   PESSOAL de missões do jogador, pra gerenciar (progresso/Entregar/
+   Abandonar) o que ele já pegou em algum Quadro. 3 categorias FIXAS,
+   cada uma só renderiza se tiver pelo menos 1 missão dentro -- hoje
+   só "Missão Secundária" tem fonte de dados de verdade
+   (`STATE.missoesSlots`, populada pelo Quadro dos Centros Pokémon);
+   "Missão Principal" e "Evento" ficam reservadas pra quando o jogo
+   tiver progressão de história/eventos temporários -- a MESMA função
+   já sabe escondê-las sozinha assim que elas também ganharem uma
+   fonte de dados (só adicionar mais um bloco `if(array.length)` igual
+   ao de Secundária, nunca precisa mexer no resto). */
+function diarioScreenHTML(){
+  var slots = STATE.missoesSlots || [];
+  var secundarias = slots.map(function(s, i){ return {slot:s, idx:i}; }).filter(function(x){ return x.slot; });
+  var out = '<div class="ga-card"><h2>📔 Diário</h2>'+
+    '<p class="ga-hint">Suas missões ativas, por categoria -- uma categoria só aparece aqui quando você tem pelo menos 1 missão dentro dela. Pegue missões novas no 📋 Quadro de Missões de qualquer Centro Pokémon (o de sempre ou qualquer cidade de Kanto).</p>';
+  if(secundarias.length){
+    out += '<h3 class="ga-subhead">📋 Missão Secundária ('+secundarias.length+'/5)</h3>'+
+      '<div class="ga-poke-grid">'+secundarias.map(function(x){ return missoesSlotCardHTML(x.slot, x.idx); }).join('')+'</div>';
+  }
+  if(!secundarias.length){
+    out += '<p class="ga-hint">Nenhuma missão ativa ainda -- vá até um 🏥 Centro Pokémon e pegue uma no Quadro de Missões.</p>';
+  }
+  return out+'</div>';
+}
 function centroScreenHTML(){
-  var missoesAtivas = (STATE.missoesSlots||[]).filter(function(s){ return s; }).length;
-  var missoesProntas = (STATE.missoesSlots||[]).filter(function(s){ return s && s.concluida; }).length;
   var out = '<div class="ga-card"><h2>🏥 Centro Pokémon</h2>'+
     '<p class="ga-hint">Ponto de encontro entre Treinadores -- peça amizade, converse no chat público (visível pra TODO MUNDO), troque mensagem privada, troque Pokémon/itens/dinheiro e desafie seus amigos pra um Duelo PvP, tudo ao vivo. A lista de Treinadores abaixo só mostra quem está com ESSA tela aberta agora, igual um lugar de verdade -- sai daqui e você some da tela dos outros também.</p>'+
-    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirMissoes()">📋 Missões Diárias ('+missoesAtivas+'/5)'+(missoesProntas>0?' <span class="ga-nav-badge">'+missoesProntas+'</span>':'')+'</button>';
+    '<button type="button" class="ga-btn-sm ga-btn-primary" onclick="DT.gaAbrirMissoesQuadro()">📋 Quadro de Missões</button>';
 
   var pedidos = SESSION.pedidosAmizade||[];
   if(pedidos.length){
