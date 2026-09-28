@@ -10303,6 +10303,17 @@ function startBattle(kind, opts, skipDiscrepancia){
     origemMapa: !!opts.origemMapa, // Cap. PV/PP/Status persistentes -- só true quando a luta nasceu no mapa de Kanto (ver DT.gaKanto*)
     label: label,
     leaderId: (kind==='trainer'||kind==='kantogym') ? opts.leaderId : null,
+    /* Cap. correção desta sessão (quadro de missões baseado no mapa
+       de Kanto): "onde"/"quem" real desta luta, só preenchido pelos
+       call sites que já sabem essa informação (`kantoIniciarLutaDeArea`
+       pra selvagem, `DT.gaKantoIniciarTreinadorRota` pra Treinador de
+       Rota/Local) -- `finishBattle`/`DT.gaJogarPokebola` usam isso
+       pra creditar progresso de missão no lugar/Treinador EXATO,
+       nunca um "zonaIdx" solto sem relação com o mapa de verdade. */
+    ownerType: opts.ownerType || null,
+    ownerId: opts.ownerId || null,
+    areaId: opts.areaId || null,
+    trainerId: opts.trainerId || null,
     playerActive: playerBattler,
     playerPartyOrder: STATE.party.map(function(p){ return p.id; }),
     usedPartyIds: [lead.id],
@@ -10924,17 +10935,19 @@ function finishBattle(result){
     finalizarBatalhaRaid(b, result);
     return;
   }
-  /* Cap. leva desta sessão (quadro de missões diárias): "vencer" conta
-     TODA vitória com Zona (`b.zonaIdx` -- selvagem/Treinador/Elite da
-     Área de Captura, inclusive quando reaproveitados pelo mapa de
-     Kanto, mais Líder/Treinador de Rota de Kanto; Mestre Especialista,
-     `kind==='trainer'`, nunca carrega `zonaIdx`, então nunca bate com
-     missão nenhuma -- de propósito, Mestre não pertence a uma Zona).
-     "vencer_treinador" é o mesmo filtro só que excluindo `wild`
-     (selvagem não é Treinador). */
-  if(result==='vitoria' && typeof b.zonaIdx==='number'){
-    registrarProgressoMissao('vencer', b.zonaIdx, 1);
-    if(b.kind!=='wild') registrarProgressoMissao('vencer_treinador', b.zonaIdx, 1);
+  /* Cap. correção desta sessão (quadro de missões baseado no mapa de
+     Kanto): só conta progresso pra luta que NASCEU no mapa de Kanto
+     de verdade (`b.origemMapa`, com `ownerType`/`ownerId` reais --
+     ver STATE.battle acima) -- Mestre Especialista (`kind:'trainer'`)
+     e a Área de Captura clássica fora de Kanto nunca carregam essas
+     duas informações, então nunca batem com missão nenhuma, de
+     propósito (missão agora é sempre sobre um lugar/Treinador real
+     do MAPA, nunca sobre uma Zona abstrata). `wild` credita "vencer"
+     (o lugar/área); `routetrainer` credita "vencer_treinador" (o
+     Treinador nomeado exato, via `b.trainerId`). */
+  if(result==='vitoria' && b.origemMapa && b.ownerType && b.ownerId){
+    if(b.kind==='wild' && b.areaId) registrarProgressoMissaoVencerArea(b.ownerType, b.ownerId, b.areaId);
+    else if(b.kind==='routetrainer' && b.trainerId) registrarProgressoMissaoVencerTreinador(b.ownerType, b.ownerId, b.trainerId);
   }
   if(result==='vitoria'){
     b.log.push('🏆 Vitória!');
@@ -13368,7 +13381,7 @@ DT.gaJogarPokebola = function(ballKey){
   var sucesso = Math.random() < catchChance(num, ballKey);
   if(sucesso){
     markCaught(num);
-    registrarProgressoMissaoCaptura(num, b.zonaIdx); // Cap. leva desta sessão (quadro de missões diárias) -- só conta pra missão "capturar" se for EXATAMENTE a espécie/Zona pedidas
+    registrarProgressoMissaoCaptura(num, b.ownerType, b.ownerId, b.areaId); // Cap. correção desta sessão -- só conta pra missão "capturar" se for EXATAMENTE a espécie/lugar/área reais pedidos
     /* Cap. leva desta sessão ("o wooper tem que aparecer na versão
        certa"): a forma do Pokémon capturado é EXATAMENTE a do battler
        que acabou de ser vencido (`b.oppTeam[0].forma`, já rolada no
@@ -15788,7 +15801,7 @@ function wildPoolForZona(zona){
   return wildPoolForZona._cache[zona.id];
 }
 
-/* ---- Quadro de Missões Diárias (Cap. leva desta sessão: "Podemos usar
+/* ---- Quadro de Missões Diárias (Cap. leva original: "Podemos usar
    quadros de missões que vão ficar nos centros pokémon. Esses quadros
    de missões diárias vão ser os mesmos em todos os centros pokémon.
    Ou seja, pegou de 1 pegou de todos. Os níveis das missões vão ser
@@ -15796,32 +15809,45 @@ function wildPoolForZona(zona){
    Os jogadores vão poder selecionar 5 missões diárias... Jogadores na
    mesma party ao pegarem o mesmo tipo de missão e dificuldade, pegam
    exatamente o mesmo tipo de missão, se for drop, se for de captura
-   vai ser o mesmo drop e o mesmo pokemon").
+   vai ser o mesmo drop e o mesmo pokemon" + CORREÇÃO desta sessão:
+   "As missões não são por zonas. Tem que ser baseado no mapa de
+   KANTO... Você pegar as dificuldades parecidas com a Zona e deixaria
+   disponível para que os jogadores pudessem escolher qual dificuldade
+   iriam pegar e as missões vão usar as bases que temos no mapa de
+   kanto. Tudo que a gente colocar no mapa pode ser passível de uso"):
 
    Desenho: o quadro é um valor DERIVADO, nunca guardado no Firestore
    -- `gerarQuadroMissoesDoDia()` é uma função PURA (RNG semeada pelo
    dia, nunca Math.random()) que todo cliente calcula sozinho e chega
    no EXATO mesmo resultado, sem precisar de nenhuma sincronização
    nova: "mesmo em todos os Centros" e "jogadores do mesmo Grupo pegam
-   a mesma missão" saem de graça disso -- 2 jogadores pegando "captura,
-   dificuldade Aprendiz" hoje estão sempre pegando o MESMO id de
-   missão (só existe 1 concreta por combinação Zona×Tipo×dia), nunca
-   duas rolagens independentes.
+   a mesma missão" saem de graça disso.
 
-   `numeroDiaRealDoJogo()` -- Cap. correção desta sessão ("As missões
-   tem que resetar a cada dia DE JOGO e não real"): NÃO usa
-   `numeroDiaDoJogo()` (o "Dia" exibido na tela, que cicla só 1-4 pra
-   sempre, ver comentário grande de `numeroDiaDoJogo` lá em cima) --
-   usar aquele semearia o quadro com só 4 padrões diferentes,
-   repetindo pra sempre. A unidade de "1 dia de jogo" no resto do
-   próprio código já É `periodoDoJogoIndex()` puro (1 bloco de 6h
-   reais = 1 "Dia do jogo" completo, ver `MS_POR_PERIODO_JOGO` --
-   MESMA unidade que `kantoJaEnfrentadoHoje`/o grant diário de
-   Pokéticket em `tickPoketickets` já usam pra "hoje") -- a 1ª versão
-   desta função dividia por 4 achando que precisava de um "dia de
-   calendário" de 24h reais, mas isso contradizia a própria convenção
-   do jogo: aqui reseta junto com todo resto que já é "por dia",
-   nunca antes nem depois. */
+   A leva ANTERIOR sorteava o alvo de uma piscina ABSTRATA
+   (`wildPoolForZona`, filtrada só por `nivelTipico`, sem relação
+   NENHUMA com o mapa de Kanto de verdade). Corrigido: agora sorteia
+   de dentro dos dados REAIS de `KANTO_MAP.locs`/`KANTO_MAP.routes` --
+   `capturar` vira uma Espécie real da tabela de encontro (`areas[].
+   encontros`) de um lugar real; `vencer_treinador` vira um Treinador
+   NOMEADO de verdade (`areas[].trainers`, o mesmo elenco que já
+   aparece pro jogador no mapa); `vencer` vira "lutar N vezes NESSE
+   lugar específico". "Tudo que a gente colocar no mapa pode ser
+   passível de uso" -- literalmente todo `loc`/`route` com `areas`/
+   `trainers` entra na piscina de candidatos, sem lista curada à mão.
+
+   As 10 `ZONAS` continuam servindo só de RÓTULO de DIFICULDADE
+   (Aprendiz..Lendário, "níveis de enfrentamento de personagens" do
+   pedido original, e "dificuldades parecidas com a Zona" da
+   correção) -- cada lugar/Treinador do mapa já tem um Nível real, e
+   `kantoZonaIdxDaArea`/`kantoGymZonaIdx` (as MESMAS funções que o
+   mapa de Kanto já usa pra custo de Energia/aviso de luta discrepante)
+   classificam cada recurso na dificuldade certa sozinhas -- nenhuma
+   tabela nova precisou ser inventada. O jogador ESCOLHE a dificuldade
+   abrindo a seção dela no Quadro (`<details>` por dificuldade, ver
+   `missoesQuadroDificuldadeHTML`); uma dificuldade sem NENHUM recurso
+   real naquela faixa (o Kanto real não tem quase nada acima de
+   ~Nível 56, por exemplo) simplesmente não aparece -- "só aparece
+   quando tem", mesmo espírito das categorias do Diário. */
 function numeroDiaRealDoJogo(){ return periodoDoJogoIndex(); }
 /* PRNG determinística simples (mulberry32) -- só inteiros até o passo
    final, sem depender de nenhuma biblioteca externa nem de
@@ -15836,69 +15862,149 @@ function mulberry32(seed){
   };
 }
 var MISSAO_TIPOS = ['capturar','vencer','vencer_treinador'];
-function missaoIdPara(dia, zonaIdx, tipo){ return 'd'+dia+'_z'+zonaIdx+'_'+tipo; }
-/* Quadro do dia inteiro -- 1 missão concreta por combinação Zona
-   (10, mesmas ZONAS já usadas em toda a Área de Captura -- "níveis
-   das missões iguais aos níveis de enfrentamento de personagens")
-   × Tipo (3), sempre na MESMA ordem (zonaIdx 0..9 × MISSAO_TIPOS em
-   ordem fixa) -- é essa ordem fixa que garante o mesmo resultado em
-   qualquer cliente, não algo específico do RNG em si. `wildPoolForZona`
-   é 100% derivada de dados estáticos (SPECIES_DEX), então o Pokémon-
-   alvo de "capturar" também sai igual pra todo mundo. */
+function missaoIdPara(dia, tierIdx, tipo){ return 'd'+dia+'_t'+tierIdx+'_'+tipo; }
+/* Todo `loc`/`route` do mapa, cada um marcado com seu `ownerType` --
+   MESMO vocabulário que `kantoOwnerById`/`kantoAreaById`/
+   `kantoTrainerById` já usam, pra nunca inventar um 3º jeito de
+   identificar "onde" no mapa. */
+function kantoTodosOwnersTagged(){
+  return KANTO_MAP.locs.map(function(l){ return { ownerType:'loc', owner:l }; })
+    .concat(KANTO_MAP.routes.map(function(r){ return { ownerType:'route', owner:r }; }));
+}
+/* Candidatos de CAPTURA/GRIND por dificuldade -- toda área real de
+   todo lugar do mapa (nunca `metodo:'especial'`, reservado a
+   encontro de Lendário único/não-repetível -- inapropriado pra
+   missão diária), classificada pela MESMA régua que o resto do mapa
+   de Kanto já usa pra Zona (`kantoZonaIdxDaArea`). Cache simples --
+   dados 100% estáticos, nunca muda depois de calculado 1x. */
+function kantoAreasCandidatasPorDificuldade(){
+  if(kantoAreasCandidatasPorDificuldade._cache) return kantoAreasCandidatasPorDificuldade._cache;
+  var porTier = ZONAS.map(function(){ return []; });
+  kantoTodosOwnersTagged().forEach(function(ot){
+    (ot.owner.areas||[]).forEach(function(area){
+      if(area.metodo==='especial') return;
+      var tier = kantoZonaIdxDaArea(area);
+      porTier[tier].push({ ownerType: ot.ownerType, ownerId: ot.owner.id, ownerNome: ot.owner.nome, area: area });
+    });
+  });
+  kantoAreasCandidatasPorDificuldade._cache = porTier;
+  return porTier;
+}
+/* Candidatos de TREINADOR NOMEADO por dificuldade -- todo Treinador
+   real de todo lugar do mapa, classificado pela Faixa canônica do
+   PRÓPRIO roster dele (`kantoGymZonaIdx`, MESMA fórmula usada pros
+   Líderes de Ginásio -- funciona igual pra qualquer roster
+   `[{num,level}]`, não é exclusiva de Ginásio apesar do nome). */
+function kantoTreinadoresCandidatosPorDificuldade(){
+  if(kantoTreinadoresCandidatosPorDificuldade._cache) return kantoTreinadoresCandidatosPorDificuldade._cache;
+  var porTier = ZONAS.map(function(){ return []; });
+  kantoTodosOwnersTagged().forEach(function(ot){
+    (ot.owner.trainers||[]).forEach(function(trainer){
+      var tier = kantoGymZonaIdx(trainer.rosterCanonico);
+      var nome = trainer.emoji+' '+trainer.classe+(trainer.nome?' '+trainer.nome:'');
+      porTier[tier].push({ ownerType: ot.ownerType, ownerId: ot.owner.id, ownerNome: ot.owner.nome, trainerId: trainer.id, trainerNome: nome });
+    });
+  });
+  kantoTreinadoresCandidatosPorDificuldade._cache = porTier;
+  return porTier;
+}
+/* Quadro do dia inteiro -- até 3 missões concretas por Dificuldade
+   (10, mesmas ZONAS), cada uma sorteada dos candidatos REAIS daquela
+   Dificuldade -- sempre na MESMA ordem (tierIdx 0..9, capturar antes
+   de vencer antes de vencer_treinador dentro de cada tier), a mesma
+   sequência de `rng()` em qualquer cliente. Dificuldade sem candidato
+   de um tipo simplesmente não gera aquela missão (array mais curto
+   que 30 é esperado e normal). */
 function gerarQuadroMissoesDoDia(diaOverride){
   var dia = (typeof diaOverride==='number') ? diaOverride : numeroDiaRealDoJogo();
   var rng = mulberry32(dia);
+  var areasPorTier = kantoAreasCandidatasPorDificuldade();
+  var treinadoresPorTier = kantoTreinadoresCandidatosPorDificuldade();
   var missoes = [];
-  ZONAS.forEach(function(zona, zonaIdx){
-    MISSAO_TIPOS.forEach(function(tipo){
-      var meta = tipo==='capturar' ? 1 : (tipo==='vencer_treinador' ? 2 : 3);
-      var m = {
-        id: missaoIdPara(dia, zonaIdx, tipo), tipo: tipo, zonaIdx: zonaIdx, zonaNome: zona.nome,
-        meta: meta, alvoNum: null,
-        recompensaDolares: 50*(zonaIdx+1), recompensaPoketicket: zonaIdx+1
-      };
-      if(tipo==='capturar'){
-        var pool = wildPoolForZona(zona);
-        m.alvoNum = pool.length ? pool[Math.floor(rng()*pool.length)].num : null;
-      }
-      missoes.push(m);
-    });
+  ZONAS.forEach(function(zona, tierIdx){
+    var candidatosArea = areasPorTier[tierIdx];
+    var candidatosTreinador = treinadoresPorTier[tierIdx];
+    var recompensaDolares = 50*(tierIdx+1), recompensaPoketicket = tierIdx+1;
+    if(candidatosArea.length){
+      var cCap = candidatosArea[Math.floor(rng()*candidatosArea.length)];
+      var totalPeso = cCap.area.encontros.reduce(function(s,e){ return s+(e.peso||1); }, 0);
+      var alvoNum = cCap.area.encontros[cCap.area.encontros.length-1].num;
+      var r = rng()*totalPeso;
+      for(var i=0;i<cCap.area.encontros.length;i++){ r -= (cCap.area.encontros[i].peso||1); if(r<=0){ alvoNum = cCap.area.encontros[i].num; break; } }
+      missoes.push({ id: missaoIdPara(dia,tierIdx,'capturar'), tipo:'capturar', dificuldadeIdx:tierIdx, dificuldadeNome:zona.nome,
+        ownerType:cCap.ownerType, ownerId:cCap.ownerId, ownerNome:cCap.ownerNome, areaId:cCap.area.id, alvoNum:alvoNum,
+        meta:1, recompensaDolares:recompensaDolares, recompensaPoketicket:recompensaPoketicket });
+
+      var cVen = candidatosArea[Math.floor(rng()*candidatosArea.length)];
+      missoes.push({ id: missaoIdPara(dia,tierIdx,'vencer'), tipo:'vencer', dificuldadeIdx:tierIdx, dificuldadeNome:zona.nome,
+        ownerType:cVen.ownerType, ownerId:cVen.ownerId, ownerNome:cVen.ownerNome, areaId:cVen.area.id,
+        meta:3, recompensaDolares:recompensaDolares, recompensaPoketicket:recompensaPoketicket });
+    }
+    if(candidatosTreinador.length){
+      var cTr = candidatosTreinador[Math.floor(rng()*candidatosTreinador.length)];
+      missoes.push({ id: missaoIdPara(dia,tierIdx,'vencer_treinador'), tipo:'vencer_treinador', dificuldadeIdx:tierIdx, dificuldadeNome:zona.nome,
+        ownerType:cTr.ownerType, ownerId:cTr.ownerId, ownerNome:cTr.ownerNome, trainerId:cTr.trainerId, trainerNome:cTr.trainerNome,
+        meta:1, recompensaDolares:recompensaDolares, recompensaPoketicket:recompensaPoketicket });
+    }
   });
   return missoes;
 }
+/* O id embute o dia (`missaoIdPara`) -- reler ESSE dia (não
+   necessariamente hoje) é o que faz uma missão CONCLUÍDA de ontem
+   ainda resolver certo depois da virada (grace period, ver
+   `limparMissoesExpiradas`); sem isso, procurar um id de ontem dentro
+   do quadro de HOJE nunca acharia nada (dias diferentes = ids
+   diferentes por construção). */
 function missaoPorId(missaoId){
   if(!missaoId) return null;
-  return gerarQuadroMissoesDoDia().filter(function(m){ return m.id===missaoId; })[0] || null;
+  var match = /^d(-?\d+)_/.exec(missaoId);
+  var dia = match ? parseInt(match[1],10) : numeroDiaRealDoJogo();
+  return gerarQuadroMissoesDoDia(dia).filter(function(m){ return m.id===missaoId; })[0] || null;
 }
-/* Soma progresso em TODO slot ativo que aponta pra essa missão exata
-   (na prática só 1 -- não dá pra pegar a mesma missão 2x, ver
-   DT.gaPegarMissao) -- percorrer os slots em vez de guardar um índice
-   evita duplicar a checagem de "qual slot é esse" em cada chamador. */
-function registrarProgressoMissao(tipo, zonaIdx, incremento){
+/* Soma progresso em TODO slot ativo cuja missão bate com o filtro --
+   por construção só existe 1 missão de cada tipo por Dificuldade por
+   dia, então nunca tem 2 slots competindo pelo mesmo incremento à
+   toa. */
+function registrarProgressoMissaoSlots(filtro, incremento){
   if(!STATE || !STATE.missoesSlots) return;
-  var alvoId = missaoIdPara(numeroDiaRealDoJogo(), zonaIdx, tipo);
   STATE.missoesSlots.forEach(function(slot){
-    if(!slot || slot.concluida || slot.missaoId!==alvoId) return;
+    if(!slot || slot.concluida) return;
     var m = missaoPorId(slot.missaoId);
-    if(!m) return;
+    if(!m || !filtro(m)) return;
     slot.progresso = Math.min(m.meta, (slot.progresso||0)+incremento);
     if(slot.progresso>=m.meta) slot.concluida = true;
   });
 }
-/* Captura só conta se a espécie capturada for EXATAMENTE a pedida
-   pela missão (`m.alvoNum`) -- "se for de captura vai ser o mesmo
-   drop e o mesmo pokemon", não qualquer captura na Zona. */
-function registrarProgressoMissaoCaptura(num, zonaIdx){
-  if(!STATE || !STATE.missoesSlots || typeof zonaIdx!=='number') return;
-  var alvoId = missaoIdPara(numeroDiaRealDoJogo(), zonaIdx, 'capturar');
-  var m = missaoPorId(alvoId);
-  if(!m || m.alvoNum!==num) return;
-  registrarProgressoMissao('capturar', zonaIdx, 1);
+/* "vencer" -- N vitórias contra QUALQUER encontro selvagem NESSE
+   lugar/área específico do mapa (a mesma Espécie aparecendo em outro
+   lugar não conta -- é o LUGAR que a missão pede). */
+function registrarProgressoMissaoVencerArea(ownerType, ownerId, areaId){
+  if(!ownerType || !ownerId || !areaId) return;
+  registrarProgressoMissaoSlots(function(m){
+    return m.tipo==='vencer' && m.ownerType===ownerType && m.ownerId===ownerId && m.areaId===areaId;
+  }, 1);
+}
+/* "vencer_treinador" -- só o Treinador NOMEADO exato (mesmo lugar E
+   mesmo id de Treinador -- nunca "qualquer Treinador"). */
+function registrarProgressoMissaoVencerTreinador(ownerType, ownerId, trainerId){
+  if(!ownerType || !ownerId || !trainerId) return;
+  registrarProgressoMissaoSlots(function(m){
+    return m.tipo==='vencer_treinador' && m.ownerType===ownerType && m.ownerId===ownerId && m.trainerId===trainerId;
+  }, 1);
+}
+/* "capturar" -- só conta se for a MESMA Espécie, no MESMO lugar/área
+   pedidos pela missão -- "se for de captura vai ser o mesmo drop e o
+   mesmo pokemon". */
+function registrarProgressoMissaoCaptura(num, ownerType, ownerId, areaId){
+  if(!ownerType || !ownerId || !areaId) return;
+  registrarProgressoMissaoSlots(function(m){
+    return m.tipo==='capturar' && m.ownerType===ownerType && m.ownerId===ownerId && m.areaId===areaId && m.alvoNum===num;
+  }, 1);
 }
 function missaoTituloTexto(m){
-  if(m.tipo==='capturar'){ var sp = speciesByNum(m.alvoNum); return 'Capturar '+(sp?sp.name:('#'+m.alvoNum)); }
-  if(m.tipo==='vencer_treinador') return 'Vencer '+m.meta+' Treinador'+(m.meta>1?'es':'');
-  return 'Vencer '+m.meta+' luta'+(m.meta>1?'s':'');
+  if(m.tipo==='capturar'){ var sp = speciesByNum(m.alvoNum); return 'Capturar '+(sp?sp.name:('#'+m.alvoNum))+' -- '+m.ownerNome; }
+  if(m.tipo==='vencer_treinador') return 'Vencer '+m.trainerNome+' -- '+m.ownerNome;
+  return 'Vencer '+m.meta+' vez'+(m.meta>1?'es':'')+' em '+m.ownerNome;
 }
 /* Limpa (silenciosamente, sem popup nenhum) todo slot cuja missão é
    de um dia ANTERIOR e ainda NÃO foi concluída -- é isso que torna a
@@ -15937,7 +16043,7 @@ DT.gaPegarMissao = function(missaoId){
   for(var i=0;i<STATE.missoesSlots.length;i++){ if(!STATE.missoesSlots[i]){ slotVazio=i; break; } }
   if(slotVazio===-1){ SESSION.error='Seus 5 slots de missão já estão cheios -- entregue ou abandone uma pra pegar outra.'; render(); return; }
   STATE.missoesSlots[slotVazio] = { missaoId: m.id, dia: numeroDiaRealDoJogo(), progresso:0, concluida:false };
-  logAction('missao', 'Pegou a missão "'+missaoTituloTexto(m)+'" (Zona '+m.zonaNome+').');
+  logAction('missao', 'Pegou a missão "'+missaoTituloTexto(m)+'" (Dificuldade '+m.dificuldadeNome+').');
   mutate();
 };
 DT.gaEntregarMissao = function(slotIdx){
@@ -16895,7 +17001,7 @@ function kantoIniciarLutaDeArea(leadId, ownerType, ownerId, areaId, skipDiscrepa
   var zonaIdx = kantoZonaIdxDaArea(area);
   markSeen(encontro.num);
   var forma = rollFormaDeEncontro(encontro.num);
-  startBattle('wild', { leadPartyId: leadId, wildNum: encontro.num, wildLevel: level, wildForma: forma, zonaIdx: zonaIdx, origemMapa: true }, skipDiscrepancia);
+  startBattle('wild', { leadPartyId: leadId, wildNum: encontro.num, wildLevel: level, wildForma: forma, zonaIdx: zonaIdx, origemMapa: true, ownerType: ownerType, ownerId: ownerId, areaId: areaId }, skipDiscrepancia);
   return true;
 }
 DT.gaKantoIniciarCaptura = function(leadId){
@@ -17251,7 +17357,7 @@ DT.gaKantoIniciarTreinadorRota = function(leadId){
   /* Parte 4 do redesenho do mapa de Kanto ("achado bônus" -- cooldown
      diário só é marcado DENTRO de startBattle, depois da checagem de
      Energia, nunca aqui -- ver comentário em startBattle). */
-  startBattle('routetrainer', { leadPartyId: leadId, trainerTeam: variacao.roster, trainerNome: nomeCompleto, trainerId: escolha.trainerId, zonaIdx: zonaIdx, origemMapa: true }, false);
+  startBattle('routetrainer', { leadPartyId: leadId, trainerTeam: variacao.roster, trainerNome: nomeCompleto, trainerId: escolha.trainerId, zonaIdx: zonaIdx, origemMapa: true, ownerType: escolha.ownerType, ownerId: escolha.ownerId }, false);
 };
 
 function kantoRoutesTouching(locId){
@@ -23112,14 +23218,21 @@ function missoesSlotCardHTML(slot, idx){
     ? '<button class="ga-btn-sm ga-btn-primary" onclick="DT.gaEntregarMissao('+idx+')">🎁 Entregar</button>'
     : '<button class="ga-btn-sm" onclick="DT.gaAbandonarMissao('+idx+')">Abandonar</button>';
   return '<div class="ga-friend-card"><strong>'+(slot.concluida?'✅ ':'')+esc2(missaoTituloTexto(m))+'</strong>'+
-    '<span class="ga-hint">'+slot.progresso+'/'+m.meta+' -- Zona '+esc2(m.zonaNome)+'</span>'+acao+'</div>';
+    '<span class="ga-hint">'+slot.progresso+'/'+m.meta+' -- Dificuldade: '+esc2(m.dificuldadeNome)+'</span>'+acao+'</div>';
 }
-function missoesQuadroZonaHTML(zona, zonaIdx, board){
-  var missoesDaZona = board.filter(function(m){ return m.zonaIdx===zonaIdx; });
+/* Cap. correção desta sessão ("deixaria disponível para que os
+   jogadores pudessem escolher qual dificuldade iriam pegar"): 1
+   `<details>` por Dificuldade -- fechado por padrão, o jogador
+   "escolhe a dificuldade" abrindo a seção que quer ver. Some sozinha
+   (devolve '') quando essa Dificuldade não gerou missão NENHUMA hoje
+   (Kanto real não cobre toda faixa de Nível). */
+function missoesQuadroDificuldadeHTML(zona, tierIdx, board){
+  var missoesDoTier = board.filter(function(m){ return m.dificuldadeIdx===tierIdx; });
+  if(!missoesDoTier.length) return '';
   var minhasIds = (STATE.missoesSlots||[]).filter(function(s){ return s; }).map(function(s){ return s.missaoId; });
   var slotsCheios = (STATE.missoesSlots||[]).every(function(s){ return !!s; });
-  return '<details class="ga-seq-relatorio-item"><summary>Zona '+esc2(zona.nome)+'</summary>'+
-    '<div class="ga-poke-grid">'+missoesDaZona.map(function(m){
+  return '<details class="ga-seq-relatorio-item"><summary>Dificuldade: '+esc2(zona.nome)+'</summary>'+
+    '<div class="ga-poke-grid">'+missoesDoTier.map(function(m){
       var jaTenho = minhasIds.indexOf(m.id)!==-1;
       var acao = jaTenho ? '<span class="ga-hint">✔️ Já pegou</span>'
         : slotsCheios ? '<span class="ga-hint">Slots cheios</span>'
@@ -23142,8 +23255,8 @@ function missoesQuadroPopupHTML(){
   return '<div class="ga-overlay" onclick="DT.gaFecharMissoesQuadro()"><div class="ga-overlay-card wide" onclick="event.stopPropagation()">'+
     '<button class="ga-overlay-close" onclick="DT.gaFecharMissoesQuadro()">✕</button>'+
     '<h2>📋 Quadro de Missões</h2>'+
-    '<p class="ga-hint">O mesmo quadro em TODO Centro Pokémon, muda 1x por dia de jogo. Você tem '+ocupados+'/5 missões no seu Diário agora'+(ocupados>=5?' (cheio -- entregue ou abandone alguma no 📔 Diário, aba Jogador, pra pegar outra)':'')+'.</p>'+
-    ZONAS.map(function(zona, i){ return missoesQuadroZonaHTML(zona, i, board); }).join('')+
+    '<p class="ga-hint">O mesmo quadro em TODO Centro Pokémon, muda 1x por dia de jogo -- baseado em lugares reais do mapa de Kanto. Escolha a dificuldade abaixo. Você tem '+ocupados+'/5 missões no seu Diário agora'+(ocupados>=5?' (cheio -- entregue ou abandone alguma no 📔 Diário, aba Jogador, pra pegar outra)':'')+'.</p>'+
+    ZONAS.map(function(zona, i){ return missoesQuadroDificuldadeHTML(zona, i, board); }).join('')+
   '</div></div>';
 }
 /* Diário do jogador -- Cap. correção desta sessão ("Dentro do diário
