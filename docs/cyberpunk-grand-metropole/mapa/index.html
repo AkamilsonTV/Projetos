@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Neon Quarter — esqueleto</title>
+<style>
+  html,body{margin:0;height:100%;background:#05030c;color:#e8e6ff;font:14px/1.35 system-ui,sans-serif;overflow:hidden;touch-action:none}
+  #game{position:fixed;inset:0} #game canvas{display:block;image-rendering:pixelated}
+  .hud{position:fixed;z-index:5;background:#0b0820dd;border:1px solid #ff2bd655;border-radius:8px;box-shadow:0 0 12px #ff2bd633}
+  #top{top:10px;left:10px;padding:6px 12px;display:flex;gap:12px;align-items:center}
+  #top b{color:#00f0ff;letter-spacing:.08em;text-transform:uppercase} #top small{color:#9a96c8}
+  #stats{top:10px;right:10px;padding:6px 12px;display:flex;gap:14px;font-variant-numeric:tabular-nums}
+  #stats span b{color:#ff2bd6}
+  #dlg{left:50%;bottom:18px;transform:translateX(-50%);width:min(760px,calc(100vw - 24px));min-height:84px;padding:12px 18px;display:none;font-size:1.05rem;border-color:#00f0ff88;box-shadow:0 0 16px #00f0ff44}
+  #dlg .quem{color:#00f0ff;font-weight:800;text-transform:uppercase;font-size:.8rem;letter-spacing:.08em;margin-bottom:4px}
+  #dlg i{position:absolute;right:12px;bottom:6px;font-style:normal;color:#ff2bd6;animation:p 1s infinite} @keyframes p{50%{opacity:.2}}
+  #opts{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap} #opts button{background:#150f35;color:#e8e6ff;border:1px solid #ff2bd6;border-radius:6px;padding:5px 12px;font:inherit;cursor:pointer} #opts button:hover{background:#ff2bd6;color:#05030c}
+  #local{left:50%;top:12px;transform:translateX(-50%);padding:6px 20px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#00f0ff;transition:opacity .8s;pointer-events:none}
+  #fade{position:fixed;inset:0;background:#000;z-index:30;opacity:1;transition:opacity .3s;pointer-events:none}
+  #dpad{right:14px;bottom:14px;width:150px;height:150px;background:none;border:none;box-shadow:none;display:none}
+  #dpad button{position:absolute;width:50px;height:50px;border-radius:10px;border:1px solid #ff2bd666;background:#0b0820dd;color:#e8e6ff;font-size:1.3rem}
+  #act{position:fixed;left:14px;bottom:14px;width:64px;height:64px;border-radius:50%;border:1px solid #00f0ff88;background:#0b0820dd;color:#00f0ff;font-weight:800;display:none;z-index:6}
+  @media (pointer:coarse){#dpad,#act{display:block}}
+</style>
+</head>
+<body>
+<div id="game"></div><div id="fade"></div>
+<div id="top" class="hud"><b>Neon Quarter</b><small id="dica">Setas/WASD mover · Shift correr · Z/Enter interagir</small></div>
+<div id="stats" class="hud"><span>¥ <b id="sC">120</b></span><span>HP <b id="sH">100</b></span><span>REP <b id="sR">0</b></span></div>
+<div id="local" class="hud"></div>
+<div id="dlg" class="hud"><div class="quem" id="dq"></div><div id="dt"></div><div id="opts"></div><i>▼</i></div>
+<button id="act" aria-label="Ação">A</button>
+<div id="dpad" class="hud"><button data-d="3" style="left:50px;top:0">▲</button><button data-d="1" style="left:0;top:50px">◀</button><button data-d="2" style="left:100px;top:50px">▶</button><button data-d="0" style="left:50px;top:100px">▼</button></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+<script src="dados.js"></script>
+<script>
+/* Esqueleto do motor (reaproveita a ideia do jogo atual: mapa em grade, movimento tile a tile, portas/warps, NPCs com diálogo, zonas de evento,
+   câmera de zoom inteiro). TODA a arte é gerada por código aqui (nenhum asset externo) -- troque por sprites reais quando houver. Dados em dados.js. */
+(function(){
+'use strict';
+var TS = 16, DIRS = [[0,1],[-1,0],[1,0],[0,-1]];       /* 0 baixo, 1 esq, 2 dir, 3 cima */
+var $ = function(id){ return document.getElementById(id); };
+var G = window.JOGO; Object.keys(G.eventos).forEach(function(k){ G.eventos[k].id = k; });
+var estado = { creditos:120, hp:100, rep:0, flags:{} };
+var EMBED = /[?&]embed=1/.test(location.search);
+function avisaApp(m){ try{ window.parent.postMessage(m, '*'); }catch(e){} }
+function hud(){ $('sC').textContent = estado.creditos; $('sH').textContent = estado.hp; $('sR').textContent = estado.rep; }
+if(EMBED){ document.getElementById('top').style.display='none'; document.getElementById('stats').style.display='none'; window.addEventListener('message', function(e){ var d = e.data; if(d && d.tipo==='ng-estado' && d.estado){ Object.keys(d.estado).forEach(function(k){ estado[k] = d.estado[k]; }); hud(); } }); }
+
+/* ---------- arte procedural ---------- */
+function rnd(seed){ var a = seed>>>0; return function(){ a = (a+0x6D2B79F5)>>>0; var t = a; t = Math.imul(t^(t>>>15), t|1); t ^= t+Math.imul(t^(t>>>7), t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+function tex(scene, nome, w, h, fn){ var c = document.createElement('canvas'); c.width = w; c.height = h; var g = c.getContext('2d'); g.imageSmoothingEnabled = false; fn(g, w, h); scene.textures.addCanvas(nome, c); }
+function px(g, x, y, w, h, c){ g.fillStyle = c; g.fillRect(x, y, w, h); }
+function criarTiles(scene){
+  var R = rnd(7);
+  G.tiles.forEach(function(t,ti){ t.idx = ti;
+    for(var v=0; v<(t.vars||1); v++) (function(v){
+      tex(scene, 't'+ti+'_'+v, TS, TS, function(g){
+        px(g,0,0,TS,TS,t.base);
+        if(t.id==='estrada'){ for(var i=0;i<14;i++) px(g,(R()*16)|0,(R()*16)|0,1,1,'#14122a'); }
+        if(t.id==='faixa'){ px(g,0,7,TS,2,'#3b3766'); px(g,2,7,5,2,'#8c88c8'); px(g,9,7,5,2,'#8c88c8'); }
+        if(t.id==='calcada'){ px(g,0,0,TS,1,'#262248'); px(g,0,0,1,TS,'#262248'); for(i=0;i<5;i++) px(g,(R()*16)|0,(R()*16)|0,1,1,'#3a3566'); }
+        if(t.id==='parede'){ px(g,0,0,TS,TS,'#12102a'); px(g,0,TS-3,TS,3,'#1c1840'); for(var wx=2; wx<TS; wx+=6) for(var wy=2; wy<TS-5; wy+=5){ var l = R()<.45; px(g,wx,wy,3,3, l ? ['#ffd36b','#6bf3ff','#ff6bd5'][(R()*3)|0] : '#1d1a3c'); } }
+        if(t.id==='porta'){ px(g,0,0,TS,TS,'#12102a'); px(g,3,2,10,14,'#00f0ff'); px(g,4,3,8,13,'#07131f'); px(g,11,9,1,2,'#00f0ff'); }
+        if(t.id==='neon'){ px(g,0,0,TS,TS,'#12102a'); px(g,1,4,14,8,'#05030c'); px(g,2,5,12,6,t.cor||'#ff2bd6'); px(g,4,7,8,2,'#fff'); }
+        if(t.id==='agua'){ px(g,0,0,TS,TS,'#071a33'); for(i=0;i<4;i++) px(g,(R()*14)|0,(R()*16)|0,4,1,'#0d3a66'); px(g,0,0,TS,1,'#ff2bd6'); }
+        if(t.id==='ponte'){ px(g,0,0,TS,TS,'#2a2540'); px(g,0,0,TS,2,'#00f0ff'); px(g,0,TS-2,TS,2,'#00f0ff'); }
+        if(t.id==='caixa'){ px(g,0,0,TS,TS,t.fundo||'#171433'); px(g,2,3,12,11,'#3a2f1f'); px(g,2,3,12,2,'#5b4a30'); px(g,7,3,2,11,'#241c10'); }
+        if(t.id==='maquina'){ px(g,0,0,TS,TS,'#171433'); px(g,2,1,12,14,'#1b1740'); px(g,3,2,10,7,'#00f0ff'); px(g,4,3,8,2,'#fff'); px(g,4,11,8,2,'#ff2bd6'); }
+        if(t.id==='piso'){ px(g,0,0,TS,TS,'#1a1738'); px(g,0,0,TS,1,'#221e4a'); px(g,0,0,1,TS,'#221e4a'); }
+        if(t.id==='balcao'){ px(g,0,0,TS,TS,'#1a1738'); px(g,0,4,TS,9,'#2c2660'); px(g,0,4,TS,2,'#00f0ff'); }
+        if(t.id==='paredei'){ px(g,0,0,TS,TS,'#100e26'); px(g,0,TS-3,TS,3,'#221e4a'); if(v===1){ px(g,3,3,10,6,'#ff2bd6'); px(g,4,4,8,4,'#05030c'); } }
+        if(t.id==='saida'){ px(g,0,0,TS,TS,'#1a1738'); px(g,2,0,12,TS,'#00f0ff55'); px(g,2,0,12,2,'#00f0ff'); }
+        if(t.id==='cama'){ px(g,0,0,TS,TS,'#1a1738'); px(g,1,2,14,12,'#2c2660'); px(g,1,2,14,4,'#ff2bd6'); }
+        if(t.id==='vaso'){ px(g,0,0,TS,TS,'#1a1738'); px(g,5,4,6,10,'#1f8a5a'); px(g,6,2,4,4,'#4cffb0'); }
+        if(t.id==='mato'){ px(g,0,0,TS,TS,'#0d0b22'); for(i=0;i<10;i++) px(g,(R()*15)|0,(R()*15)|0,1,3,'#7a1fb0'); }
+      });
+    })(v);
+  });
+  /* personagem: 3 quadros x 4 direções em folha 48x64 (16x16 cada) */
+  function pers(nome, pele, roupa, neon, cabelo){
+    tex(scene, 'c_'+nome, 48, 64, function(g){
+      for(var d=0; d<4; d++) for(var f=0; f<3; f++){
+        var ox = f*16, oy = d*16, b = (f===0||f===2) ? 1 : 0, pe = f===0 ? -1 : (f===2 ? 1 : 0);
+        px(g,ox+5,oy+14,6,1,'#00000066');
+        px(g,ox+5,oy+11,2,3+(pe>0?0:0),'#14122a'); px(g,ox+9,oy+11,2,3,'#14122a');
+        if(d!==3||true){ px(g,ox+4+(pe<0?1:0)*0,oy+12,3,2,'#0a0818'); px(g,ox+9,oy+12,3,2,'#0a0818'); }
+        px(g,ox+4,oy+6-b,8,6,roupa);
+        px(g,ox+4,oy+9-b,8,1,neon);
+        px(g,ox+3,oy+7-b,1,4,roupa); px(g,ox+12,oy+7-b,1,4,roupa);
+        px(g,ox+5,oy+1-b,6,6,pele);
+        px(g,ox+5,oy+0-b,6,2,cabelo);
+        if(d===0){ px(g,ox+5,oy+3-b,6,2,neon); px(g,ox+5,oy+3-b,6,1,'#fff'); }
+        if(d===1){ px(g,ox+5,oy+3-b,3,2,neon); }
+        if(d===2){ px(g,ox+8,oy+3-b,3,2,neon); }
+        if(d===3){ px(g,ox+5,oy+2-b,6,4,cabelo); }
+      }
+    });
+  }
+  G.personagens.forEach(function(p){ pers(p.id, p.pele, p.roupa, p.neon, p.cabelo); });
+  G.personagens.forEach(function(p){ var t = scene.textures.get('c_'+p.id); for(var d=0; d<4; d++) for(var f=0; f<3; f++) t.add(d*3+f, 0, f*16, d*16, 16, 16); });
+  tex(scene, 'chuva', 4, 12, function(g){ px(g,1,0,1,8,'#7fd8ff'); px(g,1,0,1,3,'#fff'); });
+  tex(scene, 'brilho', 64, 64, function(g){ var r = g.createRadialGradient(32,32,0,32,32,32); r.addColorStop(0,'rgba(255,255,255,.9)'); r.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0,0,64,64); });
+}
+
+/* ---------- mapas a partir dos dados ---------- */
+function montaMapa(def){
+  var m = { id:def.id, nome:def.nome, tipo:def.tipo, W:def.w, H:def.h, grade:[], bloqueio:[], portas:{}, npcs:[], eventos:{}, objetos:{}, inicio:def.inicio, chuva:!!def.chuva };
+  var legenda = {}; G.tiles.forEach(function(t){ legenda[t.chave] = t; });
+  for(var y=0;y<def.h;y++){ m.grade[y] = []; m.bloqueio[y] = []; for(var x=0;x<def.w;x++){ m.grade[y][x] = null; m.bloqueio[y][x] = false; } }
+  var linhas = def.linhas ? def.linhas : gerarLinhas(def);
+  linhas.forEach(function(l, y){ for(var x=0;x<def.w;x++){ var c = l.charAt(x), t = legenda[c] || legenda[def.fundo]; m.grade[y][x] = { t:t, v:((x*7+y*13)%(t.vars||1)) }; m.bloqueio[y][x] = !!t.solido; } });
+  (def.predios||[]).forEach(function(p){
+    for(var y=p.y; y<p.y+p.h; y++) for(var x=p.x; x<p.x+p.w; x++){ var borda = (y===p.y+p.h-1); var t = legenda[borda ? 'P' : 'W']; m.grade[y][x] = { t:t, v:((x*7+y*13)%(t.vars||1)) }; m.bloqueio[y][x] = true; }
+    var tn = legenda[p.neon||'N']; if(tn) m.grade[p.y+p.h-2][p.x+Math.floor(p.w/2)] = { t:G.tilePorChave('N'+(p.cor||'')) || tn, v:0 };
+    var dx = p.x+Math.floor(p.w/2), dy = p.y+p.h-1; m.grade[dy][dx] = { t:legenda['D'], v:0 }; m.bloqueio[dy][dx] = false; m.portas[dx+','+dy] = { dest:p.dest, x:p.px, y:p.py, dir:3, nome:p.nome };
+  });
+  (def.objetos||[]).forEach(function(o){ var t = legenda[o.c]; m.grade[o.y][o.x] = { t:t, v:0 }; m.bloqueio[o.y][o.x] = true; if(o.fala) m.objetos[o.x+','+o.y] = o; });
+  (def.saidas||[]).forEach(function(s){ m.portas[s.x+','+s.y] = { dest:s.dest, x:s.px, y:s.py, dir:s.dir }; });
+  (def.npcs||[]).forEach(function(n){ m.npcs.push(n); });
+  (def.zonas||[]).forEach(function(z){ for(var y=z.y; y<z.y+z.h; y++) for(var x=z.x; x<z.x+z.w; x++){ m.eventos[x+','+y] = z; if(z.visivel){ m.grade[y][x] = { t:legenda['m'], v:0 }; } } });
+  return m;
+}
+/* cidade: estrada, calçada ao redor dos prédios, canal e ponte */
+function gerarLinhas(def){
+  var W = def.w, H = def.h, L = [], x, y;
+  for(y=0;y<H;y++){ L[y] = ''; for(x=0;x<W;x++) L[y] += '.'; }
+  function set(x,y,c){ if(x>=0&&y>=0&&x<W&&y<H) L[y] = L[y].substr(0,x)+c+L[y].substr(x+1); }
+  (def.predios||[]).forEach(function(p){ for(y=p.y-1;y<=p.y+p.h;y++) for(x=p.x-1;x<=p.x+p.w;x++) set(x,y,','); });
+  (def.faixas||[]).forEach(function(f){ for(y=f.y;y<f.y+f.h;y++) for(x=f.x;x<f.x+f.w;x++) set(x,y,f.c); });
+  (def.agua||[]).forEach(function(a){ for(y=a.y;y<a.y+a.h;y++) for(x=a.x;x<a.x+a.w;x++) set(x,y,'~'); });
+  (def.pontes||[]).forEach(function(a){ for(y=a.y;y<a.y+a.h;y++) for(x=a.x;x<a.x+a.w;x++) set(x,y,'='); });
+  return L;
+}
+
+var cena, mapa = null, pilha = null;
+var Cena = new Phaser.Class({
+  Extends: Phaser.Scene,
+  initialize: function Cena(){ Phaser.Scene.call(this, 'cena'); },
+  create: function(){
+    cena = this; var self = this;
+    criarTiles(this);
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SHIFT');
+    this.input.keyboard.on('keydown', function(e){ if(e.key==='z'||e.key==='Z'||e.key==='Enter'||e.key===' ') self.acao(); });
+    this.pad = -1; this.moving = false; this.dialogo = null; this.itens = []; this.n = 0;
+    this.cam = this.cameras.main; this.cam.setRoundPixels(true);
+    this.scale.on('resize', function(){ self.zoom(); });
+    this.carrega(G.areas[G.inicio.area], G.inicio, true);
+  },
+  zoom: function(){
+    var w = this.scale.width, h = this.scale.height, z = Math.max(2, Math.floor(Math.min(w/280, h/190)));
+    if(mapa && mapa.tipo==='dentro'){ z = Math.max(2, Math.min(5, Math.floor(Math.min(w/(mapa.W*TS+40), h/(mapa.H*TS+40))))); this.cam.stopFollow(); this.cam.removeBounds(); this.cam.setZoom(z); this.cam.centerOn(mapa.W*TS/2, mapa.H*TS/2); }
+    else if(mapa){ this.cam.setZoom(z); this.cam.setBounds(0,0,mapa.W*TS,mapa.H*TS); this.cam.startFollow(this.pl, true, 1, 1); }
+  },
+  carrega: function(def, ent, primeiro){
+    var self = this;
+    this.itens.forEach(function(o){ if(o&&o.destroy) o.destroy(); }); this.itens = []; this.time.removeAllEvents(); this.tweens.killAll();
+    if(this.chuvaEm) { this.chuvaEm.destroy(); this.chuvaEm = null; }
+    mapa = montaMapa(def); this.moving = false; this.dialogo = null; $('dlg').style.display = 'none';
+    var W = mapa.W, H = mapa.H;
+    /* chão em um RenderTexture */
+    var rt = this.add.renderTexture(0,0,W*TS,H*TS).setOrigin(0).setDepth(-2); this.itens.push(rt);
+    for(var y=0;y<H;y++) for(var x=0;x<W;x++){ var c = mapa.grade[y][x]; rt.draw('t'+c.t.idx+'_'+c.v, x*TS, y*TS); }
+    /* brilho dos néons */
+    for(y=0;y<H;y++) for(x=0;x<W;x++){ var cc = mapa.grade[y][x]; if(cc.t.brilho){ var g = this.add.image(x*TS+8, y*TS+8, 'brilho').setTint(cc.t.brilho).setBlendMode(Phaser.BlendModes.ADD).setAlpha(.55).setScale(1.6).setDepth(9000); this.itens.push(g); this.tweens.add({ targets:g, alpha:{from:.35,to:.7}, duration:600+((x*37+y*11)%700), yoyo:true, repeat:-1 }); } }
+    /* NPCs */
+    this.npcs = mapa.npcs.map(function(n){
+      var s = self.add.sprite(n.x*TS+8, n.y*TS+14, 'c_'+n.sprite, (n.dir||0)*3+1).setOrigin(.5,1).setDepth(n.y*TS+14); self.itens.push(s);
+      var o = { cfg:n, spr:s, tx:n.x, ty:n.y, home:[n.x,n.y], movendo:false }; mapa.bloqueio[n.y][n.x] = true;
+      if(n.anda) self.time.addEvent({ delay:2000+Math.random()*2500, loop:true, callback:function(){ self.passeia(o); } });
+      return o;
+    });
+    /* jogador */
+    this.tx = ent.x; this.ty = ent.y; this.dir = ent.dir||0; this.foot = 0;
+    this.pl = this.add.sprite(this.tx*TS+8, this.ty*TS+14, 'c_'+G.jogador, this.dir*3+1).setOrigin(.5,1).setDepth(this.ty*TS+15); this.itens.push(this.pl);
+    mapa.bloqueio[this.ty][this.tx] = false;
+    /* chuva e escurecimento */
+    if(mapa.chuva){
+      this.chuvaEm = this.add.particles(0, 0, 'chuva', { x:{min:0,max:W*TS}, y:-10, lifespan:900, speedY:{min:260,max:340}, speedX:-40, alpha:{start:.6,end:.1}, quantity:6, frequency:30, emitting:true }).setDepth(9500);
+    }
+    this.sombra = this.add.rectangle(0,0,W*TS,H*TS,0x05030c,mapa.tipo==='fora'?.22:.1).setOrigin(0).setDepth(8000); this.itens.push(this.sombra);
+    this.zoom();
+    var nm = $('local'); nm.textContent = mapa.nome; nm.style.opacity = 1; clearTimeout(this.tn); this.tn = setTimeout(function(){ nm.style.opacity = 0; }, 2200);
+    setTimeout(function(){ $('fade').style.opacity = 0; }, 60);
+  },
+  livre: function(x,y){ return x>=0 && y>=0 && x<mapa.W && y<mapa.H && !mapa.bloqueio[y][x]; },
+  passo: function(dir){
+    var d = DIRS[dir], nx = this.tx+d[0], ny = this.ty+d[1], self = this;
+    this.dir = dir; this.pl.setFrame(dir*3+1);
+    var porta = mapa.portas[nx+','+ny];
+    if(!porta && !this.livre(nx,ny)) return;
+    if(porta && (nx<0||ny<0||nx>=mapa.W||ny>=mapa.H)) return;
+    this.moving = true; this.foot ^= 1;
+    var dur = this.keys.SHIFT.isDown ? 70 : 120;
+    this.pl.setFrame(dir*3 + (this.foot ? 0 : 2));
+    this.tweens.add({ targets:this.pl, x:nx*TS+8, y:ny*TS+14, duration:dur,
+      onUpdate:function(){ self.pl.setDepth(self.pl.y+1); },
+      onComplete:function(){
+        self.tx = nx; self.ty = ny; self.pl.setFrame(dir*3+1);
+        if(porta){ self.transicao(porta); return; }
+        self.moving = false; self.evento();
+      } });
+  },
+  transicao: function(p){
+    var self = this; $('fade').style.opacity = 1;
+    setTimeout(function(){ var def = G.areas[p.dest]; self.carrega(def, { x:p.x, y:p.y, dir:p.dir }); }, 300);
+  },
+  evento: function(){
+    var z = mapa.eventos[this.tx+','+this.ty]; if(!z) return;
+    if(Math.random() < (z.chance||0.1)){ this.moving = true; var ev = G.eventos[z.evento]; this.executa(ev); }
+  },
+  passeia: function(o){
+    if(o.movendo || this.dialogo) return;
+    var dir = Math.floor(Math.random()*4), d = DIRS[dir], nx = o.tx+d[0], ny = o.ty+d[1];
+    o.spr.setFrame(dir*3+1);
+    if(Math.abs(nx-o.home[0])>(o.cfg.raio||2) || Math.abs(ny-o.home[1])>(o.cfg.raio||2) || !this.livre(nx,ny) || (nx===this.tx&&ny===this.ty)) return;
+    o.movendo = true; mapa.bloqueio[o.ty][o.tx] = false; mapa.bloqueio[ny][nx] = true; o.tx = nx; o.ty = ny; o.spr.setFrame(dir*3);
+    this.tweens.add({ targets:o.spr, x:nx*TS+8, y:ny*TS+14, duration:260, onUpdate:function(){ o.spr.setDepth(o.spr.y); }, onComplete:function(){ o.movendo = false; o.spr.setFrame(dir*3+1); } });
+  },
+  /* ---------- diálogo e eventos (ganchos pra sistemas futuros: combate, hacking, missões…) ---------- */
+  fala: function(quem, linhas, opcoes, aoFim){ this.dialogo = { linhas:linhas, i:0, opcoes:opcoes, aoFim:aoFim }; $('dq').textContent = quem; this.mostra(); $('dlg').style.display = 'block'; },
+  mostra: function(){
+    var d = this.dialogo; $('dt').textContent = d.linhas[d.i]; var o = $('opts'); o.innerHTML = '';
+    if(d.i===d.linhas.length-1 && d.opcoes){ d.opcoes.forEach(function(op){ var b = document.createElement('button'); b.textContent = op.t; b.onclick = function(e){ e.stopPropagation(); cena.fim(op.f); }; o.appendChild(b); }); }
+  },
+  fim: function(f){ var d = this.dialogo; this.dialogo = null; $('dlg').style.display = 'none'; this.moving = false; if(f) f(estado, cena); if(d && d.aoFim) d.aoFim(); hud(); if(EMBED) avisaApp({ tipo:'ng-estado', estado:{ creditos:estado.creditos, hp:estado.hp } }); },
+  executa: function(ev){ if(EMBED) avisaApp({ tipo:'ng-evento', evento:ev.id, estado:{ creditos:estado.creditos, hp:estado.hp } }); this.fala(ev.quem, ev.linhas, ev.opcoes ? ev.opcoes.map(function(o){ return { t:o.t, f:o.f }; }) : null, null); },
+  acao: function(){
+    if(this.dialogo){
+      if(this.dialogo.opcoes && this.dialogo.i===this.dialogo.linhas.length-1) return;
+      this.dialogo.i++;
+      if(this.dialogo.i>=this.dialogo.linhas.length) this.fim(null); else this.mostra();
+      return;
+    }
+    if(this.moving) return;
+    var d = DIRS[this.dir], fx = this.tx+d[0], fy = this.ty+d[1];
+    var obj = mapa.objetos[fx+','+fy]; if(obj){ this.fala(obj.nome||'—', obj.fala, obj.opcoes, null); return; }
+    var n = this.npcs.filter(function(q){ return q.tx===fx && q.ty===fy; })[0];
+    if(!n && mapa.grade[fy] && mapa.grade[fy][fx] && mapa.grade[fy][fx].t.id==='balcao'){ n = this.npcs.filter(function(q){ return q.tx===fx+d[0] && q.ty===fy+d[1]; })[0]; }
+    if(!n) return;
+    n.spr.setFrame([3,2,1,0][this.dir]*3+1);
+    var cfg = n.cfg, ev = cfg.evento ? G.eventos[cfg.evento] : null;
+    if(ev) this.executa(ev); else this.fala(cfg.nome, cfg.fala, null, null);
+  },
+  update: function(){
+    if(this.moving || this.dialogo || !mapa) return;
+    var k = this.keys, dir = -1;
+    if(k.UP.isDown||k.W.isDown) dir=3; else if(k.DOWN.isDown||k.S.isDown) dir=0; else if(k.LEFT.isDown||k.A.isDown) dir=1; else if(k.RIGHT.isDown||k.D.isDown) dir=2; else if(this.pad>=0) dir=this.pad;
+    if(dir>=0) this.passo(dir);
+  }
+});
+new Phaser.Game({ type:Phaser.AUTO, parent:'game', backgroundColor:'#05030c', pixelArt:true, roundPixels:true, scale:{ mode:Phaser.Scale.RESIZE, width:'100%', height:'100%' }, scene:Cena });
+Array.prototype.forEach.call(document.querySelectorAll('#dpad button'), function(b){ var d = +b.dataset.d;
+  b.addEventListener('pointerdown', function(e){ e.preventDefault(); if(cena) cena.pad = d; });
+  ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev, function(){ if(cena && cena.pad===d) cena.pad = -1; }); }); });
+$('act').addEventListener('pointerdown', function(e){ e.preventDefault(); if(cena) cena.acao(); });
+window.__jogo = function(){ return { cena:cena, mapa:function(){ return mapa; }, estado:estado }; };
+hud(); if(EMBED) avisaApp({ tipo:'ng-pronto' });
+})();
+</script>
+</body>
+</html>
