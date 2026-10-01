@@ -1,0 +1,45 @@
+:root{--bg:#05030c;--painel:#0b0820;--linha:#ff2bd655;--ciano:#00f0ff;--rosa:#ff2bd6;--ink:#e8e6ff;--dim:#9a96c8}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,sans-serif}
+button,input{font:inherit}
+.ng-shell{display:flex;min-height:100vh}
+.ng-side{width:220px;flex:0 0 220px;background:var(--painel);border-right:1px solid var(--linha);padding:14px 10px;display:flex;flex-direction:column;gap:10px;position:sticky;top:0;height:100vh}
+.ng-marca{color:var(--ciano);font-weight:900;letter-spacing:.16em;text-shadow:0 0 10px var(--ciano)}
+.ng-side nav{display:flex;flex-direction:column;gap:4px}
+.ng-side nav button{text-align:left;background:none;border:1px solid transparent;color:var(--ink);padding:8px 10px;border-radius:8px;cursor:pointer}
+.ng-side nav button:hover{border-color:var(--linha)} .ng-side nav button.on{background:#ff2bd622;border-color:var(--rosa);box-shadow:0 0 10px #ff2bd633}
+.ng-conta{margin-top:auto;color:var(--dim);font-size:.85rem}
+.ng-ba{background:var(--rosa);color:#05030c;border-radius:99px;padding:0 6px;font-size:.75rem;font-weight:800}
+.ng-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.ng-corpo{padding:14px;max-width:980px;width:100%;margin:0 auto}
+.ng-topo,.ng-tabbar{display:none}
+.ng-card{background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 0 16px #ff2bd622}
+.ng-card h2{margin:0 0 8px;color:var(--ciano);font-size:1.1rem;letter-spacing:.06em;text-transform:uppercase} .ng-card h3{margin:12px 0 6px;color:var(--rosa);font-size:.9rem;text-transform:uppercase}
+.ng-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:10px}
+.ng-stat{background:#150f35;border:1px solid #ffffff14;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px} .ng-stat small{color:var(--dim)} .ng-stat b{font-size:1.15rem}
+.ng-barra{height:8px;background:#1c1840;border-radius:5px;overflow:hidden} .ng-barra i{display:block;height:100%;transition:width .4s}
+.ng-linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px} .ng-linha input{flex:1;min-width:140px}
+.ng-lista{display:flex;flex-direction:column;gap:6px}
+.ng-item{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#150f35;border:1px solid #ffffff10;border-radius:10px;padding:8px 10px} .ng-item small{display:block;color:var(--dim)} .ng-item .ng-barra{margin-top:4px;width:160px}
+.ng-btn{background:#150f35;color:var(--ink);border:1px solid var(--rosa);border-radius:8px;padding:7px 13px;cursor:pointer} .ng-btn:hover:not(:disabled){background:var(--rosa);color:#05030c} .ng-btn:disabled{opacity:.45;cursor:default}
+.ng-btn.pri{border-color:var(--ciano);color:var(--ciano)} .ng-btn.pri:hover:not(:disabled){background:var(--ciano);color:#05030c} .ng-btn.sm{padding:3px 9px;font-size:.85rem} .ng-btn.danger{border-color:#ff3b3b;color:#ff7a7a}
+input{background:#05030c;color:var(--ink);border:1px solid #ffffff2a;border-radius:8px;padding:8px 10px;width:100%}
+label{display:block;margin:10px 0;color:var(--dim);font-size:.85rem} label input{margin-top:4px}
+.ng-solo{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px}
+.ng-login{width:min(440px,100%)} .ng-logo{font-weight:900;font-size:1.5rem;letter-spacing:.2em;color:var(--ciano);text-shadow:0 0 12px var(--ciano);text-align:center} .ng-sub{text-align:center;color:var(--dim);margin:2px 0 12px}
+.ng-abas{display:flex;gap:6px} .ng-abas button{flex:1;background:none;color:var(--ink);border:1px solid var(--linha);border-radius:8px;padding:7px;cursor:pointer} .ng-abas button.on{background:#ff2bd633;border-color:var(--rosa)}
+.ng-hint{color:var(--dim);font-size:.85rem}
+.ng-iniciais{display:grid;gap:8px;margin-top:10px} .ng-inicial{background:#150f35;border:1px solid var(--ciano);border-radius:10px;padding:10px;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:2px;align-items:center} .ng-inicial span{font-size:2rem} .ng-inicial:hover{background:#00f0ff22}
+.ng-banner{padding:8px 12px;border-radius:8px;margin-bottom:10px;cursor:pointer} .ng-banner.erro{background:#3a0a1a;border:1px solid #ff3b5c} .ng-banner.ok{background:#0a3a2a;border:1px solid #4cffb0}
+.ng-log{font-size:.9rem;display:flex;flex-direction:column;gap:3px;list-style:none;padding:0;margin:0} .ng-log li small{color:var(--dim)}
+.ng-chat{height:230px;overflow:auto;background:#05030c;border:1px solid #ffffff1a;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:4px} .ng-msg b{color:var(--ciano)} .ng-msg.meu{text-align:right;color:#ffb3f0}
+.ng-mapa{padding:0;overflow:hidden} .ng-mapa iframe{display:block;width:100%;height:calc(100vh - 110px);min-height:440px;border:0}
+.ng-overlay{position:fixed;inset:0;background:#000a;z-index:50;display:flex;align-items:center;justify-content:center} .ng-pop{background:var(--painel);border:1px solid var(--rosa);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:240px}
+.ng-luta{border-color:var(--ciano)}
+@media (max-width:760px){
+  .ng-side{display:none;position:fixed;z-index:40;left:0;top:0}.ng-side.aberto{display:flex}
+  .ng-topo{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--painel);border-bottom:1px solid var(--linha);position:sticky;top:0;z-index:20}
+  .ng-tabbar{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--painel);border-top:1px solid var(--linha);z-index:30} .ng-tabbar button{flex:1;background:none;border:0;color:var(--ink);padding:12px 0;font-size:1.2rem}
+  .ng-corpo{padding-bottom:70px}
+  .ng-mapa iframe{height:calc(100vh - 160px)}
+}
