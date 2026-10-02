@@ -232,19 +232,21 @@ function criacaoPersonagemHTML(){
 }
 function personagemHTML(){
   var L = 4, W = 100, H = 34, VB_W = 360, VB_H = 520;
-  /* silhueta neutra: metade direita desenhada uma vez e espelhada */
-  var meia = 'M180 98 Q200 98 216 106 Q236 110 239 136 L246 232 Q250 262 240 268 Q231 270 229 252 L224 168 Q220 150 221 146 Q214 190 212 222 Q222 252 219 276 Q217 340 213 404 L211 466 Q214 484 228 488 L189 488 L190 468 L191 404 Q188 340 182 296 L180 292 Z';
-  var svg = '<svg class="ng-corpo-svg" viewBox="0 0 '+VB_W+' '+VB_H+'" role="img" aria-label="Corpo do personagem">'+
-    '<g class="sil"><rect x="171" y="78" width="18" height="24" rx="4"/><ellipse cx="180" cy="58" rx="20" ry="25"/><path d="'+meia+'"/><path d="'+meia+'" transform="translate(360,0) scale(-1,1)"/><rect class="costura" x="178.6" y="99" width="2.8" height="192"/></g>';
+  /* silhueta neutra: metade direita desenhada com curvas e espelhada; cabeça com mandíbula, pescoço, ombros, cintura, quadril, mãos e pés */
+  var meia = 'M180 100 C192 100 204 103 214 108 C228 111 238 118 240 134 C242 160 246 190 247 214 C248 240 252 268 254 290 C257 300 258 312 254 320 C250 326 244 322 244 312 C241 296 238 270 236 248 C233 215 229 180 224 154 C220 170 211 196 209 228 C208 250 222 262 221 290 C221 322 217 352 213 382 C211 400 213 425 207 462 C206 474 210 484 222 488 L190 488 C190 470 192 440 192 410 C192 390 190 372 189 352 C188 330 183 310 180 296 Z';
+  var cabeca = 'M180 34 C193 34 200 44 200 58 C200 70 193 80 186 84 L174 84 C167 80 160 70 160 58 C160 44 167 34 180 34 Z';
+  var svg = '<svg class="ng-corpo-svg" viewBox="0 0 '+VB_W+' '+VB_H+'" role="img" aria-label="Corpo do personagem"><defs>'+
+    '<linearGradient id="ngSil" gradientUnits="userSpaceOnUse" x1="0" y1="30" x2="0" y2="490"><stop offset="0" stop-color="#16394a"/><stop offset="1" stop-color="#08141c"/></linearGradient>'+
+    '<filter id="ngGlow" x="-20%" y="-10%" width="140%" height="120%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'+
+    '<g class="sil" filter="url(#ngGlow)"><rect x="171" y="78" width="18" height="28" rx="5"/><path d="'+cabeca+'"/><path d="'+meia+'"/><path d="'+meia+'" transform="translate(360,0) scale(-1,1)"/><rect class="costura" x="178.6" y="101" width="2.8" height="194"/></g>';
   svg += NG.corpo.map(function(p){
     var x = p.lado==='e' ? L : VB_W-L-W, ex = p.lado==='e' ? x+W : x, cy = p.y+H/2, v = STATE.corpo[p.id];
     return '<line class="lin" x1="'+ex+'" y1="'+cy+'" x2="'+p.alvo[0]+'" y2="'+p.alvo[1]+'"/><circle class="pt" cx="'+p.alvo[0]+'" cy="'+p.alvo[1]+'" r="3"/>'+
       '<g class="slot" onclick="DT.slotCorpo(\''+p.id+'\')"><rect x="'+x+'" y="'+p.y+'" width="'+W+'" height="'+H+'" rx="4"/><text x="'+(x+8)+'" y="'+(p.y+15)+'">'+esc(p.nome)+'</text><text class="vz" x="'+(x+8)+'" y="'+(p.y+27)+'">'+esc(v||'— vazio —')+'</text></g>';
   }).join('');
-  /* caixa de atributos (só nomes, sem valores) no canto esquerdo do campo */
-  svg += '<g class="attrs"><rect x="'+L+'" y="392" width="104" height="116" rx="4"/><text class="tt" x="'+(L+8)+'" y="410">ATRIBUTOS</text>'+
-    NG.atributos.map(function(a, i){ return '<text x="'+(L+8)+'" y="'+(432+i*24)+'">'+a.ic+' '+esc(a.nome)+'<title>'+esc(a.desc)+'</title></text>'; }).join('')+'</g>';
-  return '<div class="ng-card ng-corpo-card"><h2>'+esc(STATE.nome)+'</h2><p class="ng-hint">Cada quadrado é um ponto do corpo que poderá receber uma modificação.</p>'+svg+'</svg></div>';
+  /* caixa de atributos (só nomes, sem valores) colada no canto esquerdo do campo do corpo */
+  var attrs = '<div class="ng-attr-box"><b>ATRIBUTOS</b>'+NG.atributos.map(function(a){ return '<span title="'+esc(a.desc)+'">'+a.ic+' '+esc(a.nome)+'</span>'; }).join('')+'</div>';
+  return '<div class="ng-card ng-corpo-card"><h2>'+esc(STATE.nome)+'</h2><p class="ng-hint">Cada quadrado é um ponto do corpo que poderá receber uma modificação.</p><div class="ng-corpo-campo">'+attrs+svg+'</svg></div></div>';
 }
 function escolhaInicialHTML(){
   return '<div class="ng-card ng-login"><div class="ng-logo">Escolha seu primeiro aliado</div><p class="ng-sub">Você vai começar a jornada com ele.</p><div class="ng-iniciais">'+

@@ -22,12 +22,12 @@ window.NG = {
   /* partes do corpo do personagem que poderão receber implantes; `lado` = coluna onde o quadrado aparece, `y` = altura do quadrado, `alvo` = ponto da silhueta (viewBox 360x520) */
   corpo: [
     { id:'chip',    nome:'Chip cerebral', lado:'e', y:20,  alvo:[180,44] },
-    { id:'cabeca',  nome:'Cabeça',        lado:'e', y:90,  alvo:[163,62] },
+    { id:'cabeca',  nome:'Cabeça',        lado:'e', y:90,  alvo:[164,62] },
     { id:'coluna',  nome:'Coluna',        lado:'e', y:190, alvo:[180,196] },
-    { id:'pernas',  nome:'Pernas',        lado:'e', y:300, alvo:[164,380] },
+    { id:'pernas',  nome:'Pernas',        lado:'e', y:360, alvo:[160,370] },
     { id:'olho',    nome:'Olho',          lado:'d', y:30,  alvo:[190,56] },
     { id:'peito',   nome:'Peito',         lado:'d', y:126, alvo:[200,150] },
-    { id:'bracos',  nome:'Braços',        lado:'d', y:222, alvo:[236,196] }
+    { id:'bracos',  nome:'Braços',        lado:'d', y:222, alvo:[241,190] }
   ],
   /* tipos de aliado (a "espécie") -- só rótulo + ícone */
   tipos: { drone:{ nome:'Drone', ic:'🤖' }, ciborgue:{ nome:'Ciborgue', ic:'🦾' }, hacker:{ nome:'Hacker', ic:'🕶️' }, mercenario:{ nome:'Mercenário', ic:'🔫' }, gangue:{ nome:'Gangue', ic:'🧢' } },

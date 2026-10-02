@@ -45,8 +45,9 @@ label{display:block;margin:10px 0;color:var(--dim);font-size:.85rem} label input
 
 
 .ng-attr-lista{display:grid;gap:6px;margin:8px 0} .ng-attr-lista div{border:1px solid var(--dim,#456);padding:6px 10px;border-radius:6px} .ng-attr-lista small{display:block;color:var(--dim)}
-.ng-corpo-svg{display:block;margin:0 auto;height:calc(100vh - 190px);min-height:480px;max-width:100%} .ng-corpo-svg .sil{fill:#0b1a24;stroke:var(--ciano,#00f0ff);stroke-width:1.5} .ng-corpo-svg .lin{stroke:var(--ciano,#00f0ff);stroke-width:1;opacity:.7} .ng-corpo-svg .pt{fill:var(--ciano,#00f0ff)}
+.ng-corpo-svg{display:block;margin:0 auto;height:calc(100vh - 190px);min-height:480px;max-width:100%} .ng-corpo-svg .sil{fill:url(#ngSil);stroke:var(--ciano,#00f0ff);stroke-width:1.4} .ng-corpo-svg .lin{stroke:var(--ciano,#00f0ff);stroke-width:1;opacity:.7} .ng-corpo-svg .pt{fill:var(--ciano,#00f0ff)}
 .ng-corpo-svg .slot rect{fill:#0b1a24;stroke:var(--ciano,#00f0ff);stroke-width:1.2} .ng-corpo-svg .slot{cursor:pointer} .ng-corpo-svg .slot:hover rect{fill:#12303f} .ng-corpo-svg text{fill:#dff;font-size:11px;font-weight:700} .ng-corpo-svg text.vz{fill:#7a9;font-size:9px;font-weight:400}
 
-.ng-corpo-svg .attrs rect{fill:#0b1a24;stroke:var(--ciano,#00f0ff);stroke-width:1;opacity:.95} .ng-corpo-svg .attrs text{font-size:10px} .ng-corpo-svg .attrs text.tt{font-size:8px;letter-spacing:.15em;fill:var(--ciano,#00f0ff)}
 .ng-corpo-svg .sil .costura{stroke:none}
+.ng-corpo-campo{position:relative} .ng-attr-box{position:absolute;left:0;bottom:0;z-index:1;display:grid;gap:8px;padding:10px 12px;background:#0b1a24;border:1px solid var(--ciano,#00f0ff);border-radius:6px;font-size:.78rem}
+.ng-attr-box b{font-size:.62rem;letter-spacing:.15em;color:var(--ciano,#00f0ff)} .ng-attr-box span{cursor:help;white-space:nowrap}
