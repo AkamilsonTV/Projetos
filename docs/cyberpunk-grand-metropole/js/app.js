@@ -28,7 +28,7 @@ function uid(){ return Math.random().toString(36).slice(2,9); }
 /* ---------- estado salvo ---------- */
 function novoEstado(nome){
   return { versao:1, nome:nome, nivel:1, xp:0, hp:100, creditos:NG.creditosIniciais, energia:NG.energiaMax, energiaEm:Date.now(),
-    cartoes:NG.cartoesIniciais, cartoesDia:diaDoJogo(), personagem:null, corpo:{}, crew:[], itens:{ stim:3, cabos:1 }, amigos:[], banco:{}, battle:null, log:[],
+    cartoes:NG.cartoesIniciais, cartoesDia:diaDoJogo(), diaInicial:diaDoJogo(), personagem:null, corpo:{}, crew:[], itens:{ stim:3, cabos:1 }, amigos:[], banco:{}, battle:null, log:[],
     contratos:[null,null,null,null,null], contratoDia:{ dia:diaDoJogo(), usados:0 }, progresso:{ dia:diaDoJogo(), vencidas:0, chat:0, eventos:{}, zonas:{} },
     chefesDia:{}, adminConcedido:false, atualizadoEm:Date.now() };
 }
@@ -44,6 +44,15 @@ function tick(){
   if(STATE.progresso.dia!==d){ STATE.progresso = { dia:d, vencidas:0, chat:0, eventos:{}, zonas:{} }; STATE.chefesDia = {}; mudou = true; }
   if(STATE.contratoDia.dia!==d){ STATE.contratoDia = { dia:d, usados:0 }; mudou = true; }
   return mudou;
+}
+/* relógio do jogo: o dia de 6 h reais vira 24 h de jogo */
+function relogio(){
+  var passo = NG.diaEmHoras*3600*1000, frac = (Date.now()%passo)/passo, min = Math.floor(frac*1440);
+  return { hora:('0'+Math.floor(min/60)).slice(-2)+':'+('0'+(min%60)).slice(-2), dia:diaDoJogo()-(STATE&&STATE.diaInicial||diaDoJogo())+1, noite:min<360||min>=1140 };
+}
+function hudHTML(){
+  var r = relogio();
+  return '<div class="ng-hud"><b>'+esc(STATE.nome)+'</b><span>¥ '+STATE.creditos+'</span><span>⚡ '+STATE.energia+' / '+NG.energiaMax+'</span><span>'+(r.noite?'🌙':'☀️')+' '+r.hora+' · Dia '+r.dia+'</span></div>';
 }
 function horasParaDia(){ var passo = NG.diaEmHoras*3600*1000, falta = passo - (Date.now()%passo); var h = Math.floor(falta/3600000), m = Math.floor((falta%3600000)/60000); return h+'h'+('0'+m).slice(-2); }
 
@@ -336,19 +345,19 @@ var NAV_GRUPOS = [
 ];
 function badgeGrupo(g){ return g==='jogador' ? contratosProntos() : 0; }
 function sidebarHTML(){
-  var o = '<aside class="ng-side'+(SESSION.menuAberto?' aberto':'')+'"><div class="ng-marca">'+esc(NG.nome)+'</div><nav>'+
+  var o = '<aside class="ng-side'+(SESSION.menuAberto?' aberto':'')+'"><div class="ng-marca">'+esc(NG.nome)+'</div>'+hudHTML()+'<nav>'+
    '<button class="'+(SESSION.tela==='hub'?'on':'')+'" onclick="DT.irTela(\'hub\')">🏠 Início</button>';
   NAV_GRUPOS.forEach(function(g){ var ativo = SESSION.grupoAberto===g.id || g.itens.some(function(i){ return i.id===SESSION.tela; }), b = badgeGrupo(g.id);
     o += '<button class="'+(ativo?'on':'')+'" onclick="DT.abrirGrupo(\''+g.id+'\')">'+g.ic+' '+g.nome+(b?' <span class="ng-ba">'+b+'</span>':'')+'</button>'; });
   if(SESSION.isAdmin) o += '<button class="'+(SESSION.tela==='admin'?'on':'')+'" onclick="DT.irTela(\'admin\')">🛠️ Admin</button>';
-  return o+'<button onclick="DT.sair()">🚪 Sair</button></nav><div class="ng-conta">'+esc(STATE.nome)+'<br><small>¥ '+STATE.creditos+' · ⚡ '+STATE.energia+'</small></div></aside>';
+  return o+'<button onclick="DT.sair()">🚪 Sair</button></nav></aside>';
 }
 function grupoPopupHTML(){
   var g = NAV_GRUPOS.filter(function(x){ return x.id===SESSION.grupoAberto; })[0]; if(!g) return '';
   return '<div class="ng-overlay" onclick="DT.fecharGrupo()"><div class="ng-pop" onclick="event.stopPropagation()"><h3>'+g.ic+' '+g.nome+'</h3>'+
    g.itens.map(function(i){ return '<button class="ng-btn '+(SESSION.tela===i.id?'pri':'')+'" onclick="DT.irTela(\''+i.id+'\')">'+i.ic+' '+i.nome+'</button>'; }).join('')+'</div></div>';
 }
-function topbarMovelHTML(){ return '<div class="ng-topo"><button class="ng-btn sm" onclick="DT.menu()">☰</button><b>'+esc(NG.nome)+'</b><span>⚡ '+STATE.energia+' · ¥ '+STATE.creditos+'</span></div>'; }
+function topbarMovelHTML(){ return '<div class="ng-topo"><div class="ng-topo-l"><button class="ng-btn sm" onclick="DT.menu()">☰</button><b>'+esc(NG.nome)+'</b></div>'+hudHTML()+'</div>'; }
 function tabbarMovelHTML(){ return '<div class="ng-tabbar"><button onclick="DT.irTela(\'hub\')">🏠</button>'+NAV_GRUPOS.map(function(g){ return '<button onclick="DT.abrirGrupo(\''+g.id+'\')">'+g.ic+'</button>'; }).join('')+'</div>'; }
 function wrap(corpo){ return '<div class="ng-shell">'+sidebarHTML()+'<div class="ng-main">'+topbarMovelHTML()+'<div class="ng-corpo">'+bannersHTML()+corpo+'</div></div></div>'+tabbarMovelHTML()+grupoPopupHTML(); }
 
@@ -386,12 +395,13 @@ function render(){
   if(foco && el(foco) && /^ng(ChatTxt|DmTxt|Amigo)$/.test(foco)){ el(foco).focus(); }
   var log = el('ngChatLog'); if(log) log.scrollTop = log.scrollHeight;
 }
-function atualizaHUD(){ var c = document.querySelector('.ng-conta'); if(c && STATE) c.innerHTML = esc(STATE.nome)+'<br><small>¥ '+STATE.creditos+' · ⚡ '+STATE.energia+'</small>'; var t = document.querySelector('.ng-topo span'); if(t && STATE) t.textContent = '⚡ '+STATE.energia+' · ¥ '+STATE.creditos; }
+function atualizaHUD(){ if(!STATE) return; var h = hudHTML(); document.querySelectorAll('.ng-hud').forEach(function(e){ e.outerHTML = h; }); }
 
 /* ---------- arranque: sessão guardada (só id+PIN, NUNCA o progresso) ---------- */
 window.DT = DT;
 window.__ng = function(){ return { STATE:STATE, SESSION:SESSION }; };
 setInterval(function(){ if(STATE && tick()){ salvar(); if(SESSION.tela==='hub') render(); else atualizaHUD(); } }, 30000);
+setInterval(function(){ if(STATE) atualizaHUD(); }, 5000);   /* relógio do jogo: 1 min de jogo = 15 s reais */
 (function(){
   var s = null; try{ s = JSON.parse(localStorage.getItem(SESSAO_KEY)); }catch(e){}
   if(s && s.id){ entrarComConta(s.id, s.pin).then(render).catch(function(){ try{ localStorage.removeItem(SESSAO_KEY); }catch(e){} render(); }); }

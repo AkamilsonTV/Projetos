@@ -8,7 +8,7 @@ button,input{font:inherit}
 .ng-side nav{display:flex;flex-direction:column;gap:4px}
 .ng-side nav button{text-align:left;background:none;border:1px solid transparent;color:var(--ink);padding:8px 10px;border-radius:8px;cursor:pointer}
 .ng-side nav button:hover{border-color:var(--linha)} .ng-side nav button.on{background:#ff2bd622;border-color:var(--rosa);box-shadow:0 0 10px #ff2bd633}
-.ng-conta{margin-top:auto;color:var(--dim);font-size:.85rem}
+.ng-hud{display:grid;gap:3px;padding:8px 10px;background:#0b1a24;border:1px solid var(--linha);border-radius:8px;font-size:.82rem;color:var(--ink)} .ng-hud b{color:var(--ciano);font-size:.9rem}
 .ng-ba{background:var(--rosa);color:#05030c;border-radius:99px;padding:0 6px;font-size:.75rem;font-weight:800}
 .ng-main{flex:1;min-width:0;display:flex;flex-direction:column}
 .ng-corpo{padding:14px;max-width:980px;width:100%;margin:0 auto}
@@ -38,7 +38,12 @@ label{display:block;margin:10px 0;color:var(--dim);font-size:.85rem} label input
 .ng-luta{border-color:var(--ciano)}
 @media (max-width:760px){
   .ng-side{display:none;position:fixed;z-index:40;left:0;top:0}.ng-side.aberto{display:flex}
-  .ng-topo{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--painel);border-bottom:1px solid var(--linha);position:sticky;top:0;z-index:20}
+  .ng-hud{grid-template-columns:repeat(2,1fr);border-radius:0;border-width:0 0 1px}
+  .ng-hud b{grid-column:1/-1}
+  .ng-corpo-svg{height:auto;width:100%;min-height:0}
+  .ng-topo-l b{font-size:.78rem;letter-spacing:.06em}
+  .ng-topo-l{display:flex;justify-content:space-between;align-items:center;padding:8px 12px}
+  .ng-topo{display:block;padding:0;background:var(--painel);border-bottom:1px solid var(--linha);position:sticky;top:0;z-index:20}
   .ng-tabbar{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--painel);border-top:1px solid var(--linha);z-index:30} .ng-tabbar button{flex:1;background:none;border:0;color:var(--ink);padding:12px 0;font-size:1.2rem}
   .ng-corpo{padding-bottom:70px}
 }

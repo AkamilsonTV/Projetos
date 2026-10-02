@@ -5,7 +5,7 @@ window.NG = {
   sub: 'Build interna — esqueleto cyberpunk',
   energiaMax: 1000, energiaPor10min: 10, energiaPorCartao: 100, cartoesMax: 200, cartoesIniciais: 20, cartoesPorDia: 5,
   creditosIniciais: 200,
-  diaEmHoras: 6,
+  diaEmHoras: 6,   /* 1 dia do jogo = 6 h reais = 24 h no relógio do jogo (1 min de jogo = 15 s reais) */
   /* os 3 "iniciais" que o jogador escolhe ao criar a conta (equivale aos 3 de Kanto) */
   iniciais: [
     { tipo:'drone',    nome:'Drone Cão',    ic:'🤖', desc:'Rápido e barato de manter.' },
