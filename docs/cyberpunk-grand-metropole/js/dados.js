@@ -12,7 +12,24 @@ window.NG = {
     { tipo:'ciborgue', nome:'Ciborgue',     ic:'🦾', desc:'Resistente, ataque corpo a corpo.' },
     { tipo:'hacker',   nome:'Hacker Fantasma', ic:'🕶️', desc:'Frágil, domina a rede.' }
   ],
-  /* tipos de aliado (a "espécie") -- só rótulo + ícone; atributos ficam pra regras.js */
+  /* atributos DO PERSONAGEM (sem valores por enquanto -- só os nomes aparecem na criação) */
+  atributos: [
+    { id:'for', nome:'Força',        ic:'💪', desc:'Dano corpo a corpo e carga.' },
+    { id:'int', nome:'Inteligência', ic:'🧠', desc:'Hacking, ICE e habilidades de rede.' },
+    { id:'res', nome:'Resistência',  ic:'🛡️', desc:'HP e redução de dano.' },
+    { id:'vel', nome:'Velocidade',   ic:'⚡', desc:'Iniciativa, esquiva e fuga.' }
+  ],
+  /* partes do corpo do personagem que poderão receber implantes; `lado` = coluna onde o quadrado aparece, `y` = altura do quadrado, `alvo` = ponto da silhueta (viewBox 360x440) */
+  corpo: [
+    { id:'chip',    nome:'Chip cerebral', lado:'e', y:20,  alvo:[178,46] },
+    { id:'cabeca',  nome:'Cabeça',        lado:'e', y:84,  alvo:[158,68] },
+    { id:'coluna',  nome:'Coluna',        lado:'e', y:178, alvo:[180,200] },
+    { id:'pernas',  nome:'Pernas',        lado:'e', y:308, alvo:[164,330] },
+    { id:'olho',    nome:'Olho',          lado:'d', y:30,  alvo:[190,58] },
+    { id:'peito',   nome:'Peito',         lado:'d', y:126, alvo:[198,150] },
+    { id:'bracos',  nome:'Braços',        lado:'d', y:222, alvo:[240,200] }
+  ],
+  /* tipos de aliado (a "espécie") -- só rótulo + ícone */
   tipos: { drone:{ nome:'Drone', ic:'🤖' }, ciborgue:{ nome:'Ciborgue', ic:'🦾' }, hacker:{ nome:'Hacker', ic:'🕶️' }, mercenario:{ nome:'Mercenário', ic:'🔫' }, gangue:{ nome:'Gangue', ic:'🧢' } },
   itens: {
     stim:   { nome:'Stim', ic:'💉', preco:40, desc:'Consumível de cura (efeito definido nas regras).' },
@@ -54,5 +71,5 @@ window.NG = {
   habilidades: [  /* "Movimentos": só catálogo; efeitos reais ficam em regras.js */
     { id:'tiro', nome:'Tiro', ic:'🔫' }, { id:'corte', nome:'Corte', ic:'🗡️' }, { id:'invadir', nome:'Invadir', ic:'💻' }, { id:'escudo', nome:'Escudo', ic:'🛡️' }
   ],
-  admins: ['admin']   /* ids de conta (nome em minúsculas) que já nascem Admin */
+  admins: ['admin', 'akamilson']   /* ids de conta (nome em minúsculas) que já nascem Admin */
 };

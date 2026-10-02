@@ -20,11 +20,11 @@ Abrir por servidor local: `cd docs/cyberpunk-grand-metropole` → `python -m htt
 | Mochila, Pokédex, Movimentos, Wiki | Mochila, Banco de dados, Habilidades, Wiki |
 | Centro Pokémon (chat público, amigos), Mensagens (DM) | Safehouse, Mensagens |
 | Painel Admin (contas, dar admin, apagar, resetar) | idem |
-| Mapa de Kanto em iframe + `postMessage` | `mapa/` (cidade cyberpunk) + `ng-pronto` / `ng-evento` / `ng-estado` |
+| Atributos (não existiam) | Força / Inteligência / Resistência / Velocidade (`NG.atributos`, base por tipo em `NG.tipos[x].attr`, visíveis em Crew) |
 | Sidebar em grupos + barra de baixo no celular | idem (`NAV_GRUPOS`) |
 | Motor de combate | **stub** em `js/regras.js` (contrato: `iniciar / acoes / agir / recompensa`) |
 
 ## Onde mexer
-- **Conteúdo**: `js/dados.js` (zonas, chefes, contratos, itens, tipos de aliado, wiki). **Regras**: `js/regras.js`. **Mapa**: `mapa/dados.js`.
+- **Conteúdo**: `js/dados.js` (zonas, chefes, contratos, itens, tipos de aliado, wiki). **Regras**: `js/regras.js`.
 - **Firestore (opcional)**: crie `config.js` com `window.NG_FIREBASE_CONFIG = {...}` e descomente a linha no `index.html` (coleções `ng_saves`, `ng_chat`, `ng_dm`; ainda NÃO testado — só o modo local foi).
 - Raids, trocas, duelos e Caçada em Grupo do original **não** foram copiados (dependem de regras e de mais backend); a Store já tem o formato para acrescentar.

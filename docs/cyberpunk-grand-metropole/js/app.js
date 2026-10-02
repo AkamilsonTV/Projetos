@@ -6,14 +6,14 @@
      NAV_GRUPOS    menu lateral em grupos (Social / Operações / Informação / Jogador), barra de baixo no celular
      Store         login Nome+PIN, 1 documento por conta, chat/DM (js/store.js: local ou Firestore)
      Energia (regenera sozinha) + Cartões -> Energia, Dia do jogo de 6h, quadro de Contratos (= Missões Diárias), Chefes 1x/dia, painel Admin
-     Combate = js/regras.js (stub). Conteúdo = js/dados.js. Mapa = mapa/ (iframe com postMessage, como o mapa v2 do Green Área). */
+     Combate = js/regras.js (stub). Conteúdo = js/dados.js. */
 (function(){
 'use strict';
 var DT = {}, NG = window.NG, R = window.NG_REGRAS, Store = window.NGStore;
 var STATE = null, SESSION = null, appEl = null;
 var SESSAO_KEY = 'ng_sessao_v1';
 function novaSessao(aviso){ return { tela:'login', aviso:aviso||'', erro:'', modoLogin:'entrar', ocupado:false, menuAberto:false, grupoAberto:null, isAdmin:false, docId:null,
-  chat:[], chatCarregando:false, amigosAbertos:null, dmCom:null, dmMsgs:[], contas:null, contasCarregando:false, confirmaApagar:null, fichaDe:null, mapaPronto:false, pendIniciar:null, zonaSel:null }; }
+  chat:[], chatCarregando:false, amigosAbertos:null, dmCom:null, dmMsgs:[], contas:null, contasCarregando:false, confirmaApagar:null, fichaDe:null, pendIniciar:null, zonaSel:null }; }
 SESSION = novaSessao();
 
 /* ---------- utilidades ---------- */
@@ -28,9 +28,9 @@ function uid(){ return Math.random().toString(36).slice(2,9); }
 /* ---------- estado salvo ---------- */
 function novoEstado(nome){
   return { versao:1, nome:nome, nivel:1, xp:0, hp:100, creditos:NG.creditosIniciais, energia:NG.energiaMax, energiaEm:Date.now(),
-    cartoes:NG.cartoesIniciais, cartoesDia:diaDoJogo(), crew:[], itens:{ stim:3, cabos:1 }, amigos:[], banco:{}, battle:null, log:[],
+    cartoes:NG.cartoesIniciais, cartoesDia:diaDoJogo(), personagem:null, corpo:{}, crew:[], itens:{ stim:3, cabos:1 }, amigos:[], banco:{}, battle:null, log:[],
     contratos:[null,null,null,null,null], contratoDia:{ dia:diaDoJogo(), usados:0 }, progresso:{ dia:diaDoJogo(), vencidas:0, chat:0, eventos:{}, zonas:{} },
-    chefesDia:{}, pos:{ area:'rua', x:19, y:23 }, adminConcedido:false, atualizadoEm:Date.now() };
+    chefesDia:{}, adminConcedido:false, atualizadoEm:Date.now() };
 }
 function logar(txt){ STATE.log.unshift({ t:Date.now(), x:txt }); if(STATE.log.length>40) STATE.log.length = 40; }
 
@@ -89,6 +89,13 @@ DT.irTela = function(t){ SESSION.tela = t; SESSION.erro = ''; SESSION.menuAberto
 DT.abrirGrupo = function(g){ SESSION.grupoAberto = SESSION.grupoAberto===g ? null : g; render(); };
 DT.fecharGrupo = function(){ SESSION.grupoAberto = null; render(); };
 DT.menu = function(){ SESSION.menuAberto = !SESSION.menuAberto; render(); };
+
+/* personagem: criação (só nome por enquanto) e corpo */
+DT.criarPersonagem = function(){
+  var n = String(val('ngPersNome')).trim().slice(0,18); if(!n){ SESSION.erro = 'Escolha um nome para o personagem.'; return render(); }
+  STATE.nome = n; STATE.personagem = { nome:n, criadoEm:Date.now() }; logar('Personagem criado: '+n+'.'); salvar(); SESSION.tela = 'personagem'; render();
+};
+DT.slotCorpo = function(id){ var p = NG.corpo.filter(function(x){ return x.id===id; })[0]; if(p){ SESSION.aviso = p.nome+': ainda não há implantes disponíveis.'; render(); } };
 
 /* primeiro aliado */
 DT.escolherInicial = function(tipo){
@@ -186,18 +193,20 @@ DT.adminPromover = function(id, v){ Store.getConta(id).then(function(c){ c.admin
 DT.adminApagar = function(id){ if(SESSION.confirmaApagar!==id){ SESSION.confirmaApagar = id; return render(); } SESSION.confirmaApagar = null; Store.apagaConta(id).then(carregaContas); };
 DT.adminRecarregar = function(){ tick(); STATE.energia = NG.energiaMax; STATE.cartoes = NG.cartoesMax; STATE.creditos += 1000; salvar(); render(); };
 DT.adminResetar = function(){ if(!confirm('Resetar o PROGRESSO desta conta?')) return; var pin = STATE.pin, nome = STATE.nome, adm = STATE.adminConcedido; STATE = novoEstado(nome); STATE.pin = pin; STATE.adminConcedido = adm; salvar(); SESSION.tela = 'hub'; render(); };
+DT.adminAplicar = function(){
+  tick(); var n = function(id, a, b, atual){ var v = parseInt(val(id), 10); return isNaN(v) ? atual : clamp(v, a, b); };
+  STATE.creditos = n('adCred', 0, 999999999, STATE.creditos); STATE.energia = n('adEn', 0, NG.energiaMax, STATE.energia);
+  STATE.cartoes = n('adCart', 0, NG.cartoesMax, STATE.cartoes); STATE.nivel = n('adNv', 1, 999, STATE.nivel); STATE.hp = n('adHp', 0, 100, STATE.hp);
+  logar('Admin: valores ajustados.'); salvar(); SESSION.aviso = 'Valores aplicados.'; render();
+};
+DT.adminCorpo = function(){ NG.corpo.forEach(function(p){ var v = String(val('adCorpo_'+p.id)).trim().slice(0,24); if(v) STATE.corpo[p.id] = v; else delete STATE.corpo[p.id]; }); salvar(); SESSION.aviso = 'Corpo atualizado.'; render(); };
+DT.adminZerarDia = function(){ STATE.contratoDia = { dia:diaDoJogo(), usados:0 }; STATE.chefesDia = {}; STATE.contratos = [null,null,null,null,null]; salvar(); SESSION.aviso = 'Contratos e chefes do dia renovados.'; render(); };
+DT.adminRefazerPersonagem = function(){ if(!confirm('Refazer o personagem? (nome e corpo voltam ao início)')) return; STATE.personagem = null; STATE.corpo = {}; salvar(); render(); };
+DT.adminApagarMinha = function(){
+  if(SESSION.confirmaApagar!==SESSION.docId){ SESSION.confirmaApagar = SESSION.docId; SESSION.aviso = 'Clique de novo em "Apagar minha conta" para confirmar. Isso é definitivo.'; return render(); }
+  var id = SESSION.docId; Store.apagaConta(id).then(function(){ DT.sair(); SESSION.aviso = 'Conta apagada.'; render(); });
+};
 DT.adminLimparSessoes = function(){ SESSION.aviso = 'Nada a limpar neste esqueleto.'; render(); };
-
-/* mapa: iframe + postMessage (mesmo protocolo do mapa v2 do Green Área: pronto / evento / estado) */
-window.addEventListener('message', function(e){
-  var d = e.data; if(!d || typeof d!=='object' || !STATE) return;
-  if(d.tipo==='ng-pronto'){ SESSION.mapaPronto = true; enviaEstadoMapa(); }
-  else if(d.tipo==='ng-evento'){ STATE.progresso.eventos[d.evento] = true; if(d.estado) aplicaEstadoMapa(d.estado); logar('Evento no mapa: '+d.evento+'.'); salvar(); render(); }
-  else if(d.tipo==='ng-estado' && d.estado){ aplicaEstadoMapa(d.estado); salvar(); atualizaHUD(); }
-  else if(d.tipo==='ng-luta' && d.zona){ SESSION.tela = 'contratos'; DT.iniciarZona(d.zona); }
-});
-function aplicaEstadoMapa(e){ if(typeof e.creditos==='number') STATE.creditos = e.creditos; if(typeof e.hp==='number') STATE.hp = e.hp; if(e.itens){ Object.keys(e.itens).forEach(function(k){ STATE.itens[k] = e.itens[k]; }); } }
-function enviaEstadoMapa(){ var f = el('ngMapa'); if(f && f.contentWindow) f.contentWindow.postMessage({ tipo:'ng-estado', estado:{ creditos:STATE.creditos, hp:STATE.hp, rep:0 }, pos:STATE.pos }, '*'); }
 
 /* ---------- telas ---------- */
 function barra(v, max, cor){ return '<div class="ng-barra"><i style="width:'+clamp(v/max*100,0,100)+'%;background:'+cor+'"></i></div>'; }
@@ -215,6 +224,23 @@ function loginHTML(){
     '<button class="ng-btn pri" '+(SESSION.ocupado?'disabled':'')+' onclick="DT.criar()">➕ Criar</button>';
   return o + '<p class="ng-hint">Modo de armazenamento: <b>'+Store.modo+'</b>'+(Store.modo==='local'?' (só neste navegador)':'')+'</p></div>';
 }
+function atributosListaHTML(){ return '<div class="ng-attr-lista">'+NG.atributos.map(function(a){ return '<div><b>'+a.ic+' '+esc(a.nome)+'</b><small>'+esc(a.desc)+'</small></div>'; }).join('')+'</div>'; }
+function criacaoPersonagemHTML(){
+  return '<div class="ng-card ng-login"><div class="ng-logo">Crie seu personagem</div><p class="ng-sub">Seus atributos ainda não têm valores definidos.</p>'+
+    '<label>Nome<input id="ngPersNome" maxlength="18" value="'+esc(STATE.nome)+'" onkeydown="if(event.key===\'Enter\')DT.criarPersonagem()"></label>'+
+    '<h3>Atributos</h3>'+atributosListaHTML()+'<button class="ng-btn pri" onclick="DT.criarPersonagem()">✔ Criar personagem</button></div>';
+}
+function personagemHTML(){
+  var L = 4, W = 100, H = 34, svg = '<svg class="ng-corpo-svg" viewBox="0 0 360 440" role="img" aria-label="Corpo do personagem">'+
+    '<g class="sil"><circle cx="180" cy="62" r="24"/><rect x="170" y="84" width="20" height="14"/><path d="M142 98h76l14 34v70l-16 4v-60l-6 14 4 58h-70l4-58-6-14v60l-16-4v-70z"/><path d="M146 262h68l-6 82h-22l-6-60-6 60h-22z" transform="translate(0,0)"/><path d="M158 336h22v62h-22zM180 336h22v62h-22z"/></g>';
+  svg += NG.corpo.map(function(p){
+    var x = p.lado==='e' ? L : 360-L-W, ex = p.lado==='e' ? x+W : x, cy = p.y+H/2, v = STATE.corpo[p.id];
+    return '<line class="lin" x1="'+ex+'" y1="'+cy+'" x2="'+p.alvo[0]+'" y2="'+p.alvo[1]+'"/><circle class="pt" cx="'+p.alvo[0]+'" cy="'+p.alvo[1]+'" r="3"/>'+
+      '<g class="slot" onclick="DT.slotCorpo(\''+p.id+'\')"><rect x="'+x+'" y="'+p.y+'" width="'+W+'" height="'+H+'" rx="4"/><text x="'+(x+8)+'" y="'+(p.y+15)+'">'+esc(p.nome)+'</text><text class="vz" x="'+(x+8)+'" y="'+(p.y+27)+'">'+esc(v||'— vazio —')+'</text></g>';
+  }).join('');
+  return '<div class="ng-card"><h2>'+esc(STATE.nome)+'</h2><p class="ng-hint">Cada quadrado é um ponto do corpo que poderá receber uma modificação.</p>'+svg+'</svg></div>'+
+    '<div class="ng-card"><h3>Atributos</h3>'+atributosListaHTML()+'</div>';
+}
 function escolhaInicialHTML(){
   return '<div class="ng-card ng-login"><div class="ng-logo">Escolha seu primeiro aliado</div><p class="ng-sub">Você vai começar a jornada com ele.</p><div class="ng-iniciais">'+
     NG.iniciais.map(function(i){ return '<button class="ng-inicial" onclick="DT.escolherInicial(\''+i.tipo+'\')"><span>'+i.ic+'</span><b>'+esc(i.nome)+'</b><small>'+esc(i.desc)+'</small></button>'; }).join('')+'</div></div>';
@@ -228,10 +254,9 @@ function hubHTML(){
     '<div class="ng-stat"><small>Cartões de energia</small><b>🔋 '+STATE.cartoes+'</b><button class="ng-btn sm" onclick="DT.usarCartoes(1)">Usar 1 (+'+NG.energiaPorCartao+')</button></div>'+
     '<div class="ng-stat"><small>Nível '+STATE.nivel+'</small><b>'+STATE.xp+' / '+(STATE.nivel*50)+' XP</b>'+barra(STATE.xp, STATE.nivel*50, '#ffd36b')+'</div>'+
     '<div class="ng-stat"><small>Próximo dia em</small><b>'+horasParaDia()+'</b><small>Contratos hoje: '+p.usados+'/'+NG.contratosPorDia+' · ativos: '+prox+'</small></div>'+
-    '</div><div class="ng-linha"><button class="ng-btn pri" onclick="DT.irTela(\'mapa\')">🗺️ Abrir o mapa</button><button class="ng-btn" onclick="DT.irTela(\'contratos\')">⚔️ Operações</button><button class="ng-btn" onclick="DT.irTela(\'diario\')">📔 Contratos'+(contratosProntos()?' ('+contratosProntos()+' prontos)':'')+'</button></div></div>'+
+    '</div><div class="ng-linha"><button class="ng-btn pri" onclick="DT.irTela(\'contratos\')">⚔️ Operações</button><button class="ng-btn" onclick="DT.irTela(\'diario\')">📔 Contratos'+(contratosProntos()?' ('+contratosProntos()+' prontos)':'')+'</button></div></div>'+
     '<div class="ng-card"><h3>Registro</h3>'+(STATE.log.length ? '<ul class="ng-log">'+STATE.log.slice(0,8).map(function(l){ return '<li><small>'+new Date(l.t).toLocaleTimeString().slice(0,5)+'</small> '+esc(l.x)+'</li>'; }).join('')+'</ul>' : '<p class="ng-hint">Nada ainda.</p>')+'</div>';
 }
-function mapaHTML(){ return '<div class="ng-card ng-mapa"><iframe id="ngMapa" src="mapa/index.html?embed=1" title="Mapa"></iframe></div>'; }
 function contratosOpsHTML(){
   return '<div class="ng-card"><h2>Operações — zonas</h2><p class="ng-hint">Cada entrada gasta uma energia FIXA por zona. Energia: <b>'+STATE.energia+'</b></p><div class="ng-lista">'+
    NG.zonas.map(function(z){ return '<div class="ng-item"><div><b>'+esc(z.nome)+'</b><small>Nv '+z.nivel[0]+'–'+z.nivel[1]+' · '+esc(z.texto)+'</small></div><button class="ng-btn pri" onclick="DT.iniciarZona(\''+z.id+'\')">⚡ '+z.custo+'</button></div>'; }).join('')+'</div></div>';
@@ -242,7 +267,7 @@ function chefesHTML(){
 }
 function crewHTML(){
   return '<div class="ng-card"><h2>Crew</h2><div class="ng-lista">'+STATE.crew.map(function(a){ var t = NG.tipos[a.tipo]||{ ic:'❔', nome:a.tipo };
-    return '<div class="ng-item"><div><b>'+t.ic+' '+esc(a.apelido)+'</b><small>'+esc(t.nome)+' · Nv '+a.nivel+'</small></div><div><button class="ng-btn sm" onclick="DT.renomear(\''+a.id+'\')">✏️</button> <button class="ng-btn sm" onclick="DT.liberar(\''+a.id+'\')">🗑️</button></div></div>'; }).join('')+'</div></div>';
+    return '<div class="ng-item"><div><b>'+t.ic+' '+esc(a.apelido)+'</b><small>'+esc(t.nome)+' · Nv '+a.nivel+'</small>'+'</div><div><button class="ng-btn sm" onclick="DT.renomear(\''+a.id+'\')">✏️</button> <button class="ng-btn sm" onclick="DT.liberar(\''+a.id+'\')">🗑️</button></div></div>'; }).join('')+'</div></div>';
 }
 function mochilaHTML(){
   var ks = Object.keys(NG.itens).filter(function(k){ return k!=='cartao'; });
@@ -280,7 +305,14 @@ function adminHTML(){
   if(!SESSION.isAdmin) return '<div class="ng-card"><p>Acesso negado.</p></div>';
   var l = SESSION.contas ? SESSION.contas.map(function(c){ var eu = c.id===SESSION.docId;
     return '<div class="ng-item"><div><b>'+esc(c.nome||c.id)+'</b><small>'+c.id+' · nv '+(c.nivel||1)+(c.admin?' · admin':'')+'</small></div><div>'+(eu?'':'<button class="ng-btn sm" onclick="DT.adminPromover(\''+c.id+'\','+(!c.admin)+')">'+(c.admin?'Rebaixar':'Dar admin')+'</button> <button class="ng-btn sm danger" onclick="DT.adminApagar(\''+c.id+'\')">'+(SESSION.confirmaApagar===c.id?'Confirmar?':'Apagar')+'</button>')+'</div></div>'; }).join('') : '<p class="ng-hint">'+(SESSION.contasCarregando?'Carregando…':'—')+'</p>';
-  return '<div class="ng-card"><h2>Painel Admin</h2><div class="ng-linha"><button class="ng-btn" onclick="DT.adminRecarregar()">⚡ Recarregar tudo</button><button class="ng-btn danger" onclick="DT.adminResetar()">♻️ Resetar minha conta</button></div><h3>Contas</h3><div class="ng-lista">'+l+'</div></div>';
+  var campo = function(id, rot, v){ return '<label>'+rot+'<input id="'+id+'" type="number" value="'+v+'"></label>'; };
+  var ferr = '<div class="ng-card"><h3>Meus valores</h3><div class="ng-grade">'+campo('adCred','Créditos',STATE.creditos)+campo('adEn','Energia (0–'+NG.energiaMax+')',STATE.energia)+campo('adCart','Cartões',STATE.cartoes)+campo('adNv','Nível',STATE.nivel)+campo('adHp','HP (0–100)',STATE.hp)+'</div>'+
+    '<div class="ng-linha"><button class="ng-btn pri" onclick="DT.adminAplicar()">Aplicar</button><button class="ng-btn" onclick="DT.adminZerarDia()">🔄 Renovar contratos e chefes do dia</button></div></div>'+
+    '<div class="ng-card"><h3>Corpo (implantes)</h3><div class="ng-grade">'+NG.corpo.map(function(p){ return '<label>'+esc(p.nome)+'<input id="adCorpo_'+p.id+'" maxlength="24" placeholder="vazio" value="'+esc(STATE.corpo[p.id]||'')+'"></label>'; }).join('')+'</div>'+
+    '<div class="ng-linha"><button class="ng-btn pri" onclick="DT.adminCorpo()">Salvar corpo</button><button class="ng-btn" onclick="DT.adminRefazerPersonagem()">🧍 Refazer personagem</button></div></div>'+
+    '<div class="ng-card"><h3>Detalhes da conta</h3><div class="ng-hint">'+['id: '+SESSION.docId,'nome: '+STATE.nome,'dia do jogo: '+diaDoJogo()+' (renova em '+horasParaDia()+')','store: '+Store.modo,'aliados: '+STATE.crew.length+' · vitórias hoje: '+STATE.progresso.vencidas,'contratos hoje: '+STATE.contratoDia.usados+'/'+NG.contratosPorDia,'atualizado: '+new Date(STATE.atualizadoEm).toLocaleString()].map(esc).join('<br>')+'</div>'+
+    '<button class="ng-btn danger" onclick="DT.adminApagarMinha()">'+(SESSION.confirmaApagar===SESSION.docId?'⚠️ Confirmar: apagar minha conta':'🗑️ Apagar minha conta')+'</button></div>';
+  return ferr+'<div class="ng-card"><h2>Painel Admin</h2><div class="ng-linha"><button class="ng-btn" onclick="DT.adminRecarregar()">⚡ Recarregar tudo</button><button class="ng-btn danger" onclick="DT.adminResetar()">♻️ Resetar minha conta</button></div><h3>Contas</h3><div class="ng-lista">'+l+'</div></div>';
 }
 function lutaHTML(){
   var b = STATE.battle, acoes = b.fim ? '' : R.acoes(b).map(function(a){ return '<button class="ng-btn pri" onclick="DT.agir(\''+a.id+'\')">'+a.ic+' '+esc(a.nome)+'</button>'; }).join(' ');
@@ -293,13 +325,12 @@ var NAV_GRUPOS = [
   { id:'social', ic:'👥', nome:'Social', itens:[ { id:'centro', ic:'🏚️', nome:'Safehouse' }, { id:'mensagens', ic:'💬', nome:'Mensagens' } ] },
   { id:'ops', ic:'⚔️', nome:'Operações', itens:[ { id:'contratos', ic:'🌃', nome:'Zonas' }, { id:'chefes', ic:'☠️', nome:'Chefes' } ] },
   { id:'info', ic:'📚', nome:'Informação', itens:[ { id:'habilidades', ic:'💻', nome:'Habilidades' }, { id:'banco', ic:'🗂️', nome:'Banco de dados' }, { id:'wiki', ic:'📖', nome:'Wiki' } ] },
-  { id:'jogador', ic:'🎒', nome:'Jogador', itens:[ { id:'crew', ic:'🦾', nome:'Crew' }, { id:'mochila', ic:'🧳', nome:'Mochila' }, { id:'diario', ic:'📔', nome:'Diário' } ] }
+  { id:'jogador', ic:'🎒', nome:'Jogador', itens:[ { id:'personagem', ic:'🧍', nome:'Personagem' }, { id:'crew', ic:'🦾', nome:'Crew' }, { id:'mochila', ic:'🧳', nome:'Mochila' }, { id:'diario', ic:'📔', nome:'Diário' } ] }
 ];
 function badgeGrupo(g){ return g==='jogador' ? contratosProntos() : 0; }
 function sidebarHTML(){
   var o = '<aside class="ng-side'+(SESSION.menuAberto?' aberto':'')+'"><div class="ng-marca">'+esc(NG.nome)+'</div><nav>'+
-   '<button class="'+(SESSION.tela==='hub'?'on':'')+'" onclick="DT.irTela(\'hub\')">🏠 Início</button>'+
-   '<button class="'+(SESSION.tela==='mapa'?'on':'')+'" onclick="DT.irTela(\'mapa\')">🗺️ Mapa</button>';
+   '<button class="'+(SESSION.tela==='hub'?'on':'')+'" onclick="DT.irTela(\'hub\')">🏠 Início</button>';
   NAV_GRUPOS.forEach(function(g){ var ativo = SESSION.grupoAberto===g.id || g.itens.some(function(i){ return i.id===SESSION.tela; }), b = badgeGrupo(g.id);
     o += '<button class="'+(ativo?'on':'')+'" onclick="DT.abrirGrupo(\''+g.id+'\')">'+g.ic+' '+g.nome+(b?' <span class="ng-ba">'+b+'</span>':'')+'</button>'; });
   if(SESSION.isAdmin) o += '<button class="'+(SESSION.tela==='admin'?'on':'')+'" onclick="DT.irTela(\'admin\')">🛠️ Admin</button>';
@@ -311,19 +342,20 @@ function grupoPopupHTML(){
    g.itens.map(function(i){ return '<button class="ng-btn '+(SESSION.tela===i.id?'pri':'')+'" onclick="DT.irTela(\''+i.id+'\')">'+i.ic+' '+i.nome+'</button>'; }).join('')+'</div></div>';
 }
 function topbarMovelHTML(){ return '<div class="ng-topo"><button class="ng-btn sm" onclick="DT.menu()">☰</button><b>'+esc(NG.nome)+'</b><span>⚡ '+STATE.energia+' · ¥ '+STATE.creditos+'</span></div>'; }
-function tabbarMovelHTML(){ return '<div class="ng-tabbar"><button onclick="DT.irTela(\'hub\')">🏠</button><button onclick="DT.irTela(\'mapa\')">🗺️</button>'+NAV_GRUPOS.map(function(g){ return '<button onclick="DT.abrirGrupo(\''+g.id+'\')">'+g.ic+'</button>'; }).join('')+'</div>'; }
+function tabbarMovelHTML(){ return '<div class="ng-tabbar"><button onclick="DT.irTela(\'hub\')">🏠</button>'+NAV_GRUPOS.map(function(g){ return '<button onclick="DT.abrirGrupo(\''+g.id+'\')">'+g.ic+'</button>'; }).join('')+'</div>'; }
 function wrap(corpo){ return '<div class="ng-shell">'+sidebarHTML()+'<div class="ng-main">'+topbarMovelHTML()+'<div class="ng-corpo">'+bannersHTML()+corpo+'</div></div></div>'+tabbarMovelHTML()+grupoPopupHTML(); }
 
 /* porta de entrada de TODAS as telas -- os "gates" vêm antes do switch, igual ao Green Área */
 function screenHTML(){
   if(!STATE) return '<div class="ng-solo">'+bannersHTML()+loginHTML()+'</div>';
+  if(!STATE.personagem) return '<div class="ng-solo">'+bannersHTML()+criacaoPersonagemHTML()+'</div>';
   if(!STATE.crew.length) return '<div class="ng-solo">'+bannersHTML()+escolhaInicialHTML()+'</div>';
   if(STATE.battle) return wrap(lutaHTML());
   switch(SESSION.tela){
     case 'hub': return wrap(hubHTML());
-    case 'mapa': return wrap(mapaHTML());
     case 'contratos': return wrap(contratosOpsHTML());
     case 'chefes': return wrap(chefesHTML());
+    case 'personagem': return wrap(personagemHTML());
     case 'crew': return wrap(crewHTML());
     case 'mochila': return wrap(mochilaHTML());
     case 'diario': return wrap(diarioHTML());
@@ -341,8 +373,6 @@ function render(){
   if(!appEl) appEl = el('app'); agendaBanner();
   var foco = document.activeElement && document.activeElement.id, selIni, scroll = {};
   PRESERVAR.forEach(function(id){ var e = el(id); if(e) scroll[id] = [e.scrollTop, e.scrollHeight - e.clientHeight - e.scrollTop]; });
-  var iframe = el('ngMapa'), manter = (SESSION.tela==='mapa' && iframe);   /* não recria o iframe: perderia a posição no mapa */
-  if(manter){ var corpo = appEl.querySelector('.ng-corpo'); var ban = corpo.querySelector('.ng-banner'); /* só atualiza banners e HUD */ atualizaHUD(); return; }
   var valores = {}; ['ngChatTxt','ngDmTxt','ngAmigo'].forEach(function(i){ var e = el(i); if(e) valores[i] = e.value; });
   appEl.innerHTML = screenHTML();
   Object.keys(valores).forEach(function(i){ var e = el(i); if(e) e.value = valores[i]; });
