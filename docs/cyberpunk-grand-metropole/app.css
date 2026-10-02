@@ -56,3 +56,6 @@ label{display:block;margin:10px 0;color:var(--dim);font-size:.85rem} label input
 .ng-corpo-svg .sil .costura{stroke:none}
 .ng-corpo-campo{position:relative} .ng-attr-box{position:absolute;left:0;bottom:0;z-index:1;display:grid;gap:8px;padding:10px 12px;background:#0b1a24;border:1px solid var(--ciano,#00f0ff);border-radius:6px;font-size:.78rem}
 .ng-attr-box b{font-size:.62rem;letter-spacing:.15em;color:var(--ciano,#00f0ff)} .ng-attr-box span{cursor:help;white-space:nowrap}
+
+.ng-attr-box .nv{font-size:.8rem;letter-spacing:.12em;color:#ffd36b} .ng-attr-box small{color:var(--dim);font-size:.68rem;max-width:150px;white-space:normal}
+.ng-attr-l{display:flex;align-items:center;gap:8px} .ng-attr-l i{font-style:normal;flex:1} .ng-attr-l em{font-style:normal;font-weight:800;color:var(--ciano,#00f0ff);min-width:1.2em;text-align:right} .ng-attr-l .ng-btn{padding:0 7px;line-height:1.3}

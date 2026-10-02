@@ -28,7 +28,7 @@ function uid(){ return Math.random().toString(36).slice(2,9); }
 /* ---------- estado salvo ---------- */
 function novoEstado(nome){
   return { versao:1, nome:nome, nivel:1, xp:0, hp:100, creditos:NG.creditosIniciais, energia:NG.energiaMax, energiaEm:Date.now(),
-    cartoes:NG.cartoesIniciais, cartoesDia:diaDoJogo(), diaInicial:diaDoJogo(), personagem:null, corpo:{}, crew:[], itens:{ stim:3, cabos:1 }, amigos:[], banco:{}, battle:null, log:[],
+    cartoes:NG.cartoesIniciais, cartoesDia:diaDoJogo(), diaInicial:diaDoJogo(), atributos:{ for:1, int:1, res:1, vel:1 }, pontos:0, personagem:null, corpo:{}, crew:[], itens:{ stim:3, cabos:1 }, amigos:[], banco:{}, battle:null, log:[],
     contratos:[null,null,null,null,null], contratoDia:{ dia:diaDoJogo(), usados:0 }, progresso:{ dia:diaDoJogo(), vencidas:0, chat:0, eventos:{}, zonas:{} },
     chefesDia:{}, adminConcedido:false, atualizadoEm:Date.now() };
 }
@@ -104,6 +104,8 @@ DT.criarPersonagem = function(){
   var n = String(val('ngPersNome')).trim().slice(0,18); if(!n){ SESSION.erro = 'Escolha um nome para o personagem.'; return render(); }
   STATE.nome = n; STATE.personagem = { nome:n, criadoEm:Date.now() }; logar('Personagem criado: '+n+'.'); salvar(); SESSION.tela = 'personagem'; render();
 };
+DT.gastarPonto = function(i){ var a = NG.atributos[i]; if(!a || STATE.pontos<=0) return; STATE.atributos[a.id] = (STATE.atributos[a.id]||NG.atributoInicial) + 1; STATE.pontos--; salvar(); render(); };
+DT.irRuas = function(){ DT.irTela('ruas'); };
 DT.slotCorpo = function(id){ var p = NG.corpo.filter(function(x){ return x.id===id; })[0]; if(p){ SESSION.aviso = p.nome+': ainda não há implantes disponíveis.'; render(); } };
 
 /* primeiro aliado */
@@ -150,7 +152,7 @@ DT.encerrarLuta = function(){
   else txt = 'Fugiu.';
   logar(txt); STATE.battle = null; salvar(); render();
 };
-function subirNivel(){ var need = STATE.nivel*50; while(STATE.xp>=need){ STATE.xp -= need; STATE.nivel++; need = STATE.nivel*50; logar('Subiu para o nível '+STATE.nivel+'.'); } }
+function subirNivel(){ var need = STATE.nivel*50; while(STATE.xp>=need){ STATE.xp -= need; STATE.nivel++; STATE.pontos += NG.pontosPorNivel; need = STATE.nivel*50; logar('Subiu para o nível '+STATE.nivel+'.'); } }
 
 /* contratos diários: 5 slots, no máximo 5 por DIA do jogo (igual ao quadro de Missões Diárias) */
 function contratoProgresso(s){
@@ -205,7 +207,7 @@ DT.adminResetar = function(){ if(!confirm('Resetar o PROGRESSO desta conta?')) r
 DT.adminAplicar = function(){
   tick(); var n = function(id, a, b, atual){ var v = parseInt(val(id), 10); return isNaN(v) ? atual : clamp(v, a, b); };
   STATE.creditos = n('adCred', 0, 999999999, STATE.creditos); STATE.energia = n('adEn', 0, NG.energiaMax, STATE.energia);
-  STATE.cartoes = n('adCart', 0, NG.cartoesMax, STATE.cartoes); STATE.nivel = n('adNv', 1, 999, STATE.nivel); STATE.hp = n('adHp', 0, 100, STATE.hp);
+  STATE.cartoes = n('adCart', 0, NG.cartoesMax, STATE.cartoes); var nvAntes = STATE.nivel; STATE.nivel = n('adNv', 1, 999, STATE.nivel); if(STATE.nivel>nvAntes) STATE.pontos += (STATE.nivel-nvAntes)*NG.pontosPorNivel; STATE.hp = n('adHp', 0, 100, STATE.hp);
   logar('Admin: valores ajustados.'); salvar(); SESSION.aviso = 'Valores aplicados.'; render();
 };
 DT.adminCorpo = function(){ NG.corpo.forEach(function(p){ var v = String(val('adCorpo_'+p.id)).trim().slice(0,24); if(v) STATE.corpo[p.id] = v; else delete STATE.corpo[p.id]; }); salvar(); SESSION.aviso = 'Corpo atualizado.'; render(); };
@@ -233,9 +235,9 @@ function loginHTML(){
     '<button class="ng-btn pri" '+(SESSION.ocupado?'disabled':'')+' onclick="DT.criar()">➕ Criar</button>';
   return o + '<p class="ng-hint">Modo de armazenamento: <b>'+Store.modo+'</b>'+(Store.modo==='local'?' (só neste navegador)':'')+'</p></div>';
 }
-function atributosListaHTML(){ return '<div class="ng-attr-lista">'+NG.atributos.map(function(a){ return '<div><b>'+a.ic+' '+esc(a.nome)+'</b><small>'+esc(a.desc)+'</small></div>'; }).join('')+'</div>'; }
+function atributosListaHTML(){ return '<div class="ng-attr-lista">'+NG.atributos.map(function(a){ return '<div><b>'+a.ic+' '+esc(a.nome)+' · '+NG.atributoInicial+'</b><small>'+esc(a.desc)+'</small></div>'; }).join('')+'</div>'; }
 function criacaoPersonagemHTML(){
-  return '<div class="ng-card ng-login"><div class="ng-logo">Crie seu personagem</div><p class="ng-sub">Seus atributos ainda não têm valores definidos.</p>'+
+  return '<div class="ng-card ng-login"><div class="ng-logo">Crie seu personagem</div><p class="ng-sub">Todo atributo começa em 1; a cada nível você ganha 2 pontos para distribuir.</p>'+
     '<label>Nome<input id="ngPersNome" maxlength="18" value="'+esc(STATE.nome)+'" onkeydown="if(event.key===\'Enter\')DT.criarPersonagem()"></label>'+
     '<h3>Atributos</h3>'+atributosListaHTML()+'<button class="ng-btn pri" onclick="DT.criarPersonagem()">✔ Criar personagem</button></div>';
 }
@@ -254,9 +256,10 @@ function personagemHTML(){
       '<g class="slot" onclick="DT.slotCorpo(\''+p.id+'\')"><rect x="'+x+'" y="'+p.y+'" width="'+W+'" height="'+H+'" rx="4"/><text x="'+(x+8)+'" y="'+(p.y+15)+'">'+esc(p.nome)+'</text><text class="vz" x="'+(x+8)+'" y="'+(p.y+27)+'">'+esc(v||'— vazio —')+'</text></g>';
   }).join('');
   /* caixa de atributos (só nomes, sem valores) colada no canto esquerdo do campo do corpo */
-  var attrs = '<div class="ng-attr-box"><b>ATRIBUTOS</b>'+NG.atributos.map(function(a){ return '<span title="'+esc(a.desc)+'">'+a.ic+' '+esc(a.nome)+'</span>'; }).join('')+'</div>';
+  var pts = STATE.pontos||0, attrs = '<div class="ng-attr-box"><b class="nv">NÍVEL '+STATE.nivel+'</b><b>ATRIBUTOS</b>'+NG.atributos.map(function(a, i){ return '<span class="ng-attr-l" title="'+esc(a.desc)+'"><i>'+a.ic+' '+esc(a.nome)+'</i><em>'+(STATE.atributos[a.id]||NG.atributoInicial)+'</em>'+(pts>0?'<button class="ng-btn sm" onclick="DT.gastarPonto('+i+')">+</button>':'')+'</span>'; }).join('')+'<small>'+(pts>0?'Pontos para distribuir: <b>'+pts+'</b>':'Sem pontos disponíveis')+'</small></div>';
   return '<div class="ng-card ng-corpo-card"><h2>'+esc(STATE.nome)+'</h2><p class="ng-hint">Cada quadrado é um ponto do corpo que poderá receber uma modificação.</p><div class="ng-corpo-campo">'+attrs+svg+'</svg></div></div>';
 }
+function ruasHTML(){ return '<div class="ng-card"><h2>🌆 Ruas</h2><p class="ng-hint">Em construção.</p></div>'; }
 function escolhaInicialHTML(){
   return '<div class="ng-card ng-login"><div class="ng-logo">Escolha seu primeiro aliado</div><p class="ng-sub">Você vai começar a jornada com ele.</p><div class="ng-iniciais">'+
     NG.iniciais.map(function(i){ return '<button class="ng-inicial" onclick="DT.escolherInicial(\''+i.tipo+'\')"><span>'+i.ic+'</span><b>'+esc(i.nome)+'</b><small>'+esc(i.desc)+'</small></button>'; }).join('')+'</div></div>';
@@ -346,7 +349,7 @@ var NAV_GRUPOS = [
 function badgeGrupo(g){ return g==='jogador' ? contratosProntos() : 0; }
 function sidebarHTML(){
   var o = '<aside class="ng-side'+(SESSION.menuAberto?' aberto':'')+'"><div class="ng-marca">'+esc(NG.nome)+'</div>'+hudHTML()+'<nav>'+
-   '<button class="'+(SESSION.tela==='hub'?'on':'')+'" onclick="DT.irTela(\'hub\')">🏠 Início</button>';
+   '<button class="'+(SESSION.tela==='hub'?'on':'')+'" onclick="DT.irTela(\'hub\')">🏠 Início</button><button class="'+(SESSION.tela==='ruas'?'on':'')+'" onclick="DT.irRuas()">🌆 Ruas</button>';
   NAV_GRUPOS.forEach(function(g){ var ativo = SESSION.grupoAberto===g.id || g.itens.some(function(i){ return i.id===SESSION.tela; }), b = badgeGrupo(g.id);
     o += '<button class="'+(ativo?'on':'')+'" onclick="DT.abrirGrupo(\''+g.id+'\')">'+g.ic+' '+g.nome+(b?' <span class="ng-ba">'+b+'</span>':'')+'</button>'; });
   if(SESSION.isAdmin) o += '<button class="'+(SESSION.tela==='admin'?'on':'')+'" onclick="DT.irTela(\'admin\')">🛠️ Admin</button>';
@@ -358,7 +361,7 @@ function grupoPopupHTML(){
    g.itens.map(function(i){ return '<button class="ng-btn '+(SESSION.tela===i.id?'pri':'')+'" onclick="DT.irTela(\''+i.id+'\')">'+i.ic+' '+i.nome+'</button>'; }).join('')+'</div></div>';
 }
 function topbarMovelHTML(){ return '<div class="ng-topo"><div class="ng-topo-l"><button class="ng-btn sm" onclick="DT.menu()">☰</button><b>'+esc(NG.nome)+'</b></div>'+hudHTML()+'</div>'; }
-function tabbarMovelHTML(){ return '<div class="ng-tabbar"><button onclick="DT.irTela(\'hub\')">🏠</button>'+NAV_GRUPOS.map(function(g){ return '<button onclick="DT.abrirGrupo(\''+g.id+'\')">'+g.ic+'</button>'; }).join('')+'</div>'; }
+function tabbarMovelHTML(){ return '<div class="ng-tabbar"><button onclick="DT.irRuas()">🌆</button><button onclick="DT.irTela(\'hub\')">🏠</button>'+NAV_GRUPOS.map(function(g){ return '<button onclick="DT.abrirGrupo(\''+g.id+'\')">'+g.ic+'</button>'; }).join('')+'</div>'; }
 function wrap(corpo){ return '<div class="ng-shell">'+sidebarHTML()+'<div class="ng-main">'+topbarMovelHTML()+'<div class="ng-corpo">'+bannersHTML()+corpo+'</div></div></div>'+tabbarMovelHTML()+grupoPopupHTML(); }
 
 /* porta de entrada de TODAS as telas -- os "gates" vêm antes do switch, igual ao Green Área */
@@ -371,6 +374,7 @@ function screenHTML(){
     case 'hub': return wrap(hubHTML());
     case 'contratos': return wrap(contratosOpsHTML());
     case 'chefes': return wrap(chefesHTML());
+    case 'ruas': return wrap(ruasHTML());
     case 'personagem': return wrap(personagemHTML());
     case 'crew': return wrap(crewHTML());
     case 'mochila': return wrap(mochilaHTML());
