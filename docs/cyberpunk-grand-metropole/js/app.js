@@ -231,15 +231,20 @@ function criacaoPersonagemHTML(){
     '<h3>Atributos</h3>'+atributosListaHTML()+'<button class="ng-btn pri" onclick="DT.criarPersonagem()">✔ Criar personagem</button></div>';
 }
 function personagemHTML(){
-  var L = 4, W = 100, H = 34, svg = '<svg class="ng-corpo-svg" viewBox="0 0 360 440" role="img" aria-label="Corpo do personagem">'+
-    '<g class="sil"><circle cx="180" cy="62" r="24"/><rect x="170" y="84" width="20" height="14"/><path d="M142 98h76l14 34v70l-16 4v-60l-6 14 4 58h-70l4-58-6-14v60l-16-4v-70z"/><path d="M146 262h68l-6 82h-22l-6-60-6 60h-22z" transform="translate(0,0)"/><path d="M158 336h22v62h-22zM180 336h22v62h-22z"/></g>';
+  var L = 4, W = 100, H = 34, VB_W = 360, VB_H = 520;
+  /* silhueta neutra: metade direita desenhada uma vez e espelhada */
+  var meia = 'M180 98 Q200 98 216 106 Q236 110 239 136 L246 232 Q250 262 240 268 Q231 270 229 252 L224 168 Q220 150 221 146 Q214 190 212 222 Q222 252 219 276 Q217 340 213 404 L211 466 Q214 484 228 488 L189 488 L190 468 L191 404 Q188 340 182 296 L180 292 Z';
+  var svg = '<svg class="ng-corpo-svg" viewBox="0 0 '+VB_W+' '+VB_H+'" role="img" aria-label="Corpo do personagem">'+
+    '<g class="sil"><rect x="171" y="78" width="18" height="24" rx="4"/><ellipse cx="180" cy="58" rx="20" ry="25"/><path d="'+meia+'"/><path d="'+meia+'" transform="translate(360,0) scale(-1,1)"/><rect class="costura" x="178.6" y="99" width="2.8" height="192"/></g>';
   svg += NG.corpo.map(function(p){
-    var x = p.lado==='e' ? L : 360-L-W, ex = p.lado==='e' ? x+W : x, cy = p.y+H/2, v = STATE.corpo[p.id];
+    var x = p.lado==='e' ? L : VB_W-L-W, ex = p.lado==='e' ? x+W : x, cy = p.y+H/2, v = STATE.corpo[p.id];
     return '<line class="lin" x1="'+ex+'" y1="'+cy+'" x2="'+p.alvo[0]+'" y2="'+p.alvo[1]+'"/><circle class="pt" cx="'+p.alvo[0]+'" cy="'+p.alvo[1]+'" r="3"/>'+
       '<g class="slot" onclick="DT.slotCorpo(\''+p.id+'\')"><rect x="'+x+'" y="'+p.y+'" width="'+W+'" height="'+H+'" rx="4"/><text x="'+(x+8)+'" y="'+(p.y+15)+'">'+esc(p.nome)+'</text><text class="vz" x="'+(x+8)+'" y="'+(p.y+27)+'">'+esc(v||'— vazio —')+'</text></g>';
   }).join('');
-  return '<div class="ng-card"><h2>'+esc(STATE.nome)+'</h2><p class="ng-hint">Cada quadrado é um ponto do corpo que poderá receber uma modificação.</p>'+svg+'</svg></div>'+
-    '<div class="ng-card"><h3>Atributos</h3>'+atributosListaHTML()+'</div>';
+  /* caixa de atributos (só nomes, sem valores) no canto esquerdo do campo */
+  svg += '<g class="attrs"><rect x="'+L+'" y="392" width="104" height="116" rx="4"/><text class="tt" x="'+(L+8)+'" y="410">ATRIBUTOS</text>'+
+    NG.atributos.map(function(a, i){ return '<text x="'+(L+8)+'" y="'+(432+i*24)+'">'+a.ic+' '+esc(a.nome)+'<title>'+esc(a.desc)+'</title></text>'; }).join('')+'</g>';
+  return '<div class="ng-card ng-corpo-card"><h2>'+esc(STATE.nome)+'</h2><p class="ng-hint">Cada quadrado é um ponto do corpo que poderá receber uma modificação.</p>'+svg+'</svg></div>';
 }
 function escolhaInicialHTML(){
   return '<div class="ng-card ng-login"><div class="ng-logo">Escolha seu primeiro aliado</div><p class="ng-sub">Você vai começar a jornada com ele.</p><div class="ng-iniciais">'+

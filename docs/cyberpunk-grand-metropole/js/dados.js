@@ -19,15 +19,15 @@ window.NG = {
     { id:'res', nome:'Resistência',  ic:'🛡️', desc:'HP e redução de dano.' },
     { id:'vel', nome:'Velocidade',   ic:'⚡', desc:'Iniciativa, esquiva e fuga.' }
   ],
-  /* partes do corpo do personagem que poderão receber implantes; `lado` = coluna onde o quadrado aparece, `y` = altura do quadrado, `alvo` = ponto da silhueta (viewBox 360x440) */
+  /* partes do corpo do personagem que poderão receber implantes; `lado` = coluna onde o quadrado aparece, `y` = altura do quadrado, `alvo` = ponto da silhueta (viewBox 360x520) */
   corpo: [
-    { id:'chip',    nome:'Chip cerebral', lado:'e', y:20,  alvo:[178,46] },
-    { id:'cabeca',  nome:'Cabeça',        lado:'e', y:84,  alvo:[158,68] },
-    { id:'coluna',  nome:'Coluna',        lado:'e', y:178, alvo:[180,200] },
-    { id:'pernas',  nome:'Pernas',        lado:'e', y:308, alvo:[164,330] },
-    { id:'olho',    nome:'Olho',          lado:'d', y:30,  alvo:[190,58] },
-    { id:'peito',   nome:'Peito',         lado:'d', y:126, alvo:[198,150] },
-    { id:'bracos',  nome:'Braços',        lado:'d', y:222, alvo:[240,200] }
+    { id:'chip',    nome:'Chip cerebral', lado:'e', y:20,  alvo:[180,44] },
+    { id:'cabeca',  nome:'Cabeça',        lado:'e', y:90,  alvo:[163,62] },
+    { id:'coluna',  nome:'Coluna',        lado:'e', y:190, alvo:[180,196] },
+    { id:'pernas',  nome:'Pernas',        lado:'e', y:300, alvo:[164,380] },
+    { id:'olho',    nome:'Olho',          lado:'d', y:30,  alvo:[190,56] },
+    { id:'peito',   nome:'Peito',         lado:'d', y:126, alvo:[200,150] },
+    { id:'bracos',  nome:'Braços',        lado:'d', y:222, alvo:[236,196] }
   ],
   /* tipos de aliado (a "espécie") -- só rótulo + ícone */
   tipos: { drone:{ nome:'Drone', ic:'🤖' }, ciborgue:{ nome:'Ciborgue', ic:'🦾' }, hacker:{ nome:'Hacker', ic:'🕶️' }, mercenario:{ nome:'Mercenário', ic:'🔫' }, gangue:{ nome:'Gangue', ic:'🧢' } },
